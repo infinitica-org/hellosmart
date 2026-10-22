@@ -1,0 +1,1051 @@
+﻿Item ID,Item Name,Item Type,Epic,Sprint,Priority,Story Points,Owner,Supporting,Requirement ID,Phase,Tags,Description
+T-001,"T-001 AWS Organization, accounts, IAM Identity Center, SCP baseline",Task,EP-01 Platform & DevOps,S0 Foundation,High,8,System Architect,,,MMP,engineering,"Apply infra/terraform/modules/org-baseline. Accounts: management, security, shared, prod, workspaces-prod."
+T-002,T-002 Terraform state backend + GitHub OIDC roles,Task,EP-01 Platform & DevOps,S0 Foundation,High,3,System Architect,,,MMP,engineering,"S3+KMS state, DynamoDB lock, CI roles: build, deploy-prod, plan-only."
+T-003,"T-003 Prod network: VPC 3 AZ, endpoints, NAT, flow logs",Task,EP-01 Platform & DevOps,S0 Foundation,High,5,System Architect,,,MMP,engineering,modules/network.
+T-004,"T-004 Prod data: Aurora PG16, Redis, S3 buckets, KMS keys",Task,EP-01 Platform & DevOps,S0 Foundation,High,5,System Architect,Backend Engineer,,MMP,engineering,modules/data + modules/secrets. RLS-ready roles.
+T-005,T-005 QA VPS bootstrap + Caddy + allowlist + deploy pipeline,Task,EP-01 Platform & DevOps,S0 Foundation,High,5,System Architect,QA-2,,MMP,engineering,infra/qa-vps. dev branch auto-deploys.
+T-006,"T-006 GitHub: branch protection main/dev, environments qa/production, teams, CODEOWNERS",Task,EP-01 Platform & DevOps,S0 Foundation,High,2,System Architect,,,MMP,engineering,See docs/BRANCHING-AND-ENVIRONMENTS.md.
+T-007,T-007 Install workflows from infra/ci and pin actions to SHAs,Task,EP-01 Platform & DevOps,S0 Foundation,High,2,System Architect,,,MMP,engineering,ADR-0007.
+T-008,"T-008 Dockerfiles for web, api, worker, ai-proxy, reviewer, ws-gateway",Task,EP-01 Platform & DevOps,S0 Foundation,High,3,System Architect,"Backend Engineer, AI Engineer-1",,MMP,engineering,"Non-root, distroless/minimal, healthchecks."
+T-009,"T-009 Freeze contracts: full OpenAPI (AGENTS §13), DB schema, events, route map",Task,EP-01 Platform & DevOps,S0 Foundation,High,8,System Architect,"Backend Engineer, SDE-1, SDE-2, AI Engineer-1, AI Engineer-2",,MMP,engineering,Freeze Fri 30 Oct. Mock server serves it.
+T-010,"T-010 Fake adapters: payment, email, LLM, workspace runtime, secrets",Task,EP-01 Platform & DevOps,S0 Foundation,High,5,Backend Engineer,"AI Engineer-1, SDE-2",,MMP,engineering,packages/adapters. Fakes forbidden in prod.
+NF-002,NF-002 Secrets and API keys in a vault,Story,EP-02 Security & Compliance,S0 Foundation,High,5,System Architect,,NF-002,MMP,NF; Security; Must,"Requirement: Secrets and API keys in a vault
+
+Acceptance criteria:
+Encrypted at rest, never returned in full, never present in workspaces; short-lived session tokens only.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-003,NF-003 Encryption in transit and at rest,Story,EP-02 Security & Compliance,S0 Foundation,High,5,System Architect,,NF-003,MMP,NF; Security; Must,"Requirement: Encryption in transit and at rest
+
+Acceptance criteria:
+TLS everywhere; encrypted storage and backups.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+T-018,"T-018 Custom lint rules: require-roles-decorator, no-client-org-id",Task,EP-02 Security & Compliance,S0 Foundation,High,3,System Architect,,,MMP,engineering,packages/config + .semgrep.
+T-014,"T-014 NestJS skeleton: guards, withOrg, problem+json, logger redaction, idempotency",Task,EP-03 Identity & Access,S0 Foundation,High,5,Backend Engineer,System Architect,,MMP,engineering,"NestJS skeleton: guards, withOrg, problem+json, logger redaction, idempotency"
+T-012,"T-012 Next.js app shell, route groups, middleware, API client from contracts",Task,EP-05 Templates & Assessments,S0 Foundation,High,5,SDE-1,SDE-2,,MMP,engineering,"Next.js app shell, route groups, middleware, API client from contracts"
+T-016,"T-016 Workspace spike: 4 medium Sysbox slots on one host, isolation + start time",Task,EP-08 Workspaces,S0 Foundation,High,8,SDE-2,System Architect,,MMP,engineering,Go/no-go by Thu 29 Oct (ADR-0003).
+T-017,T-017 Packer host AMI with Sysbox + CIS hardening,Task,EP-08 Workspaces,S0 Foundation,High,5,System Architect,SDE-2,,MMP,engineering,infra/packer.
+T-015,"T-015 FastAPI skeletons: ai-proxy + reviewer, CI, typed config",Task,"EP-09 AI Proxy, Keys & Chat",S0 Foundation,High,3,AI Engineer-1,AI Engineer-2,,MMP,engineering,"FastAPI skeletons: ai-proxy + reviewer, CI, typed config"
+T-020,T-020 Agent library v0 design + evidence bundle format,Task,EP-10 Review & Results,S0 Foundation,High,3,AI Engineer-2,AI Engineer-1,,MMP,engineering,Evidence refs: term:/diff:/ai:/file:/event:/test:.
+T-013,T-013 Design system in code (@hs/ui) from Figma tokens,Task,"EP-14 Settings, Branding & Domains",S0 Foundation,High,5,SDE-1,,,MMP,engineering,"BrandMark, SafeMarkdown, forms, timer."
+T-011,"T-011 Fixtures package: two orgs, every state, synthetic submissions",Task,EP-15 Template Content,S0 Foundation,High,5,Data Ops Engineer,Backend Engineer,,MMP,engineering,packages/fixtures + pnpm db:seed.
+T-019,"T-019 Test strategy, traceability matrix (126 MMP items), Playwright + axe setup",Task,EP-16 Quality & Release,S0 Foundation,High,5,QA-2,QA-1,,MMP,engineering,"Test strategy, traceability matrix (126 MMP items), Playwright + axe setup"
+AD-027,AD-027 Global audit log,Story,EP-02 Security & Compliance,S1 Identity & Tenancy,High,5,Backend Engineer,SDE-1,AD-027,MMP,AD; Governance; Must,"Requirement: Global audit log
+
+Acceptance criteria:
+Immutable log of admin actions, config and data access.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-001,NF-001 Strict tenant isolation,Story,EP-02 Security & Compliance,S1 Identity & Tenancy,High,8,System Architect,Backend Engineer,NF-001,MMP,NF; Security; Must,"Requirement: Strict tenant isolation
+
+Acceptance criteria:
+Every query and file is org-scoped; automated tests prove no cross-org reads; templates and submissions never leak.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-006,"NF-006 Rate limiting, abuse protection, secure session management",Story,EP-02 Security & Compliance,S1 Identity & Tenancy,High,5,Backend Engineer,System Architect,NF-006,MMP,NF; Security; Must,"Requirement: Rate limiting, abuse protection, secure session management
+
+Acceptance criteria:
+Login and API throttling; CSRF/XSS protections; secure cookies.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+T-036,T-036 Cross-tenant test harness generated from x-roles,Task,EP-02 Security & Compliance,S1 Identity & Tenancy,High,5,QA-2,System Architect,,MMP,engineering,BR-01.
+T-037,T-037 Hash-chained append-only audit writer,Task,EP-02 Security & Compliance,S1 Identity & Tenancy,High,3,Backend Engineer,System Architect,,MMP,engineering,BR-31.
+T-038,"T-038 GuardDuty, Security Hub, Inspector, CloudTrail org trail with Object Lock",Task,EP-02 Security & Compliance,S1 Identity & Tenancy,High,3,System Architect,,,MMP,engineering,"GuardDuty, Security Hub, Inspector, CloudTrail org trail with Object Lock"
+AD-001,AD-001 Platform Admin master login with MFA,Story,EP-03 Identity & Access,S1 Identity & Tenancy,High,8,Backend Engineer,SDE-1,AD-001,MMP,AD; Access control; Must,"Requirement: Platform Admin master login with MFA
+
+Acceptance criteria:
+MFA mandatory; session timeout; IP/device logging.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-001,CA-001 Access via emailed link,Story,EP-03 Identity & Access,S1 Identity & Tenancy,High,5,Backend Engineer,SDE-2,CA-001,MMP,CA; Access; Must,"Requirement: Access via emailed link
+
+Acceptance criteria:
+Link opens set-password page; password reset is forced on first login; link is single-use and expiring.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-002,CA-002 Sign in from the master login with RBAC,Story,EP-03 Identity & Access,S1 Identity & Tenancy,High,5,Backend Engineer,SDE-2,CA-002,MMP,CA; Access; Must,"Requirement: Sign in from the master login with RBAC
+
+Acceptance criteria:
+Same login page as other roles; role Candidate lands on the candidate portal; candidates cannot reach company or admin routes.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-003,CA-003 Forgot / reset password; change password,Story,EP-03 Identity & Access,S1 Identity & Tenancy,High,5,Backend Engineer,SDE-2,CA-003,MMP,CA; Access; Must,"Requirement: Forgot / reset password; change password
+
+Acceptance criteria:
+Emailed reset link; password policy enforced.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-001,CO-001 Sign in with email and password,Story,EP-03 Identity & Access,S1 Identity & Tenancy,High,8,Backend Engineer,SDE-1,CO-001,MMP,CO; Authentication; Must,"Requirement: Sign in with email and password
+
+Acceptance criteria:
+Passwords hashed (argon2/bcrypt); forgot-password via emailed expiring link; lockout or throttling after repeated failures; session expiry configurable.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-002,CO-002 Sign in with Google SSO,Story,EP-03 Identity & Access,S1 Identity & Tenancy,High,5,Backend Engineer,SDE-1,CO-002,MMP,CO; Authentication; Must,"Requirement: Sign in with Google SSO
+
+Acceptance criteria:
+Company user can authenticate with Google; account is matched on verified email; no new org is created by SSO.
+
+Note: SSO only works for users already created by Platform Admin / Company Admin.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-003,CO-003 Sign in with Microsoft SSO,Story,EP-03 Identity & Access,S1 Identity & Tenancy,High,5,Backend Engineer,SDE-1,CO-003,MMP,CO; Authentication; Must,"Requirement: Sign in with Microsoft SSO
+
+Acceptance criteria:
+Company user can authenticate with Microsoft (Entra ID / personal); matched on verified email.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-004,CO-004 Master login with role-based routing,Story,EP-03 Identity & Access,S1 Identity & Tenancy,High,5,Backend Engineer,SDE-1,CO-004,MMP,CO; Authentication; Must,"Requirement: Master login with role-based routing
+
+Acceptance criteria:
+After login the user lands in the correct portal (company dashboard) based on role; candidates and admins use the same login page. One login URL for all roles; white-label customers get a branded login route on their custom domain (add-on).
+
+Note: Decision accepted (Open Q11).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-002,AD-002 Create all types of accounts,Story,"EP-04 Org, Trial & Entitlements",S1 Identity & Tenancy,High,5,Backend Engineer,SDE-1,AD-002,MMP,AD; Accounts; Must,"Requirement: Create all types of accounts
+
+Acceptance criteria:
+Platform Admin can create orgs, Company Admins, Candidates, and internal staff; sends invite emails.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-003,AD-003 Role-based access control matrix,Story,"EP-04 Org, Trial & Entitlements",S1 Identity & Tenancy,High,5,Backend Engineer,SDE-1,AD-003,MMP,AD; Accounts; Must,"Requirement: Role-based access control matrix
+
+Acceptance criteria:
+Defined roles (Platform Admin, Sales, Support, Company Admin, Reviewer, Candidate) with permission sets; least privilege enforced server-side.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-004,AD-004 Enable/disable/suspend orgs and users,Story,"EP-04 Org, Trial & Entitlements",S1 Identity & Tenancy,High,5,Backend Engineer,SDE-1,AD-004,MMP,AD; Accounts; Must,"Requirement: Enable/disable/suspend orgs and users
+
+Acceptance criteria:
+Suspension blocks login and workspace launch; reversible; audit-logged.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-006,"AD-006 Provision trial with X templates, Y candidates, Z days per org",Story,"EP-04 Org, Trial & Entitlements",S1 Identity & Tenancy,High,5,Backend Engineer,SDE-1,AD-006,MMP,AD; Trial and entitlements; Must,"Requirement: Provision trial with X templates, Y candidates, Z days per org
+
+Acceptance criteria:
+Values set at provisioning and editable later; usage counters visible.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-007,AD-007 Per-org entitlement overrides and feature flags,Story,"EP-04 Org, Trial & Entitlements",S1 Identity & Tenancy,High,5,Backend Engineer,SDE-1,AD-007,MMP,AD; Trial and entitlements; Must,"Requirement: Per-org entitlement overrides and feature flags
+
+Acceptance criteria:
+Toggle workspace modes, white label, custom domain, extra agents, retention days, AI credits.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-005,CO-005 Company account is provisioned by HelloSmart after sales call,Story,"EP-04 Org, Trial & Entitlements",S1 Identity & Tenancy,High,5,Backend Engineer,SDE-1,CO-005,MMP,CO; Account; Must,"Requirement: Company account is provisioned by HelloSmart after sales call
+
+Acceptance criteria:
+Org, first Company Admin and trial are created by Platform Admin; Company Admin receives invite email and sets a password or uses SSO.
+
+Note: Decision accepted (Open Q12): no public self-signup in MMP; revisit after 10-15 paying customers.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-008,"CO-008 Trial period with X templates, Y candidate cap, Z days",Story,"EP-04 Org, Trial & Entitlements",S1 Identity & Tenancy,High,8,Backend Engineer,SDE-1,CO-008,MMP,CO; Trial; Must,"Requirement: Trial period with X templates, Y candidate cap, Z days
+
+Acceptance criteria:
+Entitlements are set by Platform Admin per org; enforced server-side; banner shows usage and days left (e.g. 2 of 3 templates, 4 of 10 candidates, 9 days left).
+
+Note: Suggested defaults: 3 templates, 10 candidates, 14 days.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-009,CO-009 Trial limits enforced with clear messaging,Story,"EP-04 Org, Trial & Entitlements",S1 Identity & Tenancy,High,8,Backend Engineer,SDE-1,CO-009,MMP,CO; Trial; Must,"Requirement: Trial limits enforced with clear messaging
+
+Acceptance criteria:
+At cap or expiry, new assessments, candidates or workspace launches are blocked with a message and 'Contact us / Pay' CTA; existing data stays readable. A candidate counts once against the cap at first workspace launch; pending (not yet launched) invites are capped at 2x the cap, configurable by Platform Admin.
+
+Note: Decision accepted (Open Q1). The 2x pending-invite multiplier is an assumption.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-011,AD-011 Templates are private per company,Story,EP-05 Templates & Assessments,S1 Identity & Tenancy,High,5,Backend Engineer,,AD-011,MMP,AD; Templates; Must,"Requirement: Templates are private per company
+
+Acceptance criteria:
+Each template is assigned to specific org(s); no public marketplace; org users can never see another org's templates.
+
+Note: Key business rule.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-018,NF-018 Template manifest as a versioned schema,Story,EP-05 Templates & Assessments,S1 Identity & Tenancy,High,5,System Architect,Data Ops Engineer,NF-018,MMP,NF; Extensibility; Must,"Requirement: Template manifest as a versioned schema
+
+Acceptance criteria:
+New roles can be added by authoring a manifest and rubric without platform code changes.
+
+Note: Core to the 'all niche roles' strategy.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-001,SP-001 Landing page with product pitch and category,Story,"EP-12 Sales, Landing & Leads",S1 Identity & Tenancy,High,5,SDE-1,,SP-001,MMP,SP; Landing and booking; Must,"Requirement: Landing page with product pitch and category
+
+Acceptance criteria:
+States category (AI-native work simulation), vision, how it works and use cases; single primary CTA 'Book a meeting'.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-002,SP-002 cal.com meeting booking,Story,"EP-12 Sales, Landing & Leads",S1 Identity & Tenancy,High,5,AI Engineer-1,SDE-1,SP-002,MMP,SP; Landing and booking; Must,"Requirement: cal.com meeting booking
+
+Acceptance criteria:
+Embedded cal.com booking; UTM and source captured; booking confirmation email.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-003,SP-003 Booking webhook creates a lead in admin,Story,"EP-12 Sales, Landing & Leads",S1 Identity & Tenancy,Medium,3,AI Engineer-1,SDE-1,SP-003,MMP,SP; Landing and booking; Should,"Requirement: Booking webhook creates a lead in admin
+
+Acceptance criteria:
+cal.com webhook creates/updates a lead with name, email, company and time.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-005,SP-005 Provision the customer directly on the standard HelloSmart route,Story,"EP-12 Sales, Landing & Leads",S1 Identity & Tenancy,High,5,Backend Engineer,SDE-1,SP-005,MMP,SP; Provisioning; Must,"Requirement: Provision the customer directly on the standard HelloSmart route
+
+Acceptance criteria:
+Admin creates org on the multi-tenant app route (e.g. app.hellosmart.ai/{org}) in minutes; no separate infrastructure.
+
+Note: Default delivery model.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+T-044,"T-044 S1 QA: auth, RBAC, route isolation, cross-tenant",Task,EP-16 Quality & Release,S1 Identity & Tenancy,High,5,QA-1,QA-2,,MMP,engineering,"S1 QA: auth, RBAC, route isolation, cross-tenant"
+NF-015,"NF-015 Logging, metrics and alerts",Story,EP-01 Platform & DevOps,S2 Configure,High,5,System Architect,,NF-015,MMP,NF; Observability; Must,"Requirement: Logging, metrics and alerts
+
+Acceptance criteria:
+Central logs, error tracking, workspace and agent dashboards, on-call alerts.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-017,NF-017 Deliverability,Story,EP-01 Platform & DevOps,S2 Configure,High,5,System Architect,Backend Engineer,NF-017,MMP,NF; Email; Must,"Requirement: Deliverability
+
+Acceptance criteria:
+SPF, DKIM, DMARC configured; bounce handling; branded sender on white label.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+T-025,T-025 workspace-hosts Terraform + ASG + budgets in workspaces account,Task,EP-01 Platform & DevOps,S2 Configure,High,5,System Architect,SDE-2,,MMP,engineering,workspace-hosts Terraform + ASG + budgets in workspaces account
+T-042,"T-042 Observability: dashboards, alarms, on-call routing",Task,EP-01 Platform & DevOps,S2 Configure,High,5,System Architect,,,MMP,engineering,NF-015.
+T-039,T-039 WAF rules + rate limits; CloudFront,Task,EP-02 Security & Compliance,S2 Configure,High,3,System Architect,,,MMP,engineering,WAF rules + rate limits; CloudFront
+CO-006,CO-006 Manage organization name and profile,Story,"EP-04 Org, Trial & Entitlements",S2 Configure,High,3,SDE-1,Backend Engineer,CO-006,MMP,CO; Account; Must,"Requirement: Manage organization name and profile
+
+Acceptance criteria:
+Company Admin can edit org name; change is reflected on candidate portal, emails and reports; change is audit-logged.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-010,AD-010 Build and manage task templates,Story,EP-05 Templates & Assessments,S2 Configure,High,8,Backend Engineer,"SDE-1, Data Ops Engineer",AD-010,MMP,AD; Templates; Must,"Requirement: Build and manage task templates
+
+Acceptance criteria:
+Create manifest (scenario, resources, environment, env slots, AI defaults, reviewers, timing); versioned; draft > tested > published.
+
+Note: Built behind the curtain by HelloSmart.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-012,AD-012 Clone a base template into a company-specific copy,Story,EP-05 Templates & Assessments,S2 Configure,High,5,Data Ops Engineer,SDE-1,AD-012,MMP,AD; Templates; Must,"Requirement: Clone a base template into a company-specific copy
+
+Acceptance criteria:
+Clone, customize and assign to one org; lineage tracked.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-013,AD-013 Build resources and golden images,Story,EP-05 Templates & Assessments,S2 Configure,High,8,Data Ops Engineer,System Architect,AD-013,MMP,AD; Templates; Must,"Requirement: Build resources and golden images
+
+Acceptance criteria:
+Codebase at pinned commit, seed data, services, env slots; automated smoke test must pass before publish.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-018,CO-018 Browse templates available to my company only,Story,EP-05 Templates & Assessments,S2 Configure,High,5,SDE-1,Backend Engineer,CO-018,MMP,CO; Tasks and templates; Must,"Requirement: Browse templates available to my company only
+
+Acceptance criteria:
+Template catalog shows only templates provisioned for this org; no public or cross-company templates.
+
+Note: Templates are built behind the curtain by HelloSmart.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-019,CO-019 Preview a template,Story,EP-05 Templates & Assessments,S2 Configure,High,5,SDE-1,Backend Engineer,CO-019,MMP,CO; Tasks and templates; Must,"Requirement: Preview a template
+
+Acceptance criteria:
+Shows scenario, deliverables, tech stack tags, workspace mode, estimated duration, default AI policy and default reviewer agents.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-020,CO-020 Create an assessment from a template with a task name,Story,EP-05 Templates & Assessments,S2 Configure,High,5,SDE-1,Backend Engineer,CO-020,MMP,CO; Tasks and templates; Must,"Requirement: Create an assessment from a template with a task name
+
+Acceptance criteria:
+Company names the assessment; it pins the template version; edits never alter the master template.
+
+Note: Three levels: Template > Assessment > Session.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-021,CO-021 Edit candidate-facing brief and deliverables,Story,EP-05 Templates & Assessments,S2 Configure,Medium,3,SDE-1,Backend Engineer,CO-021,MMP,CO; Tasks and templates; Should,"Requirement: Edit candidate-facing brief and deliverables
+
+Acceptance criteria:
+Company can adjust title, description, instructions and deliverables within the template's editable fields.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-022,CO-022 Choose workspace mode,Story,EP-05 Templates & Assessments,S2 Configure,High,5,SDE-1,Backend Engineer,CO-022,MMP,CO; Tasks and templates; Must,"Requirement: Choose workspace mode
+
+Acceptance criteria:
+MMP options: Cloud VM and Chat. Local and Browser are shown as locked 'coming soon' options and unlock in Phase 2 subject to the org's entitlements; selection drives consent and provisioning.
+
+Note: Decision accepted (Open Q10).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-023,CO-023 Configure environment variables and secrets,Story,EP-05 Templates & Assessments,S2 Configure,High,5,AI Engineer-1,SDE-1,CO-023,MMP,CO; Tasks and templates; Must,"Requirement: Configure environment variables and secrets
+
+Acceptance criteria:
+Required slots declared by the template; company fills values; values encrypted, masked in UI and injected only into the session.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-028,CO-028 Time-bound assessment,Story,EP-05 Templates & Assessments,S2 Configure,High,5,SDE-2,Backend Engineer,CO-028,MMP,CO; Timing; Must,"Requirement: Time-bound assessment
+
+Acceptance criteria:
+Duration in minutes/hours starts at the candidate's first connect; countdown visible; auto-submit at expiry.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-029,CO-029 Window-bound assessment,Story,EP-05 Templates & Assessments,S2 Configure,High,5,SDE-2,Backend Engineer,CO-029,MMP,CO; Timing; Must,"Requirement: Window-bound assessment
+
+Acceptance criteria:
+Company sets start and end date-time with timezone; workspace is not accessible outside the window.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-030,CO-030 Combined window plus duration,Story,EP-05 Templates & Assessments,S2 Configure,High,5,SDE-2,Backend Engineer,CO-030,MMP,CO; Timing; Must,"Requirement: Combined window plus duration
+
+Acceptance criteria:
+e.g. start any time within 7 days, then 4 hours; both rules enforced server-side.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-011,CO-011 Add a single candidate (Create),Story,EP-06 Candidate Management,S2 Configure,High,5,Backend Engineer,SDE-1,CO-011,MMP,CO; Candidates; Must,"Requirement: Add a single candidate (Create)
+
+Acceptance criteria:
+Name and email required; email format and uniqueness within the org validated; counts against candidate cap rules.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-012,CO-012 Bulk upload candidates,Story,EP-06 Candidate Management,S2 Configure,High,8,SDE-1,Backend Engineer,CO-012,MMP,CO; Candidates; Must,"Requirement: Bulk upload candidates
+
+Acceptance criteria:
+CSV/XLSX with name and email; downloadable template; per-row validation; duplicates skipped and reported; downloadable error report; row limit stated (e.g. 500).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-013,CO-013 Automatic account-created email with link,Story,EP-06 Candidate Management,S2 Configure,High,5,Backend Engineer,SDE-1,CO-013,MMP,CO; Candidates; Must,"Requirement: Automatic account-created email with link
+
+Acceptance criteria:
+On creation, candidate receives email with secure link; first login forces password reset; link expires and can be resent.
+
+Note: Email must come from HelloSmart domain; branded sender is a white-label add-on.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-014,"CO-014 View, search and filter candidates (Read)",Story,EP-06 Candidate Management,S2 Configure,High,5,SDE-1,Backend Engineer,CO-014,MMP,CO; Candidates; Must,"Requirement: View, search and filter candidates (Read)
+
+Acceptance criteria:
+List with name, email, assigned assessments, status; search by name/email; filter by assessment and status; pagination.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-015,CO-015 Edit candidate (Update),Story,EP-06 Candidate Management,S2 Configure,High,5,SDE-1,Backend Engineer,CO-015,MMP,CO; Candidates; Must,"Requirement: Edit candidate (Update)
+
+Acceptance criteria:
+Name editable; email editable until activation, after which change triggers re-verification.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-017,CO-017 Resend invite / reset candidate access,Story,EP-06 Candidate Management,S2 Configure,Medium,3,SDE-1,Backend Engineer,CO-017,MMP,CO; Candidates; Should,"Requirement: Resend invite / reset candidate access
+
+Acceptance criteria:
+One-click resend of invite; reset password link; action audit-logged.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-032,CO-032 Add AI provider API keys in settings,Story,"EP-09 AI Proxy, Keys & Chat",S2 Configure,High,8,AI Engineer-1,"SDE-1, Backend Engineer",CO-032,MMP,CO; AI providers; Must,"Requirement: Add AI provider API keys in settings
+
+Acceptance criteria:
+Providers such as Anthropic and OpenAI; keys stored encrypted in a vault, shown masked (last 4); test-connection; rotate and delete; set a default key.
+
+Note: Decision accepted (Open Q7): own key in MMP, including trial. Keys are never exposed to candidates or workspaces.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-033,CO-033 AI assistant ON/OFF per assessment,Story,"EP-09 AI Proxy, Keys & Chat",S2 Configure,High,5,AI Engineer-1,SDE-1,CO-033,MMP,CO; AI controls; Must,"Requirement: AI assistant ON/OFF per assessment
+
+Acceptance criteria:
+Toggle at assessment level; when OFF the assistant is removed and AI domains are blocked in cloud workspaces.
+
+Note: AI-off cannot be fully enforced in local mode; label this in consent and report.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-034,CO-034 Select provider/key and allowed models per assessment,Story,"EP-09 AI Proxy, Keys & Chat",S2 Configure,High,5,AI Engineer-1,SDE-1,CO-034,MMP,CO; AI controls; Must,"Requirement: Select provider/key and allowed models per assessment
+
+Acceptance criteria:
+Company picks key source (own key) and a model allowlist; all AI calls pass through the HelloSmart AI proxy.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-035,CO-035 Usage caps per candidate and per assessment,Story,"EP-09 AI Proxy, Keys & Chat",S2 Configure,High,5,AI Engineer-1,SDE-1,CO-035,MMP,CO; AI controls; Must,"Requirement: Usage caps per candidate and per assessment
+
+Acceptance criteria:
+Caps in tokens or currency plus requests-per-minute; behaviour at cap configurable (warn then block); candidate sees remaining budget.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+T-026,"T-026 AI proxy: Anthropic + OpenAI compatible endpoints, streaming",Task,"EP-09 AI Proxy, Keys & Chat",S2 Configure,High,8,AI Engineer-1,,,MMP,engineering,Claude Code / Codex work unmodified.
+AD-014,AD-014 Maintain reviewer agent library,Story,EP-10 Review & Results,S2 Configure,High,5,AI Engineer-2,SDE-1,AD-014,MMP,AD; Agents; Must,"Requirement: Maintain reviewer agent library
+
+Acceptance criteria:
+Define agents (prompt/config, model, version, enabled flag); version and roll back.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-038,CO-038 Define a custom rubric as reviewer agents,Story,EP-10 Review & Results,S2 Configure,High,8,AI Engineer-2,SDE-1,CO-038,MMP,CO; Rubrics / Reviewer agents; Must,"Requirement: Define a custom rubric as reviewer agents
+
+Acceptance criteria:
+Each rubric item has name, goal, signals watched, scale with level anchors, weight, red flags; weights total 100%.
+
+Note: Rubrics run as independent monitoring and review agents.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-039,CO-039 Start from default rubric of the template or the agent library,Story,EP-10 Review & Results,S2 Configure,High,8,AI Engineer-2,SDE-1,CO-039,MMP,CO; Rubrics / Reviewer agents; Must,"Requirement: Start from default rubric of the template or the agent library
+
+Acceptance criteria:
+Company can accept, edit, add or remove items; changes are versioned per assessment.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-008,AD-008 Maintain pricing plans and features,Story,EP-11 Billing & Payments,S2 Configure,High,5,Backend Engineer,SDE-1,AD-008,MMP,AD; Pricing and plans; Must,"Requirement: Maintain pricing plans and features
+
+Acceptance criteria:
+Plan catalog with price, billing interval, included limits and feature set; change history; new plans do not alter existing contracts silently.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-009,AD-009 Add-on catalog,Story,EP-11 Billing & Payments,S2 Configure,High,5,Backend Engineer,SDE-1,AD-009,MMP,AD; Pricing and plans; Must,"Requirement: Add-on catalog
+
+Acceptance criteria:
+Add-ons: white label, custom routing/domain, custom template build, local mode, extended retention, extra agents, AI credits packs.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-009,SP-009 Quote builder,Story,EP-11 Billing & Payments,S2 Configure,High,8,Backend Engineer,SDE-1,SP-009,MMP,SP; Quoting; Must,"Requirement: Quote builder
+
+Acceptance criteria:
+Line items (platform plan, candidate pack, custom templates, white label, custom routing, AI credits), discounts, tax (GST), currency, validity date, one-time vs recurring.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-010,SP-010 Send quote and track acceptance,Story,EP-11 Billing & Payments,S2 Configure,High,8,Backend Engineer,SDE-1,SP-010,MMP,SP; Quoting; Must,"Requirement: Send quote and track acceptance
+
+Acceptance criteria:
+Quote is emailed with a secure link; status Sent, Viewed, Accepted, Expired.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-006,SP-006 Customer-specific custom templates,Story,"EP-12 Sales, Landing & Leads",S2 Configure,High,5,Data Ops Engineer,Backend Engineer,SP-006,MMP,SP; Provisioning; Must,"Requirement: Customer-specific custom templates
+
+Acceptance criteria:
+Templates prepared for a company are assigned to that company only; custom template build is quoted as a line item.
+
+Note: Private templates; HelloSmart works behind the curtain.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+T-031,"T-031 Templates 1-2: Node API incident, Python service bug",Task,EP-15 Template Content,S2 Configure,High,8,Data Ops Engineer,AI Engineer-2,,MMP,engineering,Golden x5 each.
+T-045,"T-045 S2 QA: templates, assessments, candidates, bulk, invites",Task,EP-16 Quality & Release,S2 Configure,High,5,QA-2,QA-1,,MMP,engineering,"S2 QA: templates, assessments, candidates, bulk, invites"
+NF-004,NF-004 Workspace sandboxing and egress control,Story,EP-02 Security & Compliance,S3 Candidate Session,High,8,System Architect,SDE-2,NF-004,MMP,NF; Security; Must,"Requirement: Workspace sandboxing and egress control
+
+Acceptance criteria:
+Workspaces isolated; outbound traffic restricted (e.g. AI domains blocked when AI is OFF); no real cloud credentials for candidates (use mock/LocalStack).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-007,"NF-007 Consent, notice and retention",Story,EP-02 Security & Compliance,S3 Candidate Session,High,5,Backend Engineer,SDE-2,NF-007,MMP,NF; Privacy and compliance; Must,"Requirement: Consent, notice and retention
+
+Acceptance criteria:
+Consent captured before any recording; default 90-day retention, configurable per org; erasure on request.
+
+Note: GDPR, India DPDP Act.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+T-024,T-024 Egress allowlist (Network Firewall) + AI-off domain block,Task,EP-02 Security & Compliance,S3 Candidate Session,High,5,System Architect,SDE-2,,MMP,engineering,BR-14.
+CO-024,CO-024 Dry-run preview as candidate before publishing,Story,EP-05 Templates & Assessments,S3 Candidate Session,Medium,8,SDE-2,SDE-1,CO-024,MMP,CO; Tasks and templates; Should,"Requirement: Dry-run preview as candidate before publishing
+
+Acceptance criteria:
+Company launches a test session of the assessment; publish is blocked until a dry-run has passed.
+
+Note: Prevents broken tasks from reaching candidates.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-025,CO-025 Publish and deploy to candidates,Story,EP-05 Templates & Assessments,S3 Candidate Session,High,5,SDE-1,Backend Engineer,CO-025,MMP,CO; Tasks and templates; Must,"Requirement: Publish and deploy to candidates
+
+Acceptance criteria:
+Company selects candidates; publishing provisions access and sends assignment email; lifecycle Draft > Published > Closed > Archived.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-026,CO-026 Assign candidates to an assessment in bulk,Story,EP-05 Templates & Assessments,S3 Candidate Session,High,5,SDE-1,Backend Engineer,CO-026,MMP,CO; Tasks and templates; Must,"Requirement: Assign candidates to an assessment in bulk
+
+Acceptance criteria:
+Multi-select or filter by list; assignments respect caps; each candidate sees only their assigned tasks.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-004,CA-004 See assigned workspaces (tasks),Story,EP-07 Candidate Portal,S3 Candidate Session,High,5,SDE-2,Backend Engineer,CA-004,MMP,CA; Dashboard; Must,"Requirement: See assigned workspaces (tasks)
+
+Acceptance criteria:
+Cards/list with task name, company, mode, time rules and status.
+
+Note: Statuses: Invited, Window not open, Ready, Not connected, Connected, In progress, Disconnected (resumable), Submitted, Expired.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-005,CA-005 Workspace connect state,Story,EP-07 Candidate Portal,S3 Candidate Session,High,5,SDE-2,Backend Engineer,CA-005,MMP,CA; Dashboard; Must,"Requirement: Workspace connect state
+
+Acceptance criteria:
+Each workspace shows 'Connected' or 'Not connected' with a Connect/Resume button.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-006,"CA-006 Task brief, rules and timing before connect",Story,EP-07 Candidate Portal,S3 Candidate Session,High,5,SDE-2,Backend Engineer,CA-006,MMP,CA; Pre-flight; Must,"Requirement: Task brief, rules and timing before connect
+
+Acceptance criteria:
+Shows brief, deliverables, duration/window, AI policy (on/off, caps) and what is recorded.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-007,CA-007 Mode-based consent before connecting,Story,EP-07 Candidate Portal,S3 Candidate Session,High,5,SDE-2,Backend Engineer,CA-007,MMP,CA; Consent; Must,"Requirement: Mode-based consent before connecting
+
+Acceptance criteria:
+Consent text depends on mode (Cloud: activity, AI transcript and screen recording as configured; Local: agent install, terminal/file/git capture; Chat; Browser: page and action logging). Connect is disabled until consent is given.
+
+Note: Store consent version, timestamp and IP.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-012,CA-012 Workspace access follows time-bound or window-bound rules,Story,EP-07 Candidate Portal,S3 Candidate Session,High,5,SDE-2,Backend Engineer,CA-012,MMP,CA; Timing; Must,"Requirement: Workspace access follows time-bound or window-bound rules
+
+Acceptance criteria:
+Before window opens or after it closes, Connect is disabled with a clear message; time-bound sessions auto-submit at expiry.
+
+Note: Enforced server-side, not just in the UI.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-013,CA-013 Countdown timer and warnings,Story,EP-07 Candidate Portal,S3 Candidate Session,High,5,SDE-2,Backend Engineer,CA-013,MMP,CA; Timing; Must,"Requirement: Countdown timer and warnings
+
+Acceptance criteria:
+Always visible; warnings at set thresholds (e.g. 15 and 5 minutes).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-018,AD-018 Oversee all workspaces across orgs,Story,EP-08 Workspaces,S3 Candidate Session,High,5,SDE-2,SDE-1,AD-018,MMP,AD; Workspaces; Must,"Requirement: Oversee all workspaces across orgs
+
+Acceptance criteria:
+Global list with org, candidate, mode, status, age, resource usage and cost; filters and search.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-008,CA-008 Force full-screen when connecting in Cloud mode,Story,EP-08 Workspaces,S3 Candidate Session,High,8,SDE-2,System Architect,CA-008,MMP,CA; Cloud workspace; Must,"Requirement: Force full-screen when connecting in Cloud mode
+
+Acceptance criteria:
+Workspace requests full screen on connect; session is only active while full screen.
+
+Note: Browsers cannot truly prevent exit; the system detects it and reacts.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-009,CA-009 Exit from full screen disconnects the session,Story,EP-08 Workspaces,S3 Candidate Session,High,8,SDE-2,System Architect,CA-009,MMP,CA; Cloud workspace; Must,"Requirement: Exit from full screen disconnects the session
+
+Acceptance criteria:
+On exit the workspace disconnects, an overlay asks the candidate to resume, and the event is logged for reviewers. The timer keeps running while disconnected. An assessment-level setting 'Pause timer on disconnect' exists and is OFF by default. The consent screen warns the candidate.
+
+Note: Decision accepted (Open Q2).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-010,CA-010 All work is saved so the candidate can continue,Story,EP-08 Workspaces,S3 Candidate Session,High,8,SDE-2,System Architect,CA-010,MMP,CA; Cloud workspace; Must,"Requirement: All work is saved so the candidate can continue
+
+Acceptance criteria:
+Files, terminal history, editor state, chat transcript and drafts are persisted continuously (target RPO <= 30 s) and restored on resume.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-011,CA-011 Reconnect and resume,Story,EP-08 Workspaces,S3 Candidate Session,High,8,SDE-2,System Architect,CA-011,MMP,CA; Cloud workspace; Must,"Requirement: Reconnect and resume
+
+Acceptance criteria:
+Candidate can reconnect until the timer or window ends; state is restored; each disconnect/resume is logged.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-011,NF-011 Workspace launch time,Story,EP-08 Workspaces,S3 Candidate Session,Medium,3,SDE-2,System Architect,NF-011,MMP,NF; Reliability; Should,"Requirement: Workspace launch time
+
+Acceptance criteria:
+p95 launch < 60 seconds from Connect (warm pool or snapshot clone).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-013,NF-013 No work loss,Story,EP-08 Workspaces,S3 Candidate Session,High,5,SDE-2,,NF-013,MMP,NF; Reliability; Must,"Requirement: No work loss
+
+Acceptance criteria:
+Autosave RPO <= 30 s; resume restores state after browser crash or disconnect.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+T-021,"T-021 Orchestrator: slot scheduler (bin-pack, AZ spread), free-slot target",Task,EP-08 Workspaces,S3 Candidate Session,High,8,SDE-2,System Architect,,MMP,engineering,"Orchestrator: slot scheduler (bin-pack, AZ spread), free-slot target"
+T-022,"T-022 ws-gateway: ticket exchange, slot routing, WebSocket proxy",Task,EP-08 Workspaces,S3 Candidate Session,High,8,SDE-2,System Architect,,MMP,engineering,"ws-gateway: ticket exchange, slot routing, WebSocket proxy"
+T-023,"T-023 ws-agent: 15 s git snapshot, terminal capture, heartbeat, presigned uploads",Task,EP-08 Workspaces,S3 Candidate Session,High,5,SDE-2,,,MMP,engineering,"ws-agent: 15 s git snapshot, terminal capture, heartbeat, presigned uploads"
+CA-015,CA-015 Chat workspace for non-technical roles,Story,"EP-09 AI Proxy, Keys & Chat",S3 Candidate Session,High,8,AI Engineer-1,SDE-2,CA-015,MMP,CA; Non-tech modes; Must,"Requirement: Chat workspace for non-technical roles
+
+Acceptance criteria:
+AI chat using the company's key (or a platform key allocated by Platform Admin), with files/documents provided; full transcript captured.
+
+Note: Decision accepted (Open Q7, Q10).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-017,CA-017 Use AI assistant when enabled,Story,"EP-09 AI Proxy, Keys & Chat",S3 Candidate Session,High,5,AI Engineer-1,SDE-2,CA-017,MMP,CA; AI assistant; Must,"Requirement: Use AI assistant when enabled
+
+Acceptance criteria:
+Assistant available only if ON for the assessment; shows remaining budget; blocks at cap with a clear message.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-005,NF-005 AI proxy as the single path for AI calls,Story,"EP-09 AI Proxy, Keys & Chat",S3 Candidate Session,High,5,AI Engineer-1,System Architect,NF-005,MMP,NF; Security; Must,"Requirement: AI proxy as the single path for AI calls
+
+Acceptance criteria:
+All candidate AI calls are logged, capped, and policy-checked; candidates never see real provider keys.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+T-027,"T-027 AI proxy: atomic caps + RPM in Redis (Lua), 80% warning",Task,"EP-09 AI Proxy, Keys & Chat",S3 Candidate Session,High,5,AI Engineer-1,,,MMP,engineering,BR-15.
+T-028,T-028 Sanitizer + injection classifier,Task,EP-10 Review & Results,S3 Candidate Session,High,5,AI Engineer-2,Data Ops Engineer,,MMP,engineering,BR-18.
+T-032,"T-032 Templates 3-4: Next.js feature, REST endpoint + tests",Task,EP-15 Template Content,S3 Candidate Session,High,8,Data Ops Engineer,SDE-1,,MMP,engineering,"Templates 3-4: Next.js feature, REST endpoint + tests"
+T-033,"T-033 Templates 5-6: SQL + notebook, Terraform on LocalStack",Task,EP-15 Template Content,S3 Candidate Session,High,8,Data Ops Engineer,System Architect,,MMP,engineering,"Templates 5-6: SQL + notebook, Terraform on LocalStack"
+T-035,T-035 Prompt-injection corpus (≥100 cases) for graders,Task,EP-15 Template Content,S3 Candidate Session,High,5,Data Ops Engineer,AI Engineer-2,,MMP,engineering,Prompt-injection corpus (≥100 cases) for graders
+T-046,T-046 S3 QA: first full E2E candidate loop (19 Nov),Task,EP-16 Quality & Release,S3 Candidate Session,High,8,QA-1,QA-2,,MMP,engineering,S3 QA: first full E2E candidate loop (19 Nov)
+T-040,T-040 Slot escape / IMDS / cross-slot network security tests,Task,EP-02 Security & Compliance,S4 Submit & Review,High,5,QA-2,"System Architect, SDE-2",,MMP,engineering,Slot escape / IMDS / cross-slot network security tests
+AD-026,"AD-026 Extend trial, candidate window or re-provision a session",Story,"EP-04 Org, Trial & Entitlements",S4 Submit & Review,High,5,SDE-2,Backend Engineer,AD-026,MMP,AD; Support; Must,"Requirement: Extend trial, candidate window or re-provision a session
+
+Acceptance criteria:
+Admin tools with reason and audit log.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-031,CO-031 Extend time or window for a candidate; revoke access,Story,EP-05 Templates & Assessments,S4 Submit & Review,Medium,3,SDE-2,Backend Engineer,CO-031,MMP,CO; Timing; Should,"Requirement: Extend time or window for a candidate; revoke access
+
+Acceptance criteria:
+Company can grant an extension or revoke; both are audit-logged and shown to the candidate.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-016,CO-016 Delete candidate (Delete),Story,EP-06 Candidate Management,S4 Submit & Review,High,5,SDE-2,Backend Engineer,CO-016,MMP,CO; Candidates; Must,"Requirement: Delete candidate (Delete)
+
+Acceptance criteria:
+Soft delete with confirmation; active workspaces destroyed; submissions retained or erased according to the retention setting; audit-logged.
+
+Note: Supports erasure requests under GDPR / DPDP.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-018,CA-018 Submit work,Story,EP-07 Candidate Portal,S4 Submit & Review,High,5,SDE-2,Backend Engineer,CA-018,MMP,CA; Submission; Must,"Requirement: Submit work
+
+Acceptance criteria:
+Confirmation dialog; final snapshot saved; session closed; candidate cannot re-enter after submit unless the company reopens.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-019,CA-019 Provisioning failure handling,Story,EP-07 Candidate Portal,S4 Submit & Review,Medium,3,SDE-2,Backend Engineer,CA-019,MMP,CA; Submission; Should,"Requirement: Provisioning failure handling
+
+Acceptance criteria:
+If a workspace fails to start, the candidate sees a support route and is compensated with extra time automatically.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-020,CA-020 View results when provisioned by the company,Story,EP-07 Candidate Portal,S4 Submit & Review,High,5,SDE-2,Backend Engineer,CA-020,MMP,CA; Results; Must,"Requirement: View results when provisioned by the company
+
+Acceptance criteria:
+Only visible if the company released them; shows overall and per-dimension scores and shared notes.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-019,AD-019 Force-destroy any workspace; orphan and idle cleanup,Story,EP-08 Workspaces,S4 Submit & Review,High,5,SDE-2,System Architect,AD-019,MMP,AD; Workspaces; Must,"Requirement: Force-destroy any workspace; orphan and idle cleanup
+
+Acceptance criteria:
+Auto-destroy at session end/expiry; orphan detection job; spend alerts.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-043,CO-043 See active workspaces,Story,EP-08 Workspaces,S4 Submit & Review,High,5,SDE-2,SDE-1,CO-043,MMP,CO; Workspaces; Must,"Requirement: See active workspaces
+
+Acceptance criteria:
+List with candidate, assessment, mode, status, started time, time left; auto-refresh.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-044,CO-044 Destroy a workspace at any time,Story,EP-08 Workspaces,S4 Submit & Review,High,5,SDE-2,SDE-1,CO-044,MMP,CO; Workspaces; Must,"Requirement: Destroy a workspace at any time
+
+Acceptance criteria:
+Confirmation dialog; workspace state is snapshotted first; candidate is notified; action audit-logged; session marked accordingly.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-014,NF-014 Automatic VM cleanup and spend limits,Story,EP-08 Workspaces,S4 Submit & Review,High,5,SDE-2,System Architect,NF-014,MMP,NF; Cost control; Must,"Requirement: Automatic VM cleanup and spend limits
+
+Acceptance criteria:
+Idle, expired and orphaned VMs destroyed automatically; hard per-session and per-org spend limits.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-023,AD-023 Manually allocate a platform AI key and cap to an org (MMP interim),Story,"EP-09 AI Proxy, Keys & Chat",S4 Submit & Review,High,5,AI Engineer-1,SDE-1,AD-023,MMP,AD; AI credits; Must,"Requirement: Manually allocate a platform AI key and cap to an org (MMP interim)
+
+Acceptance criteria:
+Admin assigns a platform-held key with a token/currency cap per org and per assessment; usage visible; billed as a quoted line item; revocable.
+
+Note: Decision accepted (Open Q7): interim route so the Chat workspace works before self-serve credits ship.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-017,AD-017 Prompt-injection and gaming safeguards for graders,Story,EP-10 Review & Results,S4 Submit & Review,High,8,AI Engineer-2,Data Ops Engineer,AD-017,MMP,AD; Agents; Must,"Requirement: Prompt-injection and gaming safeguards for graders
+
+Acceptance criteria:
+Grader inputs sanitized; adversarial test suite; flags suspicious submissions for human review.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-041,CO-041 See all submissions and progress,Story,EP-10 Review & Results,S4 Submit & Review,High,8,AI Engineer-2,SDE-1,CO-041,MMP,CO; Submissions and progress; Must,"Requirement: See all submissions and progress
+
+Acceptance criteria:
+Table per assessment: candidate, status (Invited, Ready, Connected, In progress, Submitted, Expired), time used, last activity, score.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-042,CO-042 Submission detail view,Story,EP-10 Review & Results,S4 Submit & Review,High,8,AI Engineer-2,SDE-1,CO-042,MMP,CO; Submissions and progress; Must,"Requirement: Submission detail view
+
+Acceptance criteria:
+Shows deliverables/artifacts, activity timeline, AI conversation transcript, final snapshot and per-agent reports with cited evidence.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-045,CO-045 Provide scores per rubric item and overall,Story,EP-10 Review & Results,S4 Submit & Review,High,5,AI Engineer-2,SDE-1,CO-045,MMP,CO; Review and results; Must,"Requirement: Provide scores per rubric item and overall
+
+Acceptance criteria:
+Reviewer enters score per dimension and overall; can accept or override agent scores; overrides keep the original and are audit-logged.
+
+Note: Human-in-the-loop is required for AI-assisted hiring decisions.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-046,CO-046 Add custom notes,Story,EP-10 Review & Results,S4 Submit & Review,High,5,AI Engineer-2,SDE-1,CO-046,MMP,CO; Review and results; Must,"Requirement: Add custom notes
+
+Acceptance criteria:
+Free-text note at dimension level and overall; visible to company users, optionally shared with candidate.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-047,CO-047 Edit scores after finalization with versioned history,Story,EP-10 Review & Results,S4 Submit & Review,High,5,AI Engineer-2,SDE-1,CO-047,MMP,CO; Review and results; Must,"Requirement: Edit scores after finalization with versioned history
+
+Acceptance criteria:
+Authorized company users can edit finalized results; each edit creates a new version keeping previous scores, notes, editor and timestamp; original agent scores are never overwritten; released results update only if already released.
+
+Note: Decision accepted (Open Q8).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-048,CO-048 Release results to candidates,Story,EP-10 Review & Results,S4 Submit & Review,High,5,AI Engineer-2,SDE-1,CO-048,MMP,CO; Review and results; Must,"Requirement: Release results to candidates
+
+Acceptance criteria:
+Per-assessment or per-candidate toggle; when ON the candidate sees scores and shared notes.
+
+Note: Default OFF.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-008,NF-008 Human-in-the-loop for AI scoring,Story,EP-10 Review & Results,S4 Submit & Review,High,5,AI Engineer-2,SDE-1,NF-008,MMP,NF; Privacy and compliance; Must,"Requirement: Human-in-the-loop for AI scoring
+
+Acceptance criteria:
+AI scores are evidence for a human reviewer; overrides retained; decisions explainable by cited evidence.
+
+Note: EU AI Act treats hiring AI as high-risk; NYC LL144 bias audit may apply. Confirm with counsel.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+T-029,T-029 Agent library: 10 agents with golden-set evals,Task,EP-10 Review & Results,S4 Submit & Review,High,8,AI Engineer-2,Data Ops Engineer,,MMP,engineering,Agent library: 10 agents with golden-set evals
+T-030,"T-030 Review pipeline Step Functions: map, validator, aggregator, retries",Task,EP-10 Review & Results,S4 Submit & Review,High,8,AI Engineer-2,System Architect,,MMP,engineering,Report < 15 min.
+T-034,"T-034 Templates 7-10 (Chat): PRD, market sizing, ticket triage, ops escalation",Task,EP-15 Template Content,S4 Submit & Review,High,8,Data Ops Engineer,AI Engineer-1,,MMP,engineering,"Templates 7-10 (Chat): PRD, market sizing, ticket triage, ops escalation"
+T-047,"T-047 S4 QA: submit, auto-submit, review, release",Task,EP-16 Quality & Release,S4 Submit & Review,High,5,QA-2,QA-1,,MMP,engineering,"S4 QA: submit, auto-submit, review, release"
+AD-028,AD-028 Data retention and deletion policy controls,Story,EP-02 Security & Compliance,S5 Commercial & Ops,High,5,Data Ops Engineer,Backend Engineer,AD-028,MMP,AD; Governance; Must,"Requirement: Data retention and deletion policy controls
+
+Acceptance criteria:
+Default retention is 90 days after the assessment closes for recordings, transcripts and artifacts; configurable per org within limits set by Platform Admin; automatic deletion jobs; every deletion logged.
+
+Note: Decision accepted (Open Q9). Counsel to confirm the period per market.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-010,CO-010 Trial upgrade to paid plan,Story,"EP-04 Org, Trial & Entitlements",S5 Commercial & Ops,High,5,Backend Engineer,,CO-010,MMP,CO; Trial; Must,"Requirement: Trial upgrade to paid plan
+
+Acceptance criteria:
+On payment success, entitlements switch to the purchased plan with no data loss.
+
+Note: Links to Sales_Payments module.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-037,CO-037 AI usage and cost visibility,Story,"EP-09 AI Proxy, Keys & Chat",S5 Commercial & Ops,Medium,3,AI Engineer-1,SDE-1,CO-037,MMP,CO; AI controls; Should,"Requirement: AI usage and cost visibility
+
+Acceptance criteria:
+Per-assessment and org-wide tokens/cost by candidate and model.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-015,AD-015 Monitor each independent agent's performance and health,Story,EP-10 Review & Results,S5 Commercial & Ops,High,5,AI Engineer-2,SDE-1,AD-015,MMP,AD; Agents; Must,"Requirement: Monitor each independent agent's performance and health
+
+Acceptance criteria:
+Dashboard per agent: success/failure rate, latency, queue depth, cost per review, score consistency and inter-agent agreement, drift; alerts on thresholds.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-056,"CO-056 View quotes, invoices and pay in-app",Story,EP-11 Billing & Payments,S5 Commercial & Ops,High,5,SDE-1,Backend Engineer,CO-056,MMP,CO; Billing; Must,"Requirement: View quotes, invoices and pay in-app
+
+Acceptance criteria:
+Company Admin sees pending quotes and invoices, can pay online, download receipts and manage a recurring subscription.
+
+Note: See Sales_Payments sheet.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-011,SP-011 Email payment collection,Story,EP-11 Billing & Payments,S5 Commercial & Ops,High,5,SDE-1,Backend Engineer,SP-011,MMP,SP; Payments; Must,"Requirement: Email payment collection
+
+Acceptance criteria:
+Admin emails a payment link for a quote/invoice; link opens a hosted checkout; status updates automatically.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-012,SP-012 In-app payment,Story,EP-11 Billing & Payments,S5 Commercial & Ops,High,5,SDE-1,Backend Engineer,SP-012,MMP,SP; Payments; Must,"Requirement: In-app payment
+
+Acceptance criteria:
+Company Admin sees quoted amounts in Billing and pays in-app (card, UPI, netbanking depending on gateway).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-013,SP-013 Recurring payments,Story,EP-11 Billing & Payments,S5 Commercial & Ops,High,8,Backend Engineer,SDE-1,SP-013,MMP,SP; Payments; Must,"Requirement: Recurring payments
+
+Acceptance criteria:
+Monthly or annual subscriptions with auto-renew, failed-payment retries (dunning), cancel and plan change.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-014,SP-014 One-time payments,Story,EP-11 Billing & Payments,S5 Commercial & Ops,High,5,SDE-1,Backend Engineer,SP-014,MMP,SP; Payments; Must,"Requirement: One-time payments
+
+Acceptance criteria:
+Setup fees and custom template builds are billed as one-time charges.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-015,SP-015 Custom payment code,Story,EP-11 Billing & Payments,S5 Commercial & Ops,Medium,3,AI Engineer-1,SDE-1,SP-015,MMP,SP; Payments; Should,"Requirement: Custom payment code
+
+Acceptance criteria:
+Admin can generate a code tied to a custom quote/price or discount; company redeems it in-app or via the email link; single-use or limited-use; expiry.
+
+Note: Decision accepted (Open Q4): custom code = custom quote/coupon code.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-016,SP-016 Automatic entitlement changes on payment,Story,EP-11 Billing & Payments,S5 Commercial & Ops,High,5,AI Engineer-1,Backend Engineer,SP-016,MMP,SP; Payments; Must,"Requirement: Automatic entitlement changes on payment
+
+Acceptance criteria:
+Payment success unlocks plan limits and add-ons; failure after grace period downgrades or suspends.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-017,"SP-017 Invoices, receipts and tax",Story,EP-11 Billing & Payments,S5 Commercial & Ops,High,5,AI Engineer-1,Backend Engineer,SP-017,MMP,SP; Payments; Must,"Requirement: Invoices, receipts and tax
+
+Acceptance criteria:
+GST-compliant invoice PDF; receipts emailed; history in Billing.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-018,SP-018 Payment gateway integration,Story,EP-11 Billing & Payments,S5 Commercial & Ops,High,8,Backend Engineer,System Architect,SP-018,MMP,SP; Payments; Must,"Requirement: Payment gateway integration
+
+Acceptance criteria:
+MMP: Razorpay (cards, UPI, netbanking, subscriptions, GST invoices) with webhook signature verification; no card data stored by HelloSmart. Built behind a payment abstraction so other gateways can be added.
+
+Note: Decision accepted (Open Q5).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-004,SP-004 Track deal stages in admin,Story,"EP-12 Sales, Landing & Leads",S5 Commercial & Ops,Medium,3,SDE-1,Backend Engineer,SP-004,MMP,SP; Deal pipeline; Should,"Requirement: Track deal stages in admin
+
+Acceptance criteria:
+Stages: Lead, Meeting booked, Meeting held, Quoted, Paid, Provisioned; owner and notes.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-025,AD-025 Platform-wide analytics,Story,EP-13 Analytics,S5 Commercial & Ops,Medium,3,Data Ops Engineer,SDE-1,AD-025,MMP,AD; Analytics; Should,"Requirement: Platform-wide analytics
+
+Acceptance criteria:
+Orgs, trials, conversion, usage, workspace cost, agent cost, revenue.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-051,CO-051 Analytics per assessment,Story,EP-13 Analytics,S5 Commercial & Ops,High,5,Data Ops Engineer,SDE-1,CO-051,MMP,CO; Analytics; Must,"Requirement: Analytics per assessment
+
+Acceptance criteria:
+Invited, started, completed, expired; completion rate and drop-off; avg time; score distribution; per-rubric averages; AI usage; agent agreement.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-052,CO-052 Overall analytics across assessments,Story,EP-13 Analytics,S5 Commercial & Ops,High,5,Data Ops Engineer,SDE-1,CO-052,MMP,CO; Analytics; Must,"Requirement: Overall analytics across assessments
+
+Acceptance criteria:
+Org-level rollups with date filter; usage against plan entitlements.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-021,AD-021 Configure custom routing/domain for an org,Story,"EP-14 Settings, Branding & Domains",S5 Commercial & Ops,Medium,8,System Architect,"Backend Engineer, SDE-1",AD-021,MMP,AD; Routing and branding; Should,"Requirement: Configure custom routing/domain for an org
+
+Acceptance criteria:
+Enter custom domain, DNS verification, automatic SSL; candidate links and emails use it; only if entitlement is active.
+
+Note: Paid add-on.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-022,AD-022 Configure white label for an org,Story,"EP-14 Settings, Branding & Domains",S5 Commercial & Ops,Medium,3,SDE-1,Backend Engineer,AD-022,MMP,AD; Routing and branding; Should,"Requirement: Configure white label for an org
+
+Acceptance criteria:
+Remove 'Powered by' mark, custom colors/logo, custom email sender domain; only if entitlement is active.
+
+Note: Paid add-on.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-029,AD-029 Manage email templates,Story,"EP-14 Settings, Branding & Domains",S5 Commercial & Ops,Medium,3,SDE-1,Backend Engineer,AD-029,MMP,AD; Communications; Should,"Requirement: Manage email templates
+
+Acceptance criteria:
+Invite, password reset, assignment, reminders, payment; variables and preview.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-053,CO-053 Central settings page,Story,"EP-14 Settings, Branding & Domains",S5 Commercial & Ops,High,5,SDE-1,,CO-053,MMP,CO; Settings; Must,"Requirement: Central settings page
+
+Acceptance criteria:
+Sections: Organization, Branding, AI providers, Team, Notifications, Billing, Data retention.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-054,"CO-054 Upload logo for candidate portal, emails and reports",Story,"EP-14 Settings, Branding & Domains",S5 Commercial & Ops,High,5,SDE-1,Backend Engineer,CO-054,MMP,CO; Branding; Must,"Requirement: Upload logo for candidate portal, emails and reports
+
+Acceptance criteria:
+PNG/SVG with size limits; shown in a default location on the candidate portal and reports.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-055,CO-055 Default 'Powered by hellosmart.ai' mark in a corner,Story,"EP-14 Settings, Branding & Domains",S5 Commercial & Ops,High,5,SDE-1,Backend Engineer,CO-055,MMP,CO; Branding; Must,"Requirement: Default 'Powered by hellosmart.ai' mark in a corner
+
+Acceptance criteria:
+Shown on candidate portal and reports by default; can only be removed or replaced when white-label entitlement is active.
+
+Note: White label is a paid add-on.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-007,SP-007 Own routing / custom domain as a paid add-on,Story,"EP-14 Settings, Branding & Domains",S5 Commercial & Ops,High,5,Backend Engineer,SDE-1,SP-007,MMP,SP; Add-ons; Must,"Requirement: Own routing / custom domain as a paid add-on
+
+Acceptance criteria:
+Add-on on the quote; once paid, admin enables custom domain; absent payment, feature stays locked.
+
+Note: Decision accepted (Open Q3): routing = own domain and portal routing. Separate instance/VPC is an Enterprise quote.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-008,SP-008 White label and branding as a paid add-on,Story,"EP-14 Settings, Branding & Domains",S5 Commercial & Ops,High,5,Backend Engineer,SDE-1,SP-008,MMP,SP; Add-ons; Must,"Requirement: White label and branding as a paid add-on
+
+Acceptance criteria:
+Add-on on the quote; unlocks removal of 'Powered by' and custom branding.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+T-048,"T-048 S5 QA: payments (Razorpay test), domains, white label, analytics, retention",Task,EP-16 Quality & Release,S5 Commercial & Ops,High,5,QA-1,QA-2,,MMP,engineering,"S5 QA: payments (Razorpay test), domains, white label, analytics, retention"
+T-049,T-049 Full regression of all 126 MMP items,Task,EP-16 Quality & Release,S5 Commercial & Ops,High,8,QA-1,QA-2,,MMP,engineering,30 Nov - 4 Dec.
+NF-012,NF-012 Availability,Story,EP-01 Platform & DevOps,S6 Harden & Launch,Medium,3,System Architect,,NF-012,MMP,NF; Reliability; Should,"Requirement: Availability
+
+Acceptance criteria:
+99.5% monthly for candidate and company portals at MMP.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+T-043,T-043 Backups + DR restore drill (ap-south-2),Task,EP-01 Platform & DevOps,S6 Harden & Launch,High,3,System Architect,Backend Engineer,,MMP,engineering,Backups + DR restore drill (ap-south-2)
+T-053,T-053 Runbooks + on-call rota + hypercare plan (12-24 Dec),Task,EP-01 Platform & DevOps,S6 Harden & Launch,High,3,System Architect,,,MMP,engineering,Runbooks + on-call rota + hypercare plan (12-24 Dec)
+T-041,T-041 External pen-test quick scan + fixes,Task,EP-02 Security & Compliance,S6 Harden & Launch,High,8,System Architect,QA-2,,MMP,engineering,External pen-test quick scan + fixes
+T-050,"T-050 Load tests: 100 workspaces, 500 portal users, proxy RPM",Task,EP-16 Quality & Release,S6 Harden & Launch,High,5,QA-2,System Architect,,MMP,engineering,"Load tests: 100 workspaces, 500 portal users, proxy RPM"
+T-051,T-051 UAT with 2 pilot customers,Task,EP-16 Quality & Release,S6 Harden & Launch,High,5,QA-1,SDE-1,,MMP,engineering,UAT with 2 pilot customers
+T-052,T-052 Launch security checklist sign-off + go/no-go (10 Dec),Task,EP-16 Quality & Release,S6 Harden & Launch,High,3,System Architect,"QA-1, QA-2",,MMP,engineering,docs/security/launch-security-checklist.md
+T-054,"T-054 Production launch 12 Dec: flags on, landing live",Task,EP-16 Quality & Release,S6 Harden & Launch,High,2,System Architect,QA-1,,MMP,engineering,"Production launch 12 Dec: flags on, landing live"
+CO-057,CO-057 Organization audit log,Story,EP-02 Security & Compliance,Backlog: Phase 2,Medium,3,Backend Engineer,,CO-057,Phase 2,CO; Governance; Should; not-mmp,"Requirement: Organization audit log
+
+Acceptance criteria:
+Records config changes, key changes, overrides, destroys, result releases with user and timestamp.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-007,CO-007 Company team members and roles,Story,EP-03 Identity & Access,Backlog: Phase 2,Medium,3,Backend Engineer,,CO-007,Phase 2,CO; Account; Should; not-mmp,"Requirement: Company team members and roles
+
+Acceptance criteria:
+Company Admin can invite Reviewer / Admin users; Reviewers cannot change settings, keys or billing.
+
+Note: Decision accepted (Open Q6): MMP has Company Admin users only; Reviewer role arrives in Phase 2.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-005,AD-005 Impersonate/support-view a company (read-only),Story,"EP-04 Org, Trial & Entitlements",Backlog: Phase 2,Medium,3,Backend Engineer,,AD-005,Phase 2,AD; Accounts; Should; not-mmp,"Requirement: Impersonate/support-view a company (read-only)
+
+Acceptance criteria:
+Time-limited, reason required, fully audit-logged.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-027,"CO-027 Clone, close and archive assessments",Story,EP-05 Templates & Assessments,Backlog: Phase 2,Medium,3,SDE-1,,CO-027,Phase 2,CO; Tasks and templates; Should; not-mmp,"Requirement: Clone, close and archive assessments
+
+Acceptance criteria:
+Clone copies configuration; closing stops new starts; archive hides from the default list.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-021,CA-021 Profile and data rights,Story,EP-07 Candidate Portal,Backlog: Phase 2,Medium,3,SDE-2,,CA-021,Phase 2,CA; Profile and privacy; Should; not-mmp,"Requirement: Profile and data rights
+
+Acceptance criteria:
+Candidate can see what data is held, and request correction or deletion; request routed to company/admin.
+
+Note: GDPR / DPDP.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-022,CA-022 Accessible UI and accommodation requests,Story,EP-07 Candidate Portal,Backlog: Phase 2,Medium,3,SDE-2,,CA-022,Phase 2,CA; Accessibility; Should; not-mmp,"Requirement: Accessible UI and accommodation requests
+
+Acceptance criteria:
+WCAG 2.2 AA target; candidate can request extra time; company can grant it.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-023,CA-023 Integrity events logged,Story,EP-07 Candidate Portal,Backlog: Phase 2,Medium,3,SDE-2,,CA-023,Phase 2,CA; Integrity; Should; not-mmp,"Requirement: Integrity events logged
+
+Acceptance criteria:
+Full-screen exit, tab visibility change and long idle recorded as timeline events for reviewers; not auto-failing.
+
+Note: Evidence, not verdict.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-020,AD-020 Capacity and warm pool management,Story,EP-08 Workspaces,Backlog: Phase 2,Medium,3,SDE-2,,AD-020,Phase 2,AD; Workspaces; Should; not-mmp,"Requirement: Capacity and warm pool management
+
+Acceptance criteria:
+Configure pool size and VM sizes; capacity alerts.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-014,CA-014 Runnable locally,Story,EP-08 Workspaces,Backlog: Phase 2,Medium,3,SDE-2,,CA-014,Phase 2,CA; Local mode; Should; not-mmp,"Requirement: Runnable locally
+
+Acceptance criteria:
+Candidate gets a one-line command or small desktop agent; pulls the task environment (devcontainer/Docker); status flips to Connected (Local) when the agent checks in; AI calls go through the HelloSmart proxy.
+
+Note: Decision accepted (Open Q10): Phase 2. Cloud-first; local is an opt-in assessment setting.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CA-016,CA-016 Browser workspace,Story,EP-08 Workspaces,Backlog: Phase 2,Medium,3,SDE-2,,CA-016,Phase 2,CA; Non-tech modes; Should; not-mmp,"Requirement: Browser workspace
+
+Acceptance criteria:
+Sandboxed remote browser with mock tools; monitor agent logs pages and actions.
+
+Note: Decision accepted (Open Q10): Phase 2.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-024,AD-024 Manage HelloSmart-managed AI credits,Story,"EP-09 AI Proxy, Keys & Chat",Backlog: Phase 2,Medium,3,AI Engineer-1,,AD-024,Phase 2,AD; AI credits; Should; not-mmp,"Requirement: Manage HelloSmart-managed AI credits
+
+Acceptance criteria:
+Platform keys held in vault; per-org credit allocation, usage and caps; markup configuration.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-036,CO-036 Use HelloSmart AI credits instead of own key,Story,"EP-09 AI Proxy, Keys & Chat",Backlog: Phase 2,Medium,3,AI Engineer-1,,CO-036,Phase 2,CO; AI controls; Should; not-mmp,"Requirement: Use HelloSmart AI credits instead of own key
+
+Acceptance criteria:
+Company can select managed credits where purchased; usage metered and shown.
+
+Note: Decision accepted (Open Q7): MMP uses the company's own key; self-serve managed credits are Phase 2. Pricing and markup set by Platform Admin.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+AD-016,AD-016 Re-run or force a review,Story,EP-10 Review & Results,Backlog: Phase 2,Medium,3,AI Engineer-2,,AD-016,Phase 2,AD; Agents; Should; not-mmp,"Requirement: Re-run or force a review
+
+Acceptance criteria:
+Admin can re-run an agent on a submission; both runs are retained.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-040,CO-040 Choose agent mode,Story,EP-10 Review & Results,Backlog: Phase 2,Medium,3,AI Engineer-2,,CO-040,Phase 2,CO; Rubrics / Reviewer agents; Should; not-mmp,"Requirement: Choose agent mode
+
+Acceptance criteria:
+Post-session review (default) or live monitoring (observe and flag, never interrupt the candidate).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-049,CO-049 Compare candidates and shortlist,Story,EP-10 Review & Results,Backlog: Phase 2,Medium,3,SDE-1,,CO-049,Phase 2,CO; Review and results; Should; not-mmp,"Requirement: Compare candidates and shortlist
+
+Acceptance criteria:
+Side-by-side score comparison; mark Shortlisted/Rejected.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-050,CO-050 Export report,Story,EP-10 Review & Results,Backlog: Phase 2,Medium,3,SDE-1,,CO-050,Phase 2,CO; Review and results; Should; not-mmp,"Requirement: Export report
+
+Acceptance criteria:
+PDF per candidate and CSV per assessment.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-019,SP-019 Stripe gateway for international customers,Story,EP-11 Billing & Payments,Backlog: Phase 2,Medium,3,Backend Engineer,,SP-019,Phase 2,SP; Payments; Should; not-mmp,"Requirement: Stripe gateway for international customers
+
+Acceptance criteria:
+Stripe checkout, subscriptions and webhooks behind the same payment abstraction; multi-currency pricing.
+
+Note: Decision accepted (Open Q5).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-020,SP-020 Refunds and credit notes,Story,EP-11 Billing & Payments,Backlog: Phase 2,Medium,3,Backend Engineer,,SP-020,Phase 2,SP; Payments; Should; not-mmp,"Requirement: Refunds and credit notes
+
+Acceptance criteria:
+Admin can refund fully or partially and issue credit notes with an audit trail.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-021,SP-021 Revenue and payment reporting for admin,Story,EP-11 Billing & Payments,Backlog: Phase 2,Medium,3,Backend Engineer,,SP-021,Phase 2,SP; Reporting; Should; not-mmp,"Requirement: Revenue and payment reporting for admin
+
+Acceptance criteria:
+MRR, collections, outstanding quotes, add-on revenue, services share of revenue.
+
+Note: Keep services under about 20-30% of revenue.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-016,NF-016 Accessibility and browser support,Story,EP-16 Quality & Release,Backlog: Phase 2,Medium,3,QA-1,,NF-016,Phase 2,NF; Usability; Should; not-mmp,"Requirement: Accessibility and browser support
+
+Acceptance criteria:
+WCAG 2.2 AA target; latest Chrome, Edge, Safari, Firefox (full-screen API support required for Cloud mode).
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+SP-022,SP-022 Dedicated instance / VPC deployment,Story,EP-01 Platform & DevOps,Backlog: Phase 3,Low,2,System Architect,,SP-022,Phase 3,SP; Enterprise; Could; not-mmp,"Requirement: Dedicated instance / VPC deployment
+
+Acceptance criteria:
+Quoted individually; only for enterprise customers; not part of MMP build.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-009,NF-009 Fairness monitoring,Story,EP-02 Security & Compliance,Backlog: Phase 3,Medium,3,System Architect,,NF-009,Phase 3,NF; Privacy and compliance; Should; not-mmp,"Requirement: Fairness monitoring
+
+Acceptance criteria:
+Track score distributions and adverse-impact indicators where data is lawfully available.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+NF-010,NF-010 SOC 2 / ISO 27001 readiness,Story,EP-02 Security & Compliance,Backlog: Phase 3,Medium,3,System Architect,,NF-010,Phase 3,NF; Privacy and compliance; Should; not-mmp,"Requirement: SOC 2 / ISO 27001 readiness
+
+Acceptance criteria:
+Controls, logging and policies aligned to start an audit when enterprise demand appears.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
+CO-058,CO-058 ATS integration and API/webhooks,Story,"EP-12 Sales, Landing & Leads",Backlog: Phase 3,Low,2,Backend Engineer,,CO-058,Phase 3,CO; Integrations; Could; not-mmp,"Requirement: ATS integration and API/webhooks
+
+Acceptance criteria:
+Greenhouse, Lever, Workday or generic webhook for candidate create and result push.
+
+Definition of done: tests for every acceptance criterion, cross-tenant + RBAC tests for new endpoints, audit for BR-31 actions, deployed to QA and verified by QA."
