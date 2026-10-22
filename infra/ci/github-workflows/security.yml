@@ -3,7 +3,7 @@ name: security
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, dev]
   schedule:
     - cron: "30 20 * * *" # nightly 02:00 IST
 permissions:

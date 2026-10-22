@@ -1,21 +1,16 @@
-# Build, scan, sign and deploy. AWS access via OIDC only; no long-lived keys in GitHub.
-# main → staging automatically. prod → manual approval on the "prod" GitHub environment (Monday release).
-# Install: copy to .github/workflows/.
-name: deploy
+# main branch → AWS production. Merges to main happen only via the weekly release PR (dev → main).
+# Requires approval on the GitHub "production" environment. AWS access via OIDC only.
+# Install: copy to .github/workflows/ (replaces the old deploy.yml).
+name: deploy-prod
 on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      environment:
-        type: choice
-        options: [staging, prod]
-        default: staging
 permissions:
   contents: read
   id-token: write
 concurrency:
-  group: deploy-${{ inputs.environment || 'staging' }}
+  group: deploy-prod
   cancel-in-progress: false
 
 jobs:
@@ -50,19 +45,19 @@ jobs:
           cosign sign --yes "$REG/hs-${{ matrix.image }}:${{ github.sha }}"
           cosign attest --yes --type spdxjson --predicate sbom.json "$REG/hs-${{ matrix.image }}:${{ github.sha }}"
 
-  migrate-and-deploy:
+  deploy:
     needs: build
     runs-on: ubuntu-24.04
-    environment: ${{ inputs.environment || 'staging' }}
+    environment: production
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ vars.AWS_PROD_DEPLOY_ROLE_ARN }}
           aws-region: ap-south-1
-      - name: DB migrations (one-off ECS task, migrator DB role)
+      - name: DB migrations (one-off ECS task, migrator role)
         run: ./infra/scripts/run-migrations.sh "${{ github.sha }}"
-      - name: blue/green deploy (ECS + CodeDeploy, auto-rollback on alarms)
+      - name: blue/green deploy (auto-rollback on alarms)
         run: ./infra/scripts/deploy-ecs.sh "${{ github.sha }}"
       - name: post-deploy smoke
-        run: ./infra/scripts/smoke.sh
+        run: ./infra/scripts/smoke.sh https://app.hellosmart.ai
