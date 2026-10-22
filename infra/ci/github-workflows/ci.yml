@@ -1,0 +1,85 @@
+# Every PR and push to main. All jobs are required checks in branch protection.
+# Install: copy to .github/workflows/ (agents are blocked from editing that folder by design).
+# Pin every third-party action to a full commit SHA before the first merge (docs/adr/0007).
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16.4-alpine
+        env: { POSTGRES_DB: hellosmart, POSTGRES_USER: hs_owner, POSTGRES_PASSWORD: ci_only }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U hs_owner" --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm contracts:check
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - name: cross-tenant suite (BR-01)
+        run: pnpm test:tenancy
+
+  python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        service: [ai-proxy, reviewer]
+    defaults:
+      run: { working-directory: "services/${{ matrix.service }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy .
+      - run: uv run pytest -q
+
+  terraform:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.9.8 }
+      - run: terraform fmt -check -recursive infra/terraform
+      - name: validate modules
+        run: |
+          for d in infra/terraform/modules/*/; do
+            terraform -chdir="$d" init -backend=false -input=false >/dev/null && terraform -chdir="$d" validate
+          done
+
+  e2e-smoke:
+    if: github.event_name == 'pull_request'
+    needs: [node]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: docker compose up -d --wait
+      - run: pnpm --filter @hs/e2e exec playwright install --with-deps chromium
+      - run: pnpm test:e2e -- --grep @smoke

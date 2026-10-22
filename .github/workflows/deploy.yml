@@ -1,0 +1,68 @@
+# Build, scan, sign and deploy. AWS access via OIDC only; no long-lived keys in GitHub.
+# main → staging automatically. prod → manual approval on the "prod" GitHub environment (Monday release).
+# Install: copy to .github/workflows/.
+name: deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [staging, prod]
+        default: staging
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: deploy-${{ inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        image: [web, api, worker, ai-proxy, reviewer, ws-gateway]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_SHARED_CI_ROLE_ARN }}
+          aws-region: ap-south-1
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+      - name: build
+        env: { REG: "${{ steps.ecr.outputs.registry }}" }
+        run: docker build -f infra/docker/${{ matrix.image }}.Dockerfile -t "$REG/hs-${{ matrix.image }}:${{ github.sha }}" .
+      - name: scan image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.ecr.outputs.registry }}/hs-${{ matrix.image }}:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - name: push + SBOM + sign
+        env: { REG: "${{ steps.ecr.outputs.registry }}" }
+        run: |
+          docker push "$REG/hs-${{ matrix.image }}:${{ github.sha }}"
+          syft "$REG/hs-${{ matrix.image }}:${{ github.sha }}" -o spdx-json > sbom.json
+          cosign sign --yes "$REG/hs-${{ matrix.image }}:${{ github.sha }}"
+          cosign attest --yes --type spdxjson --predicate sbom.json "$REG/hs-${{ matrix.image }}:${{ github.sha }}"
+
+  migrate-and-deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-south-1
+      - name: DB migrations (one-off ECS task, migrator DB role)
+        run: ./infra/scripts/run-migrations.sh "${{ github.sha }}"
+      - name: blue/green deploy (ECS + CodeDeploy, auto-rollback on alarms)
+        run: ./infra/scripts/deploy-ecs.sh "${{ github.sha }}"
+      - name: post-deploy smoke
+        run: ./infra/scripts/smoke.sh

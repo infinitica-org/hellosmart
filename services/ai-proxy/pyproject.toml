@@ -1,0 +1,28 @@
+[project]
+name = "hs-ai-proxy"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.115.4",
+  "uvicorn[standard]==0.32.0",
+  "httpx==0.27.2",
+  "pydantic==2.9.2",
+  "pydantic-settings==2.6.1",
+  "pyjwt[crypto]==2.9.0",
+  "redis==5.2.0",
+  "boto3==1.35.54",
+  "structlog==24.4.0",
+]
+
+[dependency-groups]
+dev = ["pytest==8.3.3", "pytest-asyncio==0.24.0", "ruff==0.7.3", "mypy==1.13.0", "respx==0.21.1"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "S", "UP", "ASYNC", "RUF"]
+
+[tool.mypy]
+strict = true

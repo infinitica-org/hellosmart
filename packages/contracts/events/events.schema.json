@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hellosmart.ai/contracts/events.schema.json",
+  "title": "HelloSmart domain events (SQS / EventBridge)",
+  "description": "Every event carries orgId (BR-01) and a dedupeId (idempotent consumers). Payloads never contain secrets or raw candidate content; use S3 refs.",
+  "type": "object",
+  "required": ["type", "version", "dedupeId", "orgId", "occurredAt", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "enum": [
+        "candidate.created",
+        "assignment.published",
+        "workspace.requested",
+        "workspace.connected",
+        "workspace.disconnected",
+        "workspace.destroy_requested",
+        "assignment.deadline_reached",
+        "submission.created",
+        "review.agent_run_requested",
+        "review.report_ready",
+        "review.released",
+        "payment.succeeded",
+        "payment.failed",
+        "entitlements.changed",
+        "retention.purge_due"
+      ]
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "dedupeId": { "type": "string", "format": "uuid" },
+    "orgId": { "type": "string", "format": "uuid" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "actor": {
+      "type": "object",
+      "properties": { "id": { "type": "string" }, "role": { "type": "string" } }
+    },
+    "data": { "type": "object" }
+  }
+}

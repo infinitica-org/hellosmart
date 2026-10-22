@@ -1,0 +1,11 @@
+# 0008: AI-agent-driven SDLC with human gates
+
+**Status:** Accepted · 2026-10-22
+
+## Decision
+Engineers direct coding agents; they don't hand-write features. Process in plan §6: ticket brief → contract → parallel agents in git worktrees → self-verify → AI review → human review (CODEOWNERS; Architecture on sensitive paths) → preview env → trunk + flags → weekly QA → Monday prod.
+Agent guardrails live in-repo: `CLAUDE.md` files, `.claude/commands`, and `.claude/settings.json` deny rules (no prod infra, workflows, secrets, `terraform apply`, force push, `--no-verify`).
+
+## Consequences
++ High throughput with consistent patterns.
+− Review is the bottleneck; PRs kept ≤ ~600 lines, and weekly metrics track rework rate.

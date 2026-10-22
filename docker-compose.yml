@@ -1,0 +1,33 @@
+# Local development stack. Mirrors AWS services with local equivalents so no one needs cloud credentials.
+name: hellosmart
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_DB: hellosmart
+      POSTGRES_USER: hs_owner
+      POSTGRES_PASSWORD: hs_owner_local
+    ports: ["127.0.0.1:5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./packages/contracts/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck: { test: ["CMD", "pg_isready", "-U", "hs_owner"], interval: 5s, retries: 10 }
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--requirepass", "hs_redis_local"]
+    ports: ["127.0.0.1:6379:6379"]
+  localstack:
+    image: localstack/localstack:3.8
+    environment:
+      SERVICES: s3,sqs,kms,secretsmanager,ssm,events,stepfunctions,ses,sns
+    ports: ["127.0.0.1:4566:4566"]
+  mailpit:
+    image: axllent/mailpit:v1.20
+    ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
+  mock-api:
+    image: stoplight/prism:5.12.0
+    command: ["mock", "-h", "0.0.0.0", "-d", "/contracts/openapi/openapi.yaml"]
+    volumes: ["./packages/contracts:/contracts:ro"]
+    ports: ["127.0.0.1:4010:4010"]
+volumes:
+  pgdata:

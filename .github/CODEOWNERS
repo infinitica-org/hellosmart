@@ -1,0 +1,45 @@
+# Departments map to GitHub teams. Replace the org slug at setup.
+*                                   @hellosmart/architecture
+
+# Architecture & Platform
+/infra/                             @hellosmart/architecture
+/.github/                           @hellosmart/architecture
+/.claude/                           @hellosmart/architecture
+/packages/contracts/                @hellosmart/architecture
+/packages/config/                   @hellosmart/architecture
+/docs/                              @hellosmart/architecture
+
+# Core Backend
+/apps/api/                          @hellosmart/core-backend
+/apps/api/src/modules/auth/         @hellosmart/core-backend @hellosmart/architecture
+/apps/api/src/modules/tenancy/      @hellosmart/core-backend @hellosmart/architecture
+/apps/api/src/modules/rbac/         @hellosmart/core-backend @hellosmart/architecture
+/apps/api/src/modules/billing/      @hellosmart/core-backend @hellosmart/architecture
+/packages/contracts/db/migrations/  @hellosmart/core-backend @hellosmart/architecture
+/packages/adapters/                 @hellosmart/core-backend
+
+# Product Engineering: Company & Admin
+/apps/web/                          @hellosmart/company-admin
+/apps/web/src/app/(candidate)/      @hellosmart/candidate-workspace
+/packages/ui/                       @hellosmart/company-admin
+
+# Product Engineering: Candidate & Workspace
+/apps/worker/                       @hellosmart/candidate-workspace
+/apps/worker/src/orchestrator/      @hellosmart/candidate-workspace @hellosmart/architecture
+/services/ws-agent/                 @hellosmart/candidate-workspace
+/services/ws-gateway/               @hellosmart/candidate-workspace @hellosmart/architecture
+
+# AI Engineering
+/services/ai-proxy/                 @hellosmart/ai-engineering @hellosmart/architecture
+/services/reviewer/                 @hellosmart/ai-engineering
+/services/reviewer/app/sanitizer/   @hellosmart/ai-engineering @hellosmart/architecture
+
+# Data Ops
+/templates/                         @hellosmart/data-ops
+/packages/fixtures/                 @hellosmart/data-ops
+/tests/injection/                   @hellosmart/data-ops @hellosmart/ai-engineering
+
+# Quality Assurance
+/tests/e2e/                         @hellosmart/qa
+/tests/load/                        @hellosmart/qa
+/tests/security/                    @hellosmart/qa @hellosmart/architecture

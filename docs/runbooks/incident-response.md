@@ -1,0 +1,28 @@
+# Incident response
+
+## Severity
+| Sev | Examples | Response |
+|---|---|---|
+| **SEV1** | Cross-tenant data exposure, key leak, slot escape, prod down | Page immediately, 15-min ack, all hands |
+| **SEV2** | Workspaces failing to launch, review pipeline stalled, payments failing | 30-min ack, owning department |
+| **SEV3** | Degraded feature, single-org issue | Next business hour |
+
+## Roles
+Incident commander: on-call from Architecture & Platform. Comms: Product Delivery. Fixer: owning department.
+
+## SEV1 security playbook
+1. **Contain** (first 15 min)
+   - Key leak → rotate in Secrets Manager, revoke at provider, invalidate proxy cache, revoke workspace tokens.
+   - Slot escape → drain and terminate affected host(s); set ASG to fresh AMI; block template if it was the vector.
+   - Cross-tenant exposure → feature-flag off the endpoint; preserve logs.
+   - Account takeover → suspend user, kill sessions (Redis), force reset.
+2. **Preserve evidence**: snapshot volumes, export CloudTrail/app/audit logs to the security account (Object Lock).
+3. **Eradicate + recover** via normal CI/CD (no hand edits in prod).
+4. **Notify**: affected orgs within 24 h of confirmation; regulator notifications per DPDP (India, CERT-In within 6 hours for reportable incidents) and GDPR (72 h) with counsel.
+5. **Post-mortem** within 5 working days: blameless, ADR/test added so it can't recur.
+
+## Useful switches
+- Global maintenance mode flag (web + api).
+- Per-org suspend (admin console).
+- Workspace launch kill switch (orchestrator flag).
+- AI proxy kill switch per provider.

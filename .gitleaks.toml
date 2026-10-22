@@ -1,0 +1,19 @@
+title = "hellosmart gitleaks config"
+[extend]
+useDefault = true
+
+[[rules]]
+id = "razorpay-key"
+description = "Razorpay API key"
+regex = '''rzp_(live|test)_[A-Za-z0-9]{14,}'''
+tags = ["key", "razorpay"]
+
+[[rules]]
+id = "anthropic-key"
+description = "Anthropic API key"
+regex = '''sk-ant-[A-Za-z0-9_\-]{20,}'''
+tags = ["key", "llm"]
+
+[allowlist]
+description = "Local-only placeholders"
+paths = ['''\.env\.example$''', '''docker-compose\.yml$''']

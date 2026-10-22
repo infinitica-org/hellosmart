@@ -1,0 +1,22 @@
+# Reference template (Data Ops builds the content in S2).
+template: backend-incident-debug
+version: 0.1.0
+mode: cloud
+tags: [backend, nodejs, postgres, debugging]
+runtime:
+  image: Dockerfile
+  size: medium
+  isolation: shared
+  services: compose.yaml
+  coding_agents: [claude-code, codex]
+repo: { source: internal://templates/backend-incident-debug, ref: 0000000 }
+seed: seed/
+env_slots: []
+ai_defaults: { enabled: true, models: [claude-sonnet-5-5], cap_usd: 5, rpm: 20 }
+brief: brief.md
+deliverables:
+  - { path: NOTES.md }
+  - { hidden_tests: "pnpm test:hidden" }
+reviewers: [task-completion, debugging-process, ai-collaboration, code-quality]
+golden_submissions: golden/
+timing_default: { type: duration, duration_minutes: 120 }

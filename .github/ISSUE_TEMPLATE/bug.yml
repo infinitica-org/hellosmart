@@ -1,0 +1,20 @@
+name: Bug
+description: Something is broken
+labels: [bug]
+body:
+  - type: input
+    id: req
+    attributes: { label: Requirement ID, placeholder: CA-009 }
+  - type: dropdown
+    id: env
+    attributes: { label: Environment, options: [local, preview, staging, prod] }
+  - type: textarea
+    id: steps
+    attributes: { label: Steps to reproduce }
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes: { label: Expected vs actual }
+  - type: markdown
+    attributes:
+      value: "**Security issue?** Do not file here. Email security@hellosmart.ai (see SECURITY.md)."

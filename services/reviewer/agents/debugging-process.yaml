@@ -1,0 +1,19 @@
+# Reference agent. Copy this shape for every library agent (/new-agent).
+id: debugging-process
+version: 1.0.0
+model: claude-sonnet-5-5
+evidence_channels: [terminal_log, git_timeline, ai_transcript]
+scale: { min: 1, max: 5 }
+anchors:
+  1: Random edits with no hypothesis; accepts AI output without checking.
+  3: Forms hypotheses and tests some; partial verification of the fix.
+  5: Systematic reproduce > isolate > fix > verify; catches and corrects AI mistakes.
+signals:
+  - reproduces the bug before changing code
+  - reads logs / stack traces
+  - writes or runs a failing test
+  - verifies the fix and checks for regressions
+red_flags:
+  - disables or deletes tests
+  - hardcodes expected output
+output_schema: AgentScore

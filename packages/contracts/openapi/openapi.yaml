@@ -1,0 +1,184 @@
+openapi: 3.1.0
+info:
+  title: HelloSmart API
+  version: 0.1.0
+  description: |
+    Contract-first API (frozen 30 Oct 2026; additive changes only after that).
+    Org is always derived from the session, never from the request (BR-01).
+    Cross-org access returns 404, never 403, to avoid existence leaks.
+    Full path list: AGENTS.md §13. Each department adds its paths here via a `contract:` PR in S0.
+servers:
+  - url: http://localhost:4010/api/v1
+    description: Prism mock
+  - url: http://localhost:4000/api/v1
+    description: Local API
+security:
+  - session: []
+tags:
+  - { name: auth }
+  - { name: org }
+  - { name: candidates }
+  - { name: assessments }
+  - { name: candidate-portal }
+  - { name: admin }
+  - { name: webhooks }
+paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: authLogin
+      x-requirement: [CO-001, CA-002]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              additionalProperties: false
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, minLength: 1, maxLength: 256 }
+                mfaCode: { type: string, pattern: '^[0-9]{6}$' }
+      responses:
+        '200':
+          description: Logged in; session cookie set (HttpOnly, Secure, SameSite=Lax).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+  /me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      x-requirement: [CO-004]
+      responses:
+        '200':
+          description: Current user and portal to route to.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Problem' }
+  /candidates:
+    get:
+      tags: [candidates]
+      operationId: listCandidates
+      x-requirement: [CO-014]
+      x-roles: [company_admin]
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/CandidateStatus' } }
+        - { $ref: '#/components/parameters/Cursor' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Page of candidates in the caller's org.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Candidate' } }
+                  nextCursor: { type: [string, 'null'] }
+    post:
+      tags: [candidates]
+      operationId: createCandidate
+      x-requirement: [CO-011, CO-013]
+      x-roles: [company_admin]
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email]
+              additionalProperties: false
+              properties:
+                name: { type: string, minLength: 1, maxLength: 120 }
+                email: { type: string, format: email, maxLength: 254 }
+      responses:
+        '201':
+          description: Created; invite email queued.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Candidate' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /candidate/assignments/{id}/connect:
+    post:
+      tags: [candidate-portal]
+      operationId: connectWorkspace
+      x-requirement: [CA-008, CA-012, BR-06, BR-08, BR-12]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Workspace ready; connection details are single-use and short-lived.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkspaceConnection' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '423': { $ref: '#/components/responses/Problem' }
+components:
+  securitySchemes:
+    session: { type: apiKey, in: cookie, name: hs_session }
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    Cursor: { name: cursor, in: query, schema: { type: string, maxLength: 200 } }
+    Limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
+  responses:
+    Problem:
+      description: RFC 9457 problem details. Never includes stack traces, SQL or secrets.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code: { type: string, description: 'Stable machine code, e.g. TRIAL_CAP_REACHED, WINDOW_NOT_OPEN, CONSENT_REQUIRED' }
+        requestId: { type: string }
+    Role: { type: string, enum: [platform_admin, company_admin, candidate] }
+    Me:
+      type: object
+      required: [id, email, name, role, portal]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        name: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        portal: { type: string, enum: [admin, company, candidate] }
+        mustResetPassword: { type: boolean }
+        org: { type: [object, 'null'], properties: { id: { type: string, format: uuid }, name: { type: string }, logoUrl: { type: [string, 'null'] } } }
+    CandidateStatus: { type: string, enum: [invited, active, deleted] }
+    Candidate:
+      type: object
+      required: [id, name, email, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        status: { $ref: '#/components/schemas/CandidateStatus' }
+        countedAgainstCapAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    WorkspaceConnection:
+      type: object
+      required: [workspaceId, mode, gatewayUrl, ticket, deadlineAt]
+      properties:
+        workspaceId: { type: string, format: uuid }
+        mode: { type: string, enum: [cloud, chat] }
+        gatewayUrl: { type: string, format: uri }
+        ticket: { type: string, description: 'Single-use, 60 s TTL, bound to workspace + user' }
+        deadlineAt: { type: string, format: date-time }
+        requireFullscreen: { type: boolean }

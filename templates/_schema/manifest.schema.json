@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hellosmart.ai/contracts/template-manifest.schema.json",
+  "title": "HelloSmart template manifest (NF-018)",
+  "type": "object",
+  "required": ["template", "version", "mode", "brief", "reviewers", "timing_default", "ai_defaults"],
+  "additionalProperties": false,
+  "properties": {
+    "template": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,62}$" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "mode": { "enum": ["cloud", "chat"] },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image", "size", "isolation"],
+      "properties": {
+        "image": { "type": "string" },
+        "size": { "enum": ["small", "medium", "dedicated"] },
+        "isolation": { "enum": ["shared", "dedicated"] },
+        "services": { "type": "string" },
+        "coding_agents": { "type": "array", "items": { "enum": ["claude-code", "codex"] } },
+        "egress_allow": {
+          "type": "array",
+          "description": "Extra hosts beyond package registries. Reviewed by Architecture.",
+          "items": { "type": "string", "pattern": "^[a-z0-9.-]+$" }
+        }
+      }
+    },
+    "repo": {
+      "type": "object",
+      "required": ["source", "ref"],
+      "properties": { "source": { "type": "string" }, "ref": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" } }
+    },
+    "seed": { "type": "string" },
+    "env_slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "secret", "required"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,63}$" },
+          "secret": { "type": "boolean" },
+          "required": { "type": "boolean" }
+        }
+      }
+    },
+    "ai_defaults": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "models": { "type": "array", "items": { "type": "string" } },
+        "cap_usd": { "type": "number", "minimum": 0 },
+        "rpm": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "brief": { "type": "string" },
+    "deliverables": { "type": "array" },
+    "reviewers": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "golden_submissions": { "type": "string" },
+    "timing_default": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["duration", "window", "both"] },
+        "duration_minutes": { "type": "integer", "minimum": 5, "maximum": 1440 }
+      }
+    }
+  },
+  "if": { "properties": { "mode": { "const": "cloud" } } },
+  "then": { "required": ["runtime"] }
+}

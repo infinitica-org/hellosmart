@@ -1,0 +1,21 @@
+rules:
+  - id: hs-no-client-org-id
+    message: "BR-01: org_id must come from the session, never from the request"
+    severity: ERROR
+    languages: [typescript]
+    pattern-either:
+      - pattern: $REQ.body.orgId
+      - pattern: $REQ.body.org_id
+      - pattern: $REQ.query.orgId
+      - pattern: $REQ.query.org_id
+  - id: hs-no-raw-pool-query
+    message: "BR-01: tenant queries must run inside withOrg()/withPlatform()"
+    severity: WARNING
+    languages: [typescript]
+    paths: { include: ["apps/api/src/modules/**", "apps/worker/src/**"] }
+    pattern: $POOL.query(...)
+  - id: hs-no-secret-logging
+    message: "Do not log secrets or keys"
+    severity: ERROR
+    languages: [typescript, python]
+    pattern-regex: '(log|logger)\.\w+\(.*(apiKey|api_key|secret|password|token)'
