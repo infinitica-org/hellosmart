@@ -26,7 +26,7 @@ jobs:
         image: [web, api, worker, ai-proxy, reviewer, ws-gateway]
     steps:
       - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_SHARED_CI_ROLE_ARN }}
           aws-region: ap-south-1
@@ -56,7 +56,7 @@ jobs:
     environment: ${{ inputs.environment || 'staging' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ap-south-1
