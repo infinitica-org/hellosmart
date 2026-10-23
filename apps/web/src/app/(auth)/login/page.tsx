@@ -3,7 +3,7 @@
 import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { BrandMark } from '@/components/brand-mark';
+import { BrandMark } from '@hs/ui';
 
 function LoginForm() {
   const router = useRouter();
@@ -12,34 +12,66 @@ function LoginForm() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [ssoNotice, setSsoNotice] = useState<string | null>(null);
 
-  const setRoleCookie = (role: string) => {
-    document.cookie = `hs_role=${role}; path=/; max-age=604800; SameSite=lax`;
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+    setSsoNotice(null);
 
-    let role = 'company_admin';
-    let target = '/company';
-
-    const lower = email.toLowerCase();
-    if (lower.includes('admin')) {
-      role = 'platform_admin';
-      target = '/admin';
-    } else if (lower.includes('candidate')) {
-      role = 'candidate';
-      target = '/candidate';
+    if (!email || !password) {
+      setErrorMessage('Please enter both your email address and password.');
+      return;
     }
 
-    setRoleCookie(role);
-    const dest = (from && from.startsWith(target)) ? from : target;
-    window.location.href = dest;
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setIsLoading(false);
+        const detail =
+          data?.detail ||
+          data?.title ||
+          'Invalid credentials. Please verify your email and password.';
+        setErrorMessage(detail);
+        return;
+      }
+
+      // Successful server-side authentication
+      // Target portal is dictated by the authenticated user's portal/role
+      const targetPortal = data?.portal
+        ? `/${data.portal}`
+        : data?.role === 'platform_admin'
+          ? '/admin'
+          : data?.role === 'candidate'
+            ? '/candidate'
+            : '/company';
+
+      const dest = from && from.startsWith(targetPortal) ? from : targetPortal;
+      window.location.href = dest;
+    } catch {
+      setIsLoading(false);
+      setErrorMessage('Unable to connect to the authentication server. Please try again later.');
+    }
   };
 
-  const handleSsoClick = (role: string, target: string) => {
-    setRoleCookie(role);
-    window.location.href = (from && from.startsWith(target)) ? from : target;
+  const handleSsoClick = (provider: 'Google' | 'Microsoft') => {
+    setErrorMessage(null);
+    setSsoNotice(
+      `${provider} SSO is not configured for this environment. Please sign in with your email and password.`
+    );
   };
 
   return (
@@ -68,6 +100,30 @@ function LoginForm() {
           </div>
         )}
 
+        {errorMessage && (
+          <div
+            role="alert"
+            className="p-3.5 rounded-xl bg-rose-950/50 border border-rose-800/70 text-xs text-rose-300 flex items-start gap-2.5 animate-fadeIn"
+          >
+            <svg className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {ssoNotice && (
+          <div
+            role="status"
+            className="p-3.5 rounded-xl bg-sky-950/40 border border-sky-800/60 text-xs text-sky-300 flex items-start gap-2.5"
+          >
+            <svg className="w-4 h-4 text-sky-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{ssoNotice}</span>
+          </div>
+        )}
+
         {/* Login Card */}
         <div className="glass-card rounded-2xl p-6 sm:p-8 border border-slate-800 space-y-5">
           <form onSubmit={handleLogin} className="space-y-4">
@@ -80,10 +136,11 @@ function LoginForm() {
                 name="email"
                 type="email"
                 required
+                disabled={isLoading}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@company.com"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 transition-all"
               />
             </div>
 
@@ -101,18 +158,30 @@ function LoginForm() {
                 name="password"
                 type="password"
                 required
+                disabled={isLoading}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 transition-all"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400 mt-2"
+              disabled={isLoading}
+              className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400 mt-2 flex items-center justify-center gap-2"
             >
-              Sign In →
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  <span>Authenticating...</span>
+                </>
+              ) : (
+                <span>Sign In →</span>
+              )}
             </button>
           </form>
 
@@ -127,8 +196,9 @@ function LoginForm() {
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => handleSsoClick('company_admin', '/company')}
-              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-slate-700/80 bg-slate-900/60 hover:bg-slate-800 text-xs font-medium text-slate-300 transition-colors"
+              disabled={isLoading}
+              onClick={() => handleSsoClick('Google')}
+              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-slate-700/80 bg-slate-900/60 hover:bg-slate-800 disabled:opacity-50 text-xs font-medium text-slate-300 transition-colors"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -140,8 +210,9 @@ function LoginForm() {
             </button>
             <button
               type="button"
-              onClick={() => handleSsoClick('company_admin', '/company')}
-              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-slate-700/80 bg-slate-900/60 hover:bg-slate-800 text-xs font-medium text-slate-300 transition-colors"
+              disabled={isLoading}
+              onClick={() => handleSsoClick('Microsoft')}
+              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-slate-700/80 bg-slate-900/60 hover:bg-slate-800 disabled:opacity-50 text-xs font-medium text-slate-300 transition-colors"
             >
               <svg className="w-4 h-4" viewBox="0 0 23 23">
                 <path fill="#f35325" d="M1 1h10v10H1z" />

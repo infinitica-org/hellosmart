@@ -1,5 +1,4 @@
 import React, { ReactNode } from 'react';
-import Link from 'next/link';
 
 export interface EmptyStateProps {
   icon?: ReactNode | undefined;
@@ -21,7 +20,7 @@ export function EmptyState({
   description,
   action,
   className = '',
-}: EmptyStateProps) {
+}: EmptyStateProps): React.JSX.Element {
   return (
     <div
       className={`flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 ${className}`}
@@ -52,12 +51,12 @@ export function EmptyState({
       {action && (
         <>
           {action.href ? (
-            <Link
+            <a
               href={action.href}
               className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-500 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             >
               {action.label}
-            </Link>
+            </a>
           ) : (
             <button
               type="button"

@@ -1,5 +1,4 @@
 import React, { ReactNode } from 'react';
-import Link from 'next/link';
 
 export interface PageHeaderProps {
   title: string;
@@ -20,7 +19,7 @@ export function PageHeader({
   badge,
   breadcrumbs,
   actions,
-}: PageHeaderProps) {
+}: PageHeaderProps): React.JSX.Element {
   const badgeColors = {
     default: 'bg-slate-800 text-slate-300 border-slate-700',
     success: 'bg-emerald-950/60 text-emerald-400 border-emerald-800/60',
@@ -35,12 +34,12 @@ export function PageHeader({
           {breadcrumbs.map((crumb, idx) => (
             <React.Fragment key={idx}>
               {crumb.href ? (
-                <Link
+                <a
                   href={crumb.href}
                   className="hover:text-slate-200 transition-colors"
                 >
                   {crumb.label}
-                </Link>
+                </a>
               ) : (
                 <span className="text-slate-200">{crumb.label}</span>
               )}

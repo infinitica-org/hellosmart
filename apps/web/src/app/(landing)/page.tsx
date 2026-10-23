@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { BrandMark } from '@/components/brand-mark';
+import { BrandMark } from '@hs/ui';
 
 export default function HomePage() {
   return (

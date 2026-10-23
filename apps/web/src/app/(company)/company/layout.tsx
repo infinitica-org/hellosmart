@@ -1,5 +1,5 @@
 import React from 'react';
-import { SidebarNav, NavItem } from '@/components/navigation';
+import { SidebarNav, type NavItem } from '@/components/navigation';
 
 const companyNavItems: NavItem[] = [
   {

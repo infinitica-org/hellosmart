@@ -1,6 +1,5 @@
 import React from 'react';
-import { PageHeader } from '@/components/page-header';
-import { EmptyState } from '@/components/empty-state';
+import { PageHeader, EmptyState } from '@hs/ui';
 
 export default function AdminDashboardPage() {
   return (

@@ -3,14 +3,14 @@
 import React, { ReactNode, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { BrandMark } from './brand-mark';
+import { BrandMark } from '@hs/ui';
 
 export interface NavItem {
   label: string;
   href: string;
   icon: ReactNode;
-  badge?: string;
-  active?: boolean;
+  badge?: string | undefined;
+  active?: boolean | undefined;
 }
 
 export interface SidebarNavProps {
@@ -19,6 +19,7 @@ export interface SidebarNavProps {
   items: NavItem[];
   whiteLabel?: boolean | undefined;
   userEmail?: string | undefined;
+  onSignOut?: (() => void) | undefined;
 }
 
 export function SidebarNav({
@@ -27,7 +28,8 @@ export function SidebarNav({
   items,
   whiteLabel = false,
   userEmail = 'user@hellosmart.ai',
-}: SidebarNavProps) {
+  onSignOut,
+}: SidebarNavProps): React.JSX.Element {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -44,10 +46,17 @@ export function SidebarNav({
     candidate: 'bg-emerald-950/80 text-emerald-400 border-emerald-800/60',
   };
 
-  const handleSignOut = (e: React.MouseEvent) => {
+  const handleSignOut = async (e: React.MouseEvent) => {
     e.preventDefault();
-    // Clear non-sensitive routing hint cookie
-    document.cookie = 'hs_role=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    if (onSignOut) {
+      onSignOut();
+      return;
+    }
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // ignore
+    }
     router.push('/login');
   };
 
@@ -58,9 +67,7 @@ export function SidebarNav({
         <div className="pb-6 pt-2 px-2 border-b border-slate-800/60">
           <BrandMark whiteLabel={whiteLabel} size="md" />
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              {portalTitle}
-            </span>
+            <span className="text-xs font-semibold text-slate-300">{portalTitle}</span>
             <span
               className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${roleBadgeColors[portalRole]}`}
             >
@@ -69,31 +76,29 @@ export function SidebarNav({
           </div>
         </div>
 
-        {/* Navigation items */}
-        <nav className="mt-6 flex flex-col gap-1.5" aria-label="Sidebar navigation">
-          {items.map((item, idx) => {
-            const isActive =
-              item.active ??
-              (pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href)));
+        {/* Nav Items */}
+        <nav className="mt-6 space-y-1">
+          {items.map((item) => {
+            const isActive = item.active !== undefined ? item.active : pathname === item.href;
             return (
               <Link
-                key={idx}
+                key={item.href}
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-indigo-600/15 text-indigo-300 border border-indigo-500/30 shadow-sm'
+                    ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className={`${isActive ? 'text-indigo-400' : 'text-slate-500'}`}>
+                  <span className={isActive ? 'text-indigo-400' : 'text-slate-500'}>
                     {item.icon}
                   </span>
                   <span>{item.label}</span>
                 </div>
                 {item.badge && (
-                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700/60">
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-300">
                     {item.badge}
                   </span>
                 )}
@@ -103,101 +108,103 @@ export function SidebarNav({
         </nav>
       </div>
 
-      {/* Footer / user status */}
-      <div className="pt-4 border-t border-slate-800/60 px-2 flex flex-col gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-medium text-slate-300">
-            {userEmail[0]?.toUpperCase() || 'U'}
+      {/* User profile footer */}
+      <div className="pt-4 border-t border-slate-800/60">
+        <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/40 border border-slate-800/40">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <div className="w-7 h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-xs font-semibold text-indigo-300 flex-shrink-0">
+              {userEmail.charAt(0).toUpperCase()}
+            </div>
+            <div className="truncate">
+              <p className="text-xs font-medium text-slate-200 truncate">{userEmail}</p>
+            </div>
           </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-medium text-slate-200 truncate">{userEmail}</span>
-            <span className="text-[10px] text-slate-500 truncate">{roleLabels[portalRole]}</span>
-          </div>
+          <button
+            onClick={handleSignOut}
+            title="Sign out"
+            className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors rounded-lg hover:bg-slate-800/60"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              />
+            </svg>
+          </button>
         </div>
-        <button
-          onClick={handleSignOut}
-          type="button"
-          className="text-xs text-slate-400 hover:text-rose-400 transition-colors flex items-center gap-2 py-1 text-left"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-            />
-          </svg>
-          Sign out
-        </button>
       </div>
     </div>
   );
 
   return (
     <>
-      {/* Mobile top bar toggle */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-slate-950/90 backdrop-blur border-b border-slate-800 px-4 h-14 flex items-center justify-between">
+      {/* Mobile top bar */}
+      <div className="lg:hidden h-14 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-4 flex items-center justify-between sticky top-0 z-30">
         <BrandMark whiteLabel={whiteLabel} size="sm" />
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          type="button"
-          className="p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300"
-          aria-label="Toggle Navigation"
+          className="p-2 text-slate-400 hover:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          aria-label="Toggle navigation"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            {mobileOpen ? (
+          {mobileOpen ? (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            ) : (
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
+            </svg>
+          )}
         </button>
       </div>
 
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-64 flex-shrink-0 min-h-screen bg-slate-950/80 border-r border-slate-800/80 sticky top-0">
-        {navContent}
-      </aside>
-
-      {/* Mobile overlay sidebar */}
+      {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
-          />
-          <aside className="relative w-64 bg-slate-950 border-r border-slate-800 z-10 flex flex-col pt-14">
+        <div className="lg:hidden fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm">
+          <div className="fixed inset-y-0 left-0 w-64 bg-slate-950 border-r border-slate-800 shadow-xl">
             {navContent}
-          </aside>
+          </div>
         </div>
       )}
+
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 border-r border-slate-800/80 bg-slate-950/60 backdrop-blur-md z-20">
+        {navContent}
+      </aside>
     </>
   );
 }
 
 export interface HeaderNavProps {
   portalName: string;
-  userRole?: string | undefined;
+  userRole: 'candidate' | 'company_admin' | 'platform_admin';
+  userEmail?: string | undefined;
   orgName?: string | undefined;
   whiteLabel?: boolean | undefined;
-  onSignOut?: () => void;
+  onSignOut?: (() => void) | undefined;
 }
 
 export function HeaderNav({
   portalName,
-  userRole,
+  userEmail = 'candidate@hellosmart.ai',
   orgName,
   whiteLabel,
   onSignOut,
-}: HeaderNavProps) {
+}: HeaderNavProps): React.JSX.Element {
   const router = useRouter();
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     if (onSignOut) {
       onSignOut();
       return;
     }
-    document.cookie = 'hs_role=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // ignore
+    }
     router.push('/login');
   };
 
@@ -208,24 +215,25 @@ export function HeaderNav({
         <span className="text-slate-600">/</span>
         <span className="text-sm font-semibold text-slate-200">{portalName}</span>
         {orgName && (
-          <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-300 border border-slate-700/60">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800/80 text-slate-400 border border-slate-700/60">
             {orgName}
           </span>
         )}
       </div>
 
       <div className="flex items-center gap-4">
-        {userRole && (
-          <span className="text-xs text-slate-400 hidden sm:inline">
-            Role: <span className="font-mono text-slate-300">{userRole}</span>
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-emerald-950/80 border border-emerald-800/60 flex items-center justify-center text-xs font-semibold text-emerald-400">
+            {userEmail.charAt(0).toUpperCase()}
+          </div>
+          <span className="text-xs text-slate-400 hidden sm:inline">{userEmail}</span>
+        </div>
         <button
           onClick={handleSignOut}
-          type="button"
-          className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
+          title="Sign out"
+          className="text-xs text-slate-400 hover:text-rose-400 transition-colors px-2 py-1 rounded-md hover:bg-slate-900/60"
         >
-          Sign out
+          Sign Out
         </button>
       </div>
     </header>

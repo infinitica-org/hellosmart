@@ -13,7 +13,7 @@ export function BrandMark({
   className = '',
   showLogo = true,
   size = 'md',
-}: BrandMarkProps) {
+}: BrandMarkProps): React.JSX.Element {
   const sizeClasses = {
     sm: 'text-xs',
     md: 'text-sm',
