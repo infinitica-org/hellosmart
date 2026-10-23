@@ -23,13 +23,20 @@ export function middleware(req: NextRequest): NextResponse {
 
   const role = req.cookies.get('hs_role')?.value; // non-sensitive routing hint; API re-verifies
   const prefix = Object.keys(PORTAL_PREFIX).find((p) => req.nextUrl.pathname.startsWith(p));
-  if (prefix && role !== PORTAL_PREFIX[prefix]) {
-    return NextResponse.redirect(new URL('/login', req.url));
+  const expectedRole = prefix ? PORTAL_PREFIX[prefix] : undefined;
+
+  if (expectedRole && role !== expectedRole) {
+    const loginUrl = new URL('/login', req.url);
+    if (req.nextUrl.pathname !== '/') {
+      loginUrl.searchParams.set('from', req.nextUrl.pathname);
+    }
+    return NextResponse.redirect(loginUrl);
   }
 
   const headers = new Headers(req.headers);
   headers.set('x-nonce', nonce);
   const res = NextResponse.next({ request: { headers } });
+
   res.headers.set('Content-Security-Policy', csp);
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
