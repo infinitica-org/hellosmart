@@ -17,7 +17,11 @@ def test_key_looking_values_are_redacted() -> None:
     )
     log = structlog.get_logger("test")
 
-    secret_key = "sk-ant-api03-REAL-LOOKING-SECRET-VALUE-00000000"
+    # Deliberately NOT shaped like `sk-ant-...` (repo's .gitleaks.toml has a
+    # dedicated anthropic-key rule matching that literal prefix) — a fixture
+    # that trips the repo's own secret scanner defeats its purpose here.
+    # "sk-" is enough to exercise this module's own _KEY_LOOKING_VALUE regex.
+    secret_key = "sk-test-FAKE0000000000000000000000NOTREAL"
     log.info("provider call", provider="anthropic", api_key=secret_key, authorization=secret_key)
 
     captured = sink.getvalue()
