@@ -10,6 +10,16 @@ The `ref` vocabulary here is the existing one from schemas.py
 (`term|diff|ai|file|event|test`), not a new one — EvidenceItem.ref reuses
 that exact pattern so a ref minted here is guaranteed resolvable by the
 existing AgentScore.evidence[].ref validator downstream.
+
+Confirmed with Vedika (packages/fixtures, AD-013-adjacent seed-data work)
+before `status: active` on any dependent fixture:
+  - No `org_id` on EvidenceItem/EvidencePack/AgentScore. Org is derived
+    purely via submission_id -> candidate -> org, never carried on the
+    evidence/score records themselves.
+  - No separate `evidence_type` or generic `metadata` field. `source`
+    (the channel) + `content` (free text, inline-annotated where needed,
+    e.g. "file=...; function=...; line ...") is sufficient for her seed
+    fixtures. Schema v1 is locked on this basis.
 """
 
 from __future__ import annotations
