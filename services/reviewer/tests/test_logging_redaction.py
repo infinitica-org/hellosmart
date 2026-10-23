@@ -17,11 +17,13 @@ def test_key_looking_values_are_redacted() -> None:
     )
     log = structlog.get_logger("test")
 
-    # Deliberately NOT shaped like `sk-ant-...` (repo's .gitleaks.toml has a
-    # dedicated anthropic-key rule matching that literal prefix) — a fixture
-    # that trips the repo's own secret scanner defeats its purpose here.
-    # "sk-" is enough to exercise this module's own _KEY_LOOKING_VALUE regex.
-    secret_key = "sk-test-FAKE0000000000000000000000NOTREAL"
+    # Deliberately not a real-looking secret: no `sk-ant-...` literal prefix
+    # (repo's .gitleaks.toml has a dedicated anthropic-key rule for that) and
+    # no long opaque-looking suffix (semgrep's p/secrets ruleset flags those
+    # by pattern/entropy, prefix aside) — a fixture that trips the repo's own
+    # scanners defeats its purpose here. "sk-" plus an obviously-not-a-secret
+    # word is enough to exercise this module's own _KEY_LOOKING_VALUE regex.
+    secret_key = "sk-not.a.real.secret"
     log.info("provider call", provider="anthropic", api_key=secret_key, authorization=secret_key)
 
     captured = sink.getvalue()
