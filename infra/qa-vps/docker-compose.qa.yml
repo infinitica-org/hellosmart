@@ -1,0 +1,79 @@
+# QA stack on the KVM VPS. Images are the same ones built for prod (tagged with the dev commit SHA).
+# Only Caddy publishes ports; everything else is on the internal network.
+name: hellosmart-qa
+
+x-app: &app
+  restart: unless-stopped
+  env_file: .env.qa
+  networks: [internal]
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+
+services:
+  caddy:
+    image: caddy:2.8.4-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    env_file: .env.qa
+    networks: [internal]
+
+  web:
+    <<: *app
+    image: ${REGISTRY}/hs-web:${TAG}
+  api:
+    <<: *app
+    image: ${REGISTRY}/hs-api:${TAG}
+    depends_on: [postgres, redis, localstack]
+  worker:
+    <<: *app
+    image: ${REGISTRY}/hs-worker:${TAG}
+    depends_on: [postgres, redis, localstack]
+  ai-proxy:
+    <<: *app
+    image: ${REGISTRY}/hs-ai-proxy:${TAG}
+  reviewer:
+    <<: *app
+    image: ${REGISTRY}/hs-reviewer:${TAG}
+  ws-gateway:
+    <<: *app
+    image: ${REGISTRY}/hs-ws-gateway:${TAG}
+
+  postgres:
+    image: postgres:16.4-alpine
+    restart: unless-stopped
+    env_file: .env.qa
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db-init:/docker-entrypoint-initdb.d:ro
+    networks: [internal]
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["sh", "-c", "redis-server --requirepass \"$$REDIS_PASSWORD\""]
+    env_file: .env.qa
+    networks: [internal]
+  localstack:
+    image: localstack/localstack:3.8
+    restart: unless-stopped
+    environment:
+      SERVICES: s3,sqs,kms,secretsmanager,ssm,events,stepfunctions,ses,sns
+      PERSISTENCE: "1"
+    volumes: [localstack:/var/lib/localstack]
+    networks: [internal]
+  mailpit:
+    image: axllent/mailpit:v1.20
+    restart: unless-stopped
+    networks: [internal]
+
+networks:
+  internal: {}
+
+volumes:
+  caddy_data:
+  pgdata:
+  localstack:

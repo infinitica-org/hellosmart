@@ -1,0 +1,33 @@
+# Automatic HTTPS (Let's Encrypt). QA is never public: IP allowlist + basic auth on every host.
+(qa_guard) {
+	@blocked not remote_ip {$QA_ALLOWED_IPS}
+	respond @blocked 403
+	basic_auth {
+		{$QA_BASIC_USER} {$QA_BASIC_HASH}
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+	}
+}
+
+qa.hellosmart.ai {
+	import qa_guard
+	reverse_proxy web:3000
+}
+
+api.qa.hellosmart.ai {
+	import qa_guard
+	reverse_proxy api:4000
+}
+
+ws.qa.hellosmart.ai {
+	import qa_guard
+	reverse_proxy ws-gateway:8080
+}
+
+mail.qa.hellosmart.ai {
+	import qa_guard
+	reverse_proxy mailpit:8025
+}

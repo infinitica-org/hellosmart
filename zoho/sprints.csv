@@ -1,0 +1,10 @@
+﻿Sprint ID,Sprint Name,Start Date,End Date,Goal
+S0,S0 Foundation,2026-10-23,2026-10-30,"Accounts, IaC, CI/CD, contracts frozen, mocks, fakes, design system, slot spike"
+S1,S1 Identity & Tenancy,2026-11-02,2026-11-06,"Auth, RBAC, tenancy, orgs, entitlements, audit, landing"
+S2,S2 Configure,2026-11-09,2026-11-13,"Templates, assessments, timing, AI keys/policy, candidates, quotes"
+S3,S3 Candidate Session,2026-11-16,2026-11-20,"Candidate portal, consent, workspaces, AI assistant, Chat; first E2E 19 Nov"
+S4,S4 Submit & Review,2026-11-23,2026-11-27,"Submit, cleanup, review pipeline, human review, release"
+S5,S5 Commercial & Ops,2026-11-30,2026-12-04,"Payments, domains, white label, analytics, retention; feature complete"
+S6,S6 Harden & Launch,2026-12-07,2026-12-11,"Bug fixes, load, security, DR, UAT; go/no-go 10 Dec; launch 12 Dec"
+P2,Backlog: Phase 2,,,Not in MMP. Do not start without product sign-off
+P3,Backlog: Phase 3,,,Not in MMP

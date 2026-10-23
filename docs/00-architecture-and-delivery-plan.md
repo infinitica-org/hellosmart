@@ -1,6 +1,6 @@
 # HelloSmart.ai: Architecture, AI-SDLC and Delivery Plan
 
-> **Status: FROZEN v1.0** · Frozen on 2026-10-22 · Launch: **Saturday 12 Dec 2026, full MMP scope (126 items), live on AWS production.**
+> **Status: FROZEN v1.1** · Frozen on 2026-10-22 · v1.1: shared-host workspaces, QA on KVM VPS, `dev`/`main` branches, team of 9 · Launch: **Saturday 12 Dec 2026, full MMP scope (126 items), live on AWS production.**
 > Companion to [AGENTS.md](../AGENTS.md) (requirements) and [HelloSmart_BRD.md](../HelloSmart_BRD.md). Any change to this file follows Section 13 (change control).
 
 ---
@@ -25,7 +25,7 @@
 | D-14 | Payments | Razorpay behind `PaymentGateway` interface |
 | D-15 | Region | **ap-south-1 (Mumbai)**, backups to ap-south-2 (Hyderabad) |
 | D-16 | Repo | One monorepo, pnpm + Turborepo, Python via uv |
-| D-17 | CI/CD | GitHub Actions + AWS OIDC, ECS blue/green via CodeDeploy |
+| D-17 | CI/CD | GitHub Actions. `dev` → QA on a KVM VPS (Docker Compose, Sysbox, LocalStack) automatically; `main` → AWS prod via OIDC + ECS blue/green after approval |
 | D-18 | Observability | CloudWatch, X-Ray/OpenTelemetry, Sentry, PagerDuty-style on-call (Opsgenie or CloudWatch alarms > SNS > phone) |
 | D-19 | Ticketing | Zoho Sprints: one project, one release per sprint, epics per module |
 | D-20 | Development model | **AI-agent-driven development** under the AI-SDLC in Section 6. Humans specify, review, approve and own. |
@@ -100,9 +100,9 @@ Options considered and rejected: one VM per candidate (strongest isolation, but 
 | `management` | Organizations, SSO (IAM Identity Center), billing, CloudTrail org trail |
 | `shared` | ECR, Packer builds, Terraform state (S3 + DynamoDB lock) |
 | `dev` | Per-PR preview environments (ephemeral) |
-| `staging` | Production clone, QA runs here |
+| ~~`staging`~~ | Not used. QA runs on a KVM VPS from the `dev` branch (see docs/BRANCHING-AND-ENVIRONMENTS.md) |
 | `prod` | Live platform |
-| `workspaces-prod` / `workspaces-staging` | Candidate VMs only. No route to prod DB. Budget alarms + SCPs. |
+| `workspaces-prod` | Candidate VMs only. No route to prod DB. Budget alarms + SCPs. |
 
 ### 3.3 Reliability and security
 
@@ -207,7 +207,7 @@ CPU is soft-shared (cgroup weights, ~1.3× overcommit allowed). Memory and disk 
 
 **Flow:**
 1. Template publish > CI builds the template **container image** (Dockerfile from the manifest) and pushes to ECR. The host AMI is rebuilt nightly to pre-pull it; until then hosts pull on first use.
-2. Smoke test (AD-013): orchestrator starts one slot on a staging host, runs health checks + golden-submission hidden tests, tears down. Must pass before `published`.
+2. Smoke test (AD-013): orchestrator starts one slot on the QA VPS (Sysbox), runs health checks + golden-submission hidden tests, tears down. Must pass before `published`.
 3. Terraform module `workspace_hosts`: Auto Scaling group with a **free-slot target**: keep ≥ 8 free `medium` slots (configurable in admin), scale out when free slots drop below target, scale in only empty hosts.
 4. **Scheduler (orchestrator):** bin-packs new sessions onto the fullest host that fits (frees whole hosts for scale-in), never two slots of the same candidate on one host, and spreads across 2 AZs.
 5. **Connect:** create Sysbox container from the template image > own network namespace with an egress allowlist (AI domains blocked when AI is OFF) > inject per-session env from SSM (deleted at end) > start compose services inside > issue proxy token > `ws-agent` begins autosave. Target < 20 s.
@@ -258,7 +258,7 @@ Engineers do not hand-write features. Every engineer runs coding agents (Claude 
 | 6. AI review | Review agent in CI | Correctness, tenancy, secrets, BR-rule check comments | No unresolved high findings |
 | 7. Human review | Owning dept (+ Architecture for sensitive paths) | Approval | 1–2 approvals |
 | 8. Preview | CI | Ephemeral env per PR in `dev` account | Smoke E2E green |
-| 9. Merge + staging | Trunk, auto-deploy to staging | Feature flag off by default | Staging smoke green |
+| 9. Merge to `dev` + QA | Squash-merge to `dev`, auto-deploy to QA VPS | Feature flag off by default | QA smoke green |
 | 10. QA | QA dept + test agents | Test run report in Zoho | Sprint QA sign-off |
 | 11. Prod | Release Monday | Flags enabled per plan | Go/no-go checklist |
 | 12. Learn | All | Prompt/agent-rule fixes into `AGENTS.md` / module `CLAUDE.md` | Retro action items |
@@ -312,7 +312,7 @@ Blocking is removed structurally, not by coordination.
 | **Department-owned paths** | CODEOWNERS means no one needs another department to edit their code. |
 | **Async daily** | 10-minute written standup in Zoho/chat; one 15-min call only for blockers. |
 
-Dependency rule: **a ticket may depend only on a contract, never on another department's implementation.** Integration happens on staging every Wednesday.
+Dependency rule: **a ticket may depend only on a contract, never on another department's implementation.** Integration happens on the QA environment every Wednesday.
 
 ---
 
@@ -321,12 +321,12 @@ Dependency rule: **a ticket may depend only on a contract, never on another depa
 | Department | Role(s) | Owns (modules / paths) | Requirement IDs |
 |---|---|---|---|
 | **Architecture & Platform** | System Architect (Team Lead) | Contracts, ADRs, Terraform (all accounts), CI/CD, observability, security reviews, workspace network/egress, release management | NF-001..006, NF-011..015, NF-017, NF-018 (schema), BR-01 framework |
-| **Core Backend** | Senior Backend Engineer (part-time) + agents | `apps/api`: auth, SSO, MFA, RBAC, tenancy/RLS, entitlements, trial, timing engine, audit, billing/Razorpay, quotes, codes, invoices, webhooks, cal.com | CO-001..010, CO-028..031, CO-056, AD-001..009, AD-026..028, SP-002..018, BR-01..09, BR-24..31 |
-| **Product Engineering: Company & Admin** | SDE-1 + interns + agents | `apps/web` company portal + admin console + landing; candidate CRUD/bulk UI, assessment builder, rubric editor, review UI, analytics, settings, branding, billing UI, email templates | CO-006, CO-011..027, CO-032..056 (UI), AD-002..029 (UI), SP-001, SP-004 |
-| **Product Engineering: Candidate & Workspace** | SDE-1 (second) + web dev intern + agents | `apps/web` candidate portal, `apps/worker/orchestrator`, `ws-agent`, `ws-gateway`, fullscreen, autosave, resume, submit, destroy, cleanup | CA-001..019, CO-043, CO-044, AD-018, AD-019, BR-10..12, BR-22, BR-23 |
-| **AI Engineering** | AI Engineer + AI intern + agents | `services/ai-proxy`, `services/reviewer`, agent library, sanitizer, aggregator, Chat workspace backend, golden-set evals | CO-032..039 (backend), CA-015, CA-017, AD-014, AD-015, AD-017, AD-023, BR-13..18 |
+| **Core Backend** | Backend Engineer + agents | `apps/api`: auth, SSO, MFA, RBAC, tenancy/RLS, entitlements, trial, timing engine, audit, billing/Razorpay, quotes, codes, invoices, webhooks, cal.com | CO-001..010, CO-028..031, CO-056, AD-001..009, AD-026..028, SP-002..018, BR-01..09, BR-24..31 |
+| **Product Engineering: Company & Admin** | SDE-1 + agents | `apps/web` company portal + admin console + landing; candidate CRUD/bulk UI, assessment builder, rubric editor, review UI, analytics, settings, branding, billing UI, email templates | CO-006, CO-011..027, CO-032..056 (UI), AD-002..029 (UI), SP-001, SP-004 |
+| **Product Engineering: Candidate & Workspace** | SDE-2 + agents | `apps/web` candidate portal, `apps/worker/orchestrator`, `ws-agent`, `ws-gateway`, fullscreen, autosave, resume, submit, destroy, cleanup | CA-001..019, CO-043, CO-044, AD-018, AD-019, BR-10..12, BR-22, BR-23 |
+| **AI Engineering** | AI Engineer-1 (proxy, keys, Chat) + AI Engineer-2 (reviewer agents, evals) + agents | `services/ai-proxy`, `services/reviewer`, agent library, sanitizer, aggregator, Chat workspace backend, golden-set evals | CO-032..039 (backend), CA-015, CA-017, AD-014, AD-015, AD-017, AD-023, BR-13..18 |
 | **Data Ops** | Data Ops intern + agents | `templates/` content, Packer recipes per template, seed data, golden submissions, injection corpus, analytics SQL, fixtures package | AD-010..013 (content), CO-051, CO-052, AD-025 (queries) |
-| **Quality Assurance** | QA Engineer + QA interns + test agents | Test plans per sprint, Playwright E2E, regression, UAT scripts, accessibility checks | All, sign-off gate |
+| **Quality Assurance** | QA-1 (functional, E2E, UAT) + QA-2 (automation, load, security) + test agents | Test plans per sprint, Playwright E2E, regression, UAT scripts, accessibility checks | All, sign-off gate |
 | **Product Design** | Product Designer | Figma: design system and all screens, one sprint ahead of build | UX for all portals |
 | **Product Delivery** | Product Delivery Manager | Zoho Sprints board, sprint ceremonies, risk register, dependency tracking, release notes | Process |
 | **Business Operations** | Business & Growth dept | Accounts, vendors, KYC, legal text, launch customers, pricing | Section 10 |
@@ -335,9 +335,9 @@ Dependency rule: **a ticket may depend only on a contract, never on another depa
 
 ## 9. Schedule (weekly sprints, full scope)
 
-Cadence each week: **Mon** planning + prod release of previous sprint · **Wed** staging integration · **Thu** QA regression · **Fri** QA sign-off + demo + retro.
+Cadence each week: **Mon** planning + prod release of previous sprint · **Wed** integration on QA env · **Thu** QA regression · **Fri** QA sign-off + demo + retro.
 
-| Sprint | Dates | Delivered to staging (prod the following Monday) |
+| Sprint | Dates | Delivered to `dev`/QA (prod the following Monday) |
 |---|---|---|
 | **S0: Foundation** | Fri 23 Oct – Fri 30 Oct | AWS accounts + Terraform base (VPC, Aurora, Redis, ECS, ECR, SES sandbox), CI/CD with preview envs, monorepo scaffold, **all contracts frozen**, mock server, fake adapters, fixtures, agent context files + slash commands, design system in Figma + code, Packer host AMI with Sysbox, shared-host slot spike (4 medium slots on one host, isolation + launch-time test by Thu 29 Oct). |
 | **S1: Identity & tenancy** | 2–6 Nov | Login (email, Google, Microsoft), MFA, master login routing, forgot/reset, RBAC, RLS, orgs, users, entitlements, trial banner, suspend, audit log, landing + cal.com embed + webhook > leads, admin org provisioning. Company portal shell, candidate portal shell. AI proxy skeleton (token, allowlist). Template manifest schema + validator. |
@@ -350,7 +350,7 @@ Cadence each week: **Mon** planning + prod release of previous sprint · **Wed**
 
 **Testing timeline:**
 - From S0: unit, integration, cross-tenant and contract tests in CI on every PR.
-- From S1: weekly QA regression on staging (Thu), sign-off Fri.
+- From S1: weekly QA regression on the QA VPS (Thu), sign-off Fri.
 - 19 Nov: first full end-to-end candidate loop.
 - From S4: nightly E2E + agent golden-set + injection suites.
 - 30 Nov – 4 Dec: full regression across all 126 items (traceability matrix in Zoho).
@@ -385,7 +385,7 @@ Owned by Business Operations unless noted. Each has a **fake adapter**, so devel
 | 9 | Pricing, plans and add-on prices | 20 Nov | Quote builder and catalog launch empty. |
 | 10 | 2 pilot customers for UAT (7–10 Dec) | 27 Nov | Launch without real-user validation; higher hypercare risk. |
 | 11 | Real target roles from early customers for templates | 6 Nov | Launch catalog uses generic templates only. |
-| 12 | Allocation confirmed: QA Engineer, QA interns, Product Designer, Product Delivery Manager on this project from S0 | 23 Oct | QA moves to devs + test agents; regression depth drops. |
+| 12 | Allocation confirmed: QA-1, QA-2, Product Designer, Product Delivery Manager on this project from S0 | 23 Oct | QA moves to devs + test agents; regression depth drops. |
 
 ---
 
@@ -400,7 +400,7 @@ Owned by Business Operations unless noted. Each has a **fake adapter**, so devel
 | Grader prompt injection | Med | High | Sanitizer, golden adversarial set, low-confidence flagging, human finalize | AI Eng |
 | LLM cost overrun (agents + candidates) | Med | Med | Proxy caps, per-org spend limits, grader model tiering, budget alarms | AI Eng |
 | VM cost overrun / orphan VMs | Med | Med | TTL tags, sweeper, AWS Budgets + SCP limits in workspaces account | Candidate & Workspace |
-| Integration surprises late | Med | High | Weekly Wednesday staging integration from S1 | Product Delivery |
+| Integration surprises late | Med | High | Weekly Wednesday integration on QA from S1 | Product Delivery |
 | External approvals late (Section 10) | High | Med | Fakes for dev; fallback paths at launch | Business Ops |
 | Scope creep | Med | High | Freeze; Section 13 change control | Product Delivery |
 | Single points of knowledge (one per dept) | Med | Med | ADRs, module CLAUDE.md, PR descriptions written for agents and humans | All |
@@ -434,7 +434,7 @@ hellosmart/
 │  └─ config/         eslint, tsconfig, prettier
 ├─ templates/         manifests, packer recipes, seeds, golden submissions
 ├─ infra/
-│  ├─ terraform/      modules/ + envs/{shared,dev,staging,prod,workspaces-*}
+│  ├─ terraform/      modules/ + envs/{shared,prod,workspaces-prod}  (QA lives in infra/qa-vps)
 │  └─ packer/
 ├─ tests/             e2e (Playwright), load (k6), injection suite
 ├─ tasks/             ticket briefs
