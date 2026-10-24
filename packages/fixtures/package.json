@@ -1,0 +1,23 @@
+{
+  "name": "@hs/fixtures",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed": "node --experimental-strip-types src/index.ts",
+    "seed:dry": "node --experimental-strip-types src/index.ts --dry-run",
+    "test": "node --experimental-strip-types --test test/seed.test.ts",
+    "test:setup": "node --experimental-strip-types src/scripts/setup-test-db.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "2.0.0",
+    "pg": "8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "8.11.10",
+    "typescript": "5.6.3"
+  }
+}
