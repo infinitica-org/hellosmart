@@ -8,9 +8,14 @@ const PORTAL_PREFIX: Record<string, string> = {
 };
 
 function applySecurityHeaders(res: NextResponse, nonce: string): NextResponse {
+  const isDev = process.env.NODE_ENV === 'development';
+  const scriptSrc = isDev
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`
+    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
+
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "connect-src 'self'",
@@ -32,17 +37,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   const prefix = Object.keys(PORTAL_PREFIX).find((p) => req.nextUrl.pathname.startsWith(p));
   const expectedRole = prefix ? PORTAL_PREFIX[prefix] : undefined;
 
-  // Protected portal route requires real server-side session and role verification
+  // Protected portal route requires real server-side session and role verification (BR-25)
   if (expectedRole) {
-    const isDev = process.env.NODE_ENV === 'development';
     const sessionToken = req.cookies.get('hs_session')?.value;
-
-    // Dev-mode fallback: during local development, allow evaluating layouts freely without forcing login
-    if (isDev && !sessionToken) {
-      const headers = new Headers(req.headers);
-      headers.set('x-nonce', nonce);
-      return applySecurityHeaders(NextResponse.next({ request: { headers } }), nonce);
-    }
 
     if (!sessionToken) {
       const loginUrl = new URL('/login', req.url);
@@ -53,7 +50,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     }
 
     // Verify session and role against the authority API (/me, CO-004)
-    const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:4000';
+    const apiBaseUrl = process.env.API_BASE_URL || 'http://127.0.0.1:4000';
     try {
       const meRes = await fetch(`${apiBaseUrl}/me`, {
         headers: {
@@ -64,12 +61,6 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       });
 
       if (!meRes.ok) {
-        // In dev mode, allow evaluating portal layouts even if session is invalid
-        if (isDev) {
-          const headers = new Headers(req.headers);
-          headers.set('x-nonce', nonce);
-          return applySecurityHeaders(NextResponse.next({ request: { headers } }), nonce);
-        }
         // Session invalid or expired: clear cookie and redirect to login
         const loginUrl = new URL('/login', req.url);
         loginUrl.searchParams.set('from', req.nextUrl.pathname);
@@ -83,12 +74,6 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
       // Enforce strict route isolation (BR-25): candidate sessions cannot reach company or admin
       if (me.role !== expectedRole) {
-        // In dev mode, allow navigating freely between portals to evaluate layouts
-        if (isDev) {
-          const headers = new Headers(req.headers);
-          headers.set('x-nonce', nonce);
-          return applySecurityHeaders(NextResponse.next({ request: { headers } }), nonce);
-        }
         const targetPortal = me.portal
           ? `/${me.portal}`
           : me.role === 'platform_admin'
@@ -99,13 +84,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
         return applySecurityHeaders(NextResponse.redirect(new URL(targetPortal, req.url)), nonce);
       }
     } catch {
-      // In dev mode or when auth server is offline, fallback to allow layout evaluation
-      if (isDev) {
-        const headers = new Headers(req.headers);
-        headers.set('x-nonce', nonce);
-        return applySecurityHeaders(NextResponse.next({ request: { headers } }), nonce);
-      }
-      // Fail closed in production: if auth cannot be verified with the server, do not grant access
+      // Fail closed: if auth cannot be verified with the server, do not grant access
       const loginUrl = new URL('/login', req.url);
       loginUrl.searchParams.set('from', req.nextUrl.pathname);
       return applySecurityHeaders(NextResponse.redirect(loginUrl), nonce);

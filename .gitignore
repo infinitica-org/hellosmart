@@ -6,6 +6,8 @@ build/
 .next/
 out/
 coverage/
+test-results/
+playwright-report/
 *.tsbuildinfo
 __pycache__/
 *.py[cod]
