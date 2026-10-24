@@ -1,6 +1,7 @@
 // Ports for every external dependency. Each has a real and a fake implementation so no department
 // is ever blocked on credentials. Selected by env (*_PROVIDER / PAYMENT_GATEWAY / WORKSPACE_RUNTIME).
 // Fakes are forbidden in production (enforced in apps/api config).
+type Buffer = Uint8Array;
 
 export interface PaymentGateway {
   createPaymentLink(input: { quoteId: string; amountMinor: number; currency: 'INR'; customerEmail: string }): Promise<{ gatewayRef: string; url: string }>;
