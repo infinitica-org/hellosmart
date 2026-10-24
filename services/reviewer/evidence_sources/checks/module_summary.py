@@ -10,13 +10,23 @@ from __future__ import annotations
 
 import ast
 from pathlib import PurePosixPath
+from typing import TypedDict
+
+
+class ModuleSummary(TypedDict):
+    module: str
+    file: str
+    classes: list[str]
+    functions: list[str]
+    lines: int
+    imports: list[str]
 
 
 def _module_id(rel: str) -> str:
     return rel[: -len(".py")].replace("/", ".") if rel.endswith(".py") else rel
 
 
-def summarize_module(rel: str, tree: ast.AST) -> dict[str, object]:
+def summarize_module(rel: str, tree: ast.AST) -> ModuleSummary:
     classes = [n.name for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]
     func_types = (ast.FunctionDef, ast.AsyncFunctionDef)
     top_level_funcs = [
