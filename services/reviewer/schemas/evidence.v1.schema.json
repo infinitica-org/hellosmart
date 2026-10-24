@@ -54,7 +54,7 @@
           "type": "string"
         },
         "ref": {
-          "pattern": "^(term|diff|ai|file|event|test):[\\w./#:\\-]{1,200}$",
+          "pattern": "^(term|diff|ai|file|event|test|repo):[\\w./#:\\-]{1,200}$",
           "title": "Ref",
           "type": "string"
         },
