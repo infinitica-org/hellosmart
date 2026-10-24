@@ -1,0 +1,46 @@
+/**
+ * HelloSmart Design Tokens (Figma Mapped)
+ * Standard CSS custom properties for @hs/ui and consuming applications
+ */
+
+:root {
+  /* Brand Core Colors */
+  --hs-background: #090d16;
+  --hs-foreground: #f8fafc;
+  --hs-surface: #0c1222;
+  --hs-surface-raised: #111a30;
+  
+  /* Primary & Accent */
+  --hs-primary: #6366f1;
+  --hs-primary-hover: #4f46e5;
+  --hs-primary-muted: rgba(99, 102, 241, 0.15);
+  --hs-primary-glow: rgba(99, 102, 241, 0.25);
+  
+  /* Semantic Status Colors */
+  --hs-success: #10b981;
+  --hs-warning: #f59e0b;
+  --hs-danger: #f43f5e;
+  --hs-info: #06b6d4;
+  
+  /* Borders & Dividers */
+  --hs-border-subtle: #1e293b;
+  --hs-border-default: #334155;
+  --hs-border-strong: #475569;
+  
+  /* Typography Scale */
+  --hs-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --hs-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  
+  /* Border Radius */
+  --hs-radius-sm: 0.375rem;
+  --hs-radius-md: 0.5rem;
+  --hs-radius-lg: 0.75rem;
+  --hs-radius-xl: 1rem;
+  --hs-radius-2xl: 1.5rem;
+  
+  /* Shadows & Glassmorphism */
+  --hs-glass-bg: rgba(15, 23, 42, 0.65);
+  --hs-glass-border: rgba(51, 65, 85, 0.4);
+  --hs-glass-blur: 12px;
+}
+
