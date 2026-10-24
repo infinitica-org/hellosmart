@@ -107,3 +107,48 @@ Platform Admin
 2. `app.entitlements.org_id` references `app.organizations(id)` as a 1:1 foreign key.
 3. `app.users.org_id` references `app.organizations(id)` for all company admins and candidates.
 4. `UNIQUE (org_id, email)` guarantees email uniqueness within any individual tenant.
+
+---
+
+## 7. Candidate Invitation Tokens Matrix ([6.3])
+
+> [!WARNING] > **DEV / TEST TOKENS ONLY**  
+> All invitation tokens documented below are strictly fake constants designed for local development and automated CI testing of candidate onboarding (`BR-24`).
+>
+> - Raw tokens are **never stored** in the database; only their **SHA-256 hashes** (`token_hash`) are persisted in `app.invitations`.
+> - The valid invitation token is valid for **72 hours** (`INVITE_TTL_HOURS = 72`) following each seed run.
+
+### Token Specification & Candidate Linkages
+
+| Label     | Candidate Email                         | Organization                   | Status / State                                   | Raw Dev Token (Test Only)         | Expiration Window (`INVITE_TTL_HOURS = 72`) | Used At (`used_at`)         | Intended Test Coverage                                               |
+| --------- | --------------------------------------- | ------------------------------ | ------------------------------------------------ | --------------------------------- | ------------------------------------------- | --------------------------- | -------------------------------------------------------------------- |
+| `valid`   | `candidate.aster-ridge.071@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `invited`, `must_reset_password: true` | `dev-invite-valid-ast-cand-071`   | `seed_now + 72h` (unexpired)                | `null`                      | First-login password reset flow (`BR-24`, `CA-001`)                  |
+| `expired` | `candidate.aster-ridge.072@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `invited`, `must_reset_password: true` | `dev-invite-expired-ast-cand-072` | `seed_now - 28h` (created at `now - 100h`)  | `null`                      | Expired invite token rejection and resend prompt (`EX-12`, `CO-017`) |
+| `used`    | `candidate.aster-ridge.001@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `active`, completed onboarding         | `dev-invite-used-ast-cand-001`    | `seed_now + 48h` (created at `now - 24h`)   | `seed_now - 12h` (consumed) | Consumed token rejection / already used error                        |
+
+### Invite Route & Link Helper Format
+
+Links are resolved using `getInvitationLink(label, baseUrl?)`:
+
+- Default route format: `${APP_BASE_URL || 'http://localhost:3000'}/invite?token=${encodeURIComponent(token)}`
+- Example valid invite link: `http://localhost:3000/invite?token=dev-invite-valid-ast-cand-071`
+- Custom domain routing: `https://hire.asterridge.com/invite?token=dev-invite-valid-ast-cand-071`
+
+### Foreign Key & Security Constraints
+
+```
+app.organizations (Aster Ridge)
+    |
+    +-----> app.invitations.org_id
+    |
+app.users (admin@asterridge.com)
+    |
+    +-----> app.invitations.invited_by
+    |
+app.users (candidate.aster-ridge.071 / 072 / 001)
+    |
+    +-----> app.invitations.user_id
+```
+
+- **Row-Level Security (`BR-01`)**: `app.invitations` enforces RLS with `tenant_isolation` policy matching `org_id = app.current_org_id() OR app.is_platform()`.
+- **Idempotency**: Seed re-execution uses `ON CONFLICT (id) DO UPDATE SET used_at = COALESCE(app.invitations.used_at, EXCLUDED.used_at)` ensuring consumed tokens remain consumed.

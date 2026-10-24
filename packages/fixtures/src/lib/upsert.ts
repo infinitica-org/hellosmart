@@ -12,6 +12,7 @@ import {
   getCandidates,
   type UserEntity,
 } from '../entities/users.js';
+import { getInvitations, type InvitationEntity } from '../entities/invitations.js';
 
 export interface SeedSummary {
   organizationsUpserted: number;
@@ -19,6 +20,7 @@ export interface SeedSummary {
   platformAdminsUpserted: number;
   companyAdminsUpserted: number;
   candidatesUpserted: number;
+  invitationsUpserted: number;
   totalRecordsUpserted: number;
 }
 
@@ -28,6 +30,43 @@ export interface SeedOptions {
   nodeEnv?: string;
   databaseUrl?: string;
   skipSafetyCheck?: boolean; // Only for unit test harness with mock clients
+}
+
+/**
+ * Ensures the app.invitations table exists with strict tenant isolation,
+ * indexes, and foreign keys matching HelloSmart specifications.
+ * Uses an advisory transaction lock to avoid concurrent DDL race conditions.
+ */
+export async function ensureInvitationsTable(client: ClientBase): Promise<void> {
+  const ddl = `
+    SELECT pg_advisory_xact_lock(hashtext('app.invitations'));
+    CREATE TABLE IF NOT EXISTS app.invitations (
+      id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id      uuid NOT NULL REFERENCES app.organizations(id),
+      user_id     uuid NOT NULL REFERENCES app.users(id),
+      token_hash  text NOT NULL UNIQUE,
+      invited_by  uuid REFERENCES app.users(id),
+      expires_at  timestamptz NOT NULL,
+      used_at     timestamptz,
+      created_at  timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS invitations_org_idx ON app.invitations (org_id);
+    CREATE INDEX IF NOT EXISTS invitations_user_idx ON app.invitations (user_id);
+    ALTER TABLE app.invitations ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE app.invitations FORCE ROW LEVEL SECURITY;
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE schemaname = 'app' AND tablename = 'invitations' AND policyname = 'tenant_isolation'
+      ) THEN
+        CREATE POLICY tenant_isolation ON app.invitations
+          USING (org_id = app.current_org_id() OR app.is_platform())
+          WITH CHECK (org_id = app.current_org_id() OR app.is_platform());
+      END IF;
+    END $$;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE app.invitations TO hs_app;
+    GRANT SELECT ON TABLE app.invitations TO hs_readonly;
+  `;
+  await client.query(ddl);
 }
 
 /**
@@ -144,6 +183,41 @@ export async function upsertUser(client: ClientBase, user: UserEntity): Promise<
 }
 
 /**
+ * Upserts an invitation record using ON CONFLICT (id) DO UPDATE.
+ * Preserves used_at if already set in the database (idempotency requirement).
+ */
+export async function upsertInvitation(
+  client: ClientBase,
+  invitation: InvitationEntity,
+): Promise<void> {
+  const query = `
+    INSERT INTO app.invitations (
+      id, org_id, user_id, token_hash, invited_by, expires_at, used_at, created_at
+    ) VALUES (
+      $1, $2, $3, $4, $5, $6, $7, $8
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      org_id = EXCLUDED.org_id,
+      user_id = EXCLUDED.user_id,
+      token_hash = EXCLUDED.token_hash,
+      invited_by = EXCLUDED.invited_by,
+      expires_at = EXCLUDED.expires_at,
+      used_at = COALESCE(app.invitations.used_at, EXCLUDED.used_at);
+  `;
+
+  await client.query(query, [
+    invitation.id,
+    invitation.org_id,
+    invitation.user_id,
+    invitation.token_hash,
+    invitation.invited_by,
+    invitation.expires_at,
+    invitation.used_at,
+    invitation.created_at,
+  ]);
+}
+
+/**
  * Executes the entire database seed in a single, safe transaction.
  *
  * Foreign-key dependency order:
@@ -152,6 +226,7 @@ export async function upsertUser(client: ClientBase, user: UserEntity): Promise<
  * 3. Entitlements (app.entitlements; references organization)
  * 4. Company Admins (app.users with org_id set)
  * 5. Candidates (app.users with org_id set)
+ * 6. Invitations (app.invitations; references organization and users)
  *
  * Rolls back atomically on any failure so no partial data is written.
  */
@@ -177,17 +252,19 @@ export async function runSafeSeed(
 
   const refDate = options.referenceDate ?? new Date('2026-10-23T00:00:00Z');
 
-  // Load datasets from 6.1 entities
+  // Load datasets from 6.1 & 6.3 entities
   const platformAdmins = getPlatformAdmins(refDate);
   const organizations = getOrganizations(refDate, platformAdmins[0]!.id);
   const companyAdmins = getCompanyAdmins(refDate);
   const candidates = getCandidates(refDate);
+  const invitations = getInvitations(refDate);
 
   let orgsCount = 0;
   let entsCount = 0;
   let platAdminsCount = 0;
   let compAdminsCount = 0;
   let candsCount = 0;
+  let invsCount = 0;
 
   // 2. Execute within an atomic transaction
   await client.query('BEGIN;');
@@ -196,6 +273,9 @@ export async function runSafeSeed(
     // Set RLS platform bypass context for transaction
     await client.query('SET search_path TO app, public;');
     await client.query("SELECT set_config('app.is_platform', 'true', true);");
+
+    // Ensure table structure exists before inserting
+    await ensureInvitationsTable(client);
 
     // Step A: Platform Admin
     for (const admin of platformAdmins) {
@@ -229,6 +309,13 @@ export async function runSafeSeed(
     }
     log(`Upserted ${candsCount} candidate(s)`);
 
+    // Step F: Invitations (valid, expired, used)
+    for (const inv of invitations) {
+      await upsertInvitation(client, inv);
+      invsCount++;
+    }
+    log(`Upserted ${invsCount} candidate invitation token(s) (valid, expired, used)`);
+
     await client.query('COMMIT;');
   } catch (err) {
     await client.query('ROLLBACK;');
@@ -241,7 +328,9 @@ export async function runSafeSeed(
     platformAdminsUpserted: platAdminsCount,
     companyAdminsUpserted: compAdminsCount,
     candidatesUpserted: candsCount,
-    totalRecordsUpserted: orgsCount + entsCount + platAdminsCount + compAdminsCount + candsCount,
+    invitationsUpserted: invsCount,
+    totalRecordsUpserted:
+      orgsCount + entsCount + platAdminsCount + compAdminsCount + candsCount + invsCount,
   };
 
   log(`Seed completed successfully: ${summary.totalRecordsUpserted} total records processed.`);

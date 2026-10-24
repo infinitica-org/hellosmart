@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --test test/entities.test.ts test/guard.test.ts test/upsert.test.ts"
+    "test": "node --test --test-concurrency=1 test/entities.test.ts test/guard.test.ts test/upsert.test.ts test/invitations.test.ts"
   },
   "dependencies": {
     "pg": "8.13.1"

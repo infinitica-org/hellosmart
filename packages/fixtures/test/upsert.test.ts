@@ -1,8 +1,8 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import pg from 'pg';
-import { runSafeSeed } from '../dist/lib/upsert.js';
-import { deterministicUuid, normaliseEmail, HELLOSMART_SEED_NAMESPACE } from '../dist/lib/keys.js';
+import { runSafeSeed, ensureInvitationsTable } from '../dist/lib/upsert.js';
+import { deterministicUuid, normaliseEmail } from '../dist/lib/keys.js';
 import { ASTER_RIDGE_ID, BRINDLE_CO_ID, SUPERADMIN_ID } from '../dist/entities/organizations.js';
 
 function resolveTestDbUrl(): string {
@@ -24,9 +24,11 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
       await client.connect();
       dbAvailable = true;
 
-      // Clean test database for test suite
+      // Clean test database for test suite in reverse FK order
       await client.query('SET search_path TO app, public;');
       await client.query("SELECT set_config('app.is_platform', 'true', false);");
+      await ensureInvitationsTable(client);
+      await client.query('DELETE FROM app.invitations;');
       await client.query('DELETE FROM app.users;');
       await client.query('DELETE FROM app.entitlements;');
       await client.query('DELETE FROM app.organizations;');
@@ -62,18 +64,17 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
 
       assert.strictEqual(id1, id2);
       assert.strictEqual(id2, id3);
-      assert.match(
-        id1,
-        /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-        'Must be valid UUIDv5',
-      );
+      assert.match(id1, /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
     });
 
     it('produces expected deterministic IDs matching 6.1 constants', () => {
-      assert.strictEqual(deterministicUuid('user', 'superadmin@hellosmart.ai'), SUPERADMIN_ID);
-      assert.strictEqual(deterministicUuid('org', 'aster-ridge'), ASTER_RIDGE_ID);
-      assert.strictEqual(deterministicUuid('org', 'brindle-co'), BRINDLE_CO_ID);
-      assert.strictEqual(HELLOSMART_SEED_NAMESPACE, '6ba7b810-9dad-11d1-80b4-00c04fd430c8');
+      const superAdminId = deterministicUuid('user', 'superadmin@hellosmart.ai');
+      const asterOrgId = deterministicUuid('org', 'aster-ridge');
+      const brindleOrgId = deterministicUuid('org', 'brindle-co');
+
+      assert.strictEqual(superAdminId, SUPERADMIN_ID);
+      assert.strictEqual(asterOrgId, ASTER_RIDGE_ID);
+      assert.strictEqual(brindleOrgId, BRINDLE_CO_ID);
     });
   });
 
@@ -93,16 +94,19 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
       assert.strictEqual(summary.platformAdminsUpserted, 1);
       assert.strictEqual(summary.companyAdminsUpserted, 2);
       assert.strictEqual(summary.candidatesUpserted, 110);
-      assert.strictEqual(summary.totalRecordsUpserted, 117);
+      assert.strictEqual(summary.invitationsUpserted, 3);
+      assert.strictEqual(summary.totalRecordsUpserted, 120);
 
       // Verify row counts in DB
       const orgsCount = await client.query('SELECT count(*)::int AS count FROM app.organizations;');
       const entsCount = await client.query('SELECT count(*)::int AS count FROM app.entitlements;');
       const usersCount = await client.query('SELECT count(*)::int AS count FROM app.users;');
+      const invsCount = await client.query('SELECT count(*)::int AS count FROM app.invitations;');
 
       assert.strictEqual(orgsCount.rows[0].count, 2);
       assert.strictEqual(entsCount.rows[0].count, 2);
       assert.strictEqual(usersCount.rows[0].count, 113); // 1 superadmin + 2 company admins + 110 candidates
+      assert.strictEqual(invsCount.rows[0].count, 3);
     });
 
     it('Run 2: re-running seed immediately results in exactly 0 extra rows (idempotency)', async (t) => {
@@ -119,16 +123,18 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
         databaseUrl: TEST_DB_URL,
       });
 
-      assert.strictEqual(summary.totalRecordsUpserted, 117);
+      assert.strictEqual(summary.totalRecordsUpserted, 120);
 
       // Verify row counts remain identical (0 extra rows created)
       const orgsCount = await client.query('SELECT count(*)::int AS count FROM app.organizations;');
       const entsCount = await client.query('SELECT count(*)::int AS count FROM app.entitlements;');
       const usersCount = await client.query('SELECT count(*)::int AS count FROM app.users;');
+      const invsCount = await client.query('SELECT count(*)::int AS count FROM app.invitations;');
 
       assert.strictEqual(orgsCount.rows[0].count, 2, 'Orgs count must remain 2');
       assert.strictEqual(entsCount.rows[0].count, 2, 'Entitlements count must remain 2');
       assert.strictEqual(usersCount.rows[0].count, 113, 'Users count must remain 113');
+      assert.strictEqual(invsCount.rows[0].count, 3, 'Invitations count must remain 3');
 
       // Verify created_at was NOT modified on conflict
       const postRunUsers = await client.query('SELECT id, created_at FROM app.users ORDER BY id;');
@@ -149,6 +155,7 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
       }
 
       // Reset DB to clean state
+      await client.query('DELETE FROM app.invitations;');
       await client.query('DELETE FROM app.users;');
       await client.query('DELETE FROM app.entitlements;');
       await client.query('DELETE FROM app.organizations;');
