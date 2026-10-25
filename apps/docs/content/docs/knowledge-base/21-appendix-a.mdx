@@ -1,0 +1,25 @@
+---
+title: "Decisions and resolved questions"
+description: "HelloSmart MMP Knowledge Base — Chapter A: Decisions and resolved questions"
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+Every question raised while defining the product has been resolved and is reflected throughout this knowledge base.
+
+| # | Question | Decision | Affected requirements |
+|---|---|---|---|
+| 1 | Does the candidate cap count at invite or at workspace launch? | Candidate counts once against the cap at first workspace launch. Pending (not yet launched) invites are capped separately at 2x the cap; the 2x multiplier is my assumption and is configurable by Platform Admin. | CO-009, CO-011 |
+| 2 | Does the timer keep running while a candidate is disconnected after exiting full screen? | Timer keeps running while disconnected. An assessment-level 'Pause timer on disconnect' setting exists and is OFF by default. The consent screen warns the candidate before connecting. | CA-009, CA-011, CA-007 |
+| 3 | Does 'routing' mean the company's own domain, or AI-model routing? | Routing = company's own domain and portal routing, sold as a paid add-on. Separate instance/VPC stays an Enterprise quote in Phase 3. | SP-007, AD-021, SP-022 |
+| 4 | What does 'custom code' mean in payments? | Custom code = custom quote/coupon code that applies an agreed price or discount; single- or limited-use with expiry. | SP-015 |
+| 5 | Which payment gateway(s) for MMP? | Razorpay in the MMP (cards, UPI, netbanking, subscriptions, GST invoices). Stripe added in Phase 2 behind the same payment abstraction. | SP-018, SP-019 |
+| 6 | Can Company Reviewers exist in MMP or only Company Admins? | MMP has Company Admin users only (created by Platform Admin). The Reviewer role arrives in Phase 2. | CO-007 |
+| 7 | Who pays for AI usage in a trial: company key or HelloSmart credits? | Companies, including trial users, bring their own key in the MMP. RESOLUTION OF A CONFLICT: the Chat workspace needs a key, and your original brief said chat uses HelloSmart credits. So Platform Admin can manually allocate a platform key with a cap to an org as a quoted add-on (interim). Self-serve managed credits are Phase 2. | CO-032, CO-036, AD-023, CA-015 |
+| 8 | Can a company edit scores after finalizing, and is that audit-logged? | Yes. Every edit after finalization creates a new version; original agent scores, prior versions, editor and timestamp are retained. | CO-047, CO-045 |
+| 9 | What are default retention periods for recordings and transcripts? | Default 90 days after the assessment closes, configurable per org within limits set by Platform Admin. Counsel to confirm the period per market. | AD-028, NF-007, CO-016 |
+| 10 | Which workspace modes are in the MMP build? | MMP = Cloud VM and Chat. Local and Browser appear as locked 'coming soon' options and ship in Phase 2. | CO-022, CA-015, CA-014, CA-016 |
+| 11 | Is the master login one URL for all roles? | One master login URL for all roles with RBAC redirect. White-label customers get a branded login route on their custom domain (add-on). | CO-004, CA-002 |
+| 12 | Assumption: companies are created by Platform Admin after the sales call; no public self-signup. | Platform Admin creates every org. Self-serve is revisited after the first 10-15 paying customers. | CO-005 |
+
+---

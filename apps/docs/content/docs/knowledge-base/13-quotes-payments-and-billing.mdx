@@ -1,0 +1,58 @@
+---
+title: "Quotes, payments and billing"
+description: "HelloSmart MMP Knowledge Base — Chapter 13: Quotes, payments and billing"
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+Payments are digital end to end. HelloSmart can collect by email or inside the app, once or on a recurring basis, based on what was quoted.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant H as Platform Admin
+  participant C as Company Admin
+  participant G as Razorpay
+  participant S as HelloSmart system
+  H->>H: Builds the quote with line items, GST, one-time or recurring
+  H->>C: Emails the quote and payment link, or issues a payment code
+  C->>G: Pays by link or in-app Billing
+  G->>S: Webhook confirms the payment
+  S->>C: GST invoice and receipt
+  S->>S: Upgrades entitlements and unlocks add-ons
+  H->>S: Completes setup for own domain or white label if bought
+```
+
+### 13.1 Quotes
+
+A quote has line items (platform plan, candidate pack, custom templates, white label, custom routing, AI credits), discounts, tax (GST), currency and a validity date, and is either one-time or recurring. The company receives it by secure link, and its status moves through Sent, Viewed, Accepted or Expired.
+
+### 13.2 Ways to pay
+
+| Way | How it works |
+|---|---|
+| Email payment link | The admin emails a link that opens hosted checkout; status updates automatically. |
+| In-app payment | The company sees quoted amounts in Billing and pays by card, UPI or netbanking, depending on the gateway. |
+| Recurring | Monthly or annual subscriptions with auto-renew, retries on failure, cancellation and plan changes. |
+| One-time | Setup fees and custom template builds. |
+| Payment code | A code that applies a pre-agreed custom price or discount. It can be single-use or limited-use and can expire. |
+
+The first release uses **Razorpay**, which supports cards, UPI, netbanking and subscriptions. Stripe is added in Phase 2 for international customers. HelloSmart never stores card data.
+
+### 13.3 After payment
+
+Payment success unlocks plan limits and add-ons automatically. The company receives a GST-compliant invoice and a receipt, and can see its history in Billing.
+
+### 13.4 When a renewal fails
+
+```mermaid
+stateDiagram-v2
+  [*] --> Active
+  Active --> PastDue: renewal fails
+  PastDue --> Active: retry succeeds
+  PastDue --> Suspended: grace period ends, downgrade or suspend
+  Suspended --> Active: payment received
+  Active --> Cancelled: company cancels
+```
+
+---

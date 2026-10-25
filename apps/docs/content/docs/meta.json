@@ -1,0 +1,16 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "roles",
+    "architecture",
+    "database",
+    "api",
+    "production",
+    "operations",
+    "security",
+    "adr",
+    "planning",
+    "knowledge-base"
+  ]
+}
