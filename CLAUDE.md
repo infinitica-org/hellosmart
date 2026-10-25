@@ -7,6 +7,7 @@ Read before any change: [AGENTS.md](AGENTS.md) (business rules win), [docs/00-ar
 |---|---|
 | Install | `pnpm install` |
 | Local infra | `pnpm infra:up` |
+| Docs dev / sync check | `pnpm docs:dev` / `pnpm docs:sync-check` |
 | Mock API (from contracts) | `pnpm mock` → http://localhost:4010 |
 | Typecheck / lint / test | `pnpm typecheck && pnpm lint && pnpm test` |
 | Cross-tenant suite | `pnpm test:tenancy` |
@@ -24,10 +25,12 @@ Read before any change: [AGENTS.md](AGENTS.md) (business rules win), [docs/00-ar
 8. **Idempotency:** webhooks and jobs dedupe by key.
 9. **Phase:** build only `MMP` items. Phase 2/3 = extension point or flag only.
 10. **Never** touch `infra/terraform/envs/prod`, CI workflows, `.claude/settings.json` or `packages/contracts` unless the ticket says so and it belongs to your department.
+11. **AIDLC Documentation Sync:** whenever you modify database schemas, APIs, or service architecture, you MUST update the documentation under `apps/docs/content/docs/`. Run `pnpm docs:sync-check`.
 
 ## Definition of done (agent self-check before opening a PR)
 - [ ] Every acceptance criterion in `tasks/<ID>.md` demonstrated by a test
 - [ ] typecheck, lint, unit, integration and tenancy tests pass locally
+- [ ] Documentation updated in `apps/docs/content/docs/` for any DB migration, API, or architecture change (`pnpm docs:sync-check` passes)
 - [ ] `/security-check` run on the diff, findings fixed
 - [ ] No new dependency without a note in the PR (supply-chain review)
 - [ ] Migration has `org_id`, index, RLS policy (if tenant table)

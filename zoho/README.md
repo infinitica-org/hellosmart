@@ -2,11 +2,21 @@
 
 Generated from [AGENTS.md](../AGENTS.md) by [tools/build_backlog.py](tools/build_backlog.py). **Do not hand-edit the CSVs**: change AGENTS.md or the mapping in the script, then run `py zoho/tools/build_backlog.py`.
 
+## Sprint 0 Final File for Allen (Zoho Sprints Import)
+See the full import walkthrough in [ZOHO_SPRINTS_IMPORT_GUIDE.md](ZOHO_SPRINTS_IMPORT_GUIDE.md).
+
+| File | Type | Description |
+|---|---|---|
+| [HelloSmart-Sprint0-Final.xlsx](HelloSmart-Sprint0-Final.xlsx) | Excel (.xlsx) | **The Single Final File**: 29 tickets (7 parent Tasks/Migrations/Tests + 22 Sub Tasks) with uncolored clean styling, simple human instructions from Tino, and Allen's exact ticket types. |
+
+
+## Backlog Files (Full MMP Scope)
 | File | Contents |
 |---|---|
 | [epics.csv](epics.csv) | 16 epics, owner department seat |
 | [sprints.csv](sprints.csv) | S0–S6 with dates and goals + Phase 2/3 backlogs |
 | [backlog.csv](backlog.csv) | **204 items**: 150 Stories (every requirement, acceptance criteria in the description) + 54 Tasks (infra, security, content, QA) |
+
 
 ## Totals
 | Sprint | Dates | Items | Points |
