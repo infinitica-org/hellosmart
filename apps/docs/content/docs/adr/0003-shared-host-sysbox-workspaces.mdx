@@ -1,0 +1,25 @@
+---
+title: "0003: Shared EC2 hosts with Sysbox slots for candidate workspaces"
+description: "Architecture Decision Record: 0003: Shared EC2 hosts with Sysbox slots for candidate workspaces"
+---
+
+<RoleBadge roles={["sde"]} />
+
+# 0003: Shared EC2 hosts with Sysbox slots for candidate workspaces
+
+**Status:** Accepted · 2026-10-22 (replaces "one VM per candidate")
+
+## Context
+Candidates run untrusted code with Docker, dev servers and coding agents. A VM per candidate is the strongest isolation but costs 3–4x more idle capacity and starts slower. Plain Docker on a shared VM needs privileged mode for Docker-in-Docker, which is unacceptable.
+
+## Decision
+- `m7i.2xlarge` hosts in an isolated `workspaces` AWS account, ~4 `medium` slots each.
+- Each candidate = one Sysbox system container: user-namespace root, own netns, nested Docker without privileged mode, hard cgroup memory/PID/disk limits.
+- Egress through AWS Network Firewall domain allowlist; AI domains blocked when AI is OFF.
+- IMDS unreachable from slots (hop limit 1 + nftables drop 169.254.169.254).
+- Hosts recycled every 24 h, no data-access IAM, no SSH (SSM only).
+- Templates may declare `isolation: dedicated` for a whole VM.
+
+## Consequences
++ Lower cost, < 20 s slot start, strong isolation.
+− Kernel is shared between slots; mitigated by user namespaces, patched AMIs, GuardDuty Runtime Monitoring, pen-test in S6, and the dedicated escape hatch.
