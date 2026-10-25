@@ -1,0 +1,5 @@
+{
+  "title": "Role Perspectives",
+  "description": "Team-oriented playbooks for SDE, AI, QA, and Managing groups",
+  "pages": ["sde", "ai", "qa", "managing"]
+}

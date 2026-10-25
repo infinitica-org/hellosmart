@@ -1,0 +1,36 @@
+PROPRIETARY AND CONFIDENTIAL
+
+Copyright (c) 2026 Infinitica. All rights reserved.
+
+This repository, including all source code, documentation, templates, reviewer-agent
+configurations, prompts, designs, data and other materials (the "Software"), is the
+confidential and proprietary property of Infinitica ("the Company").
+
+1. No licence is granted. Access to the Software is provided solely to employees,
+   interns and contractors of the Company who are bound by a written confidentiality
+   or employment agreement, and only for the purpose of performing work for the Company.
+
+2. You may not, without prior written permission from the Company:
+   a. copy, distribute, publish, sublicense, sell or disclose the Software or any part
+      of it to any third party;
+   b. use the Software, or knowledge derived from it, for any purpose other than work
+      for the Company;
+   c. upload the Software, or any part of it, to any public repository, public AI
+      service, paste site or file-sharing service. Approved AI coding tools configured
+      under the Company's agreements (see CONTRIBUTING.md) are permitted;
+   d. remove or alter this notice.
+
+3. All contributions made to this repository by any person in the course of work for
+   the Company are owned by the Company, as set out in that person's agreement with
+   the Company.
+
+4. Third-party open-source components remain under their own licences, listed in the
+   generated software bill of materials (SBOM). Only licences on the approved list in
+   CONTRIBUTING.md may be added.
+
+5. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+
+When your engagement with the Company ends, you must delete all copies of the Software
+in your possession.
+
+Questions: legal@hellosmart.ai

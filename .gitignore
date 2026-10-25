@@ -39,3 +39,12 @@ Thumbs.db
 *.swp
 # agent worktrees
 .worktrees/
+
+# personal Claude Code settings
+.claude/settings.local.json
+
+# spreadsheets
+*.xlsx
+
+# zoho
+zoho/

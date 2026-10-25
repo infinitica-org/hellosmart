@@ -1,20 +1,42 @@
+# Dependency updates target dev (never main) and arrive as a few grouped PRs.
+# Major versions are ignored until after launch (12 Dec 2026): they need a deliberate, tested upgrade ticket.
+# Security updates still come through regardless of these rules.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    target-branch: dev
     schedule: { interval: weekly, day: monday }
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
-      minor-and-patch: { update-types: [minor, patch] }
+      npm-minor-patch: { patterns: ["*"], update-types: [minor, patch] }
+
   - package-ecosystem: pip
     directories: [/services/ai-proxy, /services/reviewer]
+    target-branch: dev
     schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      python-minor-patch: { patterns: ["*"], update-types: [minor, patch] }
+
   - package-ecosystem: github-actions
     directory: /
-    schedule: { interval: weekly }
+    target-branch: dev
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 1
+    groups:
+      actions: { patterns: ["*"] }
+
   - package-ecosystem: terraform
     directories: [/infra/terraform/modules/*]
-    schedule: { interval: weekly }
-  - package-ecosystem: docker
-    directory: /infra/docker
-    schedule: { interval: weekly }
+    target-branch: dev
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 1
+    groups:
+      terraform: { patterns: ["*"] }

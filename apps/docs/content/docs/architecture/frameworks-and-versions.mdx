@@ -1,0 +1,56 @@
+---
+title: "Frameworks & Versions Matrix"
+description: "Comprehensive technical stack specification, runtime versions, package dependencies, and architectural rationale."
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+# Frameworks & Versions Matrix
+
+This document defines the frozen technology stack, runtime versions, and architecture choices for the HelloSmart platform. Every dependency is selected based on strict criteria: **type safety, multi-tenant security, cold-start latency, and active LTS maintenance**.
+
+---
+
+## 1. Technology Stack Specification
+
+| Category | Technology | Version | Purpose / Package |
+|---|---|---|---|
+| **Runtime Engine** | Node.js | `24.x LTS` | Server runtime across API, workers, and frontend apps |
+| **Package Manager** | pnpm | `9.12.3` | Monorepo workspace package resolution and store caching |
+| **Monorepo Engine** | Turborepo | `2.2.3` | Build caching, task orchestration, and pipeline graph |
+| **Core Language** | TypeScript | `5.6.3 / 7.0` | Strict end-to-end type safety |
+| **Backend Framework** | NestJS | `10.4.6` | Enterprise modular monolith API architecture |
+| **HTTP Engine** | Fastify | `10.4.6` | High-throughput HTTP & WebSocket transport (replaces Express) |
+| **ORM / Data Layer** | Drizzle ORM | `0.36.0` | SQL-first schema definitions and type-safe query building |
+| **Database Engine** | PostgreSQL | `16.x` | Primary relational database with RLS, `citext`, and `pgcrypto` |
+| **Cache & Queue** | Redis | `7.2` | BullMQ background jobs, rate limiting, and session state |
+| **Frontend Framework**| Next.js | `15.0.3 / 16.4` | App Router, server components, and streaming UI |
+| **UI Library** | React | `19.x` | Modern reactive client architecture |
+| **CSS & Design** | Tailwind CSS | `3.4 / 4.3` | Zero-runtime utility styling and tokenized dark themes |
+| **Documentation** | Fumadocs | `16.17.8` | Next.js-based documentation framework with full-text search |
+| **Diagram Engine** | Mermaid.js | `12.2.0` | Client-rendered interactive architecture and ER diagrams |
+| **Container Engine** | Sysbox (`sysbox-runc`)| `0.6.7` | Unprivileged Docker-in-Docker virtualized containers |
+| **Unit & Integration**| Vitest | `2.1.4` | Fast ESM unit testing and tenancy RLS suites |
+| **End-to-End Test** | Playwright | `1.48.x` | Headless browser automation for candidate workflows |
+| **Security Scanning** | Gitleaks / Semgrep | Latest | Pre-commit secret scanning and SAST vulnerability audits |
+
+---
+
+## 2. Deep Architectural Rationale
+
+### Why NestJS + Fastify instead of Express?
+Standard Express lacks built-in dependency injection, relies on middleware chaining that easily leaks errors, and has significantly higher HTTP overhead. NestJS provides strict module boundaries (`AuthModule`, `TenancyModule`, `AssessmentsModule`), while Fastify delivers 2x higher request throughput and native WebSocket support for candidate terminal streaming.
+
+### Why Drizzle ORM instead of Prisma?
+Prisma requires an external binary query engine (`prisma-query-engine`) that adds 50MB+ to container images and obscures SQL generation. Drizzle is lightweight, outputs zero-overhead raw SQL, and makes it trivial to inject `set_config('app.org_id', $1, true)` into PostgreSQL transactions for RLS enforcement.
+
+### Why Sysbox instead of Firecracker or gVisor?
+1. **Firecracker**: MicroVMs provide stellar isolation, but provisioning nested Docker environments inside a Firecracker microVM takes over 35 seconds and requires nested virtualization flags not available on all cloud instances.
+2. **gVisor (`runsc`)**: Traps host syscalls in user space, causing severe performance penalties (3x slowdown on disk and git operations) that degrade candidate IDE responsiveness.
+3. **Sysbox (`sysbox-runc`)**: Provides secure user namespaces and allows unprivileged Docker-in-Docker natively, spinning up complete Ubuntu developer environments in under 5 seconds with zero host kernel compromise risk.
+
+### Why Fumadocs for HelloSmart Docs?
+Fumadocs is built natively on Next.js App Router and Turbopack. It provides:
+- First-class MDX compilation with automated Table of Contents and frontmatter validation.
+- Built-in full-text search without external Algolia dependencies.
+- Native integration with our role-based authentication proxy.
