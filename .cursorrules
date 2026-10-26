@@ -1,0 +1,18 @@
+# HelloSmart.ai — Cursor & AI Agent Instructions
+
+You are building the HelloSmart MMP. Read and follow these rules:
+
+1. **Invariants (BR-01 to BR-33)** in `AGENTS.md` take precedence over everything.
+2. **Tenant Isolation (BR-01)**: Every database query, cache key, and file path is scoped by `org_id`. Cross-org access returns 404, never 403. Add cross-tenant tests (`test(BR-01): ...`).
+3. **Workspace Security (BR-13)**: Workspaces receive only short-lived session tokens. Never inject real LLM provider keys or real cloud credentials into candidate containers. All AI calls route through `services/ai-proxy`.
+4. **Sysbox Containers (BR-10, BR-11)**: Workspaces run unprivileged in `sysbox-runc`. Exiting fullscreen disconnects (not destroys) the session. Work snapshots persist with RPO <= 30s.
+5. **Contract-First**: Implement against `packages/contracts` (OpenAPI 3.1, SQL migrations).
+6. **AIDLC Documentation Synchronization**:
+   - Whenever you modify database migrations, OpenAPI paths, or service architecture, you MUST update the corresponding Fumadocs markdown in `apps/docs/content/docs/`.
+   - Run `pnpm docs:sync-check` to assert that documentation has not drifted.
+7. **Monorepo Commands**:
+   - `pnpm docs:dev` — run Fumadocs internal docs
+   - `pnpm docs:sync-check` — verify schema and API doc synchronization
+   - `pnpm typecheck` — typecheck all packages
+   - `pnpm test` — run unit/integration tests
+   - `pnpm test:tenancy` — run cross-tenant isolation tests

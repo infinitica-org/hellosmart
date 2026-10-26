@@ -1,0 +1,69 @@
+---
+title: "AI controls"
+description: "HelloSmart MMP Knowledge Base — Chapter 8: AI controls"
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+HelloSmart lets each company decide **whether** candidates get AI, **which** AI, and **how much**.
+
+### 8.1 Where the settings live
+
+| Level | Setting | Who sets it |
+|---|---|---|
+| Company Settings | Provider keys, default key | Company Admin |
+| Template | Default AI policy and suggested caps | HelloSmart |
+| Assessment | AI on/off, key and models, per-candidate and per-assessment caps, rate limit | Company Admin |
+
+The most specific level wins: assessment over template over company defaults.
+
+### 8.2 Which key is used
+
+```mermaid
+flowchart TD
+  Q["Which key powers the assistant?"] --> A{"Has the company added its own provider key?"}
+  A -->|"Yes"| K1["Use the company key (first-release default)"]
+  A -->|"No"| B{"Has HelloSmart allocated a capped platform key?"}
+  B -->|"Yes"| K2["Use the platform key within its cap"]
+  B -->|"No"| K3["Add a key in Settings or ask HelloSmart for an allocation"]
+  K1 --> L["All calls go through the AI proxy"]
+  K2 --> L
+```
+
+### 8.3 The AI proxy in action
+
+```mermaid
+sequenceDiagram
+  participant WS as Workspace
+  participant AP as AI proxy
+  participant V as Key vault
+  participant L as AI provider
+  WS->>AP: Request with a short-lived session token
+  AP->>AP: Check AI is on, model allowed, rate limit, cap
+  alt Blocked
+    AP-->>WS: A clear message: AI off, cap reached or model not allowed
+  else Allowed
+    AP->>V: Fetch the real key
+    V-->>AP: Key, never sent to the workspace
+    AP->>L: Forward the request
+    L-->>AP: Response
+    AP->>AP: Log prompt, response, tokens and cost
+    AP-->>WS: Response
+  end
+```
+
+This one design delivers key security, on/off control, caps and the transcript the reviewer agents need.
+
+### 8.4 Caps
+
+Caps are per candidate and per assessment, in tokens or currency, plus requests per minute. At the cap the candidate is warned first, then blocked, and sees a clear message and their remaining budget. Work can continue without AI.
+
+### 8.5 When AI is off
+
+The assistant is removed from the workspace and outbound access to known AI domains is blocked on Cloud workspaces. (In Local mode, in Phase 2, AI-off cannot be fully enforced because the candidate has their own machine, and reports will say so.)
+
+### 8.6 Cost visibility
+
+Companies see AI usage and cost per assessment and across the organization, by candidate and by model.
+
+---
