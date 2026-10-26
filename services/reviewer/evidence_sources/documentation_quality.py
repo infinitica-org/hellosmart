@@ -1,13 +1,17 @@
 """Evidence builder for the documentation-quality agent (AD-014b).
 
 Full-depth port of ProjAgentScan's src/agents/documentation_quality/evidence.py: README
-presence/content, public-docstring samples (sharing code-quality's docstring-coverage logic,
-evidence_sources/checks/docstring_coverage.py), and now docstring-substance ("does it just
-restate the function's own name" -- docstring_substance.py), the check the narrower first pass
-deliberately left out even though this agent's own rubric cites it directly.
+presence/content, real public-docstring TEXT samples (not just coverage counts --
+_public_docstrings/_add_docstring_samples below, from the 3 largest files), per-file
+docstring-coverage counts (sharing code-quality's docstring_coverage.py), and
+docstring-substance ("does it just restate the function's own name" -- docstring_substance.py).
+Sampling actual docstring text, not only aggregate counts, closes a real gap: a model judging
+documentation quality needs something to quote, and a count isn't quotable.
 """
 
 from __future__ import annotations
+
+import ast
 
 from app.evidence import EvidenceCoverage, EvidenceItem, EvidencePack
 from app.sanitizer import normalise, suspicious
@@ -18,8 +22,10 @@ from .repo_io import RepoReader, safe_id, safe_parse_python
 
 TOP_FILES_FOR_SAMPLING = 3
 MAX_SAMPLES = 8
+MAX_DOCSTRING_CHARS = 400
 README_MAX_CHARS = 4000
 README_CANDIDATES = ("README.md", "README.rst", "README.txt", "README", "readme.md")
+_NAMED = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 
 
 def _sanitize(pack: EvidencePack, ref: str, text: str) -> str:
@@ -29,7 +35,29 @@ def _sanitize(pack: EvidencePack, ref: str, text: str) -> str:
     return cleaned
 
 
+def _public_docstrings(tree: ast.AST) -> list[tuple[str, str, int]]:
+    """[(qualified_name, docstring, line)] for public, non-overload functions/classes, in
+    source order."""
+    found: list[tuple[str, str, int]] = []
+
+    def visit(nodes: list[ast.stmt], prefix: str) -> None:
+        for node in nodes:
+            if isinstance(node, _NAMED):
+                if node.name.startswith("_"):
+                    continue
+                doc = ast.get_docstring(node)
+                if doc and doc.strip():
+                    found.append((prefix + node.name, doc.strip(), node.lineno))
+                if isinstance(node, ast.ClassDef):
+                    visit(node.body, f"{prefix}{node.name}.")
+
+    visit(tree.body, "")  # type: ignore[attr-defined]
+    return found
+
+
 def _add_docstring_samples(pack: EvidencePack, reader: RepoReader) -> int:
+    """Real docstring TEXT samples (up to MAX_SAMPLES, from the TOP_FILES_FOR_SAMPLING largest
+    files) -- quotable evidence, not just a per-file coverage count."""
     py_files = reader.iter_files("source", suffixes={".py"})
     sized: list[tuple[int, str, str]] = []
     for rel in py_files:
@@ -45,11 +73,42 @@ def _add_docstring_samples(pack: EvidencePack, reader: RepoReader) -> int:
         tree, _reason = safe_parse_python(text, rel)
         if tree is None:
             continue
+        for name, doc, line in _public_docstrings(tree):
+            if added >= MAX_SAMPLES:
+                break
+            if len(doc) > MAX_DOCSTRING_CHARS:
+                pack.truncations.append(
+                    f"docstring: {MAX_DOCSTRING_CHARS} of {len(doc)} chars shown"
+                )
+                doc = doc[:MAX_DOCSTRING_CHARS]
+            safe_rel, _ = safe_id(f"{rel}_{name}")
+            ref = f"repo:ev.docstring.sample.{safe_rel}"
+            body = f"file={rel}; name={name}; line {line}\n{doc}"
+            pack.items.append(
+                EvidenceItem(
+                    ref=ref, source="artifact", content=_sanitize(pack, ref, body),
+                    untrusted=True, sanitized=True,
+                )
+            )
+            added += 1
+    return added
+
+
+def _add_docstring_coverage(pack: EvidencePack, reader: RepoReader) -> None:
+    """Per-file coverage counts (public_functions/documented/param_annotation_ratio) --
+    aggregate, alongside (not instead of) the real text samples above."""
+    for rel in reader.iter_files("source", suffixes={".py"})[:TOP_FILES_FOR_SAMPLING]:
+        text = reader.read_text(rel)
+        if text is None:
+            continue
+        tree, _reason = safe_parse_python(text, rel)
+        if tree is None:
+            continue
         counts = analyze_tree(tree)
         if counts["functions"] == 0:
             continue
         safe_rel, _ = safe_id(rel)
-        ref = f"repo:ev.docstring.{safe_rel}"
+        ref = f"repo:ev.docstring.coverage.{safe_rel}"
         param_ratio = (
             round(counts["params_annotated"] / counts["params"], 3) if counts["params"] else None
         )
@@ -63,8 +122,6 @@ def _add_docstring_samples(pack: EvidencePack, reader: RepoReader) -> int:
                 untrusted=True, sanitized=True,
             )
         )
-        added += 1
-    return added
 
 
 def _add_readme(pack: EvidencePack, reader: RepoReader) -> bool:
@@ -125,6 +182,7 @@ def build_evidence(
     reader = RepoReader(clone_dir, manifest=manifest)
 
     sampled = _add_docstring_samples(pack, reader)
+    _add_docstring_coverage(pack, reader)
     has_readme = _add_readme(pack, reader)
     _add_docstring_substance(pack, reader)
 

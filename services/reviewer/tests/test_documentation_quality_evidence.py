@@ -42,6 +42,28 @@ def test_pack_is_deterministic(tmp_path: Path) -> None:
     assert pack1.model_dump() == pack2.model_dump()
 
 
+def test_documentation_quality_samples_the_actual_docstring_text(tmp_path: Path) -> None:
+    """A documentation-quality agent with only a per-file coverage count has nothing to quote;
+    the original samples the real docstring text of public functions/classes so the model can
+    point at the actual words, not just a ratio."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("app.py").write_text(
+        "def helper(x):\n"
+        '    """Convert x to a positive integer, raising on negative input."""\n'
+        "    if x < 0:\n        raise ValueError(x)\n    return int(x)\n",
+        encoding="utf-8",
+    )
+
+    pack = build_evidence("sub-1", str(root))
+    sample_refs = [r for r in pack.refs if r.startswith("repo:ev.docstring.sample.")]
+    assert sample_refs
+    item = pack.resolve(sample_refs[0])
+    assert item is not None
+    assert "Convert x to a positive integer, raising on negative input." in item.content
+    assert any(r.startswith("repo:ev.docstring.coverage.") for r in pack.refs)
+
+
 def test_restating_docstring_is_flagged_as_a_fact_this_agent_cites(tmp_path: Path) -> None:
     """documentation-quality.yaml's own anchors cite "a docstring that only restates the name"
     as a low-score signal -- the narrower first pass of this evidence builder had no fact to back
