@@ -67,8 +67,6 @@ ${sec0}
 
 ${sec1}
 
----
-
 ## 2. Product Overview
 
 ${sec2}

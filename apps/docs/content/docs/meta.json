@@ -2,16 +2,16 @@
   "title": "Documentation",
   "pages": [
     "index",
+    "knowledge-base",
+    "brd",
     "roles",
     "architecture",
     "database",
     "api",
+    "security",
     "production",
     "operations",
-    "security",
-    "adr",
     "planning",
-    "brd",
-    "knowledge-base"
+    "adr"
   ]
 }
