@@ -50,5 +50,14 @@ export class ProblemDetailsException extends HttpException {
       code,
     });
   }
+
+  static internalServerError(code = 'INTERNAL_ERROR', detail = 'An internal server error occurred while processing the request.'): ProblemDetailsException {
+    return new ProblemDetailsException({
+      title: 'Internal Server Error',
+      status: HttpStatus.INTERNAL_SERVER_ERROR,
+      detail,
+      code,
+    });
+  }
 }
 

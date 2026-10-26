@@ -45,6 +45,23 @@ export class DatabaseService implements OnModuleDestroy {
   }
 
   /**
+   * Returns the underlying Postgres pool.
+   */
+  getPool(): pg.Pool | null {
+    return this.pool;
+  }
+
+  /**
+   * Checks out a client from the pool.
+   */
+  async getClient(): Promise<pg.PoolClient | null> {
+    if (!this.pool) {
+      return null;
+    }
+    return this.pool.connect();
+  }
+
+  /**
    * Checks whether the user and their associated organization are active or suspended.
    * Uses a single query for maximum performance.
    */
