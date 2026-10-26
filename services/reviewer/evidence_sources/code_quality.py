@@ -16,6 +16,10 @@ practice even for short lists.
 
 from __future__ import annotations
 
+import ast
+import hashlib
+from typing import cast
+
 from app.evidence import EvidenceCoverage, EvidenceItem, EvidencePack
 from app.sanitizer import normalise, suspicious
 
@@ -31,6 +35,11 @@ MAX_DOCSTRING_SAMPLES = 8
 MAX_DOCSTRING_CHARS = 400
 README_MAX_CHARS = 4000
 README_CANDIDATES = ("README.md", "README.rst", "README.txt", "README", "readme.md")
+TOP_COMPLEX = 3
+TOTAL_CODE_SAMPLES = 8
+MAX_LINES_PER_SAMPLE = 60
+_SELECTION_SALT = "code_quality/v1"
+_FUNC = (ast.FunctionDef, ast.AsyncFunctionDef)
 
 
 def _sanitize(pack: EvidencePack, ref: str, text: str) -> str:
@@ -46,10 +55,11 @@ def _sanitize(pack: EvidencePack, ref: str, text: str) -> str:
     return cleaned
 
 
-def _add_complexity(pack: EvidencePack, reader: RepoReader) -> None:
+def _add_complexity(pack: EvidencePack, reader: RepoReader) -> list[dict[str, object]]:
+    """Returns the flat (file, name, line, cognitive) function list for code-sample selection."""
     py_files = reader.iter_files("source", suffixes={".py"})
     all_scores: list[int] = []
-    per_file: list[tuple[str, list[dict[str, object]]]] = []
+    functions: list[dict[str, object]] = []
     for rel in py_files:
         text = reader.read_text(rel)
         if text is None:
@@ -58,14 +68,13 @@ def _add_complexity(pack: EvidencePack, reader: RepoReader) -> None:
         if tree is None:
             continue
         try:
-            functions = score_tree(tree)
+            file_functions = score_tree(tree)
         except RecursionError:
             continue
-        if functions:
-            per_file.append((rel, functions))
-            all_scores.extend(
-                f["cognitive"] for f in functions if isinstance(f["cognitive"], int)
-            )
+        for fn in file_functions:
+            functions.append({"file": rel, **fn})
+            if isinstance(fn["cognitive"], int):
+                all_scores.append(fn["cognitive"])
 
     if not all_scores:
         pack.coverage.append(
@@ -74,7 +83,7 @@ def _add_complexity(pack: EvidencePack, reader: RepoReader) -> None:
                 reason="no functions found in the analyzed Python files",
             )
         )
-        return
+        return []
 
     ordered = sorted(all_scores)
     summary = (
@@ -90,6 +99,75 @@ def _add_complexity(pack: EvidencePack, reader: RepoReader) -> None:
             sanitized=False,
         )
     )
+    return functions
+
+
+def _hash_order(file: str, name: str) -> str:
+    return hashlib.sha256(f"{_SELECTION_SALT}|{file}|{name}".encode()).hexdigest()
+
+
+def _select_functions(functions: list[dict[str, object]]) -> list[dict[str, object]]:
+    """The TOP_COMPLEX most cognitively complex functions, plus the rest of the sample in a
+    fixed (not file-order-biased) hash order -- deterministic across runs, not favoring
+    whichever file happens to sort first."""
+    by_complexity = sorted(
+        functions,
+        key=lambda f: (-cast(int, f["cognitive"]), str(f["file"]), cast(int, f["line"])),
+    )
+    chosen = by_complexity[:TOP_COMPLEX]
+    taken = {(f["file"], f["name"], f["line"]) for f in chosen}
+    rest = [f for f in functions if (f["file"], f["name"], f["line"]) not in taken]
+    rest.sort(
+        key=lambda f: (_hash_order(str(f["file"]), str(f["name"])), cast(int, f["line"]))
+    )
+    chosen += rest[: TOTAL_CODE_SAMPLES - len(chosen)]
+    return sorted(chosen, key=lambda f: (str(f["file"]), cast(int, f["line"])))
+
+
+def _function_source(source: str, name: str, line: int) -> str | None:
+    tree, _reason = safe_parse_python(source, "")
+    if tree is None:
+        return None
+    lines = source.splitlines()
+    target_name = name.rsplit(".", 1)[-1]
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, _FUNC)
+            and node.lineno == line
+            and node.name == target_name
+        ):
+            end = getattr(node, "end_lineno", None) or node.lineno
+            return "\n".join(lines[node.lineno - 1 : end])
+    return None
+
+
+def _add_code_samples(
+    pack: EvidencePack, file_texts: dict[str, str], functions: list[dict[str, object]]
+) -> None:
+    for fn in _select_functions(functions):
+        file = str(fn["file"])
+        name = str(fn["name"])
+        line = cast(int, fn["line"])
+        source = file_texts.get(file)
+        text = _function_source(source, name, line) if source is not None else None
+        if text is None:
+            pack.truncations.append("code: one sampled function could not be read or extracted")
+            continue
+        lines = text.splitlines()
+        if len(lines) > MAX_LINES_PER_SAMPLE:
+            pack.truncations.append(
+                f"code sample: {MAX_LINES_PER_SAMPLE} of {len(lines)} lines shown"
+            )
+            text = "\n".join(lines[:MAX_LINES_PER_SAMPLE])
+        safe_rel, _ = safe_id(f"{file}_{name}_{line}")
+        ref = f"repo:ev.code.{safe_rel}"
+        content = f"file={file}; function={name}; line {line}\n{text}"
+        pack.items.append(
+            EvidenceItem(
+                ref=ref, source="artifact", content=_sanitize(pack, ref, content),
+                untrusted=True, sanitized=True,
+            )
+        )
 
 
 def _add_docstring_samples(pack: EvidencePack, reader: RepoReader) -> int:
@@ -257,11 +335,12 @@ def build_evidence(
     pack = EvidencePack(agent_id="code-quality", submission_id=submission_id)
     reader = RepoReader(clone_dir, manifest=manifest)
 
-    _add_complexity(pack, reader)
+    functions = _add_complexity(pack, reader)
     sampled = _add_docstring_samples(pack, reader)
     has_readme = _add_readme(pack, reader)
 
     file_texts = _all_python_texts(reader)
+    _add_code_samples(pack, file_texts, functions)
     _add_duplication(pack, file_texts)
     _add_lint(pack, clone_dir, file_texts)
     _add_docstring_substance(pack, file_texts)

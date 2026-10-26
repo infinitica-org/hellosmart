@@ -94,6 +94,31 @@ def test_substantive_docstring_is_not_flagged(tmp_path: Path) -> None:
     assert "restating_docstrings=0" in summary.content
 
 
+def test_code_quality_samples_the_actual_function_source(tmp_path: Path) -> None:
+    """A code-quality agent with only an aggregate complexity number to cite has nothing to
+    quote -- the original samples real function source text (most complex + a fixed hash-order
+    rest) so the model can point at actual code, not just a number."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("app.py").write_text(
+        "def simple():\n    return 1\n\n\n"
+        "def complicated(x):\n"
+        "    if x > 0:\n"
+        "        if x > 10:\n"
+        "            for i in range(x):\n"
+        "                if i % 2 == 0:\n"
+        "                    return i\n"
+        "    return 0\n",
+        encoding="utf-8",
+    )
+
+    pack = build_evidence("sub-1", str(root))
+    code_refs = [r for r in pack.refs if r.startswith("repo:ev.code.")]
+    assert code_refs
+    contents = [pack.resolve(r).content for r in code_refs]  # type: ignore[union-attr]
+    assert any("def complicated(x):" in c for c in contents)
+
+
 def test_full_depth_pack_is_deterministic(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     root.mkdir()
