@@ -51,3 +51,9 @@ playwright-report/
 
 # personal Claude Code settings
 .claude/settings.local.json
+
+# spreadsheets
+*.xlsx
+
+# zoho
+zoho/

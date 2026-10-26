@@ -1,0 +1,35 @@
+---
+title: "Launch Security Checklist"
+description: "SOC 2 readiness, penetration test gating, and threat controls"
+---
+
+<RoleBadge roles={["qa","mgmt"]} />
+
+# Launch security checklist (go/no-go Thu 10 Dec 2026)
+
+Every item needs evidence linked in Zoho. Any unchecked **critical** item = no-go.
+
+## Critical
+- [ ] Cross-tenant suite green on prod build; RLS enabled + forced on every tenant table (query `pg_class.relforcerowsecurity`)
+- [ ] Slot escape, IMDS and cross-slot network tests pass on prod-like hosts
+- [ ] No provider key observable from a slot (env, files, network, logs)
+- [ ] Payment webhook signature + idempotency verified with Razorpay test events
+- [ ] MFA enforced for all platform admins; root accounts locked with hardware MFA
+- [ ] External pen-test quick scan: no open high/critical
+- [ ] Prompt-injection suite: no score movement on adversarial set
+- [ ] Secrets scan clean on full git history
+
+## High
+- [ ] WAF managed rules + rate limits active; login throttling verified
+- [ ] GuardDuty, Security Hub (CIS + FSBP ≥ 90%), Inspector, CloudTrail org trail with Object Lock
+- [ ] Backups: Aurora PITR + restore drill done; S3 versioning on
+- [ ] CSP, HSTS (preload), cookies Secure/HttpOnly/SameSite verified on all hosts
+- [ ] SES SPF/DKIM/DMARC (p=quarantine) pass
+- [ ] Retention purge job tested end to end with deletion log
+- [ ] On-call rota, alert routing and incident runbook rehearsed
+- [ ] Consent text = counsel-approved version; version stored with each consent
+
+## Medium
+- [ ] Dependabot backlog: no high CVEs open
+- [ ] All Actions SHA-pinned; images signed and verified at deploy
+- [ ] Access review: least-privilege IAM, no unused roles, no human IAM users

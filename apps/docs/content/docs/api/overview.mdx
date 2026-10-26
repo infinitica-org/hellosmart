@@ -1,0 +1,102 @@
+---
+title: "API Documentation & Standards"
+description: "RESTful OpenAPI 3.1 specification, authentication cookies, RFC 7807 problem details, and rate limiting."
+---
+
+<RoleBadge roles={["sde", "qa"]} />
+
+# API Documentation & Standards
+
+HelloSmart's API is designed **contract-first** using **OpenAPI 3.1**. The single source of truth for all schemas lives in `packages/contracts/openapi/openapi.yaml`.
+
+---
+
+## 1. Authentication & Session Architecture
+
+All HTTP API endpoints are secured via **HttpOnly session cookies** or short-lived workspace tokens:
+
+| Auth Method | Target Audience | Header / Cookie | Lifecycle |
+|---|---|---|---|
+| **Session Cookie** | Company Admin & Candidates | `Set-Cookie: hs_session=...; HttpOnly; Secure; SameSite=Lax` | 7-day sliding window |
+| **Workspace Bearer** | Candidate Sysbox Container | `Authorization: Bearer <short_lived_token>` | Duration of assessment run only |
+| **Platform Token** | Platform Admin Console | `Authorization: Bearer <platform_mfa_token>` | 8-hour expiry with mandatory MFA |
+
+---
+
+## 2. Standard Error Response (RFC 7807 Problem Details)
+
+All error responses from the HelloSmart API return the standard `application/problem+json` format:
+
+```json
+{
+  "type": "https://hellosmart.ai/problems/not-found",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "The requested resource was not found.",
+  "instance": "/api/v1/candidates/cnd_98a76b5c-4321",
+  "invalidParams": []
+}
+```
+
+### The 404 Security Rule (BR-01)
+If a user requests a resource that belongs to another organization:
+- The API **must return 404 Not Found**, exactly as if the resource did not exist.
+- It **must never return 403 Forbidden**, preventing unauthorized callers from determining whether resource UUIDs exist in other tenants.
+
+---
+
+## 3. Core REST Endpoints Catalog
+
+### Authentication & Identity
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "lead@company.com",
+  "password": "CorrectPassword123!",
+  "mfaCode": "123456"
+}
+```
+
+### Candidates Management
+```http
+POST /api/v1/candidates
+Content-Type: application/json
+
+{
+  "name": "Alex Mercer",
+  "email": "alex.mercer@example.com",
+  "assessmentId": "asm_1a2b3c4d"
+}
+```
+
+### Candidate Workspace Connection
+```http
+POST /api/v1/portal/assignments/{assignmentId}/connect
+Content-Type: application/json
+
+{
+  "consentAccepted": true,
+  "fullScreenConfirmed": true
+}
+```
+**Response**:
+```json
+{
+  "workspaceId": "ws_789abc",
+  "status": "connected",
+  "wsStreamUrl": "wss://ws.hellosmart.ai/stream/ws_789abc",
+  "sessionToken": "jwt_short_lived_session_token",
+  "expiresAt": "2026-10-25T20:30:00Z"
+}
+```
+
+---
+
+## 4. Webhooks Architecture
+
+HelloSmart processes incoming asynchronous webhooks idempotently:
+
+- **Razorpay**: Reconciles subscription renewals and one-time quote purchases at `/api/v1/webhooks/razorpay`. Verifies HMAC-SHA256 signature using `RAZORPAY_WEBHOOK_SECRET`.
+- **cal.com**: Ingests prospective enterprise customer discovery meetings at `/api/v1/webhooks/calcom` to automatically transition leads in our sales pipeline.

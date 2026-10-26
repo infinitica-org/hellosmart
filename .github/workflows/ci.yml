@@ -32,6 +32,8 @@ jobs:
         with: { node-version-file: .nvmrc, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm contracts:check
+      - name: documentation sync check (AIDLC)
+        run: pnpm docs:sync-check
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test

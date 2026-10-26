@@ -1,0 +1,459 @@
+---
+title: "Architecture & Delivery Plan"
+description: "Sprint S0 through S6 scope, milestones, and architectural decisions"
+---
+
+<RoleBadge roles={["sde","mgmt"]} />
+
+# HelloSmart.ai: Architecture, AI-SDLC and Delivery Plan
+
+> **Status: FROZEN v1.1** · Frozen on 2026-10-22 · v1.1: shared-host workspaces, QA on KVM VPS, `dev`/`main` branches, team of 9 · Launch: **Saturday 12 Dec 2026, full MMP scope (126 items), live on AWS production.**
+> Companion to [AGENTS.md](../AGENTS.md) (requirements) and [HelloSmart_BRD.md](../HelloSmart_BRD.md). Any change to this file follows Section 13 (change control).
+
+---
+
+## 1. Frozen decisions
+
+| # | Decision | Value |
+|---|---|---|
+| D-01 | Scope | Full MMP: all 126 `MMP` items in AGENTS.md. Phase 2/3 not built; extension points only. |
+| D-02 | Launch | Sat 12 Dec 2026. Code freeze Thu 10 Dec 18:00 IST. |
+| D-03 | Frontend | TypeScript, **Next.js 15 (App Router)**, Tailwind, shadcn/ui, TanStack Query |
+| D-04 | Backend API | TypeScript, **NestJS** (modular monolith), Drizzle ORM, Zod contracts |
+| D-05 | AI services | **Python 3.12, FastAPI**: AI proxy and reviewer-agent service |
+| D-06 | Database | **Aurora PostgreSQL 16** Multi-AZ, Row-Level Security on `org_id` |
+| D-07 | Cache / limits | ElastiCache Redis (rate limits, AI caps, sessions) |
+| D-08 | Jobs | SQS + EventBridge Scheduler; Step Functions for the review pipeline |
+| D-09 | Storage / secrets | S3 (KMS, lifecycle = retention); Secrets Manager + KMS for keys |
+| D-10 | IaC | **Terraform** for all infra **and** workspace virtualization (Packer for golden AMIs) |
+| D-11 | Workspace runtime | **Shared host pool**: multiple candidates per EC2 host, each in its own **Sysbox system container** (own filesystem, process tree, network namespace, nested Docker, cgroup CPU/RAM/disk limits). Hosts built from a Packer golden AMI, scaled by Auto Scaling, in an isolated `workspaces` account. Templates that need it declare `isolation: dedicated` and get a whole EC2 VM. See Section 5.2. |
+| D-12 | Auth | Built in-house (argon2id, TOTP MFA, OAuth for Google/Microsoft). No Cognito. |
+| D-13 | Email | Amazon SES (SPF/DKIM/DMARC), bounce via SNS |
+| D-14 | Payments | Razorpay behind `PaymentGateway` interface |
+| D-15 | Region | **ap-south-1 (Mumbai)**, backups to ap-south-2 (Hyderabad) |
+| D-16 | Repo | One monorepo, pnpm + Turborepo, Python via uv |
+| D-17 | CI/CD | GitHub Actions. `dev` → QA on a KVM VPS (Docker Compose, Sysbox, LocalStack) automatically; `main` → AWS prod via OIDC + ECS blue/green after approval |
+| D-18 | Observability | CloudWatch, X-Ray/OpenTelemetry, Sentry, PagerDuty-style on-call (Opsgenie or CloudWatch alarms > SNS > phone) |
+| D-19 | Ticketing | Zoho Sprints: one project, one release per sprint, epics per module |
+| D-20 | Development model | **AI-agent-driven development** under the AI-SDLC in Section 6. Humans specify, review, approve and own. |
+
+Why a shared host pool (D-11): candidates need what feels like a real Linux box with Docker, dev servers and coding agents (the bar Outship sets). A Sysbox system container gives each candidate exactly that, while several candidates share one host:
+- **Cost:** warm capacity is paid per slot, not per VM. An idle pool of 2 hosts covers 8–12 instant starts.
+- **Speed:** a slot starts in seconds (image already on the host), well inside p95 < 60 s.
+- **Isolation:** Sysbox runs every container in a separate user namespace (root inside is unprivileged on the host). Each slot also has its own network namespace and egress rules, hard cgroup limits and its own disk quota. Candidates can't see each other's files, processes or traffic.
+- **Escape hatch:** GPU, heavy or unusual templates set `isolation: dedicated` and get a full VM through the same orchestrator API. Nothing else changes.
+
+Options considered and rejected: one VM per candidate (strongest isolation, but 3–4× the idle cost and slower starts); plain Docker or systemd users on a shared VM (too weak for untrusted code, and Docker-in-Docker would need privileged mode); Firecracker microVMs (best isolation, but EC2 needs metal instances for it and it's too much build effort before 12 Dec; revisit in Phase 2).
+
+---
+
+## 2. Market reference: Outship
+
+[outship.ai](https://outship.ai/) is the closest competitor and sets the bar for the Cloud mode.
+
+| Outship does | HelloSmart answer |
+|---|---|
+| Real Linux VM, VS Code, real coding agents (Claude Code, Codex) | Same experience: isolated Sysbox slot on a shared EC2 host (full VM when a template needs it), code-server, Claude Code / Codex CLI preinstalled, routed through our AI proxy |
+| Records every prompt, edit, command, decision | Recorder: terminal, file diffs, git snapshots every 15 s, AI transcript via proxy |
+| Rubric analysis ("experienced engineer vs vibe coder") | Independent per-dimension agents with **mandatory cited evidence** + human finalize |
+| Tasks imported from customer GitHub repos | Templates built behind the curtain, private per org; GitHub repo import is the template-build tool for our template team |
+| Keys proxied; Bedrock/Vertex/Azure | Proxy supports Anthropic, OpenAI, Bedrock at launch |
+| Local mode, ATS | Phase 2 / Phase 3 (per spec) |
+
+**Where we win:** non-engineering roles (Chat workspace + business templates), company-defined rubrics as agents, transparent evidence trail, India-first billing (Razorpay, GST), private templates.
+
+---
+
+## 3. System architecture
+
+```
+                         Route 53
+                            │
+                  CloudFront + AWS WAF
+              ┌─────────────┼──────────────────┐
+         Next.js (ECS)   API (ECS)          AI proxy (ECS)
+         web: landing,   NestJS modular      FastAPI, streaming
+         company,        monolith            token-validated
+         candidate,         │                    │
+         admin              │                    ├── Secrets Manager (provider keys)
+                            │                    └── Anthropic / OpenAI / Bedrock
+       ┌────────────┬───────┼──────────┬──────────────┐
+   Aurora PG    Redis    SQS/EventBridge  S3       SES
+   (RLS)                     │
+                     Workers (NestJS) ── Step Functions ── Reviewer agents (FastAPI, ECS)
+                             │
+                Workspace Orchestrator ──(cross-account role)──> workspaces account
+                                                    shared EC2 hosts, 1 Sysbox slot per candidate
+                                                    egress via Network Firewall allowlist
+                                                    recorder agent → S3, events → API
+```
+
+### 3.1 Services (deployables)
+
+| Service | Lang | Responsibility |
+|---|---|---|
+| `web` | Next.js | All four portals, one master login, role-based routing |
+| `api` | NestJS | Auth, RBAC, tenancy, entitlements, timing, CRUD, audit, billing, webhooks |
+| `worker` | NestJS | Queue consumers: emails, auto-submit, cleanup, retention, dunning, bulk import |
+| `orchestrator` | NestJS module in `worker` | Workspace lifecycle against the workspaces account |
+| `ai-proxy` | FastAPI | Session-token auth, policy, caps, RPM, key resolution, logging, streaming |
+| `reviewer` | FastAPI | Evidence builder, sanitizer, agent runs, validator, aggregator |
+| `ws-agent` | Go or Python binary on the VM | Autosave, git snapshots, terminal capture, heartbeat |
+
+### 3.2 AWS accounts
+
+| Account | Contents |
+|---|---|
+| `management` | Organizations, SSO (IAM Identity Center), billing, CloudTrail org trail |
+| `shared` | ECR, Packer builds, Terraform state (S3 + DynamoDB lock) |
+| `dev` | Per-PR preview environments (ephemeral) |
+| ~~`staging`~~ | Not used. QA runs on a KVM VPS from the `dev` branch (see docs/BRANCHING-AND-ENVIRONMENTS.md) |
+| `prod` | Live platform |
+| `workspaces-prod` | Candidate VMs only. No route to prod DB. Budget alarms + SCPs. |
+
+### 3.3 Reliability and security
+
+- Multi-AZ for ALB, ECS (min 2 tasks per service), Aurora, Redis. Target 99.5% (stretch 99.9%).
+- Aurora PITR 14 days, S3 versioning, weekly restore drill from S6.
+- RLS: every request sets `app.org_id` on the connection; tenant tables have policy `org_id = current_setting('app.org_id')`. Defence in depth with repository-level scoping.
+- Idempotency: `Idempotency-Key` header on mutations, unique `gateway_ref` for payments, dedupe IDs on SQS.
+- Auto-submit: EventBridge one-shot schedule per assignment + 1-minute sweeper as backup.
+- Secrets never leave Secrets Manager except into the proxy process memory. CI scans for secrets (gitleaks) on every PR.
+- WAF managed rules + rate limits on `/auth/*`. GuardDuty, Security Hub, Inspector on.
+- Workspaces: one Sysbox slot per candidate on shared hosts; slots cannot reach instance metadata, host network or other slots; hosts use IMDSv2 and have no role with data access; per-slot egress allowlist; AI domains blocked when AI OFF; slots destroyed at session end, hosts recycled every 24 h.
+
+---
+
+## 4. Reviewer agents and rubrics
+
+### 4.1 Agent definition (versioned config in the agent library)
+
+```yaml
+id: debugging-process
+version: 1.0.0
+model: claude-sonnet-5-5
+evidence_channels: [terminal_log, git_timeline, ai_transcript]
+scale: {min: 1, max: 5}
+anchors:
+  1: "Random edits, no hypothesis, accepts AI output blindly"
+  3: "Forms hypotheses, tests some, partial verification"
+  5: "Systematic: reproduce > isolate > fix > verify, catches AI mistakes"
+signals: [reproduces bug, reads logs, writes failing test, verifies fix]
+red_flags: [disables tests, hardcodes expected output]
+output: {score, confidence, rationale, evidence: [{ref, quote}], flags}
+```
+
+A company `RubricItem` points at a library agent and overrides goal, anchors, weight and red flags. Weights must total 100.
+
+### 4.2 Launch agent library (10)
+
+| Agent | Evidence | Measures |
+|---|---|---|
+| Task completion | deliverables, hidden tests, brief | Acceptance criteria met |
+| Code quality | final diff | Structure, readability, idioms |
+| Debugging process | terminal, git timeline | Systematic reproduce > fix > verify |
+| AI collaboration | AI transcript, diff | Steering the agent, catching its mistakes, not blind paste |
+| Problem decomposition | timeline, transcript | Planning and ordering |
+| Testing discipline | diff, test runs | Tests written/run, coverage of edge cases |
+| Communication | written deliverables, chat | Clarity and audience fit |
+| Business reasoning | Chat deliverables | Assumptions, trade-offs, numbers correct |
+| Domain correctness | deliverables + template answer key | Factual and domain accuracy |
+| Integrity observer | activity events | **Flags only, never scores** |
+
+### 4.3 Review pipeline (Step Functions)
+
+1. **Evidence builder**: turns raw artifacts into a bounded evidence bundle; every chunk gets a stable `ref` (`term:00412`, `diff:src/app.ts#L20-40`, `ai:msg-17`).
+2. **Sanitizer**: wraps candidate content in untrusted delimiters, strips grader-directed instructions, runs an injection classifier. A hit adds `suspected_injection` and forces low confidence.
+3. **Agent runs**: Map state, one run per rubric item, parallel, no shared context, retries ×2.
+4. **Validator**: every score must have ≥1 resolvable `ref`; otherwise one retry, then the dimension is marked `missing`.
+5. **Aggregator** (deterministic code): weighted overall, disagreement flag (related agents spread ≥ 2 points or confidence < 0.5), report JSON.
+6. Review moves to `agent_report_ready`; company notified. SLA < 15 min.
+
+**Quality gate:** every template ships 5 golden submissions (strong, good, average, weak, adversarial). An agent version publishes only if it scores within ±0.5 of the human labels and the adversarial one does not move scores. This doubles as the BR-18 injection suite and runs in CI nightly.
+
+---
+
+## 5. Templates and virtualization
+
+### 5.1 Manifest (one JSON-schema-validated file per template version)
+
+```yaml
+template: backend-incident-debug
+version: 1.0.0
+mode: cloud                      # cloud | chat
+runtime:
+  image: Dockerfile              # built to ECR on publish, pre-pulled on hosts
+  size: medium                   # small | medium | dedicated
+  isolation: shared              # shared (Sysbox slot) | dedicated (own VM)
+  services: compose.yaml         # postgres, redis, localstack...
+  coding_agents: [claude-code, codex]       # preinstalled, pointed at AI proxy
+repo: {source: github, ref: <commit>}       # cloned into fresh repo, no history leak
+seed: seed/
+env_slots: [{name: PAYMENT_SANDBOX_KEY, secret: true, required: false}]
+ai_defaults: {enabled: true, models: [claude-sonnet-5-5], cap_usd: 5, rpm: 20}
+brief: brief.md
+deliverables: [{path: NOTES.md}, {hidden_tests: "pnpm test:hidden"}]
+reviewers: [task-completion, debugging-process, ai-collaboration, code-quality]
+golden_submissions: golden/
+timing_default: {type: duration, duration_minutes: 120}
+```
+
+### 5.2 Virtualization: shared host pool
+
+**Host:** `m7i.2xlarge` (8 vCPU, 32 GB), Ubuntu, Sysbox, 200 GB gp3, built from one Packer golden AMI that pre-pulls every published template image. Nothing on the host can reach the prod DB.
+
+**Slot sizes** (set per template in the manifest `runtime.size`):
+
+| Size | Limits | Slots per host | Use |
+|---|---|---|---|
+| `small` | 1 vCPU, 4 GB, 15 GB disk | 6 | Scripts, single service, data notebooks |
+| `medium` (default) | 2 vCPU, 6 GB, 25 GB disk | 4 | App + DB + Redis via compose, coding agent |
+| `dedicated` | whole VM (`t3.xlarge` or as declared) | 1 | Heavy builds, GPU, special kernels |
+
+CPU is soft-shared (cgroup weights, ~1.3× overcommit allowed). Memory and disk are hard limits, so one candidate can never take memory from another.
+
+**Flow:**
+1. Template publish > CI builds the template **container image** (Dockerfile from the manifest) and pushes to ECR. The host AMI is rebuilt nightly to pre-pull it; until then hosts pull on first use.
+2. Smoke test (AD-013): orchestrator starts one slot on the QA VPS (Sysbox), runs health checks + golden-submission hidden tests, tears down. Must pass before `published`.
+3. Terraform module `workspace_hosts`: Auto Scaling group with a **free-slot target**: keep ≥ 8 free `medium` slots (configurable in admin), scale out when free slots drop below target, scale in only empty hosts.
+4. **Scheduler (orchestrator):** bin-packs new sessions onto the fullest host that fits (frees whole hosts for scale-in), never two slots of the same candidate on one host, and spreads across 2 AZs.
+5. **Connect:** create Sysbox container from the template image > own network namespace with an egress allowlist (AI domains blocked when AI is OFF) > inject per-session env from SSM (deleted at end) > start compose services inside > issue proxy token > `ws-agent` begins autosave. Target < 20 s.
+6. Browser connects through the authenticated `ws-gateway` to that slot's code-server and terminal. No public IPs. A session token is bound to one slot.
+7. **Autosave:** the slot's workspace lives on its own quota'd directory; `ws-agent` pushes a git snapshot + terminal log to S3 every 15 s (RPO ≤ 30 s). If a host dies, resume rebuilds the slot on another host from the last snapshot.
+8. **End:** final snapshot to S3, container and its volume destroyed, slot returned to the pool. Hosts are recycled after 24 h for hygiene.
+
+**Noisy-neighbour controls:** hard memory/disk/PID limits, I/O weights, per-slot network bandwidth caps, CloudWatch per-slot metrics. If a slot hits limits repeatedly it's logged as an activity event for reviewers (evidence, not a penalty) and the host stops taking new sessions until load drops.
+
+**Capacity guide:** 1 host ≈ 4 concurrent candidates (medium). 100 concurrent candidates ≈ 25 hosts + warm buffer. Launch-week budget is set by the AWS Budgets alarm in the `workspaces` account.
+
+Chat workspace: no VM. Next.js page + ai-proxy + files from S3.
+
+### 5.3 Launch template catalog (10 templates, 6 families)
+
+| Family | Mode | Templates |
+|---|---|---|
+| Bug fix / incident | Cloud | Node API incident, Python service bug |
+| Feature build | Cloud | Next.js feature, REST endpoint + tests |
+| Data | Cloud | SQL + notebook analysis |
+| Infra | Cloud | Terraform on LocalStack (BR-33) |
+| Business case | Chat | Product requirements, market sizing |
+| Support / ops | Chat | Ticket triage sim, ops escalation |
+
+---
+
+## 6. AI-SDLC: how we build with agents
+
+Engineers do not hand-write features. Every engineer runs coding agents (Claude Code, Codex or equivalent) in parallel. Humans own **intent, contracts, review and acceptance**. This section is the operating system for that.
+
+### 6.1 Principles
+
+1. **Contract before code.** Agents build against frozen contracts (OpenAPI, DB schema, events, UI routes). This is what removes cross-team blocking.
+2. **Small, verifiable units.** One ticket = one requirement ID slice = one PR ≤ ~600 changed lines, with tests.
+3. **Agents verify themselves.** No PR without passing tests, typecheck, lint, and the agent's own self-review against acceptance criteria.
+4. **Humans are the gate.** Every merge needs one human approval from the owning department plus an AI review. Security-sensitive paths (Section 6.6) need the Architecture department.
+5. **Context is code.** Agent instructions live in the repo and are versioned like code.
+
+### 6.2 Lifecycle stages
+
+| Stage | Who/what | Output | Gate |
+|---|---|---|---|
+| 1. Intake | Product Delivery | Zoho item with requirement ID, acceptance criteria copied from AGENTS.md | Ready checklist |
+| 2. Task brief | Owning dept, assisted by agent | `tasks/<ID>.md`: goal, contract refs, files in scope, test plan, out-of-scope | Dept lead approves brief |
+| 3. Contract | Architecture (only if contract changes) | PR to `packages/contracts` | Architecture approves; contract PRs merge first, daily |
+| 4. Build | Engineer + parallel agents in git worktrees | Code + tests on branch `feat/<ID>-slug` | CI green |
+| 5. Self-verify | Agent | Runs tests, checks each acceptance criterion, writes PR description with evidence | Checklist complete |
+| 6. AI review | Review agent in CI | Correctness, tenancy, secrets, BR-rule check comments | No unresolved high findings |
+| 7. Human review | Owning dept (+ Architecture for sensitive paths) | Approval | 1–2 approvals |
+| 8. Preview | CI | Ephemeral env per PR in `dev` account | Smoke E2E green |
+| 9. Merge to `dev` + QA | Squash-merge to `dev`, auto-deploy to QA VPS | Feature flag off by default | QA smoke green |
+| 10. QA | QA dept + test agents | Test run report in Zoho | Sprint QA sign-off |
+| 11. Prod | Release Monday | Flags enabled per plan | Go/no-go checklist |
+| 12. Learn | All | Prompt/agent-rule fixes into `AGENTS.md` / module `CLAUDE.md` | Retro action items |
+
+### 6.3 Repository context for agents
+
+- Root [AGENTS.md](../AGENTS.md): product rules (exists).
+- `CLAUDE.md` (root): repo commands, conventions, links to the files below.
+- `apps/*/CLAUDE.md` and `services/*/CLAUDE.md`: module rules, patterns, "how to add an endpoint/page/agent".
+- `packages/contracts/`: OpenAPI spec, Zod schemas, event schemas, DB schema: the single source agents build against.
+- `tasks/`: one brief per ticket.
+- `.claude/` (shared): slash commands such as `/new-endpoint`, `/new-page`, `/cross-tenant-test`, `/new-agent`, `/new-template`; hooks that run typecheck + tests after edits and block commits containing secrets.
+- `docs/adr/`: architecture decision records; agents must read relevant ADRs before changing a module.
+
+### 6.4 Parallel-agent working rules
+
+- Each engineer runs 2–4 agents concurrently, each in its own **git worktree** on its own ticket. Never two agents on the same files.
+- Module ownership via `CODEOWNERS`; an agent may only edit files in its department's paths plus tests. Cross-module needs = contract request, not a direct edit.
+- Generated code follows existing patterns; agents must reuse `packages/*` utilities (no parallel helpers).
+- Mandatory in every PR an agent opens: requirement ID in title, tests named after IDs/BRs, cross-tenant test for any new endpoint, migration with `org_id` + index if tables change.
+- Agents never touch: `infra/prod`, secrets, `packages/contracts` (except Architecture), CI workflows (except Architecture/DevOps).
+
+### 6.5 Quality automation (every PR)
+
+typecheck · lint · unit · integration (Testcontainers Postgres/Redis) · cross-tenant suite · contract conformance (API responses vs OpenAPI) · gitleaks · dependency audit · AI code review · Playwright smoke on preview env · bundle size budget.
+Nightly: full E2E, agent golden-set evaluation, injection suite, load test from S5.
+
+### 6.6 Sensitive paths (extra human approval from Architecture)
+
+`auth/`, `tenancy/`, `rbac/`, `billing/`, `ai-proxy/`, `reviewer/sanitizer`, `orchestrator/`, `infra/`, any migration, consent text, retention jobs.
+
+### 6.7 Metrics we track weekly
+
+PR lead time, PRs merged per engineer, CI pass rate first try, escaped defects per sprint, agent rework rate (PRs needing > 2 review rounds), AI spend per department.
+
+---
+
+## 7. Working without blocking each other
+
+Blocking is removed structurally, not by coordination.
+
+| Mechanism | How it unblocks |
+|---|---|
+| **Contracts frozen in S0** | OpenAPI, DB schema, event schemas and UI route map are merged by Fri 30 Oct. Every department builds against them from day one. |
+| **Mock server from contracts** | `pnpm mock` serves the OpenAPI spec (Prism) with realistic fixtures. Frontend never waits for backend. |
+| **Fake adapters for every external** | `FakePaymentGateway`, `FakeEmail` (writes to local inbox UI), `FakeLLM` (deterministic), `FakeWorkspaceRuntime` (local docker), LocalStack for AWS. No department waits for credentials. |
+| **Seed + fixtures package** | Shared `packages/fixtures`: two orgs, admin, candidates, templates, submissions in every state. Reviewer and UI work start before real sessions exist. |
+| **Feature flags** | Incomplete work merges to trunk behind flags; nothing waits for "the whole feature". |
+| **Trunk-based, daily merges** | No long branches; conflicts surface in hours, not weeks. |
+| **Contract change SLA** | Contract change requests answered by Architecture within 4 working hours; additive changes only after freeze. |
+| **Department-owned paths** | CODEOWNERS means no one needs another department to edit their code. |
+| **Async daily** | 10-minute written standup in Zoho/chat; one 15-min call only for blockers. |
+
+Dependency rule: **a ticket may depend only on a contract, never on another department's implementation.** Integration happens on the QA environment every Wednesday.
+
+---
+
+## 8. Departments and ownership
+
+| Department | Role(s) | Owns (modules / paths) | Requirement IDs |
+|---|---|---|---|
+| **Architecture & Platform** | System Architect (Team Lead) | Contracts, ADRs, Terraform (all accounts), CI/CD, observability, security reviews, workspace network/egress, release management | NF-001..006, NF-011..015, NF-017, NF-018 (schema), BR-01 framework |
+| **Core Backend** | Backend Engineer + agents | `apps/api`: auth, SSO, MFA, RBAC, tenancy/RLS, entitlements, trial, timing engine, audit, billing/Razorpay, quotes, codes, invoices, webhooks, cal.com | CO-001..010, CO-028..031, CO-056, AD-001..009, AD-026..028, SP-002..018, BR-01..09, BR-24..31 |
+| **Product Engineering: Company & Admin** | SDE-1 + agents | `apps/web` company portal + admin console + landing; candidate CRUD/bulk UI, assessment builder, rubric editor, review UI, analytics, settings, branding, billing UI, email templates | CO-006, CO-011..027, CO-032..056 (UI), AD-002..029 (UI), SP-001, SP-004 |
+| **Product Engineering: Candidate & Workspace** | SDE-2 + agents | `apps/web` candidate portal, `apps/worker/orchestrator`, `ws-agent`, `ws-gateway`, fullscreen, autosave, resume, submit, destroy, cleanup | CA-001..019, CO-043, CO-044, AD-018, AD-019, BR-10..12, BR-22, BR-23 |
+| **AI Engineering** | AI Engineer-1 (proxy, keys, Chat) + AI Engineer-2 (reviewer agents, evals) + agents | `services/ai-proxy`, `services/reviewer`, agent library, sanitizer, aggregator, Chat workspace backend, golden-set evals | CO-032..039 (backend), CA-015, CA-017, AD-014, AD-015, AD-017, AD-023, BR-13..18 |
+| **Data Ops** | Data Ops intern + agents | `templates/` content, Packer recipes per template, seed data, golden submissions, injection corpus, analytics SQL, fixtures package | AD-010..013 (content), CO-051, CO-052, AD-025 (queries) |
+| **Quality Assurance** | QA-1 (functional, E2E, UAT) + QA-2 (automation, load, security) + test agents | Test plans per sprint, Playwright E2E, regression, UAT scripts, accessibility checks | All, sign-off gate |
+| **Product Design** | Product Designer | Figma: design system and all screens, one sprint ahead of build | UX for all portals |
+| **Product Delivery** | Product Delivery Manager | Zoho Sprints board, sprint ceremonies, risk register, dependency tracking, release notes | Process |
+| **Business Operations** | Business & Growth dept | Accounts, vendors, KYC, legal text, launch customers, pricing | Section 10 |
+
+---
+
+## 9. Schedule (weekly sprints, full scope)
+
+Cadence each week: **Mon** planning + prod release of previous sprint · **Wed** integration on QA env · **Thu** QA regression · **Fri** QA sign-off + demo + retro.
+
+| Sprint | Dates | Delivered to `dev`/QA (prod the following Monday) |
+|---|---|---|
+| **S0: Foundation** | Fri 23 Oct – Fri 30 Oct | AWS accounts + Terraform base (VPC, Aurora, Redis, ECS, ECR, SES sandbox), CI/CD with preview envs, monorepo scaffold, **all contracts frozen**, mock server, fake adapters, fixtures, agent context files + slash commands, design system in Figma + code, Packer host AMI with Sysbox, shared-host slot spike (4 medium slots on one host, isolation + launch-time test by Thu 29 Oct). |
+| **S1: Identity & tenancy** | 2–6 Nov | Login (email, Google, Microsoft), MFA, master login routing, forgot/reset, RBAC, RLS, orgs, users, entitlements, trial banner, suspend, audit log, landing + cal.com embed + webhook > leads, admin org provisioning. Company portal shell, candidate portal shell. AI proxy skeleton (token, allowlist). Template manifest schema + validator. |
+| **S2: Configure** | 9–13 Nov | Templates (build, version, clone, assign, preview), assessments CRUD, brief edits, mode, env/secret slots, timing (duration/window/both), AI key vault (test/rotate/default), AI policy + caps, rubric editor, candidates single + bulk CSV/XLSX + invite emails + resend, plans + add-on catalog, quote builder. First 2 templates + golden AMIs. Agent library v1 (4 agents) on fixtures. |
+| **S3: Candidate session** | 16–20 Nov | Candidate dashboard, pre-flight, consent, connect (Cloud via warm pool), fullscreen/disconnect/resume, autosave RPO ≤ 30 s, countdown + warnings, AI assistant via proxy with caps/RPM/budget, egress control, Chat workspace, dry-run, publish + assignment. **First full E2E QA on Thu 19 Nov.** |
+| **S4: Submit & review** | 23–27 Nov | Submit, auto-submit, destroy (snapshot + notify), idle/orphan cleanup, spend limits, provisioning-failure compensation, extend/revoke, review pipeline (evidence, sanitizer, 10 agents, validator, aggregator), submissions list/detail, human scoring, overrides, notes, finalize, versioned edits, release toggle, candidate results. Platform key allocation. 6 more templates. |
+| **S5: Commercial & ops** | 30 Nov – 4 Dec | Razorpay: payment links, in-app checkout, subscriptions, one-time, codes, webhooks, auto entitlements, dunning + grace, GST invoices + receipts. Custom domain (DNS verify + ACM SSL), white label, branding/logo, Powered-by rules. Analytics (assessment, org, platform), AI usage/cost views, agent health dashboard, workspace oversight, retention jobs + deletion logs, candidate deletion/erasure, email template manager, deal pipeline. **Feature complete Fri 4 Dec.** |
+| **S6: Harden & launch** | 7–11 Dec | Bug fixes only. Load test (100 concurrent workspaces across ~25 shared hosts, host-failure resume test, 500 portal users), security checklist + external pen-test quick scan including slot-escape and cross-slot network tests, DR restore drill, runbooks, on-call rota, UAT with 2 pilot customers on prod (invite-only), go/no-go Thu 10 Dec, code freeze 18:00. |
+| **Launch** | **Sat 12 Dec** | Public launch, flags on, landing live. Hypercare 12–24 Dec with daily triage. |
+
+**Testing timeline:**
+- From S0: unit, integration, cross-tenant and contract tests in CI on every PR.
+- From S1: weekly QA regression on the QA VPS (Thu), sign-off Fri.
+- 19 Nov: first full end-to-end candidate loop.
+- From S4: nightly E2E + agent golden-set + injection suites.
+- 30 Nov – 4 Dec: full regression across all 126 items (traceability matrix in Zoho).
+- 7–10 Dec: UAT, load, security, DR. Go/no-go 10 Dec.
+
+### 9.1 Requirement coverage by sprint
+
+| Area | S1 | S2 | S3 | S4 | S5 |
+|---|---|---|---|---|---|
+| Company (50 MMP) | auth, account, trial | candidates, templates, assessments, timing, AI keys/controls, rubric | dry-run, publish, assign | submissions, workspaces, review, release | analytics, settings, branding, billing |
+| Candidate (18 MMP) | access, login | — | dashboard, pre-flight, consent, cloud, chat, AI, timing | submit, failure handling, results | — |
+| Platform Admin (25 MMP) | MFA, accounts, RBAC, suspend, entitlements, audit | plans, add-ons, templates, images, agent library | workspace oversight | agent health, cleanup, AI allocation | routing, white label, analytics, retention, emails, support tools |
+| Sales/payments (18 MMP) | landing, cal.com, leads | provisioning, quotes | — | — | all payments, add-ons, invoices, pipeline |
+| Non-functional (15 MMP) | isolation, secrets, TLS, rate limits | — | sandboxing, proxy, launch time, no work loss | cost control | observability, email, availability, consent/retention |
+
+---
+
+## 10. Inputs required and their deadlines
+
+Owned by Business Operations unless noted. Each has a **fake adapter**, so development never waits; only **production go-live** of that capability depends on it.
+
+| # | Input | Needed by | If late |
+|---|---|---|---|
+| 1 | AWS Organization + payer account, budget approval (~₹2.5–4 L/month at launch scale incl. workspaces) | **Fri 23 Oct** | Each day late delays S0 by a day; beyond 3 days, launch slips. Only true hard blocker. |
+| 2 | Domain DNS control (hellosmart.ai), SES production access request | 28 Oct | Emails stuck in sandbox; candidate onboarding can't go live. SES approval takes 1–3 days. |
+| 3 | Google + Microsoft OAuth app registrations (verified publisher) | 2 Nov | SSO cannot go live; email login still works. Google verification can take ~1 week. |
+| 4 | Razorpay account with completed KYC, subscriptions enabled, GST details | **6 Nov** | Payments cannot go live on 12 Dec; KYC takes 1–2 weeks. Fallback: manual invoices at launch. |
+| 5 | LLM provider accounts (Anthropic, OpenAI) + Bedrock model access, rate-limit tier increase | 9 Nov | Proxy and agents run only on fakes; review quality cannot be tuned. Tier upgrades take days. |
+| 6 | AI coding agent licences for all engineers (team plan) | **23 Oct** | The AI-SDLC capacity assumption fails; velocity drops ~3x and full scope is not achievable. |
+| 7 | cal.com account, GitHub organization, Zoho Sprints project access | 23 Oct | Board and repo setup slip. |
+| 8 | Consent text and retention period confirmed by counsel | 13 Nov | Consent screen ships with placeholder; real candidates cannot be recorded at launch. |
+| 9 | Pricing, plans and add-on prices | 20 Nov | Quote builder and catalog launch empty. |
+| 10 | 2 pilot customers for UAT (7–10 Dec) | 27 Nov | Launch without real-user validation; higher hypercare risk. |
+| 11 | Real target roles from early customers for templates | 6 Nov | Launch catalog uses generic templates only. |
+| 12 | Allocation confirmed: QA-1, QA-2, Product Designer, Product Delivery Manager on this project from S0 | 23 Oct | QA moves to devs + test agents; regression depth drops. |
+
+---
+
+## 11. Risk register
+
+| Risk | Likelihood | Impact | Mitigation | Owner dept |
+|---|---|---|---|---|
+| Workspace launch p95 > 60 s | Low | High | Free-slot target, images pre-pulled on hosts, measured from S3 | Architecture |
+| Container escape / cross-candidate access on shared host | Low | Critical | Sysbox user-namespace isolation, per-slot netns, no host secrets, host recycle 24 h, pen-test in S6, `dedicated` mode for any high-risk template | Architecture |
+| Noisy neighbour slows a candidate | Med | Med | Hard memory/disk/PID limits, CPU weights, bin-pack ceiling, per-slot metrics, auto-drain hot hosts | Candidate & Workspace |
+| Agent-generated code quality drift / hidden bugs | Med | High | Contract tests, cross-tenant suite, AI + human review, sensitive-path approvals | Architecture |
+| Grader prompt injection | Med | High | Sanitizer, golden adversarial set, low-confidence flagging, human finalize | AI Eng |
+| LLM cost overrun (agents + candidates) | Med | Med | Proxy caps, per-org spend limits, grader model tiering, budget alarms | AI Eng |
+| VM cost overrun / orphan VMs | Med | Med | TTL tags, sweeper, AWS Budgets + SCP limits in workspaces account | Candidate & Workspace |
+| Integration surprises late | Med | High | Weekly Wednesday integration on QA from S1 | Product Delivery |
+| External approvals late (Section 10) | High | Med | Fakes for dev; fallback paths at launch | Business Ops |
+| Scope creep | Med | High | Freeze; Section 13 change control | Product Delivery |
+| Single points of knowledge (one per dept) | Med | Med | ADRs, module CLAUDE.md, PR descriptions written for agents and humans | All |
+| Part-time backend capacity | Med | Med | Backend tickets sized small, agents carry implementation; Architecture covers review overflow | Architecture |
+
+**Confidence:** full scope on 12 Dec is achievable **only** with items 1, 6 and 12 in Section 10 met on time and the AI-SDLC followed strictly. Planning buffer: S6 is reserved for hardening; any feature still open on 4 Dec ships behind a flag and is enabled in hypercare.
+
+---
+
+## 12. Repository layout (scaffold after freeze)
+
+```
+hellosmart/
+├─ AGENTS.md  CLAUDE.md  CODEOWNERS
+├─ apps/
+│  ├─ web/            Next.js: (landing) (auth) (company) (candidate) (admin)
+│  ├─ api/            NestJS modules: auth, rbac, orgs, entitlements, templates,
+│  │                  assessments, candidates, assignments, workspaces, reviews,
+│  │                  billing, leads, analytics, audit, webhooks
+│  └─ worker/         NestJS: queues, scheduler, orchestrator
+├─ services/
+│  ├─ ai-proxy/       FastAPI
+│  ├─ reviewer/       FastAPI + agent library
+│  ├─ ws-agent/       on-VM recorder/autosave
+│  └─ ws-gateway/     authenticated reverse proxy to VMs
+├─ packages/
+│  ├─ contracts/      OpenAPI, Zod, events, DB schema (Drizzle)
+│  ├─ ui/             design system
+│  ├─ fixtures/       seed + test data
+│  ├─ adapters/       payment, email, llm, runtime (real + fake)
+│  └─ config/         eslint, tsconfig, prettier
+├─ templates/         manifests, packer recipes, seeds, golden submissions
+├─ infra/
+│  ├─ terraform/      modules/ + envs/{shared,prod,workspaces-prod}  (QA lives in infra/qa-vps)
+│  └─ packer/
+├─ tests/             e2e (Playwright), load (k6), injection suite
+├─ tasks/             ticket briefs
+├─ docs/              this file, adr/, runbooks/
+└─ .claude/           commands, hooks, settings
+```
+
+---
+
+## 13. Change control after freeze
+
+- Changes to Sections 1, 3, 7 or 9 need an ADR in `docs/adr/` approved by Architecture & Platform and Product Delivery.
+- New scope after S2 = an equal-size item moves out, recorded in Zoho.
+- Contract changes after 30 Oct: additive only; breaking changes need an ADR.
+- Version bumps: this document increments v1.x for clarifications, v2.0 for scope changes.

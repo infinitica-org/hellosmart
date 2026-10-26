@@ -1,0 +1,158 @@
+{
+  "$defs": {
+    "EvidenceCoverage": {
+      "description": "Which evidence channels were and weren't available, and why \u2014\nmirrors the check-status convention (`available | unavailable |\nnot_applicable | low_confidence`) so an agent can say \"channel\nunavailable\" instead of inventing content for it.",
+      "properties": {
+        "channel": {
+          "enum": [
+            "terminal_log",
+            "git_timeline",
+            "ai_transcript",
+            "artifact",
+            "chat_deliverable",
+            "activity_event"
+          ],
+          "title": "Channel",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "status": {
+          "enum": [
+            "available",
+            "unavailable",
+            "not_applicable",
+            "low_confidence"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel",
+        "status"
+      ],
+      "title": "EvidenceCoverage",
+      "type": "object"
+    },
+    "EvidenceItem": {
+      "description": "One bounded, individually-citable chunk of the evidence bundle.\n\n`untrusted=True` for anything sourced from candidate-authored content\n(artifact text, AI transcript turns the candidate wrote, filenames) \u2014\nit must have already passed through `sanitizer.wrap_untrusted()` before\n`content` is populated here; this schema does not sanitize, it records\nthat sanitization already happened (`sanitized: bool`) so a reviewer of\nthe bundle can tell at a glance whether that step was skipped.",
+      "properties": {
+        "content": {
+          "maxLength": 8000,
+          "title": "Content",
+          "type": "string"
+        },
+        "ref": {
+          "pattern": "^(term|diff|ai|file|event|test):[\\w./#:\\-]{1,200}$",
+          "title": "Ref",
+          "type": "string"
+        },
+        "sanitized": {
+          "default": false,
+          "title": "Sanitized",
+          "type": "boolean"
+        },
+        "source": {
+          "enum": [
+            "terminal_log",
+            "git_timeline",
+            "ai_transcript",
+            "artifact",
+            "chat_deliverable",
+            "activity_event"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "truncated": {
+          "default": false,
+          "title": "Truncated",
+          "type": "boolean"
+        },
+        "untrusted": {
+          "title": "Untrusted",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ref",
+        "source",
+        "content",
+        "untrusted"
+      ],
+      "title": "EvidenceItem",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "agent_id": {
+      "title": "Agent Id",
+      "type": "string"
+    },
+    "coverage": {
+      "items": {
+        "$ref": "#/$defs/EvidenceCoverage"
+      },
+      "title": "Coverage",
+      "type": "array"
+    },
+    "injection_flags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Injection Flags",
+      "type": "array"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/EvidenceItem"
+      },
+      "title": "Items",
+      "type": "array"
+    },
+    "missing_required": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Missing Required",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "v1",
+      "default": "v1",
+      "enum": [
+        "v1"
+      ],
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "submission_id": {
+      "title": "Submission Id",
+      "type": "string"
+    },
+    "truncations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Truncations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "agent_id",
+    "submission_id"
+  ],
+  "title": "EvidencePack",
+  "type": "object"
+}

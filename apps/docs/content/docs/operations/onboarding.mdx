@@ -1,0 +1,56 @@
+---
+title: "Engineer Onboarding Guide"
+description: "Local setup, required dependencies, and first commit workflow"
+---
+
+<RoleBadge roles={["sde","qa"]} />
+
+# Onboarding: day one
+
+## 1. Access (Product Delivery / Architecture sets these up)
+- [ ] GitHub `infinitica-org` with 2FA, added to your department team
+- [ ] Zoho Sprints project **HelloSmart MMP**
+- [ ] AI coding agent seat (company plan)
+- [ ] Figma (view), team chat
+- [ ] QA env allowlist (send your office/VPN IP) + QA basic-auth credentials
+- [ ] No AWS console access by default. Production access is Architecture & Platform only, via IAM Identity Center.
+
+## 2. Read (about 2 hours, in this order)
+1. [README.md](../README.md): what the product is
+2. [AGENTS.md](../AGENTS.md) §1–8: requirements and business rules
+3. [00-architecture-and-delivery-plan.md](00-architecture-and-delivery-plan.md): architecture, AI-SDLC, schedule
+4. [TEAM.md](TEAM.md): your department and paths
+5. [CONTRIBUTING.md](../CONTRIBUTING.md) + [CLAUDE.md](../CLAUDE.md) + your module's `CLAUDE.md`
+6. [docs/security/threat-model.md](security/threat-model.md)
+
+## 3. Set up your machine
+| Tool | Version |
+|---|---|
+| Node | 22.11 (`nvm use`) + `corepack enable` (pnpm 9) |
+| Python | 3.12 + [uv](https://docs.astral.sh/uv/) |
+| Docker Desktop / Engine | latest |
+| Terraform | 1.9.x (Architecture & Data Ops only) |
+| pre-commit, gitleaks | latest |
+
+```bash
+git clone https://github.com/infinitica-org/hellosmart.git && cd hellosmart
+git checkout dev
+pre-commit install
+pnpm install
+cp .env.example .env
+pnpm infra:up && pnpm db:migrate && pnpm db:seed
+pnpm dev
+```
+Check that http://localhost:3000 (web), http://localhost:4010 (mock API) and http://localhost:8025 (mail) load.
+
+## 4. Your first ticket
+1. Take a Zoho item tagged `good-first` in your epic.
+2. `/new-task <ID>`, get the brief approved.
+3. `git worktree add ../.worktrees/<ID> -b feat/<ID>-slug origin/dev`
+4. Run your agent in the worktree; follow `CLAUDE.md`.
+5. `/security-check`, open the PR to `dev`, get it reviewed, merge, then verify on QA.
+
+## 5. Week one goals
+- One merged PR with tests
+- Know your department's contracts and fakes
+- Have run the full local stack and the QA environment

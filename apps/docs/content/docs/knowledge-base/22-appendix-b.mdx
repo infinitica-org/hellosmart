@@ -1,0 +1,183 @@
+---
+title: "Requirements index"
+description: "HelloSmart MMP Knowledge Base — Chapter B: Requirements index"
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+A compact index of every requirement in the product, by area. IDs are stable and match the business requirements workbook.
+
+### Company (CO)
+
+| ID | Module | Requirement | Priority | Phase |
+|---|---|---|---|---|
+| CO-001 | Authentication | Sign in with email and password | Must | MMP |
+| CO-002 | Authentication | Sign in with Google SSO | Must | MMP |
+| CO-003 | Authentication | Sign in with Microsoft SSO | Must | MMP |
+| CO-004 | Authentication | Master login with role-based routing | Must | MMP |
+| CO-005 | Account | Company account is provisioned by HelloSmart after sales call | Must | MMP |
+| CO-006 | Account | Manage organization name and profile | Must | MMP |
+| CO-007 | Account | Company team members and roles | Should | Phase 2 |
+| CO-008 | Trial | Trial period with X templates, Y candidate cap, Z days | Must | MMP |
+| CO-009 | Trial | Trial limits enforced with clear messaging | Must | MMP |
+| CO-010 | Trial | Trial upgrade to paid plan | Must | MMP |
+| CO-011 | Candidates | Add a single candidate (Create) | Must | MMP |
+| CO-012 | Candidates | Bulk upload candidates | Must | MMP |
+| CO-013 | Candidates | Automatic account-created email with link | Must | MMP |
+| CO-014 | Candidates | View, search and filter candidates (Read) | Must | MMP |
+| CO-015 | Candidates | Edit candidate (Update) | Must | MMP |
+| CO-016 | Candidates | Delete candidate (Delete) | Must | MMP |
+| CO-017 | Candidates | Resend invite / reset candidate access | Should | MMP |
+| CO-018 | Tasks and templates | Browse templates available to my company only | Must | MMP |
+| CO-019 | Tasks and templates | Preview a template | Must | MMP |
+| CO-020 | Tasks and templates | Create an assessment from a template with a task name | Must | MMP |
+| CO-021 | Tasks and templates | Edit candidate-facing brief and deliverables | Should | MMP |
+| CO-022 | Tasks and templates | Choose workspace mode | Must | MMP |
+| CO-023 | Tasks and templates | Configure environment variables and secrets | Must | MMP |
+| CO-024 | Tasks and templates | Dry-run preview as candidate before publishing | Should | MMP |
+| CO-025 | Tasks and templates | Publish and deploy to candidates | Must | MMP |
+| CO-026 | Tasks and templates | Assign candidates to an assessment in bulk | Must | MMP |
+| CO-027 | Tasks and templates | Clone, close and archive assessments | Should | Phase 2 |
+| CO-028 | Timing | Time-bound assessment | Must | MMP |
+| CO-029 | Timing | Window-bound assessment | Must | MMP |
+| CO-030 | Timing | Combined window plus duration | Must | MMP |
+| CO-031 | Timing | Extend time or window for a candidate; revoke access | Should | MMP |
+| CO-032 | AI providers | Add AI provider API keys in settings | Must | MMP |
+| CO-033 | AI controls | AI assistant ON/OFF per assessment | Must | MMP |
+| CO-034 | AI controls | Select provider/key and allowed models per assessment | Must | MMP |
+| CO-035 | AI controls | Usage caps per candidate and per assessment | Must | MMP |
+| CO-036 | AI controls | Use HelloSmart AI credits instead of own key | Should | Phase 2 |
+| CO-037 | AI controls | AI usage and cost visibility | Should | MMP |
+| CO-038 | Rubrics / Reviewer agents | Define a custom rubric as reviewer agents | Must | MMP |
+| CO-039 | Rubrics / Reviewer agents | Start from default rubric of the template or the agent library | Must | MMP |
+| CO-040 | Rubrics / Reviewer agents | Choose agent mode | Should | Phase 2 |
+| CO-041 | Submissions and progress | See all submissions and progress | Must | MMP |
+| CO-042 | Submissions and progress | Submission detail view | Must | MMP |
+| CO-043 | Workspaces | See active workspaces | Must | MMP |
+| CO-044 | Workspaces | Destroy a workspace at any time | Must | MMP |
+| CO-045 | Review and results | Provide scores per rubric item and overall | Must | MMP |
+| CO-046 | Review and results | Add custom notes | Must | MMP |
+| CO-047 | Review and results | Edit scores after finalization with versioned history | Must | MMP |
+| CO-048 | Review and results | Release results to candidates | Must | MMP |
+| CO-049 | Review and results | Compare candidates and shortlist | Should | Phase 2 |
+| CO-050 | Review and results | Export report | Should | Phase 2 |
+| CO-051 | Analytics | Analytics per assessment | Must | MMP |
+| CO-052 | Analytics | Overall analytics across assessments | Must | MMP |
+| CO-053 | Settings | Central settings page | Must | MMP |
+| CO-054 | Branding | Upload logo for candidate portal, emails and reports | Must | MMP |
+| CO-055 | Branding | Default 'Powered by hellosmart.ai' mark in a corner | Must | MMP |
+| CO-056 | Billing | View quotes, invoices and pay in-app | Must | MMP |
+| CO-057 | Governance | Organization audit log | Should | Phase 2 |
+| CO-058 | Integrations | ATS integration and API/webhooks | Could | Phase 3 |
+
+### Candidate (CA)
+
+| ID | Module | Requirement | Priority | Phase |
+|---|---|---|---|---|
+| CA-001 | Access | Access via emailed link | Must | MMP |
+| CA-002 | Access | Sign in from the master login with RBAC | Must | MMP |
+| CA-003 | Access | Forgot / reset password; change password | Must | MMP |
+| CA-004 | Dashboard | See assigned workspaces (tasks) | Must | MMP |
+| CA-005 | Dashboard | Workspace connect state | Must | MMP |
+| CA-006 | Pre-flight | Task brief, rules and timing before connect | Must | MMP |
+| CA-007 | Consent | Mode-based consent before connecting | Must | MMP |
+| CA-008 | Cloud workspace | Force full-screen when connecting in Cloud mode | Must | MMP |
+| CA-009 | Cloud workspace | Exit from full screen disconnects the session | Must | MMP |
+| CA-010 | Cloud workspace | All work is saved so the candidate can continue | Must | MMP |
+| CA-011 | Cloud workspace | Reconnect and resume | Must | MMP |
+| CA-012 | Timing | Workspace access follows time-bound or window-bound rules | Must | MMP |
+| CA-013 | Timing | Countdown timer and warnings | Must | MMP |
+| CA-014 | Local mode | Runnable locally | Should | Phase 2 |
+| CA-015 | Non-tech modes | Chat workspace for non-technical roles | Must | MMP |
+| CA-016 | Non-tech modes | Browser workspace | Should | Phase 2 |
+| CA-017 | AI assistant | Use AI assistant when enabled | Must | MMP |
+| CA-018 | Submission | Submit work | Must | MMP |
+| CA-019 | Submission | Provisioning failure handling | Should | MMP |
+| CA-020 | Results | View results when provisioned by the company | Must | MMP |
+| CA-021 | Profile and privacy | Profile and data rights | Should | Phase 2 |
+| CA-022 | Accessibility | Accessible UI and accommodation requests | Should | Phase 2 |
+| CA-023 | Integrity | Integrity events logged | Should | Phase 2 |
+
+### Platform Admin (AD)
+
+| ID | Module | Requirement | Priority | Phase |
+|---|---|---|---|---|
+| AD-001 | Access control | Platform Admin master login with MFA | Must | MMP |
+| AD-002 | Accounts | Create all types of accounts | Must | MMP |
+| AD-003 | Accounts | Role-based access control matrix | Must | MMP |
+| AD-004 | Accounts | Enable/disable/suspend orgs and users | Must | MMP |
+| AD-005 | Accounts | Impersonate/support-view a company (read-only) | Should | Phase 2 |
+| AD-006 | Trial and entitlements | Provision trial with X templates, Y candidates, Z days per org | Must | MMP |
+| AD-007 | Trial and entitlements | Per-org entitlement overrides and feature flags | Must | MMP |
+| AD-008 | Pricing and plans | Maintain pricing plans and features | Must | MMP |
+| AD-009 | Pricing and plans | Add-on catalog | Must | MMP |
+| AD-010 | Templates | Build and manage task templates | Must | MMP |
+| AD-011 | Templates | Templates are private per company | Must | MMP |
+| AD-012 | Templates | Clone a base template into a company-specific copy | Must | MMP |
+| AD-013 | Templates | Build resources and golden images | Must | MMP |
+| AD-014 | Agents | Maintain reviewer agent library | Must | MMP |
+| AD-015 | Agents | Monitor each independent agent's performance and health | Must | MMP |
+| AD-016 | Agents | Re-run or force a review | Should | Phase 2 |
+| AD-017 | Agents | Prompt-injection and gaming safeguards for graders | Must | MMP |
+| AD-018 | Workspaces | Oversee all workspaces across orgs | Must | MMP |
+| AD-019 | Workspaces | Force-destroy any workspace; orphan and idle cleanup | Must | MMP |
+| AD-020 | Workspaces | Capacity and warm pool management | Should | Phase 2 |
+| AD-021 | Routing and branding | Configure custom routing/domain for an org | Should | MMP |
+| AD-022 | Routing and branding | Configure white label for an org | Should | MMP |
+| AD-023 | AI credits | Manually allocate a platform AI key and cap to an org (MMP interim) | Must | MMP |
+| AD-024 | AI credits | Manage HelloSmart-managed AI credits | Should | Phase 2 |
+| AD-025 | Analytics | Platform-wide analytics | Should | MMP |
+| AD-026 | Support | Extend trial, candidate window or re-provision a session | Must | MMP |
+| AD-027 | Governance | Global audit log | Must | MMP |
+| AD-028 | Governance | Data retention and deletion policy controls | Must | MMP |
+| AD-029 | Communications | Manage email templates | Should | MMP |
+
+### Sales, provisioning and payments (SP)
+
+| ID | Module | Requirement | Priority | Phase |
+|---|---|---|---|---|
+| SP-001 | Landing and booking | Landing page with product pitch and category | Must | MMP |
+| SP-002 | Landing and booking | cal.com meeting booking | Must | MMP |
+| SP-003 | Landing and booking | Booking webhook creates a lead in admin | Should | MMP |
+| SP-004 | Deal pipeline | Track deal stages in admin | Should | MMP |
+| SP-005 | Provisioning | Provision the customer directly on the standard HelloSmart route | Must | MMP |
+| SP-006 | Provisioning | Customer-specific custom templates | Must | MMP |
+| SP-007 | Add-ons | Own routing / custom domain as a paid add-on | Must | MMP |
+| SP-008 | Add-ons | White label and branding as a paid add-on | Must | MMP |
+| SP-009 | Quoting | Quote builder | Must | MMP |
+| SP-010 | Quoting | Send quote and track acceptance | Must | MMP |
+| SP-011 | Payments | Email payment collection | Must | MMP |
+| SP-012 | Payments | In-app payment | Must | MMP |
+| SP-013 | Payments | Recurring payments | Must | MMP |
+| SP-014 | Payments | One-time payments | Must | MMP |
+| SP-015 | Payments | Custom payment code | Should | MMP |
+| SP-016 | Payments | Automatic entitlement changes on payment | Must | MMP |
+| SP-017 | Payments | Invoices, receipts and tax | Must | MMP |
+| SP-018 | Payments | Payment gateway integration | Must | MMP |
+| SP-019 | Payments | Stripe gateway for international customers | Should | Phase 2 |
+| SP-020 | Payments | Refunds and credit notes | Should | Phase 2 |
+| SP-021 | Reporting | Revenue and payment reporting for admin | Should | Phase 2 |
+| SP-022 | Enterprise | Dedicated instance / VPC deployment | Could | Phase 3 |
+
+### Non-functional (NF)
+
+| ID | Module | Requirement | Priority | Phase |
+|---|---|---|---|---|
+| NF-001 | Security | Strict tenant isolation | Must | MMP |
+| NF-002 | Security | Secrets and API keys in a vault | Must | MMP |
+| NF-003 | Security | Encryption in transit and at rest | Must | MMP |
+| NF-004 | Security | Workspace sandboxing and egress control | Must | MMP |
+| NF-005 | Security | AI proxy as the single path for AI calls | Must | MMP |
+| NF-006 | Security | Rate limiting, abuse protection, secure session management | Must | MMP |
+| NF-007 | Privacy and compliance | Consent, notice and retention | Must | MMP |
+| NF-008 | Privacy and compliance | Human-in-the-loop for AI scoring | Must | MMP |
+| NF-009 | Privacy and compliance | Fairness monitoring | Should | Phase 3 |
+| NF-010 | Privacy and compliance | SOC 2 / ISO 27001 readiness | Should | Phase 3 |
+| NF-011 | Reliability | Workspace launch time | Should | MMP |
+| NF-012 | Reliability | Availability | Should | MMP |
+| NF-013 | Reliability | No work loss | Must | MMP |
+| NF-014 | Cost control | Automatic VM cleanup and spend limits | Must | MMP |
+| NF-015 | Observability | Logging, metrics and alerts | Must | MMP |
+| NF-016 | Usability | Accessibility and browser support | Should | Phase 2 |
+| NF-017 | Email | Deliverability | Must | MMP |
+| NF-018 | Extensibility | Template manifest as a versioned schema | Must | MMP |
