@@ -21,6 +21,8 @@ export const DEFAULT_MAIL_CONFIG: Config = {
   PAYMENT_GATEWAY: 'fake',
   EMAIL_PROVIDER: 'fake',
   WORKSPACE_RUNTIME: 'fake',
+  SECRET_STORE_PROVIDER: 'fake',
+  AWS_REGION: 'ap-south-1',
   APP_BASE_URL: 'http://localhost:3000',
 };
 

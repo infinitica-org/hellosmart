@@ -18,6 +18,9 @@ const ConfigSchema = z.object({
   PAYMENT_GATEWAY: z.enum(['fake', 'razorpay']).default('fake'),
   EMAIL_PROVIDER: z.enum(['fake', 'ses']).default('fake'),
   WORKSPACE_RUNTIME: z.enum(['fake', 'sysbox']).default('fake'),
+  SECRET_STORE_PROVIDER: z.enum(['fake', 'aws']).default('aws'),
+  AWS_REGION: z.string().default('ap-south-1'),
+  AWS_SECRETS_MANAGER_ENDPOINT: z.string().url().optional(),
   APP_BASE_URL: z.string().url().default('http://localhost:3000'),
 });
 

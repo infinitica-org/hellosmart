@@ -7,7 +7,7 @@ import {
   Logger,
   Optional,
 } from '@nestjs/common';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import {
   type ChangePasswordRequest,
   type LoginRequest,
@@ -576,9 +576,14 @@ export class AuthService {
     requestId?: string | undefined;
   }): Promise<void> {
     if (!this.pool) return;
+    let client: PoolClient | undefined;
     try {
-      const lastAuditResult = await this.pool.query(
-        `SELECT hash FROM audit.events ORDER BY id DESC LIMIT 1`,
+      client = await this.pool.connect();
+      await client.query('BEGIN');
+      await client.query(`SELECT pg_advisory_xact_lock(hashtext('audit.events'))`);
+
+      const lastAuditResult = await client.query(
+        `SELECT hash FROM audit.events ORDER BY id DESC LIMIT 1 FOR UPDATE`,
       );
       const prevHash: Buffer = lastAuditResult.rows[0]?.hash ?? Buffer.alloc(0);
 
@@ -601,7 +606,7 @@ export class AuthService {
         .update(Buffer.concat([prevHash, Buffer.from(JSON.stringify(auditPayload))]))
         .digest();
 
-      await this.pool.query(
+      await client.query(
         `INSERT INTO audit.events (
            actor_id, actor_role, org_id, action, entity, entity_id,
            before, after, ip, user_agent, request_id, prev_hash, hash
@@ -622,8 +627,21 @@ export class AuthService {
           eventHash,
         ],
       );
+
+      await client.query('COMMIT');
     } catch (err: unknown) {
+      if (client) {
+        try {
+          await client.query('ROLLBACK');
+        } catch {
+          // ignore rollback failure
+        }
+      }
       this.logger.error(`Failed to record audit event: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      if (client) {
+        client.release();
+      }
     }
   }
 }

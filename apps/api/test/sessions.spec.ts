@@ -29,6 +29,7 @@ import {
   SessionService,
   ThrottlerStorageRedis,
 } from '../src/modules/auth/index.js';
+import { AwsSecretsManagerStore } from '@hs/adapters';
 import { registerLoggingHooks } from '../src/modules/observability/index.js';
 
 interface InMemoryUser {
@@ -51,6 +52,7 @@ interface InMemoryUser {
 function createAuthMockDbPool() {
   const users = new Map<string, InMemoryUser>();
   const auditEvents: any[] = [];
+  let lockPromise: Promise<void> = Promise.resolve();
 
   const pool = {
     users,
@@ -167,6 +169,13 @@ function createAuthMockDbPool() {
           }
 
           if (normalized.includes('pg_advisory_xact_lock')) {
+            let releaseLock: () => void = () => {};
+            const prevLock = lockPromise;
+            lockPromise = new Promise<void>((resolve) => {
+              releaseLock = resolve;
+            });
+            await prevLock;
+            (client as any).releaseAdvisoryLock = releaseLock;
             return { rows: [{ pg_advisory_xact_lock: null }], rowCount: 1 };
           }
 
@@ -186,11 +195,19 @@ function createAuthMockDbPool() {
               }
               (client as any).snapshot = null;
             }
+            if ((client as any).releaseAdvisoryLock) {
+              (client as any).releaseAdvisoryLock();
+              (client as any).releaseAdvisoryLock = null;
+            }
             return { rows: [], rowCount: 0 };
           }
 
           if (normalized === 'COMMIT' || normalized.toLowerCase() === 'commit') {
             (client as any).snapshot = null;
+            if ((client as any).releaseAdvisoryLock) {
+              (client as any).releaseAdvisoryLock();
+              (client as any).releaseAdvisoryLock = null;
+            }
             return { rows: [], rowCount: 0 };
           }
 
@@ -217,9 +234,15 @@ function createAuthMockDbPool() {
           }
 
           if (normalized.startsWith('INSERT INTO audit.events')) {
+            const prevHash = (params[11] ?? Buffer.alloc(0)) as Buffer;
+            const hash = (params[12] ?? crypto.randomBytes(32)) as Buffer;
             const event = {
               id: auditEvents.length + 1,
-              hash: crypto.randomBytes(32),
+              action: params[3],
+              entity: params[4],
+              entity_id: params[5],
+              prev_hash: prevHash,
+              hash: hash,
             };
             auditEvents.push(event);
             return { rows: [event], rowCount: 1 };
@@ -227,7 +250,12 @@ function createAuthMockDbPool() {
 
           return { rows: [], rowCount: 0 };
         },
-        release: () => {},
+        release: () => {
+          if ((client as any).releaseAdvisoryLock) {
+            (client as any).releaseAdvisoryLock();
+            (client as any).releaseAdvisoryLock = null;
+          }
+        },
       } as unknown as PoolClient;
 
       return client;
@@ -799,6 +827,137 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
     ).rejects.toThrow(MfaConfigurationException);
   });
 
+  it('10h. Production AwsSecretsManagerStore resolves opaque mfa_secret_ref and allows login', async () => {
+    const mockAwsClient = {
+      send: vi.fn().mockImplementation(async (command) => {
+        if (command.constructor.name === 'GetSecretValueCommand' || command.input?.SecretId === 'arn:aws:secretsmanager:ap-south-1:123456789012:secret:hs/mfa/admin-live-1') {
+          return { SecretString: 'JBSWY3DPEHPK3PXP' };
+        }
+        throw new Error('Unexpected command');
+      }),
+    } as any;
+
+    const awsStore = new AwsSecretsManagerStore({ client: mockAwsClient });
+    const liveAdminId = 'adm-aws-live-1';
+    mockPool.users.set(liveAdminId, {
+      id: liveAdminId,
+      org_id: null,
+      email: 'admin-live@hellosmart.test',
+      name: 'Live Admin',
+      role: 'platform_admin',
+      password_hash: await hasherService.hashPassword(strongPassword),
+      must_reset_password: false,
+      status: 'active',
+      failed_logins: 0,
+      locked_until: null,
+      last_login_at: null,
+      mfa_secret_ref: 'arn:aws:secretsmanager:ap-south-1:123456789012:secret:hs/mfa/admin-live-1',
+    });
+
+    const liveAuthService = new AuthService(
+      hasherService,
+      sessionService,
+      mfaService,
+      mockPool as unknown as Pool,
+      awsStore,
+    );
+
+    const validTotp = mfaService.generateTotp('JBSWY3DPEHPK3PXP');
+    const loginResult = await liveAuthService.login({
+      email: 'admin-live@hellosmart.test',
+      password: strongPassword,
+      mfaCode: validTotp,
+    });
+
+    expect(loginResult.me.role).toBe('platform_admin');
+    expect(loginResult.me.portal).toBe('admin');
+  });
+
+  it('10i. AwsSecretsManagerStore failing with AccessDeniedException fails closed with 403', async () => {
+    const accessDeniedErr = new Error('User is not authorized to perform: secretsmanager:GetSecretValue on resource');
+    accessDeniedErr.name = 'AccessDeniedException';
+
+    const mockFailingAwsClient = {
+      send: vi.fn().mockRejectedValue(accessDeniedErr),
+    } as any;
+
+    const failingAwsStore = new AwsSecretsManagerStore({ client: mockFailingAwsClient });
+    const failAdminId = 'adm-aws-denied';
+    mockPool.users.set(failAdminId, {
+      id: failAdminId,
+      org_id: null,
+      email: 'admin-denied@hellosmart.test',
+      name: 'Denied Admin',
+      role: 'platform_admin',
+      password_hash: await hasherService.hashPassword(strongPassword),
+      must_reset_password: false,
+      status: 'active',
+      failed_logins: 0,
+      locked_until: null,
+      last_login_at: null,
+      mfa_secret_ref: 'arn:aws:secretsmanager:ap-south-1:123456789012:secret:hs/mfa/admin-denied',
+    });
+
+    const liveAuthService = new AuthService(
+      hasherService,
+      sessionService,
+      mfaService,
+      mockPool as unknown as Pool,
+      failingAwsStore,
+    );
+
+    await expect(
+      liveAuthService.login({
+        email: 'admin-denied@hellosmart.test',
+        password: strongPassword,
+        mfaCode: '123456',
+      }),
+    ).rejects.toThrow(MfaConfigurationException);
+  });
+
+  it('10j. AwsSecretsManagerStore resolving JSON { totp_seed: ... } allows platform admin login', async () => {
+    const mockJsonAwsClient = {
+      send: vi.fn().mockResolvedValue({
+        SecretString: JSON.stringify({ totp_seed: 'JBSWY3DPEHPK3PXP', metadata: 'vault-rotated' }),
+      }),
+    } as any;
+
+    const jsonAwsStore = new AwsSecretsManagerStore({ client: mockJsonAwsClient });
+    const jsonAdminId = 'adm-aws-json';
+    mockPool.users.set(jsonAdminId, {
+      id: jsonAdminId,
+      org_id: null,
+      email: 'admin-json@hellosmart.test',
+      name: 'Json Admin',
+      role: 'platform_admin',
+      password_hash: await hasherService.hashPassword(strongPassword),
+      must_reset_password: false,
+      status: 'active',
+      failed_logins: 0,
+      locked_until: null,
+      last_login_at: null,
+      mfa_secret_ref: 'arn:aws:secretsmanager:ap-south-1:123456789012:secret:hs/mfa/admin-json',
+    });
+
+    const liveAuthService = new AuthService(
+      hasherService,
+      sessionService,
+      mfaService,
+      mockPool as unknown as Pool,
+      jsonAwsStore,
+    );
+
+    const validTotp = mfaService.generateTotp('JBSWY3DPEHPK3PXP');
+    const loginResult = await liveAuthService.login({
+      email: 'admin-json@hellosmart.test',
+      password: strongPassword,
+      mfaCode: validTotp,
+    });
+
+    expect(loginResult.me.role).toBe('platform_admin');
+    expect(loginResult.me.portal).toBe('admin');
+  });
+
   // 11. Redis session store ping and failure handling
   it('11. RedisSessionStore ping handles unavailable Redis gracefully', async () => {
     const failingStore = new RedisSessionStore({
@@ -1253,5 +1412,174 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
     await redisStore.destroyUserSessions('usr-A');
     expect(await redisStore.getSession('sess-a2')).toBeNull();
     expect(setMap.has('hs_user_sessions:usr-A')).toBe(false);
+  });
+
+  // 22. Audit-chain concurrency: concurrent operations use pg_advisory_xact_lock to prevent lost updates or broken hash links
+  it('22. Concurrent audit append operations form an unbroken, monotonically linked hash chain with zero lost updates', async () => {
+    // Clear previous audit events for an isolated test
+    mockPool.auditEvents.length = 0;
+
+    // Seed 5 candidate users
+    const userIds: string[] = [];
+    for (let i = 1; i <= 5; i++) {
+      const uId = `cnd-concurrent-${i}`;
+      userIds.push(uId);
+      mockPool.users.set(uId, {
+        id: uId,
+        org_id: orgId,
+        email: `cnd${i}@example.test`,
+        name: `Candidate ${i}`,
+        role: 'candidate',
+        password_hash: await hasherService.hashPassword(strongPassword),
+        must_reset_password: false,
+        status: 'active',
+        failed_logins: 0,
+        locked_until: null,
+        last_login_at: null,
+        mfa_secret_ref: null,
+      });
+    }
+
+    // Trigger concurrent operations across different users
+    const operations: Promise<any>[] = [];
+
+    for (let i = 0; i < 5; i++) {
+      operations.push(
+        app.inject({
+          method: 'POST',
+          url: '/api/v1/auth/login',
+          payload: { email: `cnd${i + 1}@example.test`, password: strongPassword },
+        }),
+      );
+    }
+
+    const initialSession = await sessionService.createSession({
+      userId: candidateUserId,
+      orgId,
+      email: 'candidate@example.test',
+      name: 'Alice Candidate',
+      role: 'candidate',
+      portal: 'candidate',
+      mustResetPassword: false,
+    });
+
+    for (let i = 0; i < 5; i++) {
+      operations.push(
+        authService
+          .changePassword(
+            initialSession,
+            {
+              currentPassword: strongPassword,
+              newPassword: `ConcurrentNewPass${i}!2026`,
+            },
+            { ip: '127.0.0.1', requestId: `req-conc-${i}` },
+          )
+          .catch(() => null),
+      );
+    }
+
+    await Promise.all(operations);
+
+    // Verify audit events were written
+    expect(mockPool.auditEvents.length).toBeGreaterThanOrEqual(5);
+
+    // Verify hash chain integrity:
+    // 1. First event has prev_hash of Buffer.alloc(0)
+    expect(mockPool.auditEvents[0].prev_hash.equals(Buffer.alloc(0))).toBe(true);
+
+    // 2. Every subsequent event has prev_hash exactly equal to the previous event's hash
+    for (let i = 1; i < mockPool.auditEvents.length; i++) {
+      const current = mockPool.auditEvents[i];
+      const previous = mockPool.auditEvents[i - 1];
+      expect(current.prev_hash.equals(previous.hash)).toBe(true);
+    }
+  });
+
+  // 23. Password change failure before session revocation keeps session and old password intact
+  it('23. Password change failure before session revocation (invalid current password) preserves old password and session', async () => {
+    // 1. Log in to obtain valid session
+    const loginRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: 'candidate@example.test', password: strongPassword },
+    });
+    const sessionCookie = (Array.isArray(loginRes.headers['set-cookie'])
+      ? loginRes.headers['set-cookie']
+      : [loginRes.headers['set-cookie']!]).find((c) => c.startsWith(`${SESSION_COOKIE_NAME}=`))!.split(';')[0];
+
+    // 2. Attempt password change with incorrect current password
+    const failRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password/change',
+      headers: { cookie: sessionCookie },
+      payload: {
+        currentPassword: 'WrongCurrentPassword123!',
+        newPassword: updatedStrongPassword,
+      },
+    });
+
+    expect(failRes.statusCode).toBe(401);
+    const failBody = JSON.parse(failRes.body);
+    expect(failBody.code).toBe('INVALID_CURRENT_PASSWORD');
+
+    // 3. Existing session is still valid and can access protected endpoints
+    const meRes = await app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: { cookie: sessionCookie },
+    });
+    expect(meRes.statusCode).toBe(200);
+
+    // 4. Candidate can still authenticate with original password
+    const reLogin = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: 'candidate@example.test', password: strongPassword },
+    });
+    expect(reLogin.statusCode).toBe(200);
+  });
+
+  // 24. Transaction commit failure during password change rolls back database changes
+  it('24. Transaction commit failure aborts password change and does not return success', async () => {
+    const session = await sessionService.createSession({
+      userId: candidateUserId,
+      orgId,
+      email: 'candidate@example.test',
+      name: 'Alice Candidate',
+      role: 'candidate',
+      portal: 'candidate',
+      mustResetPassword: false,
+    });
+
+    const userBefore = mockPool.users.get(candidateUserId)!;
+    const originalHash = userBefore.password_hash;
+
+    // Spy on pool.connect to return a client whose COMMIT fails
+    const originalConnect = mockPool.connect;
+    const connectSpy = vi.spyOn(mockPool, 'connect').mockImplementation(async () => {
+      const client = await originalConnect();
+      const originalQuery = client.query;
+      client.query = async (sql: string, params: unknown[] = []) => {
+        if (sql.trim().toUpperCase() === 'COMMIT') {
+          throw new Error('Database connection lost during COMMIT');
+        }
+        return originalQuery(sql, params);
+      };
+      return client;
+    });
+
+    // Attempt password change
+    await expect(
+      authService.changePassword(session, {
+        currentPassword: strongPassword,
+        newPassword: updatedStrongPassword,
+      }),
+    ).rejects.toThrow('Database connection lost during COMMIT');
+
+    // DB was rolled back: password_hash remains unchanged
+    const userAfter = mockPool.users.get(candidateUserId)!;
+    expect(userAfter.password_hash).toBe(originalHash);
+
+    connectSpy.mockRestore();
   });
 });

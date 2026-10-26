@@ -1,3 +1,5 @@
+import type { Buffer } from 'node:buffer';
+
 // Ports for every external dependency. Each has a real and a fake implementation so no department
 // is ever blocked on credentials. Selected by env (*_PROVIDER / PAYMENT_GATEWAY / WORKSPACE_RUNTIME).
 // Fakes are forbidden in production (enforced in apps/api config).
@@ -34,3 +36,7 @@ export interface SecretStore {
 export interface SafeHttp {
   get(url: string, opts?: { allowHosts?: string[]; timeoutMs?: number; maxBytes?: number }): Promise<{ status: number; body: Buffer }>;
 }
+
+export * from './secret-store/aws-secrets-manager.store.js';
+export * from './secret-store/memory-secret.store.js';
+

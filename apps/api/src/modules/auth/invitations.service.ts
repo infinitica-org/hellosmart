@@ -195,6 +195,9 @@ export class InvitationsService {
         requestId: options.requestId ?? '',
       };
 
+      // Advisory transaction lock serializes audit hash chain writes under concurrency
+      await client.query(`SELECT pg_advisory_xact_lock(hashtext('audit.events'))`);
+
       // Lock the tail of audit.events to compute sequential hash chain
       const lastAuditResult = await client.query(
         `SELECT hash FROM audit.events ORDER BY id DESC LIMIT 1 FOR UPDATE`,

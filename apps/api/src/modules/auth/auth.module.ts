@@ -3,6 +3,7 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule, type ThrottlerStorage } from '@nestjs/throttler';
 import pg from 'pg';
 import { Redis } from 'ioredis';
+import { AwsSecretsManagerStore, MemorySecretStore } from '@hs/adapters';
 import { loadConfig } from '../../config/config.js';
 import { MailService } from '../../common/services/mail.service.js';
 import { HasherService } from './hasher.service.js';
@@ -117,9 +118,24 @@ import { ThrottlerProblemFilter } from './auth-exception.filter.js';
     {
       provide: SECRET_STORE,
       useFactory: () => {
-        // AWS Secrets Manager adapter is not yet implemented on disk in @hs/adapters.
-        // Defaults to null; platform admin MFA fails closed until the adapter is provided.
-        return null;
+        if (process.env.NODE_ENV === 'test') {
+          return null;
+        }
+        try {
+          const config = loadConfig();
+          if (config.SECRET_STORE_PROVIDER === 'fake') {
+            return new MemorySecretStore();
+          }
+          return new AwsSecretsManagerStore({
+            region: config.AWS_REGION,
+            ...(config.AWS_SECRETS_MANAGER_ENDPOINT ? { endpoint: config.AWS_SECRETS_MANAGER_ENDPOINT } : {}),
+          });
+        } catch {
+          if (process.env.NODE_ENV === 'development') {
+            return new MemorySecretStore();
+          }
+          return new AwsSecretsManagerStore();
+        }
       },
     },
     {
