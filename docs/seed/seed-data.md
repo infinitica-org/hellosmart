@@ -20,6 +20,7 @@ Before running the seed command, verify that your local environment satisfies th
      ```
    - Standard local PostgreSQL port forwarded is **`5434`** (via `docker-compose.override.yml`) or standard `5432`.
 3. **Environment Variables Configured**:
+
    - Ensure `.env` and `.env.local` files exist in the repo root (copied from `.env.example` and `.env.local.example`).
    - Example `.env` configuration:
      ```env
@@ -28,6 +29,7 @@ Before running the seed command, verify that your local environment satisfies th
      DATABASE_MIGRATOR_URL=postgres://hs_migrator:hs_migrator_local@localhost:5434/hellosmart
      ```
    - Example `.env.local` configuration (uncommitted, local dev credentials):
+
      ```env
      # Shared local test password used to generate Argon2id hashes for loginable accounts (uncommitted)
      SEED_DEFAULT_PASSWORD=
@@ -35,6 +37,7 @@ Before running the seed command, verify that your local environment satisfies th
      # Base32 TOTP secret for local testing of Platform Admin MFA (RFC 4648 Base32: A-Z, 2-7, uncommitted)
      SEED_PLATFORM_ADMIN_TOTP_SECRET=
      ```
+
 4. **Database Schema Migrated**:
    - The foundation migration ([`packages/contracts/db/migrations/0001_tenancy_foundation.sql`](file:///c:/Users/Vedika/OneDrive/Infinitica/hellosmart/packages/contracts/db/migrations/0001_tenancy_foundation.sql)) must be applied. On Docker startup, this is automatically initialized from `/docker-entrypoint-initdb.d`.
 
@@ -45,8 +48,15 @@ Before running the seed command, verify that your local environment satisfies th
 From the root of the repository, execute:
 
 ```bash
+# Standard seed execution (zero secrets or raw tokens in logs)
 pnpm db:seed
+
+# Print raw invitation tokens and links for local browser testing:
+pnpm db:seed -- --show-tokens
 ```
+
+> [!NOTE]
+> The `--show-tokens` flag is strictly prohibited in CI environments (`CI=true` or common CI variables) and will abort with a non-zero exit code if detected. Raw tokens are stored locally in the gitignored file `packages/fixtures/.seed-tokens.local.json`.
 
 ### Expected Output
 
@@ -82,15 +92,15 @@ Status          : Seed Completed Successfully (Idempotent)
 
 ### Record Count Breakdown: 37 Prototype Records vs 123 Enterprise Records
 
-| Entity Group              | Prototype (Legacy) | Enterprise Seed (Current) | Purpose & Details                                                                                                                                                                                                                                              |
-| ------------------------- | ------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Organizations**         | 2                  | **3**                     | Aster Ridge Technologies (`paid_active`), Brindle & Co (`trial_active`), and Crestview Financial (`suspended` negative sample).                                                                                                                              |
-| **Entitlements**          | 2                  | **3**                     | Quota definitions, feature flags (`cloud`, `chat`), and trial window (14 days).                                                                                                                                                                                |
-| **Platform Admins**       | 3                  | **1**                     | `superadmin@hellosmart.ai` with MFA enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`).                                                                                                                                                           |
-| **Company Admins**        | 2                  | **3**                     | `admin@asterridge.com` (Aster Ridge), `trialadmin@brindle.co` (Brindle & Co), and `admin@crestview.test` (Crestview Financial negative test sample).                                                                                                          |
+| Entity Group              | Prototype (Legacy) | Enterprise Seed (Current) | Purpose & Details                                                                                                                                                                                                                                           |
+| ------------------------- | ------------------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Organizations**         | 2                  | **3**                     | Aster Ridge Technologies (`paid_active`), Brindle & Co (`trial_active`), and Crestview Financial (`suspended` negative sample).                                                                                                                             |
+| **Entitlements**          | 2                  | **3**                     | Quota definitions, feature flags (`cloud`, `chat`), and trial window (14 days).                                                                                                                                                                             |
+| **Platform Admins**       | 3                  | **1**                     | `superadmin@hellosmart.ai` with MFA enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`).                                                                                                                                                         |
+| **Company Admins**        | 2                  | **3**                     | `admin@asterridge.com` (Aster Ridge), `trialadmin@brindle.co` (Brindle & Co), and `admin@crestview.test` (Crestview Financial negative test sample).                                                                                                        |
 | **Candidates**            | 28                 | **110**                   | **Aster Ridge**: 100 candidates (full quota capacity test: 70 active, 15 invited, 10 suspended, 5 deleted).<br>**Brindle & Co**: 10 candidates (full trial cap test: 4 active, 3 invited, 1 suspended, 2 deleted). Includes designated loginable candidate. |
-| **Candidate Invitations** | 0                  | **3**                     | Candidate onboarding tokens: 1 valid (72h expiry), 1 expired (-24h), 1 used (`used_at` set).                                                                                                                                                                   |
-| **GRAND TOTAL**           | **37**             | **123**                   | **123 persistent records across 4 tenant-isolated tables.**                                                                                                                                                                                                    |
+| **Candidate Invitations** | 0                  | **3**                     | Candidate onboarding tokens: 1 valid (72h expiry), 1 expired (-24h), 1 used (`used_at` set).                                                                                                                                                                |
+| **GRAND TOTAL**           | **37**             | **123**                   | **123 persistent records across 4 tenant-isolated tables.**                                                                                                                                                                                                 |
 
 ---
 
@@ -159,21 +169,22 @@ For full credential details, passwords, and candidate distribution tables, see t
 
 ### Quick Reference:
 
-| Persona                                      | Email                                   | Password Hash                    | Role / Classification | Notes                                                                               |
-| -------------------------------------------- | --------------------------------------- | -------------------------------- | --------------------- | ----------------------------------------------------------------------------------- |
-| **Platform Super Admin**                     | `superadmin@hellosmart.ai`              | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | MFA Enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`)                  |
-| **Aster Ridge Company Admin**                | `admin@asterridge.com`                  | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Mature paid tenant administrator (`paid_active`)                                    |
-| **Brindle & Co Company Admin**               | `trialadmin@brindle.co`                 | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Active 14-day trial administrator (`trial_active`)                                  |
-| **Active Candidate**                         | `candidate.aster-ridge.001@example.com` | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Ready for immediate login and workspace connection                                  |
-| **Suspended Candidate (Negative Sample)**    | `candidate.aster-ridge.086@example.com` | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to user `status = 'suspended'`    |
-| **Deleted Candidate (Negative Sample)**      | `candidate.aster-ridge.096@example.com` | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to soft-deletion (`deleted_at`)   |
-| **Crestview Admin (Suspended Org Sample)**   | `admin@crestview.test`                  | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to tenant `status = 'suspended'`  |
-| **Remaining Candidates (~107)**              | `candidate.*`                           | `null`                           | Bulk Candidate Pool   | Unhashed for sub-3-second seed performance; not individually loginable               |
-| **Invited Candidates**                       | `candidate.aster-ridge.071@example.com` | `null` (Pending Reset)           | Onboarding Testing    | Must complete first-login onboarding & password reset via invite token (`BR-24`)    |
+| Persona                                    | Email                                   | Password Hash                    | Role / Classification | Notes                                                                              |
+| ------------------------------------------ | --------------------------------------- | -------------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
+| **Platform Super Admin**                   | `superadmin@hellosmart.ai`              | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | MFA Enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`)                 |
+| **Aster Ridge Company Admin**              | `admin@asterridge.com`                  | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Mature paid tenant administrator (`paid_active`)                                   |
+| **Brindle & Co Company Admin**             | `trialadmin@brindle.co`                 | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Active 14-day trial administrator (`trial_active`)                                 |
+| **Active Candidate**                       | `candidate.aster-ridge.001@example.com` | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Ready for immediate login and workspace connection                                 |
+| **Suspended Candidate (Negative Sample)**  | `candidate.aster-ridge.086@example.com` | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to user `status = 'suspended'`   |
+| **Deleted Candidate (Negative Sample)**    | `candidate.aster-ridge.096@example.com` | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to soft-deletion (`deleted_at`)  |
+| **Crestview Admin (Suspended Org Sample)** | `admin@crestview.test`                  | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to tenant `status = 'suspended'` |
+| **Remaining Candidates (~107)**            | `candidate.*`                           | `null`                           | Bulk Candidate Pool   | Unhashed for sub-3-second seed performance; not individually loginable             |
+| **Invited Candidates**                     | `candidate.aster-ridge.071@example.com` | `null` (Pending Reset)           | Onboarding Testing    | Must complete first-login onboarding & password reset via invite token (`BR-24`)   |
 
 ### Setting Up Platform Admin TOTP in Authenticator Apps
 
 To test Platform Admin login with two-factor authentication locally:
+
 1. Copy `.env.local.example` to `.env.local`:
    ```bash
    cp .env.local.example .env.local

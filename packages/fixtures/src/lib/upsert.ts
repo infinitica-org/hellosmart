@@ -8,6 +8,17 @@ import {
   getPlatformAdminTotpSecret,
 } from './credentials.js';
 import {
+  generateRawInviteToken,
+  hashInvitationToken,
+  is32ByteEntropyToken,
+  loadLocalTokens,
+  saveLocalTokens,
+  getInMemoryTokens,
+  setInMemoryTokens,
+  type SeedTokensMap,
+} from './invite-links.js';
+import { deterministicUuid } from './keys.js';
+import {
   getOrganizations,
   type OrganizationEntity,
   type EntitlementEntity,
@@ -28,6 +39,7 @@ export interface SeedSummary {
   candidatesUpserted: number;
   invitationsUpserted: number;
   totalRecordsUpserted: number;
+  tokens?: SeedTokensMap;
 }
 
 export interface SeedOptions {
@@ -38,6 +50,7 @@ export interface SeedOptions {
   skipSafetyCheck?: boolean | undefined; // Only for unit test harness with mock clients
   seedPassword?: string | undefined;
   totpSecret?: string | undefined;
+  tokens?: SeedTokensMap | undefined;
 }
 
 /**
@@ -242,6 +255,9 @@ export async function upsertInvitation(
     await client.query('DELETE FROM app.invitations WHERE id = $1', [existingInv.rows[0].id]);
   }
 
+  const validId = deterministicUuid('invitation', 'valid');
+  const usedId = deterministicUuid('invitation', 'used');
+
   const query = `
     INSERT INTO app.invitations (
       id, org_id, user_id, token_hash, invited_by, expires_at, used_at, created_at
@@ -254,7 +270,11 @@ export async function upsertInvitation(
       token_hash = EXCLUDED.token_hash,
       invited_by = EXCLUDED.invited_by,
       expires_at = EXCLUDED.expires_at,
-      used_at = COALESCE(app.invitations.used_at, EXCLUDED.used_at);
+      used_at = CASE
+        WHEN EXCLUDED.id = $9 THEN NULL
+        WHEN EXCLUDED.id = $10 THEN COALESCE(app.invitations.used_at, EXCLUDED.used_at)
+        ELSE EXCLUDED.used_at
+      END;
   `;
 
   await client.query(query, [
@@ -266,7 +286,23 @@ export async function upsertInvitation(
     invitation.expires_at,
     invitation.used_at,
     invitation.created_at,
+    validId,
+    usedId,
   ]);
+
+  // Valid case reset: on every seed run, restore candidate 071 to invited state without password
+  if (invitation.id === validId) {
+    await client.query(
+      `UPDATE app.users
+       SET status = 'invited',
+           must_reset_password = true,
+           password_hash = NULL,
+           email_verified_at = NULL,
+           last_login_at = NULL
+       WHERE org_id = $1 AND email = $2;`,
+      [invitation.org_id, 'candidate.aster-ridge.071@example.com'],
+    );
+  }
 }
 
 /**
@@ -313,7 +349,9 @@ export async function runSafeSeed(
 
   // Validate TOTP secret format if configured in options or env
   const rawTotp =
-    options.totpSecret !== undefined ? options.totpSecret : process.env.SEED_PLATFORM_ADMIN_TOTP_SECRET;
+    options.totpSecret !== undefined
+      ? options.totpSecret
+      : process.env.SEED_PLATFORM_ADMIN_TOTP_SECRET;
   if (rawTotp && rawTotp.trim()) {
     const cleaned = rawTotp.trim().replace(/\s+/g, '').toUpperCase();
     if (!/^[A-Z2-7]+=*$/.test(cleaned)) {
@@ -336,15 +374,14 @@ export async function runSafeSeed(
     resolvedPasswordHash = await hashPassword(defaultPassword);
   }
 
-  const refDate = options.referenceDate ?? new Date('2026-10-23T00:00:00Z');
+  const refDate = options.referenceDate ?? new Date();
   const userOptions = { passwordHash: resolvedPasswordHash };
 
-  // Load datasets from 6.1 & 6.3 entities with resolved Argon2id password hash
+  // Load user and organization datasets
   const platformAdmins = getPlatformAdmins(refDate, userOptions);
   const organizations = getOrganizations(refDate, platformAdmins[0]!.id);
   const companyAdmins = getCompanyAdmins(refDate, userOptions);
   const candidates = getCandidates(refDate, userOptions);
-  const invitations = getInvitations(refDate);
 
   let orgsCount = 0;
   let entsCount = 0;
@@ -353,8 +390,14 @@ export async function runSafeSeed(
   let candsCount = 0;
   let invsCount = 0;
 
-  // 2. Execute within an atomic transaction
+  // 3. Execute within an atomic transaction
   await client.query('BEGIN;');
+
+  let resolvedTokens: SeedTokensMap = {
+    valid: '',
+    expired: '',
+    used: '',
+  };
 
   try {
     // Set RLS platform bypass context for transaction
@@ -363,6 +406,49 @@ export async function runSafeSeed(
 
     // Ensure table structure exists before inserting
     await ensureInvitationsTable(client);
+
+    // Resolve invitation tokens (idempotent: keep existing tokens if hashes match DB)
+    const validId = deterministicUuid('invitation', 'valid');
+    const expiredId = deterministicUuid('invitation', 'expired');
+    const usedId = deterministicUuid('invitation', 'used');
+
+    const existingInvsMap = new Map<string, { token_hash: string; used_at: Date | null }>();
+    try {
+      const existingInvs = await client.query(
+        'SELECT id, token_hash, used_at FROM app.invitations WHERE id = ANY($1)',
+        [[validId, expiredId, usedId]],
+      );
+      for (const row of existingInvs.rows) {
+        existingInvsMap.set(row.id, { token_hash: row.token_hash, used_at: row.used_at });
+      }
+    } catch {}
+
+    const localTokens = options.tokens ?? getInMemoryTokens() ?? loadLocalTokens();
+
+    for (const label of ['valid', 'expired', 'used'] as const) {
+      const id = deterministicUuid('invitation', label);
+      const existingRow = existingInvsMap.get(id);
+      const candidateLocalToken = localTokens?.[label];
+
+      if (
+        candidateLocalToken &&
+        is32ByteEntropyToken(candidateLocalToken) &&
+        existingRow &&
+        hashInvitationToken(candidateLocalToken) === existingRow.token_hash
+      ) {
+        resolvedTokens[label] = candidateLocalToken;
+      } else if (candidateLocalToken && is32ByteEntropyToken(candidateLocalToken) && !existingRow) {
+        resolvedTokens[label] = candidateLocalToken;
+      } else {
+        resolvedTokens[label] = generateRawInviteToken();
+      }
+    }
+
+    // Persist resolved tokens in memory cache and local gitignored file
+    setInMemoryTokens(resolvedTokens);
+    saveLocalTokens(resolvedTokens);
+
+    const invitations = getInvitations(refDate, resolvedTokens);
 
     // Step A: Platform Admin
     for (const admin of platformAdmins) {
@@ -418,6 +504,7 @@ export async function runSafeSeed(
     invitationsUpserted: invsCount,
     totalRecordsUpserted:
       orgsCount + entsCount + platAdminsCount + compAdminsCount + candsCount + invsCount,
+    tokens: resolvedTokens,
   };
 
   log(`Seed completed successfully: ${summary.totalRecordsUpserted} total records processed.`);

@@ -1,6 +1,25 @@
-import crypto from 'node:crypto';
 import { deterministicUuid } from '../lib/keys.js';
 import { ASTER_RIDGE_ID } from './organizations.js';
+import {
+  hashInvitationToken,
+  generateRawInviteToken,
+  getInviteToken,
+  getAcceptInviteLink,
+  getInvitationLink,
+  type InvitationLabel,
+  type SeedTokensMap,
+} from '../lib/invite-links.js';
+
+// Re-export invite-links utilities for consumers
+export {
+  hashInvitationToken,
+  generateRawInviteToken,
+  getInviteToken,
+  getAcceptInviteLink,
+  getInvitationLink,
+  type InvitationLabel,
+  type SeedTokensMap,
+};
 
 /**
  * Standard candidate invitation validity window in hours (BR-24).
@@ -8,38 +27,25 @@ import { ASTER_RIDGE_ID } from './organizations.js';
 export const INVITE_TTL_HOURS = 72;
 
 /**
- * Typed union for invitation fixture states.
- */
-export type InvitationLabel = 'valid' | 'expired' | 'used';
-
-/**
- * Obviously fake, dev-only raw tokens for local testing.
- * Kept only in memory for test helpers and link generation; never stored in plaintext in the database.
- */
-export const DEV_INVITE_TOKEN_VALID = 'dev-invite-valid-ast-cand-071';
-export const DEV_INVITE_TOKEN_EXPIRED = 'dev-invite-expired-ast-cand-072';
-export const DEV_INVITE_TOKEN_USED = 'dev-invite-used-ast-cand-001';
-
-/**
- * SHA-256 token hashing helper matching application security standards (BR-16, BR-24).
- */
-export function hashInvitationToken(token: string): string {
-  return crypto.createHash('sha256').update(token).digest('hex');
-}
-
-/**
  * Candidate Invitation entity representation matching PostgreSQL schema.
+ * Note: Raw tokens are NEVER persisted to the database; only token_hash is stored.
  */
 export interface InvitationEntity {
   id: string; // Deterministic UUIDv5
   org_id: string; // Foreign key to app.organizations(id)
   user_id: string; // Foreign key to app.users(id) - candidate
   token_hash: string; // SHA-256 hash of raw token
-  raw_token: string; // Dev-only string constant (never stored in DB or logged)
   invited_by: string; // Foreign key to app.users(id) - inviter admin
   created_at: Date;
   expires_at: Date;
   used_at: Date | null;
+}
+
+/**
+ * Backwards-compatible alias for getInviteToken.
+ */
+export function getInvitationToken(label: InvitationLabel): string {
+  return getInviteToken(label);
 }
 
 /**
@@ -51,8 +57,12 @@ export interface InvitationEntity {
  * 3. Used: created at `now - 24h`, expires at `now + 48h`, `used_at: now - 12h`. Linked to candidate 001 (`active`).
  *
  * @param refDate Reference timestamp representing "now" (defaults to current date at seed time).
+ * @param tokens Optional SeedTokensMap containing raw 32-byte tokens to hash.
  */
-export function getInvitations(refDate: Date = new Date()): InvitationEntity[] {
+export function getInvitations(
+  refDate: Date = new Date(),
+  tokens?: SeedTokensMap,
+): InvitationEntity[] {
   const now = refDate.getTime();
   const asterAdminId = deterministicUuid('user', 'admin@asterridge.com');
 
@@ -75,13 +85,17 @@ export function getInvitations(refDate: Date = new Date()): InvitationEntity[] {
   const usedExpiresAt = new Date(usedCreatedAt.getTime() + INVITE_TTL_HOURS * 3600 * 1000); // expires in 48 hours
   const usedAt = new Date(now - 12 * 3600 * 1000); // used 12 hours ago (between created_at and now)
 
+  // Resolve tokens for each label
+  const validToken = tokens?.valid ?? getSafeToken('valid');
+  const expiredToken = tokens?.expired ?? getSafeToken('expired');
+  const usedToken = tokens?.used ?? getSafeToken('used');
+
   return [
     {
       id: deterministicUuid('invitation', 'valid'),
       org_id: ASTER_RIDGE_ID,
       user_id: validCandidateId,
-      token_hash: hashInvitationToken(DEV_INVITE_TOKEN_VALID),
-      raw_token: DEV_INVITE_TOKEN_VALID,
+      token_hash: hashInvitationToken(validToken),
       invited_by: asterAdminId,
       created_at: validCreatedAt,
       expires_at: validExpiresAt,
@@ -91,8 +105,7 @@ export function getInvitations(refDate: Date = new Date()): InvitationEntity[] {
       id: deterministicUuid('invitation', 'expired'),
       org_id: ASTER_RIDGE_ID,
       user_id: expiredCandidateId,
-      token_hash: hashInvitationToken(DEV_INVITE_TOKEN_EXPIRED),
-      raw_token: DEV_INVITE_TOKEN_EXPIRED,
+      token_hash: hashInvitationToken(expiredToken),
       invited_by: asterAdminId,
       created_at: expiredCreatedAt,
       expires_at: expiredExpiresAt,
@@ -102,8 +115,7 @@ export function getInvitations(refDate: Date = new Date()): InvitationEntity[] {
       id: deterministicUuid('invitation', 'used'),
       org_id: ASTER_RIDGE_ID,
       user_id: usedCandidateId,
-      token_hash: hashInvitationToken(DEV_INVITE_TOKEN_USED),
-      raw_token: DEV_INVITE_TOKEN_USED,
+      token_hash: hashInvitationToken(usedToken),
       invited_by: asterAdminId,
       created_at: usedCreatedAt,
       expires_at: usedExpiresAt,
@@ -112,40 +124,12 @@ export function getInvitations(refDate: Date = new Date()): InvitationEntity[] {
   ];
 }
 
-/**
- * Returns the raw token string for a given invitation state label.
- * Throws a descriptive error if an unknown label is provided.
- */
-export function getInvitationToken(label: InvitationLabel): string {
-  switch (label) {
-    case 'valid':
-      return DEV_INVITE_TOKEN_VALID;
-    case 'expired':
-      return DEV_INVITE_TOKEN_EXPIRED;
-    case 'used':
-      return DEV_INVITE_TOKEN_USED;
-    default:
-      throw new Error(
-        `Unknown invitation label '${String(label)}'. Expected 'valid' | 'expired' | 'used'.`,
-      );
+function getSafeToken(label: InvitationLabel): string {
+  try {
+    return getInviteToken(label);
+  } catch {
+    return generateRawInviteToken();
   }
-}
-
-/**
- * Returns the full candidate invitation link built from the app's real invite route
- * and a configurable base URL (APP_BASE_URL / WEB_BASE_URL, default http://localhost:3000).
- *
- * Route: `/invite?token=<raw_token>` (BR-24)
- *
- * @param label 'valid' | 'expired' | 'used'
- * @param baseUrl Optional override for the base URL.
- */
-export function getInvitationLink(label: InvitationLabel, baseUrl?: string): string {
-  const token = getInvitationToken(label);
-  const rawBase =
-    baseUrl || process.env.APP_BASE_URL || process.env.WEB_BASE_URL || 'http://localhost:3000';
-  const cleanBase = rawBase.replace(/\/+$/, '');
-  return `${cleanBase}/invite?token=${encodeURIComponent(token)}`;
 }
 
 /**

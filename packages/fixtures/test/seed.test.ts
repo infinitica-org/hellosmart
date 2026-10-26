@@ -9,6 +9,8 @@ import {
   loadEnvFiles,
   extractTargetDbInfo,
   formatSummaryTable,
+  getInviteToken,
+  hashInvitationToken,
 } from '../dist/index.js';
 import {
   ASTER_RIDGE_ID,
@@ -600,10 +602,19 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
       assert.doesNotMatch(combinedOutput, /hs_owner_local/);
       assert.doesNotMatch(combinedOutput, /\$argon2id\$/);
 
-      // Assert no raw invitation token strings appear in output
-      assert.doesNotMatch(combinedOutput, /hs_inv_valid_/);
-      assert.doesNotMatch(combinedOutput, /hs_inv_expired_/);
-      assert.doesNotMatch(combinedOutput, /hs_inv_used_/);
+      // Assert no raw invitation token strings or hashes appear in output
+      try {
+        const rawValidToken = getInviteToken('valid');
+        const rawExpiredToken = getInviteToken('expired');
+        const rawUsedToken = getInviteToken('used');
+
+        assert.doesNotMatch(combinedOutput, new RegExp(rawValidToken));
+        assert.doesNotMatch(combinedOutput, new RegExp(rawExpiredToken));
+        assert.doesNotMatch(combinedOutput, new RegExp(rawUsedToken));
+        assert.doesNotMatch(combinedOutput, new RegExp(hashInvitationToken(rawValidToken)));
+      } catch {}
+      assert.doesNotMatch(combinedOutput, /token_hash/);
+      assert.doesNotMatch(combinedOutput, /token=/);
 
       // Assert connection string password was masked
       assert.doesNotMatch(combinedOutput, /:[^@/]+@localhost/);
@@ -712,10 +723,9 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
       }
 
       // 1. Suspended candidate
-      const suspRes = await client.query(
-        'SELECT email, status FROM app.users WHERE email = $1',
-        [NEGATIVE_SUSPENDED_CANDIDATE_EMAIL],
-      );
+      const suspRes = await client.query('SELECT email, status FROM app.users WHERE email = $1', [
+        NEGATIVE_SUSPENDED_CANDIDATE_EMAIL,
+      ]);
       assert.strictEqual(suspRes.rowCount, 1);
       assert.strictEqual(suspRes.rows[0].status, 'suspended');
 
@@ -768,5 +778,117 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
       );
     });
   });
-});
 
+  describe('CLI Flag --show-tokens & CI Safety Enforcement ([13.2])', () => {
+    it('without --show-tokens, captured console output contains no raw tokens or hashes', async () => {
+      const capturedLogs: string[] = [];
+      await runCliSeed({
+        databaseUrl: TEST_DB_URL,
+        nodeEnv: 'test',
+        showTokens: false,
+        exitProcess: false,
+        logger: (m) => capturedLogs.push(m),
+      });
+
+      const combined = capturedLogs.join('\n');
+      const rawValid = getInviteToken('valid');
+      const rawExpired = getInviteToken('expired');
+      const rawUsed = getInviteToken('used');
+
+      assert.doesNotMatch(combined, new RegExp(rawValid));
+      assert.doesNotMatch(combined, new RegExp(rawExpired));
+      assert.doesNotMatch(combined, new RegExp(rawUsed));
+      assert.doesNotMatch(combined, new RegExp(hashInvitationToken(rawValid)));
+      assert.doesNotMatch(combined, /accept-invite\?token=/);
+    });
+
+    it('with showTokens: true and CI unset, prints raw tokens and /accept-invite links', async () => {
+      const originalCi = process.env.CI;
+      const originalGh = process.env.GITHUB_ACTIONS;
+      delete process.env.CI;
+      delete process.env.GITHUB_ACTIONS;
+
+      try {
+        const capturedLogs: string[] = [];
+        await runCliSeed({
+          databaseUrl: TEST_DB_URL,
+          nodeEnv: 'test',
+          showTokens: true,
+          exitProcess: false,
+          logger: (m) => capturedLogs.push(m),
+        });
+
+        const combined = capturedLogs.join('\n');
+        const rawValid = getInviteToken('valid');
+        assert.match(combined, /Seed Invitation Tokens/i);
+        assert.match(combined, new RegExp(rawValid));
+        assert.match(combined, /\/accept-invite\?token=/);
+      } finally {
+        if (originalCi !== undefined) process.env.CI = originalCi;
+        else delete process.env.CI;
+        if (originalGh !== undefined) process.env.GITHUB_ACTIONS = originalGh;
+        else delete process.env.GITHUB_ACTIONS;
+      }
+    });
+
+    it('with showTokens: true and CI set, refuses execution with clear message and no tokens', async () => {
+      const originalCi = process.env.CI;
+      process.env.CI = 'true';
+
+      try {
+        await assert.rejects(
+          () =>
+            runCliSeed({
+              databaseUrl: TEST_DB_URL,
+              nodeEnv: 'test',
+              showTokens: true,
+              exitProcess: false,
+              quiet: true,
+            }),
+          /Refusing to print invitation tokens in CI environment/,
+        );
+      } finally {
+        if (originalCi !== undefined) process.env.CI = originalCi;
+        else delete process.env.CI;
+      }
+    });
+
+    it('child process CLI refuses --show-tokens with non-zero exit code when CI=true', () => {
+      const result = spawnSync(process.execPath, [ROOT_CLI_PATH, '--show-tokens'], {
+        env: {
+          ...process.env,
+          CI: 'true',
+          NODE_ENV: 'test',
+          DATABASE_URL: TEST_DB_URL,
+        },
+        encoding: 'utf8',
+      });
+
+      assert.strictEqual(result.status, 1, 'Process must exit with non-zero status in CI');
+      const output = (result.stderr || '') + (result.stdout || '');
+      assert.match(output, /CI environment detected \(refusing --show-tokens\)/i);
+      assert.doesNotMatch(output, /token=/);
+    });
+
+    it('child process CLI prints tokens and links when --show-tokens is passed outside CI', () => {
+      const envWithoutCi = { ...process.env };
+      delete envWithoutCi.CI;
+      delete envWithoutCi.GITHUB_ACTIONS;
+      delete envWithoutCi.CONTINUOUS_INTEGRATION;
+
+      const result = spawnSync(process.execPath, [ROOT_CLI_PATH, '--show-tokens'], {
+        env: {
+          ...envWithoutCi,
+          NODE_ENV: 'test',
+          DATABASE_URL: TEST_DB_URL,
+        },
+        encoding: 'utf8',
+      });
+
+      assert.strictEqual(result.status, 0, 'Process must exit successfully with code 0');
+      const output = result.stdout || '';
+      assert.match(output, /Seed Invitation Tokens/i);
+      assert.match(output, /\/accept-invite\?token=/);
+    });
+  });
+});

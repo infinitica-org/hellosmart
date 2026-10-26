@@ -18,6 +18,7 @@ __pycache__/
 .env.*
 !.env.example
 !.env.local.example
+.seed-tokens.local.json
 *.pem
 *.key
 *.p12

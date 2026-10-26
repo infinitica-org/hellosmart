@@ -15,6 +15,8 @@ export * from './lib/guard.js';
 export * from './lib/masker.js';
 export * from './lib/credentials.js';
 export * from './lib/upsert.js';
+export * from './lib/invite-links.js';
+import { getAcceptInviteLink } from './lib/invite-links.js';
 
 // Test fixtures and tenant context helpers for integration tests
 export interface TenantContext {
@@ -41,6 +43,23 @@ export interface CliSeedOptions {
   logger?: (msg: string) => void;
   seedPassword?: string;
   totpSecret?: string;
+  showTokens?: boolean;
+}
+
+/**
+ * Checks if the current execution is running inside a CI environment.
+ */
+export function isCiEnvironment(): boolean {
+  const ciEnv = process.env.CI;
+  if (
+    ciEnv !== undefined &&
+    ciEnv !== '' &&
+    ciEnv.toLowerCase() !== 'false' &&
+    ciEnv.toLowerCase() !== '0'
+  ) {
+    return true;
+  }
+  return Boolean(process.env.GITHUB_ACTIONS || process.env.CONTINUOUS_INTEGRATION);
 }
 
 /**
@@ -194,6 +213,24 @@ export async function runCliSeed(options: CliSeedOptions = {}): Promise<SeedSumm
     }
   };
 
+  // Determine if raw tokens should be printed
+  const showTokens =
+    options.showTokens ??
+    (typeof process !== 'undefined' && process.argv
+      ? process.argv.includes('--show-tokens')
+      : false);
+
+  // Refuse to print raw tokens in CI environment
+  if (showTokens && isCiEnvironment()) {
+    console.error(
+      '\n🚫 Cannot print raw invitation tokens: CI environment detected (refusing --show-tokens).\n',
+    );
+    if (options.exitProcess) {
+      process.exit(1);
+    }
+    throw new Error('Refusing to print invitation tokens in CI environment');
+  }
+
   // 1. Load environment variables
   loadEnvFiles();
 
@@ -267,6 +304,24 @@ export async function runCliSeed(options: CliSeedOptions = {}): Promise<SeedSumm
       console.log('=========================================================\n');
     }
 
+    if (showTokens && summary.tokens) {
+      const tokenOutput = [
+        '================ Seed Invitation Tokens ================',
+        `Valid   : token=${summary.tokens.valid}`,
+        `          link=${getAcceptInviteLink('valid')}`,
+        `Expired : token=${summary.tokens.expired}`,
+        `          link=${getAcceptInviteLink('expired')}`,
+        `Used    : token=${summary.tokens.used}`,
+        `          link=${getAcceptInviteLink('used')}`,
+        '========================================================',
+      ].join('\n');
+      if (options.logger) {
+        options.logger(tokenOutput);
+      } else {
+        console.log(tokenOutput);
+      }
+    }
+
     if (options.exitProcess) {
       process.exit(0);
     }
@@ -306,7 +361,8 @@ function isMain(): boolean {
 }
 
 if (isMain()) {
-  runCliSeed({ exitProcess: true }).catch(() => {
+  const showTokens = process.argv.includes('--show-tokens');
+  runCliSeed({ exitProcess: true, showTokens }).catch(() => {
     process.exit(1);
   });
 }

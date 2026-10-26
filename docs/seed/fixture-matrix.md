@@ -1,7 +1,6 @@
 # HelloSmart Test Data Matrix & Fixture Specification
 
-> [!WARNING]
-> **LOCAL DEV / TEST FIXTURES ONLY**  
+> [!WARNING] > **LOCAL DEV / TEST FIXTURES ONLY**  
 > All credentials, emails, and tokens documented here are strictly intended for local development, integration testing, and CI/CD validation. **Never use these passwords, tokens, or emails in staging or production environments.** No plaintext passwords or production secrets are committed to git or printed in logs.
 
 ---
@@ -45,12 +44,12 @@ This document defines the deterministic test data matrix for HelloSmart's core e
 
 All admin users have password hashes generated dynamically from `SEED_DEFAULT_PASSWORD` (Argon2id: 64 MB memory, 3 iterations, 1 parallelism).
 
-| Role             | Organization              | Name                                | Email                      | Status      | Password Hash                                 | MFA Config                              | Classification & Verification Target                             |
-| ---------------- | ------------------------- | ----------------------------------- | -------------------------- | ----------- | --------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------- |
-| `platform_admin` | _(None - `org_id: null`)_ | Super Admin                         | `superadmin@hellosmart.ai` | `active`    | Hash of `$SEED_DEFAULT_PASSWORD`              | Enabled (`secrets/seed-superadmin-mfa`) | **Loginable**: Requires password + valid TOTP code (`[13.1]`)    |
-| `company_admin`  | Aster Ridge Technologies  | Aster Ridge Admin                   | `admin@asterridge.com`     | `active`    | Hash of `$SEED_DEFAULT_PASSWORD`              | Disabled                                | **Loginable**: Primary company admin for mature paid tenant      |
-| `company_admin`  | Brindle & Co              | Brindle Trial Admin                 | `trialadmin@brindle.co`    | `active`    | Hash of `$SEED_DEFAULT_PASSWORD`              | Disabled                                | **Loginable**: Primary company admin for active trial tenant     |
-| `company_admin`  | Crestview Financial       | Crestview Admin (Suspended Org)     | `admin@crestview.test`     | `active`    | Hash of `$SEED_DEFAULT_PASSWORD`              | Disabled                                | **Negative Sample**: Rejection at login due to suspended tenant  |
+| Role             | Organization              | Name                            | Email                      | Status   | Password Hash                    | MFA Config                              | Classification & Verification Target                            |
+| ---------------- | ------------------------- | ------------------------------- | -------------------------- | -------- | -------------------------------- | --------------------------------------- | --------------------------------------------------------------- |
+| `platform_admin` | _(None - `org_id: null`)_ | Super Admin                     | `superadmin@hellosmart.ai` | `active` | Hash of `$SEED_DEFAULT_PASSWORD` | Enabled (`secrets/seed-superadmin-mfa`) | **Loginable**: Requires password + valid TOTP code (`[13.1]`)   |
+| `company_admin`  | Aster Ridge Technologies  | Aster Ridge Admin               | `admin@asterridge.com`     | `active` | Hash of `$SEED_DEFAULT_PASSWORD` | Disabled                                | **Loginable**: Primary company admin for mature paid tenant     |
+| `company_admin`  | Brindle & Co              | Brindle Trial Admin             | `trialadmin@brindle.co`    | `active` | Hash of `$SEED_DEFAULT_PASSWORD` | Disabled                                | **Loginable**: Primary company admin for active trial tenant    |
+| `company_admin`  | Crestview Financial       | Crestview Admin (Suspended Org) | `admin@crestview.test`     | `active` | Hash of `$SEED_DEFAULT_PASSWORD` | Disabled                                | **Negative Sample**: Rejection at login due to suspended tenant |
 
 ---
 
@@ -60,37 +59,37 @@ Candidates are distributed across schema statuses (`active`, `invited`, `suspend
 
 To preserve the **sub-3-second seed target**, Argon2id password hashing is applied exclusively to the designated loginable and negative-test sample candidate accounts. Unused candidate records use `password_hash = null` (supported natively by `0001_tenancy_foundation.sql`).
 
-| Organization                 | Status      | Count   | Email Pattern                                                | Must Reset Password | Email Verified    | Soft Deleted (`deleted_at`) | Password Hash Status                          | Classification                                           |
-| ---------------------------- | ----------- | ------- | ------------------------------------------------------------ | ------------------- | ----------------- | --------------------------- | --------------------------------------------- | -------------------------------------------------------- |
-| **Aster Ridge Technologies** | `active`    | **70**  | `candidate.aster-ridge.001@example.com`                      | `false`             | Yes (`ref - 10d`) | `null`                      | Hash of `$SEED_DEFAULT_PASSWORD`              | **Loginable**: Candidate ready for direct login          |
-|                              |             |         | `candidate.aster-ridge.002@example.com` … `.070@example.com` | `false`             | Yes (`ref - 10d`) | `null`                      | `null` (unhashed for performance)             | Bulk active candidate pool                               |
-|                              | `invited`   | **15**  | `candidate.aster-ridge.071@example.com` … `.085@example.com` | `true`              | `null`            | `null`                      | `null` (pending onboarding)                   | Onboarding flow testing (`BR-24`)                        |
-|                              | `suspended` | **10**  | `candidate.aster-ridge.086@example.com`                      | `false`             | Yes (`ref - 15d`) | `null`                      | Hash of `$SEED_DEFAULT_PASSWORD`              | **Negative Sample**: Rejection due to user `suspended`   |
-|                              |             |         | `candidate.aster-ridge.087@example.com` … `.095@example.com` | `false`             | Yes (`ref - 15d`) | `null`                      | `null` (unhashed for performance)             | Bulk suspended candidate pool                            |
-|                              | `deleted`   | **5**   | `candidate.aster-ridge.096@example.com`                      | `false`             | Yes (`ref - 20d`) | `ref - 4d`                  | Hash of `$SEED_DEFAULT_PASSWORD`              | **Negative Sample**: Rejection due to user soft-deleted  |
-|                              |             |         | `candidate.aster-ridge.097@example.com` … `.100@example.com` | `false`             | Yes (`ref - 20d`) | `ref - 4d`                  | `null` (unhashed for performance)             | Bulk soft-deleted candidate pool                         |
-| **Aster Ridge Subtotal**     |             | **100** |                                                              |                     |                   |                             |                                               |                                                          |
-| **Brindle & Co**             | `active`    | **4**   | `candidate.brindle-co.01@example.com` … `.04@example.com`    | `false`             | Yes (`ref - 5d`)  | `null`                      | `null` (unhashed for performance)             | Active trial candidates                                  |
-|                              | `invited`   | **3**   | `candidate.brindle-co.05@example.com` … `.07@example.com`    | `true`              | `null`            | `null`                      | `null` (pending onboarding)                   | Trial quota multiplier testing (`BR-06`)                 |
-|                              | `suspended` | **1**   | `candidate.brindle-co.08@example.com`                        | `false`             | Yes (`ref - 7d`)  | `null`                      | `null` (unhashed for performance)             | Suspended trial candidate                                |
-|                              | `deleted`   | **2**   | `candidate.brindle-co.09@example.com` … `.10@example.com`    | `false`             | Yes (`ref - 10d`) | `ref - 2d`                  | `null` (unhashed for performance)             | Soft-deleted trial candidates                            |
-| **Brindle & Co Subtotal**    |             | **10**  |                                                              |                     |                   |                             |                                               |                                                          |
-| **TOTAL CANDIDATES**         |             | **110** |                                                              |                     |                   |                             |                                               |                                                          |
+| Organization                 | Status      | Count   | Email Pattern                                                | Must Reset Password | Email Verified    | Soft Deleted (`deleted_at`) | Password Hash Status              | Classification                                          |
+| ---------------------------- | ----------- | ------- | ------------------------------------------------------------ | ------------------- | ----------------- | --------------------------- | --------------------------------- | ------------------------------------------------------- |
+| **Aster Ridge Technologies** | `active`    | **70**  | `candidate.aster-ridge.001@example.com`                      | `false`             | Yes (`ref - 10d`) | `null`                      | Hash of `$SEED_DEFAULT_PASSWORD`  | **Loginable**: Candidate ready for direct login         |
+|                              |             |         | `candidate.aster-ridge.002@example.com` … `.070@example.com` | `false`             | Yes (`ref - 10d`) | `null`                      | `null` (unhashed for performance) | Bulk active candidate pool                              |
+|                              | `invited`   | **15**  | `candidate.aster-ridge.071@example.com` … `.085@example.com` | `true`              | `null`            | `null`                      | `null` (pending onboarding)       | Onboarding flow testing (`BR-24`)                       |
+|                              | `suspended` | **10**  | `candidate.aster-ridge.086@example.com`                      | `false`             | Yes (`ref - 15d`) | `null`                      | Hash of `$SEED_DEFAULT_PASSWORD`  | **Negative Sample**: Rejection due to user `suspended`  |
+|                              |             |         | `candidate.aster-ridge.087@example.com` … `.095@example.com` | `false`             | Yes (`ref - 15d`) | `null`                      | `null` (unhashed for performance) | Bulk suspended candidate pool                           |
+|                              | `deleted`   | **5**   | `candidate.aster-ridge.096@example.com`                      | `false`             | Yes (`ref - 20d`) | `ref - 4d`                  | Hash of `$SEED_DEFAULT_PASSWORD`  | **Negative Sample**: Rejection due to user soft-deleted |
+|                              |             |         | `candidate.aster-ridge.097@example.com` … `.100@example.com` | `false`             | Yes (`ref - 20d`) | `ref - 4d`                  | `null` (unhashed for performance) | Bulk soft-deleted candidate pool                        |
+| **Aster Ridge Subtotal**     |             | **100** |                                                              |                     |                   |                             |                                   |                                                         |
+| **Brindle & Co**             | `active`    | **4**   | `candidate.brindle-co.01@example.com` … `.04@example.com`    | `false`             | Yes (`ref - 5d`)  | `null`                      | `null` (unhashed for performance) | Active trial candidates                                 |
+|                              | `invited`   | **3**   | `candidate.brindle-co.05@example.com` … `.07@example.com`    | `true`              | `null`            | `null`                      | `null` (pending onboarding)       | Trial quota multiplier testing (`BR-06`)                |
+|                              | `suspended` | **1**   | `candidate.brindle-co.08@example.com`                        | `false`             | Yes (`ref - 7d`)  | `null`                      | `null` (unhashed for performance) | Suspended trial candidate                               |
+|                              | `deleted`   | **2**   | `candidate.brindle-co.09@example.com` … `.10@example.com`    | `false`             | Yes (`ref - 10d`) | `ref - 2d`                  | `null` (unhashed for performance) | Soft-deleted trial candidates                           |
+| **Brindle & Co Subtotal**    |             | **10**  |                                                              |                     |                   |                             |                                   |                                                         |
+| **TOTAL CANDIDATES**         |             | **110** |                                                              |                     |                   |                             |                                   |                                                         |
 
 ---
 
 ## 5. Sample Candidate Records & Verification Goals
 
-| Candidate Email                         | Org          | Role        | Status      | Classification         | Verification Goal & Behavior                                                                 |
-| --------------------------------------- | ------------ | ----------- | ----------- | ---------------------- | -------------------------------------------------------------------------------------------- |
-| `candidate.aster-ridge.001@example.com` | Aster Ridge  | `candidate` | `active`    | **Loginable**          | Has valid password hash; successfully logs in and connects to Cloud/Chat workspace.          |
-| `candidate.aster-ridge.071@example.com` | Aster Ridge  | `candidate` | `invited`   | **Onboarding**         | Pending onboarding; requires first-login password reset via invite token (`BR-24`).          |
-| `candidate.aster-ridge.086@example.com` | Aster Ridge  | `candidate` | `suspended` | **Negative Sample**    | Has valid password hash; login rejected with account suspended error (`403 Forbidden`).      |
-| `candidate.aster-ridge.096@example.com` | Aster Ridge  | `candidate` | `deleted`   | **Negative Sample**    | Has valid password hash; login rejected as soft-deleted user (`deleted_at IS NOT NULL`).    |
-| `candidate.brindle-co.01@example.com`   | Brindle & Co | `candidate` | `active`    | **Quota Verification** | Active trial candidate; enforces trial cap (max 10 candidates).                              |
-| `candidate.brindle-co.05@example.com`   | Brindle & Co | `candidate` | `invited`   | **Quota Verification** | Invited trial candidate; counts against pending invite multiplier quota (`BR-06`).           |
-| `candidate.brindle-co.08@example.com`   | Brindle & Co | `candidate` | `suspended` | **State Preservation** | Suspended candidate in trial org.                                                            |
-| `candidate.brindle-co.09@example.com`   | Brindle & Co | `candidate` | `deleted`   | **Audit Preservation** | Soft-deleted candidate in trial org.                                                         |
+| Candidate Email                         | Org          | Role        | Status      | Classification         | Verification Goal & Behavior                                                             |
+| --------------------------------------- | ------------ | ----------- | ----------- | ---------------------- | ---------------------------------------------------------------------------------------- |
+| `candidate.aster-ridge.001@example.com` | Aster Ridge  | `candidate` | `active`    | **Loginable**          | Has valid password hash; successfully logs in and connects to Cloud/Chat workspace.      |
+| `candidate.aster-ridge.071@example.com` | Aster Ridge  | `candidate` | `invited`   | **Onboarding**         | Pending onboarding; requires first-login password reset via invite token (`BR-24`).      |
+| `candidate.aster-ridge.086@example.com` | Aster Ridge  | `candidate` | `suspended` | **Negative Sample**    | Has valid password hash; login rejected with account suspended error (`403 Forbidden`).  |
+| `candidate.aster-ridge.096@example.com` | Aster Ridge  | `candidate` | `deleted`   | **Negative Sample**    | Has valid password hash; login rejected as soft-deleted user (`deleted_at IS NOT NULL`). |
+| `candidate.brindle-co.01@example.com`   | Brindle & Co | `candidate` | `active`    | **Quota Verification** | Active trial candidate; enforces trial cap (max 10 candidates).                          |
+| `candidate.brindle-co.05@example.com`   | Brindle & Co | `candidate` | `invited`   | **Quota Verification** | Invited trial candidate; counts against pending invite multiplier quota (`BR-06`).       |
+| `candidate.brindle-co.08@example.com`   | Brindle & Co | `candidate` | `suspended` | **State Preservation** | Suspended candidate in trial org.                                                        |
+| `candidate.brindle-co.09@example.com`   | Brindle & Co | `candidate` | `deleted`   | **Audit Preservation** | Soft-deleted candidate in trial org.                                                     |
 
 ---
 
@@ -124,22 +123,37 @@ Platform Admin
 
 ---
 
-## 7. Candidate Invitation Tokens Matrix ([6.3])
+## 7. Candidate Invitation Tokens Matrix ([13.2])
 
-> [!WARNING]
-> **DEV / TEST TOKENS ONLY**  
-> All invitation tokens documented below are fake constants designed for local development and automated CI testing of candidate onboarding (`BR-24`).
+> [!IMPORTANT] > **CRYPTOGRAPHICALLY RANDOM TOKENS & SECURE STORAGE**  
+> Seeded candidate invitations use 32 random bytes (`crypto.randomBytes(32)`) generated dynamically.
 >
-> - Raw tokens are **never stored** in the database; only their **SHA-256 hashes** (`token_hash`) are persisted in `app.invitations`.
-> - The valid invitation token is valid for **72 hours** (`INVITE_TTL_HOURS = 72`) following each seed run.
+> - Raw tokens are **never committed**, **never stored in the database**, and **never written to logs or docs**.
+> - Only the **SHA-256 hex digest** (`token_hash`) is persisted in `app.invitations.token_hash`.
+> - Local persistence: Raw tokens are stored in the gitignored file `packages/fixtures/.seed-tokens.local.json` (mode `0600`) for helper consumption, and in memory during test execution.
+> - To print raw tokens and links to the console for local debugging, pass the `--show-tokens` CLI flag: `pnpm db:seed -- --show-tokens`. (Printing is strictly refused in CI environments).
 
 ### Token Specification & Candidate Linkages
 
-| Label     | Candidate Email                         | Organization                   | Status / State                                   | Raw Dev Token (Test Only)         | Expiration Window (`INVITE_TTL_HOURS = 72`) | Used At (`used_at`)         | Intended Test Coverage                                               |
-| --------- | --------------------------------------- | ------------------------------ | ------------------------------------------------ | --------------------------------- | ------------------------------------------- | --------------------------- | -------------------------------------------------------------------- |
-| `valid`   | `candidate.aster-ridge.071@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `invited`, `must_reset_password: true` | `dev-invite-valid-ast-cand-071`   | `seed_now + 72h` (unexpired)                | `null`                      | First-login password reset flow (`BR-24`, `CA-001`)                  |
-| `expired` | `candidate.aster-ridge.072@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `invited`, `must_reset_password: true` | `dev-invite-expired-ast-cand-072` | `seed_now - 28h` (created at `now - 100h`)  | `null`                      | Expired invite token rejection and resend prompt (`EX-12`, `CO-017`) |
-| `used`    | `candidate.aster-ridge.001@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `active`, completed onboarding         | `dev-invite-used-ast-cand-001`    | `seed_now + 48h` (created at `now - 24h`)   | `seed_now - 12h` (consumed) | Consumed token rejection / already used error                        |
+| Label     | Candidate Email                         | Organization                   | Status / State                                   | Token Storage & Entropy                         | Expiration Window (`INVITE_TTL_HOURS = 72`) | Used At (`used_at`)         | Intended Test Coverage                                               |
+| --------- | --------------------------------------- | ------------------------------ | ------------------------------------------------ | ----------------------------------------------- | ------------------------------------------- | --------------------------- | -------------------------------------------------------------------- |
+| `valid`   | `candidate.aster-ridge.071@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `invited`, `must_reset_password: true` | Dynamic 32-byte random token; SHA-256 hex in DB | `seed_now + 72h` (unexpired)                | `null` (reset on re-seed)   | First-login password reset flow (`BR-24`, `CA-001`)                  |
+| `expired` | `candidate.aster-ridge.072@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `invited`, `must_reset_password: true` | Dynamic 32-byte random token; SHA-256 hex in DB | `seed_now - 28h` (created at `now - 100h`)  | `null`                      | Expired invite token rejection and resend prompt (`EX-12`, `CO-017`) |
+| `used`    | `candidate.aster-ridge.001@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `active`, completed onboarding         | Dynamic 32-byte random token; SHA-256 hex in DB | `seed_now + 48h` (created at `now - 24h`)   | `seed_now - 12h` (consumed) | Consumed token rejection / already used error                        |
+
+### Programmatic Helper Usage (`packages/fixtures/src/lib/invite-links.ts`)
+
+```typescript
+import { getAcceptInviteLink, getInviteToken } from '@hs/fixtures';
+
+// Generate full acceptance link: <APP_BASE_URL>/accept-invite?token=<rawToken>
+const validInviteLink = getAcceptInviteLink('valid');
+const expiredInviteLink = getAcceptInviteLink('expired');
+const usedInviteLink = getAcceptInviteLink('used');
+
+// Retrieve raw token string:
+const rawValidToken = getInviteToken('valid');
+```
 
 ---
 
@@ -165,15 +179,15 @@ SEED_PLATFORM_ADMIN_TOTP_SECRET=
 ### Adding Platform Admin MFA to an Authenticator App (Local Development Only)
 
 For engineers testing Platform Admin login flows locally:
+
 1. Open your authenticator application (Google Authenticator, 1Password, Authy, Apple Passwords).
 2. Choose **"Enter setup key manually"** / **"Add manual account"**.
 3. Account name: `superadmin@hellosmart.ai (Local)`.
 4. Key: Copy the exact Base32 string from your `SEED_PLATFORM_ADMIN_TOTP_SECRET` variable in `.env.local`.
 5. Key type: **Time-based (TOTP)**, 30-second interval, 6-digit codes.
 
-> [!CAUTION]
-> **Zero Plaintext Secrets Policy**:
+> [!CAUTION] > **Zero Plaintext Secrets Policy**:
+>
 > - Never print the TOTP secret, QR code, or `otpauth://` URI to terminal console output, logs, or documentation.
 > - Never commit `.env.local` to git version control.
 > - When S0-T14-3 (AES-256-GCM vault encryption helper) and S0-T17 (shared password policy) are implemented, the seed engine will automatically bind to those components.
-
