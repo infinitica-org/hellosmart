@@ -5,6 +5,9 @@ import { z } from 'zod';
 const ConfigSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'staging', 'production']),
   PORT: z.coerce.number().int().default(4000),
+  LOG_LEVEL: z
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+    .default('info'),
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
   SESSION_SECRET: z.string().min(32),

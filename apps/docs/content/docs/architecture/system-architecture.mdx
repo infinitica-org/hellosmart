@@ -80,6 +80,13 @@ flowchart TB
 ### Core Monolith (`apps/api`)
 Handles authentication, multi-tenant RBAC, assessment configuration, rubric management, candidate invites, and commercial payment webhooks. Sets PostgreSQL context per transaction (`set_config('app.org_id')`) to enforce database RLS.
 
+### Observability & Logging Framework (`apps/api/src/modules/observability`)
+Structured JSON logging powered natively by Fastify and Pino (NF-015):
+- **Request Correlation**: Server-generated or validated client `x-request-id` correlated through Fastify child loggers (`req.log`).
+- **Single Completion Event**: Fastify `onResponse` hook logs method, normalized route, status, duration in ms, and sanitized error diagnostics without duplicating records.
+- **Strict Redaction**: Automated fast-redact for passwords, authorization headers, session cookies, tokens, and secrets. Request bodies and query strings are never logged.
+- **Log Level Policy**: 2xx/3xx at `info`, client errors (4xx) at `warn`, server errors (5xx) at `error`, and routine health checks at `debug`.
+
 ### Sysbox Workspace Orchestrator
 Maintains pre-warmed Linux containers running `sysbox-runc`. When a candidate clicks "Connect":
 1. Clones a pre-warmed snapshot in under 5 seconds.
