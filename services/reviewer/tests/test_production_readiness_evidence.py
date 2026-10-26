@@ -126,6 +126,61 @@ def test_observability_tool_mentions_are_detected(tmp_path: Path) -> None:
     assert "observability_tools=sentry" in content
 
 
+def test_ci_provider_is_identified(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.joinpath(".circleci").mkdir(parents=True)
+    root.joinpath(".circleci", "config.yml").write_text("jobs:\n  test:\n", encoding="utf-8")
+
+    pack = build_evidence("sub-1", str(root))
+    content = {i.ref: i.content for i in pack.items}["repo:fact.cicd"]
+    assert "provider=circleci" in content
+
+
+def test_env_vars_and_typed_settings_usage_is_detected(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("config.py").write_text(
+        "from pydantic_settings import BaseSettings\n\n\n"
+        "class Settings(BaseSettings):\n    api_key: str\n",
+        encoding="utf-8",
+    )
+
+    pack = build_evidence("sub-1", str(root))
+    content = {i.ref: i.content for i in pack.items}["repo:fact.config_hygiene"]
+    assert "typed_settings=True" in content
+
+
+def test_kubernetes_iac_is_classified_over_a_bare_terraform_file(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    (root / "k8s").mkdir(parents=True)
+    root.joinpath("k8s", "deployment.yaml").write_text("kind: Deployment\n", encoding="utf-8")
+
+    pack = build_evidence("sub-1", str(root))
+    content = {i.ref: i.content for i in pack.items}["repo:fact.deployment_and_infrastructure"]
+    assert "infrastructure_as_code_type=kubernetes" in content
+
+
+def test_readme_is_captured_as_deployment_documentation(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("README.md").write_text(
+        "# App\n\nRun with docker compose up.\n", encoding="utf-8"
+    )
+
+    pack = build_evidence("sub-1", str(root))
+    assert "repo:ev.readme.deployment_docs" in pack.refs
+
+
+def test_rust_and_go_lockfiles_count_as_lockfile_present(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("Cargo.lock").write_text("", encoding="utf-8")
+
+    pack = build_evidence("sub-1", str(root))
+    content = {i.ref: i.content for i in pack.items}["repo:fact.dependency_readiness"]
+    assert "lockfile_present=True" in content
+
+
 def test_database_migrations_are_detected(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     (root / "alembic" / "versions").mkdir(parents=True)

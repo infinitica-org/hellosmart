@@ -33,6 +33,7 @@ _MIGRATION_DIR_FRAMEWORKS = (
     ("db/migrations", "sql"),
     ("src/migrations", "generic"),
 )
+_JS_LOGGING_LIBS = ("winston", "pino", "morgan")
 
 
 class DockerfileQuality(TypedDict):
@@ -42,9 +43,15 @@ class DockerfileQuality(TypedDict):
 
 
 class CiWorkflows(TypedDict):
+    provider: str
     runs_tests_configured: bool
     runs_linter_configured: bool
     workflow_count: int
+
+
+class ConfigHygiene(TypedDict):
+    uses_env_vars: bool
+    typed_settings: bool
 
 
 class LoggingAndErrors(TypedDict):
@@ -61,6 +68,35 @@ class HealthAndObservability(TypedDict):
 class MigrationInfo(TypedDict):
     has_migrations: bool
     migration_framework: str
+
+
+def classify_iac_type(
+    has_compose: bool, has_k8s_or_helm: bool, has_terraform: bool
+) -> str:
+    if has_k8s_or_helm:
+        return "kubernetes"
+    if has_terraform:
+        return "terraform"
+    if has_compose:
+        return "docker_compose"
+    return "none"
+
+
+def analyze_config_hygiene(file_texts: dict[str, str]) -> ConfigHygiene:
+    uses_env_vars = False
+    typed_settings = False
+    for rel, text in file_texts.items():
+        if rel.endswith(".py"):
+            if "os.environ" in text or "os.getenv" in text or "dotenv" in text:
+                uses_env_vars = True
+            if "BaseSettings" in text or "pydantic_settings" in text:
+                typed_settings = True
+        elif rel.endswith((".js", ".ts", ".jsx", ".tsx")):
+            if "process.env" in text or "dotenv" in text:
+                uses_env_vars = True
+            if "z.object" in text and "env" in rel.lower():
+                typed_settings = True
+    return {"uses_env_vars": uses_env_vars, "typed_settings": typed_settings}
 
 
 def analyze_dockerfile(text: str) -> DockerfileQuality:
@@ -90,12 +126,12 @@ def analyze_dockerfile(text: str) -> DockerfileQuality:
     }
 
 
-def analyze_ci_workflows(workflow_texts: list[str]) -> CiWorkflows:
+def analyze_ci_workflows(provider: str, workflow_texts: list[str]) -> CiWorkflows:
     runs_tests = any(_CI_TEST_RE.search(t) for t in workflow_texts)
     runs_lint = any(_CI_LINT_RE.search(t) for t in workflow_texts)
     return {
-        "runs_tests_configured": runs_tests, "runs_linter_configured": runs_lint,
-        "workflow_count": len(workflow_texts),
+        "provider": provider, "runs_tests_configured": runs_tests,
+        "runs_linter_configured": runs_lint, "workflow_count": len(workflow_texts),
     }
 
 
@@ -107,6 +143,10 @@ def analyze_logging_and_errors(
     custom_exceptions = 0
     for rel, text in file_texts.items():
         if "import logging" in text or "from logging import" in text or "loguru" in text:
+            uses_logging = True
+        elif rel.endswith((".js", ".ts", ".jsx", ".tsx")) and any(
+            lib in text for lib in _JS_LOGGING_LIBS
+        ):
             uses_logging = True
         if "try:" in text and "except" in text:
             has_error_handling = True
