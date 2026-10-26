@@ -25,6 +25,8 @@ from .repo_io import RepoReader, safe_id, safe_parse_python
 MAX_MODULES = 25
 MAX_ROUTES = 25
 MAX_ENTRY_POINTS = 10
+MAX_HANDLERS = 6
+MAX_HANDLER_LINES = 40
 README_MAX_CHARS = 4000
 README_CANDIDATES = ("README.md", "README.rst", "README.txt", "README", "readme.md")
 
@@ -84,6 +86,48 @@ def _add_api_surface(pack: EvidencePack, parsed: dict[str, ast.AST]) -> list[Rou
             )
         )
     return list(result["routes"])
+
+
+def _add_handler_excerpts(
+    pack: EvidencePack, routes: list[Route], file_texts: dict[str, str]
+) -> int:
+    """Up to MAX_HANDLERS route-handler source excerpts -- not just that a route exists, but
+    what its handler actually does, one excerpt per (file, handler_line) even if the handler
+    carries several route decorators."""
+    seen: set[tuple[str, int | None]] = set()
+    unique: list[Route] = []
+    for route in sorted(
+        (r for r in routes if r["handler_line"]), key=lambda r: (r["file"], r["line"])
+    ):
+        key = (route["file"], route["handler_line"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(route)
+
+    added = 0
+    for route in unique[:MAX_HANDLERS]:
+        text = file_texts.get(route["file"])
+        start, end = route["handler_line"], route["handler_end_line"]
+        if text is None or start is None or end is None:
+            continue
+        lines = text.splitlines()
+        body = lines[start - 1 : end]
+        if len(body) > MAX_HANDLER_LINES:
+            pack.truncations.append(
+                f"handler {route['handler']}: {MAX_HANDLER_LINES} of {len(body)} lines shown"
+            )
+            body = body[:MAX_HANDLER_LINES]
+        safe_rel, _ = safe_id(f"{route['file']}_{route['handler']}")
+        ref = f"repo:ev.handler.{safe_rel}"
+        content = f"file={route['file']}; lines {start}-{end}\n" + "\n".join(body)
+        pack.items.append(
+            EvidenceItem(
+                ref=ref, source="artifact", content=_sanitize(pack, ref, content),
+                untrusted=True, sanitized=True,
+            )
+        )
+        added += 1
+    return added
 
 
 def _add_project_structure(pack: EvidencePack, parsed: dict[str, ast.AST]) -> None:
@@ -174,10 +218,12 @@ def build_evidence(
 
     parsed_by_rel: dict[str, ast.AST] = {}
     parsed_by_id: dict[str, tuple[str, bool, ast.AST]] = {}
+    file_texts: dict[str, str] = {}
     for rel in py_files:
         text = reader.read_text(rel)
         if text is None:
             continue
+        file_texts[rel] = text
         tree, _reason = safe_parse_python(text, rel)
         if tree is None:
             continue
@@ -188,6 +234,7 @@ def build_evidence(
 
     added = _add_modules(pack, parsed_by_rel)
     routes = _add_api_surface(pack, parsed_by_rel)
+    _add_handler_excerpts(pack, routes, file_texts)
     _add_project_structure(pack, parsed_by_rel)
 
     graph = build_import_graph(parsed_by_id)

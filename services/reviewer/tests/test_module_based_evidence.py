@@ -98,6 +98,26 @@ def test_comprehension_flags_an_unsupported_readme_claim(tmp_path: Path) -> None
     assert "not_found=2" in agg.content
 
 
+def test_comprehension_excerpts_the_actual_route_handler_source(tmp_path: Path) -> None:
+    """A reviewer judging whether the handler actually implements what the route claims needs
+    the handler's own code, not just its method/path/framework metadata."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("app.py").write_text(
+        "from fastapi import FastAPI\n\napp = FastAPI()\n\n\n"
+        '@app.get("/items")\ndef list_items():\n    return []\n',
+        encoding="utf-8",
+    )
+
+    pack = build_comprehension_evidence("sub-1", str(root))
+    handler_refs = [r for r in pack.refs if r.startswith("repo:ev.handler.")]
+    assert len(handler_refs) == 1
+    item = pack.resolve(handler_refs[0])
+    assert item is not None
+    assert "def list_items():" in item.content
+    assert "return []" in item.content
+
+
 def test_comprehension_full_depth_pack_is_deterministic(tmp_path: Path) -> None:
     repo = _write_layered_repo(tmp_path)
     p1 = build_comprehension_evidence("sub-1", str(repo))
