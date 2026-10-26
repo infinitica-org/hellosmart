@@ -66,3 +66,4 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION app.lookup_invitation(bytea) TO PUBLIC;
+

@@ -32,7 +32,8 @@ export function middleware(req: NextRequest): NextResponse {
   const res = NextResponse.next({ request: { headers } });
   res.headers.set('Content-Security-Policy', csp);
   res.headers.set('X-Content-Type-Options', 'nosniff');
-  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  const isInvitePage = req.nextUrl.pathname.startsWith('/accept-invite');
+  res.headers.set('Referrer-Policy', isInvitePage ? 'no-referrer' : 'strict-origin-when-cross-origin');
   res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   return res;
 }

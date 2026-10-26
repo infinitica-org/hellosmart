@@ -46,3 +46,4 @@ import { ThrottlerProblemFilter } from './auth-exception.filter.js';
   exports: [InvitationsService, HasherService, MailService, DB_POOL],
 })
 export class AuthModule {}
+

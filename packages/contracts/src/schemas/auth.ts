@@ -50,3 +50,4 @@ export const AcceptInvitationResponseSchema = z.object({
 });
 
 export type AcceptInvitationResponse = z.infer<typeof AcceptInvitationResponseSchema>;
+
