@@ -95,6 +95,54 @@ paths:
         '404': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
         '429': { $ref: '#/components/responses/Problem' }
+  /auth/logout:
+    post:
+      summary: Revoke session and clear session cookies
+      tags: [auth]
+      operationId: authLogout
+      x-requirement: [NF-006]
+      responses:
+        '200':
+          description: Successfully logged out; cookies cleared.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success: { type: boolean, enum: [true] }
+                  message: { type: string }
+        '401': { $ref: '#/components/responses/Problem' }
+  /auth/password/change:
+    post:
+      summary: Change password for current authenticated user
+      tags: [auth]
+      operationId: changePassword
+      x-requirement: [CA-003, S0-T10]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newPassword]
+              properties:
+                currentPassword: { type: string, minLength: 1, maxLength: 256 }
+                newPassword: { type: string, minLength: 12, maxLength: 128 }
+      responses:
+        '200':
+          description: Password updated; other active sessions revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success: { type: boolean, enum: [true] }
+                  message: { type: string }
+        '401': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
   /me:
     get:
       summary: Retrieve current authenticated user and portal context

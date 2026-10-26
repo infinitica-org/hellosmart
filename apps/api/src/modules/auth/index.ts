@@ -1,5 +1,15 @@
 export * from './hasher.service.js';
 export * from './invitations.service.js';
 export * from './invitations.controller.js';
+export * from './auth.service.js';
+export * from './auth.controller.js';
 export * from './auth.module.js';
-
+export * from './session/session.interface.js';
+export * from './session/session.service.js';
+export * from './session/memory.session.store.js';
+export * from './session/redis.session.store.js';
+export * from './session/throttler-storage-redis.js';
+export * from './guards/session.guard.js';
+export * from './guards/roles.guard.js';
+export * from './guards/roles.decorator.js';
+export * from './guards/current-user.decorator.js';

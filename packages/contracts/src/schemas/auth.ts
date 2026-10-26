@@ -51,3 +51,35 @@ export const AcceptInvitationResponseSchema = z.object({
 
 export type AcceptInvitationResponse = z.infer<typeof AcceptInvitationResponseSchema>;
 
+/**
+ * Request body for POST /auth/login
+ */
+export const LoginRequestSchema = z.object({
+  email: z.string().email('Valid email is required').max(254),
+  password: z.string().min(1, 'Password is required').max(256),
+  mfaCode: z.string().regex(/^[0-9]{6}$/, 'MFA code must be 6 digits').optional(),
+});
+
+export type LoginRequest = z.infer<typeof LoginRequestSchema>;
+
+/**
+ * Request body for POST /auth/password/change
+ */
+export const ChangePasswordRequestSchema = z.object({
+  currentPassword: z.string().min(1).max(256).optional(),
+  newPassword: PasswordPolicySchema,
+});
+
+export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequestSchema>;
+
+/**
+ * Common success response (e.g. for POST /auth/logout, POST /auth/password/change)
+ */
+export const SimpleSuccessResponseSchema = z.object({
+  success: z.literal(true),
+  message: z.string(),
+});
+
+export type SimpleSuccessResponse = z.infer<typeof SimpleSuccessResponseSchema>;
+
+

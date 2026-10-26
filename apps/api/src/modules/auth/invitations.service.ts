@@ -15,6 +15,7 @@ import {
   PasswordPolicySchema,
 } from '@hs/contracts';
 import { HasherService } from './hasher.service.js';
+import { SessionService } from './session/session.service.js';
 
 export const DB_POOL = 'DB_POOL';
 
@@ -64,6 +65,7 @@ export class InvitationsService {
   constructor(
     @Inject(HasherService) private readonly hasherService: HasherService,
     @Optional() @Inject(DB_POOL) private readonly pool?: Pool,
+    @Optional() @Inject(SessionService) private readonly sessionService?: SessionService,
   ) {}
 
   /**
@@ -249,14 +251,14 @@ export class InvitationsService {
   }
 
   /**
-   * Revokes existing sessions for the specified user.
-   *
-   * Dependency Notice:
-   * Redis-backed session store infrastructure (hs_session) is not yet implemented on disk.
-   * When Redis session management is introduced, this hook will invalidate all active sessions
-   * associated with the given user_id.
+   * Revokes existing sessions for the specified user (e.g. across multiple devices).
    */
   async revokeUserSessions(userId: string): Promise<void> {
-    this.logger.debug(`Session revocation hook invoked for user ${userId} (session infrastructure pending).`);
+    if (this.sessionService) {
+      await this.sessionService.revokeAllUserSessions(userId);
+      this.logger.log(`Active sessions revoked for user ${userId} on invitation acceptance.`);
+    } else {
+      this.logger.debug(`Session revocation hook invoked for user ${userId} (session infrastructure pending).`);
+    }
   }
 }

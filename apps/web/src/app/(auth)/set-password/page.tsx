@@ -37,3 +37,4 @@ export default function SetPasswordRedirectPage(): React.JSX.Element {
     </Suspense>
   );
 }
+

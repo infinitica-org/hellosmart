@@ -2,8 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   acceptInvitation,
   ApiError,
+  changePassword,
+  getMe,
   InvitationInvalidError,
   login,
+  logout,
   RateLimitedError,
   validateInvitation,
   WeakPasswordError,
@@ -285,6 +288,138 @@ describe('S0-T08-2: Frontend Invitation Acceptance & Password Reset', () => {
       mockWindow.history.replaceState({}, '', mockWindow.location.pathname);
 
       expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/accept-invite');
+    });
+  });
+
+  describe('6. API Client — Session Lifecycle (logout, changePassword, getMe)', () => {
+    it('successfully logs out and clears session on 200 OK', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: 'Logged out successfully',
+        }),
+      });
+
+      const res = await logout(mockFetch as unknown as typeof fetch);
+      expect(res.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/logout'),
+        expect.objectContaining({
+          method: 'POST',
+          credentials: 'include',
+        }),
+      );
+    });
+
+    it('successfully changes password on 200 OK', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: 'Password updated successfully',
+        }),
+      });
+
+      const res = await changePassword(
+        {
+          currentPassword: 'OldPassword123!',
+          newPassword: 'BrandNewPassword123!',
+        },
+        mockFetch as unknown as typeof fetch,
+      );
+
+      expect(res.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/password/change'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            currentPassword: 'OldPassword123!',
+            newPassword: 'BrandNewPassword123!',
+          }),
+          credentials: 'include',
+        }),
+      );
+    });
+
+    it('throws WeakPasswordError if changePassword returns 422', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        json: async () => ({
+          code: 'WEAK_PASSWORD',
+          detail: 'Password must contain at least one special character',
+        }),
+      });
+
+      await expect(
+        changePassword(
+          { newPassword: 'WeakPassword123' },
+          mockFetch as unknown as typeof fetch,
+        ),
+      ).rejects.toThrow(WeakPasswordError);
+    });
+
+    it('throws ApiError(401) if changePassword is unauthenticated', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({
+          code: 'UNAUTHORIZED',
+        }),
+      });
+
+      await expect(
+        changePassword(
+          { newPassword: 'NewPassword123!' },
+          mockFetch as unknown as typeof fetch,
+        ),
+      ).rejects.toThrow(ApiError);
+    });
+
+    it('successfully retrieves current user profile with getMe() on 200 OK', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          id: 'usr_abc',
+          email: 'admin@hellosmart.test',
+          name: 'Platform Admin',
+          role: 'platform_admin',
+          portal: 'admin',
+          mustResetPassword: false,
+          org: null,
+        }),
+      });
+
+      const user = await getMe(mockFetch as unknown as typeof fetch);
+      expect(user.id).toBe('usr_abc');
+      expect(user.role).toBe('platform_admin');
+      expect(user.portal).toBe('admin');
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/me'),
+        expect.objectContaining({
+          method: 'GET',
+          credentials: 'include',
+        }),
+      );
+    });
+
+    it('throws ApiError(401) if getMe is called without a valid session', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({
+          code: 'UNAUTHORIZED',
+        }),
+      });
+
+      await expect(
+        getMe(mockFetch as unknown as typeof fetch),
+      ).rejects.toThrow(ApiError);
     });
   });
 });
