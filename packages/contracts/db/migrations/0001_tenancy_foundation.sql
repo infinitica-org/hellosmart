@@ -17,7 +17,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION app.is_platform() RETURNS boolean
 LANGUAGE sql STABLE AS $$
-  SELECT coalesce(current_setting('app.is_platform', true), 'false')::boolean
+  SELECT coalesce(nullif(current_setting('app.is_platform', true), ''), 'false')::boolean
 $$;
 
 CREATE TABLE app.organizations (

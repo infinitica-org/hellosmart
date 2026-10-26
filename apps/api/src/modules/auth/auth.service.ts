@@ -462,9 +462,9 @@ export class AuthService {
         [newHash, session.userId],
       );
 
-      // Lock tail of audit.events to append tamper-evident hash chain atomically
+      // Read last hash of audit.events (protected by advisory lock)
       const lastAuditResult = await client.query(
-        `SELECT hash FROM audit.events ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+        `SELECT hash FROM audit.events ORDER BY id DESC LIMIT 1`,
       );
       const prevHash: Buffer = lastAuditResult.rows[0]?.hash ?? Buffer.alloc(0);
 
@@ -583,7 +583,7 @@ export class AuthService {
       await client.query(`SELECT pg_advisory_xact_lock(hashtext('audit.events'))`);
 
       const lastAuditResult = await client.query(
-        `SELECT hash FROM audit.events ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+        `SELECT hash FROM audit.events ORDER BY id DESC LIMIT 1`,
       );
       const prevHash: Buffer = lastAuditResult.rows[0]?.hash ?? Buffer.alloc(0);
 

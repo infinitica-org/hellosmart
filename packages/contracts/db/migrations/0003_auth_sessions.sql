@@ -3,6 +3,12 @@
 -- All functions are SECURITY DEFINER with fixed search_path to bypass RLS safely
 -- without exposing app.users table to unauthenticated cross-tenant queries.
 
+-- Harden is_platform() helper so uninitialized or empty session GUC does not fail boolean cast
+CREATE OR REPLACE FUNCTION app.is_platform() RETURNS boolean
+LANGUAGE sql STABLE AS $$
+  SELECT coalesce(nullif(current_setting('app.is_platform', true), ''), 'false')::boolean
+$$;
+
 CREATE OR REPLACE FUNCTION app.lookup_user_for_login(p_email citext)
 RETURNS TABLE (
   id uuid,
@@ -23,7 +29,12 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = app, public
 AS $$
+DECLARE
+  v_prior_platform text;
 BEGIN
+  v_prior_platform := current_setting('app.is_platform', true);
+  PERFORM set_config('app.is_platform', 'true', true);
+
   RETURN QUERY
   SELECT
     u.id,
@@ -44,6 +55,8 @@ BEGIN
   WHERE u.email = p_email
     AND u.status IN ('active', 'invited')
     AND u.deleted_at IS NULL;
+
+  PERFORM set_config('app.is_platform', coalesce(v_prior_platform, ''), true);
 END;
 $$;
 
@@ -69,16 +82,21 @@ AS $$
 DECLARE
   v_failed int;
   v_locked timestamptz := NULL;
+  v_prior_platform text;
 BEGIN
+  v_prior_platform := current_setting('app.is_platform', true);
+  PERFORM set_config('app.is_platform', 'true', true);
+
   UPDATE app.users
-  SET failed_logins = failed_logins + 1,
+  SET failed_logins = app.users.failed_logins + 1,
       locked_until = CASE
-        WHEN (failed_logins + 1) >= p_max_attempts THEN now() + (p_lockout_seconds || ' seconds')::interval
-        ELSE locked_until
+        WHEN (app.users.failed_logins + 1) >= p_max_attempts THEN now() + (p_lockout_seconds || ' seconds')::interval
+        ELSE app.users.locked_until
       END
   WHERE id = p_user_id
-  RETURNING failed_logins, app.users.locked_until INTO v_failed, v_locked;
+  RETURNING app.users.failed_logins, app.users.locked_until INTO v_failed, v_locked;
 
+  PERFORM set_config('app.is_platform', coalesce(v_prior_platform, ''), true);
   RETURN QUERY SELECT v_failed, (v_locked IS NOT NULL AND v_locked > now()), v_locked;
 END;
 $$;
@@ -94,12 +112,19 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = app, public
 AS $$
+DECLARE
+  v_prior_platform text;
 BEGIN
+  v_prior_platform := current_setting('app.is_platform', true);
+  PERFORM set_config('app.is_platform', 'true', true);
+
   UPDATE app.users
   SET failed_logins = 0,
       locked_until = NULL,
       last_login_at = now()
   WHERE id = p_user_id;
+
+  PERFORM set_config('app.is_platform', coalesce(v_prior_platform, ''), true);
 END;
 $$;
 
@@ -107,7 +132,48 @@ ALTER FUNCTION app.record_login_success(uuid) OWNER TO hs_migrator;
 REVOKE EXECUTE ON FUNCTION app.record_login_success(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION app.record_login_success(uuid) TO hs_app;
 
--- Ensure invitation lookup from 0002 is also restricted to hs_app
+-- Re-create invitation lookup with platform context and restrict to hs_app
+CREATE OR REPLACE FUNCTION app.lookup_invitation(p_token_hash bytea)
+RETURNS TABLE (
+  id uuid,
+  org_id uuid,
+  user_id uuid,
+  email citext,
+  role text,
+  org_name text,
+  expires_at timestamptz,
+  used_at timestamptz
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = app, public
+AS $$
+DECLARE
+  v_prior_platform text;
+BEGIN
+  v_prior_platform := current_setting('app.is_platform', true);
+  PERFORM set_config('app.is_platform', 'true', true);
+
+  RETURN QUERY
+  SELECT
+    i.id,
+    i.org_id,
+    i.user_id,
+    i.email,
+    i.role,
+    o.name AS org_name,
+    i.expires_at,
+    i.used_at
+  FROM app.invitations i
+  JOIN app.organizations o ON o.id = i.org_id
+  WHERE i.token_hash = p_token_hash
+    AND i.used_at IS NULL
+    AND i.expires_at > now();
+
+  PERFORM set_config('app.is_platform', coalesce(v_prior_platform, ''), true);
+END;
+$$;
+
 ALTER FUNCTION app.lookup_invitation(bytea) OWNER TO hs_migrator;
 REVOKE EXECUTE ON FUNCTION app.lookup_invitation(bytea) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION app.lookup_invitation(bytea) TO hs_app;

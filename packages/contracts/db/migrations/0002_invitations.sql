@@ -46,7 +46,12 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = app, public
 AS $$
+DECLARE
+  v_prior_platform text;
 BEGIN
+  v_prior_platform := current_setting('app.is_platform', true);
+  PERFORM set_config('app.is_platform', 'true', true);
+
   RETURN QUERY
   SELECT
     i.id,
@@ -62,6 +67,8 @@ BEGIN
   WHERE i.token_hash = p_token_hash
     AND i.used_at IS NULL
     AND i.expires_at > now();
+
+  PERFORM set_config('app.is_platform', coalesce(v_prior_platform, ''), true);
 END;
 $$;
 
