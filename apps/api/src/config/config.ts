@@ -18,6 +18,7 @@ const ConfigSchema = z.object({
   PAYMENT_GATEWAY: z.enum(['fake', 'razorpay']).default('fake'),
   EMAIL_PROVIDER: z.enum(['fake', 'ses']).default('fake'),
   WORKSPACE_RUNTIME: z.enum(['fake', 'sysbox']).default('fake'),
+  APP_BASE_URL: z.string().url().default('http://localhost:3000'),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

@@ -25,6 +25,7 @@ tags:
 paths:
   /auth/login:
     post:
+      summary: Authenticate user and issue session cookie
       tags: [auth]
       operationId: authLogin
       x-requirement: [CO-001, CA-002]
@@ -49,8 +50,54 @@ paths:
               schema: { $ref: '#/components/schemas/Me' }
         '401': { $ref: '#/components/responses/Problem' }
         '429': { $ref: '#/components/responses/Problem' }
+  /auth/invitations/{token}:
+    get:
+      summary: Validate an invitation token and fetch details
+      tags: [auth]
+      operationId: validateInvitation
+      x-requirement: [S0-T08-1, BR-24]
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: Raw 32-byte invitation token
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Valid, unexpired, unused invitation details.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvitationDetails' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+  /auth/invitations/accept:
+    post:
+      summary: Accept an invitation and set user password
+      tags: [auth]
+      operationId: acceptInvitation
+      x-requirement: [S0-T08-1, BR-24]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInvitationRequest'
+      responses:
+        '200':
+          description: Invitation accepted, user activated, password set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AcceptInvitationResponse' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
   /me:
     get:
+      summary: Retrieve current authenticated user and portal context
       tags: [auth]
       operationId: getMe
       x-requirement: [CO-004]
@@ -63,6 +110,7 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
   /candidates:
     get:
+      summary: List candidates in the caller's organization
       tags: [candidates]
       operationId: listCandidates
       x-requirement: [CO-014]
@@ -83,7 +131,9 @@ paths:
                 properties:
                   items: { type: array, items: { $ref: '#/components/schemas/Candidate' } }
                   nextCursor: { type: [string, 'null'] }
+        '401': { $ref: '#/components/responses/Problem' }
     post:
+      summary: Create a candidate and invite them to an assessment
       tags: [candidates]
       operationId: createCandidate
       x-requirement: [CO-011, CO-013]
@@ -110,6 +160,7 @@ paths:
         '422': { $ref: '#/components/responses/Problem' }
   /candidate/assignments/{id}/connect:
     post:
+      summary: Connect candidate to assignment workspace
       tags: [candidate-portal]
       operationId: connectWorkspace
       x-requirement: [CA-008, CA-012, BR-06, BR-08, BR-12]
@@ -150,6 +201,25 @@ components:
         code: { type: string, description: 'Stable machine code, e.g. TRIAL_CAP_REACHED, WINDOW_NOT_OPEN, CONSENT_REQUIRED' }
         requestId: { type: string }
     Role: { type: string, enum: [platform_admin, company_admin, candidate] }
+    InvitationDetails:
+      type: object
+      required: [email, role, orgName]
+      properties:
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/Role' }
+        orgName: { type: string }
+    AcceptInvitationRequest:
+      type: object
+      required: [token, password]
+      properties:
+        token: { type: string, minLength: 1 }
+        password: { type: string, minLength: 12, maxLength: 128 }
+    AcceptInvitationResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean, enum: [true] }
+        message: { type: string }
     Me:
       type: object
       required: [id, email, name, role, portal]

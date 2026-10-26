@@ -1,6 +1,7 @@
 import { type DynamicModule, Module } from '@nestjs/common';
 import type { Logger } from 'pino';
 import { ObservabilityModule } from './modules/observability/observability.module.js';
+import { AuthModule } from './modules/auth/auth.module.js';
 
 // Module map (owner: Core Backend unless noted). Each folder in ./modules is one bounded context.
 // auth · rbac · tenancy · orgs · entitlements · audit            (S1)
@@ -9,7 +10,7 @@ import { ObservabilityModule } from './modules/observability/observability.modul
 // submissions · reviews                                          (S4, with AI Engineering)
 // billing · quotes · leads · analytics · retention · webhooks    (S5)
 @Module({
-  imports: [ObservabilityModule],
+  imports: [ObservabilityModule, AuthModule],
 })
 export class AppModule {
   static forRoot(options?: { logger?: Logger }): DynamicModule {
@@ -19,7 +20,7 @@ export class AppModule {
 
     return {
       module: AppModule,
-      imports: [observability],
+      imports: [observability, AuthModule],
     };
   }
 }

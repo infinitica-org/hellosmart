@@ -17,6 +17,8 @@ HelloSmart uses **PostgreSQL 16** with `citext` and `pgcrypto` extensions. Multi
 erDiagram
     ORGANIZATIONS ||--o{ ENTITLEMENTS : "governs"
     ORGANIZATIONS ||--o{ USERS : "contains"
+    ORGANIZATIONS ||--o{ INVITATIONS : "issues"
+    USERS ||--o{ INVITATIONS : "receives"
     ORGANIZATIONS ||--o{ TEMPLATE_ASSIGNMENTS : "licensed_to"
     ORGANIZATIONS ||--o{ ASSESSMENTS : "creates"
     ORGANIZATIONS ||--o{ CANDIDATES : "owns"
@@ -75,6 +77,18 @@ erDiagram
         boolean must_reset_password
         string status "invited | active | suspended | deleted"
         timestamptz locked_until
+    }
+
+    INVITATIONS {
+        uuid id PK
+        uuid org_id FK
+        uuid user_id FK
+        citext email
+        string role "company_admin | candidate"
+        bytea token_hash UK "sha256(raw_token)"
+        timestamptz expires_at "Strictly <= 72h"
+        timestamptz used_at
+        timestamptz created_at
     }
 
     ASSESSMENTS {

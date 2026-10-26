@@ -156,7 +156,10 @@ export function registerLoggingHooks(
   fastify.addHook('onResponse', (req: FastifyLikeRequest, reply: FastifyLikeReply, done: () => void) => {
     const rawUrl = req.raw?.url ?? req.url ?? '/';
     const [pathWithoutQuery] = rawUrl.split('?');
-    const safePath = normalizePath(pathWithoutQuery || '/');
+    let safePath = normalizePath(pathWithoutQuery || '/');
+    if (safePath.includes('/auth/invitations/')) {
+      safePath = safePath.replace(/\/auth\/invitations\/(?!accept$)[^/]+/g, '/auth/invitations/[REDACTED]');
+    }
 
     const statusCode = reply.statusCode;
 
