@@ -54,3 +54,10 @@ Fumadocs is built natively on Next.js App Router and Turbopack. It provides:
 - First-class MDX compilation with automated Table of Contents and frontmatter validation.
 - Built-in full-text search without external Algolia dependencies.
 - Native integration with our role-based authentication proxy.
+
+### Authentication & Password Hashing Architecture
+- **Argon2id (RFC 9106)**: HelloSmart mandates Argon2id with memory cost 19456 KiB (19 MiB), time cost 2 iterations, and parallelism 1 lane (`DEFAULT_ARGON2_PARAMS`). Fallback or emulated hashing algorithms are strictly prohibited; failure to initialize the native engine fails securely.
+- **Invitation Token Hashing**: Invitation tokens are generated as 32-byte cryptographically secure random bytes, hashed via SHA-256 binary (`bytea`), and validated atomically via `app.lookup_invitation()` and single-use `UPDATE app.invitations`.
+- **Forced Password Reset**: Forced password reset is initiated upon invitation acceptance (`POST /auth/invitations/accept`) which atomically sets the user's password and clears `must_reset_password = false`. In the frontend, users with `mustResetPassword === true` are halted from accessing role-specific portals (`/admin`, `/company`, `/candidate`).
+- **Session Revocation & Multi-Instance Rate Limiting**: The API uses a pre-login rate limiter (10 requests/hour per IP). Multi-instance cluster scaling behind AWS ALB targets `ThrottlerStorageRedisService` using the shared Redis cluster (`REDIS_URL`). Session revocation hook `revokeUserSessions(userId)` is integrated to invalidate sessions upon password update when Redis session infrastructure (S0-T10) is active.
+

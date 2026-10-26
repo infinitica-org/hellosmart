@@ -78,6 +78,25 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
         </div>
       )}
 
+      {/* Reset Required Banner */}
+      {bannerParam === 'reset_required' && (
+        <div
+          role="alert"
+          className="rounded-lg bg-amber-50 p-4 text-sm text-amber-900 border border-amber-200"
+        >
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 font-semibold">
+              <span aria-hidden="true">⚠️</span>
+              <span>Password Reset Required</span>
+            </div>
+            <p>
+              Your account requires a password reset before accessing the portal. Please use the
+              secure link provided in your invitation email.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Forced Reset Notice (Step 4) */}
       {forcedResetNotice && (
         <div

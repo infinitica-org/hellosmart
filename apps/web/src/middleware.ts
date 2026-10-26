@@ -22,9 +22,15 @@ export function middleware(req: NextRequest): NextResponse {
   ].join('; ');
 
   const role = req.cookies.get('hs_role')?.value; // non-sensitive routing hint; API re-verifies
+  const mustReset = req.cookies.get('hs_must_reset')?.value === 'true';
   const prefix = Object.keys(PORTAL_PREFIX).find((p) => req.nextUrl.pathname.startsWith(p));
-  if (prefix && role !== PORTAL_PREFIX[prefix]) {
-    return NextResponse.redirect(new URL('/login', req.url));
+  if (prefix) {
+    if (mustReset) {
+      return NextResponse.redirect(new URL('/login?message=reset_required', req.url));
+    }
+    if (role !== PORTAL_PREFIX[prefix]) {
+      return NextResponse.redirect(new URL('/login', req.url));
+    }
   }
 
   const headers = new Headers(req.headers);
@@ -32,7 +38,9 @@ export function middleware(req: NextRequest): NextResponse {
   const res = NextResponse.next({ request: { headers } });
   res.headers.set('Content-Security-Policy', csp);
   res.headers.set('X-Content-Type-Options', 'nosniff');
-  const isInvitePage = req.nextUrl.pathname.startsWith('/accept-invite');
+  const isInvitePage =
+    req.nextUrl.pathname.startsWith('/accept-invite') ||
+    req.nextUrl.pathname.startsWith('/set-password');
   res.headers.set('Referrer-Policy', isInvitePage ? 'no-referrer' : 'strict-origin-when-cross-origin');
   res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   return res;

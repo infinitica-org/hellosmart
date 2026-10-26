@@ -11,6 +11,11 @@ import { ThrottlerProblemFilter } from './auth-exception.filter.js';
 
 @Module({
   imports: [
+    // Rate limiting: 10 requests per hour per IP.
+    // Multi-Instance Deployment Note:
+    // Uses default in-memory storage for single-instance / local testing.
+    // When deploying horizontally scaled API replicas behind an AWS ALB (Sprint 1 / S0-T10),
+    // wire ThrottlerStorageRedisService using the shared REDIS_URL so rate counters are cluster-wide.
     ThrottlerModule.forRoot([
       {
         ttl: 3600000, // 1 hour window

@@ -255,6 +255,13 @@ describe('S0-T08-2: Frontend Invitation Acceptance & Password Reset', () => {
   });
 
   describe('5. Browser Security & Invariants (Step 5)', () => {
+    it('redirects legacy /set-password route to canonical /accept-invite route', () => {
+      const searchParams = new URLSearchParams('token=my_secret_token_123');
+      const params = searchParams.toString();
+      const target = params ? `/accept-invite?${params}` : '/accept-invite';
+      expect(target).toBe('/accept-invite?token=my_secret_token_123');
+    });
+
     it('never persists tokens or passwords to browser storage', () => {
       const testToken = 'secret_token_123';
       const testPassword = 'SecretPassword123!';

@@ -1,5 +1,4 @@
-import crypto from 'node:crypto';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 
 export interface Argon2Parameters {
   memoryCost: number; // 19456 KiB = 19 MiB
@@ -13,94 +12,94 @@ export const DEFAULT_ARGON2_PARAMS: Argon2Parameters = {
   parallelism: 1,
 };
 
+export interface Argon2Engine {
+  hash(
+    plain: string | Uint8Array,
+    options?: {
+      memoryCost?: number;
+      timeCost?: number;
+      parallelism?: number;
+      outputLen?: number;
+      algorithm?: number; // 2 = Argon2id
+    },
+  ): Promise<string>;
+  verify(hash: string, plain: string | Uint8Array): Promise<boolean>;
+}
+
+export const ARGON2_ENGINE = 'ARGON2_ENGINE';
+
 @Injectable()
 export class HasherService {
   private readonly logger = new Logger(HasherService.name);
-  private argon2Module: typeof import('@node-rs/argon2') | null = null;
+  private argon2Engine: Argon2Engine | null = null;
   private loadAttempted = false;
 
-  private async getArgon2(): Promise<typeof import('@node-rs/argon2') | null> {
+  constructor(@Optional() @Inject(ARGON2_ENGINE) customEngine?: Argon2Engine) {
+    if (customEngine) {
+      this.argon2Engine = customEngine;
+      this.loadAttempted = true;
+    }
+  }
+
+  private async getArgon2(): Promise<Argon2Engine> {
     if (!this.loadAttempted) {
       this.loadAttempted = true;
       try {
-        this.argon2Module = await import('@node-rs/argon2');
+        const mod = await import('@node-rs/argon2');
+        this.argon2Engine = mod;
       } catch (err: unknown) {
-        this.logger.warn(
-          `Native @node-rs/argon2 binding unavailable in current environment; falling back to emulated hasher. (${err instanceof Error ? err.message : String(err)})`,
+        this.logger.error(
+          `Argon2id native engine failed to initialize: ${err instanceof Error ? err.message : String(err)}`,
         );
-        this.argon2Module = null;
+        this.argon2Engine = null;
       }
     }
-    return this.argon2Module;
+
+    if (!this.argon2Engine) {
+      throw new Error(
+        'Argon2id hashing engine is unavailable. Refusing to hash or verify password with insecure fallback.',
+      );
+    }
+
+    return this.argon2Engine;
   }
 
   /**
    * Hashes a plaintext password using Argon2id with project standard parameters:
    * memoryCost: 19456 (19 MiB), timeCost: 2, parallelism: 1.
+   *
+   * STRICT SECURITY INVARIANT:
+   * No fallback hashing algorithms (e.g. scrypt, sha256, bcrypt) are permitted.
+   * If the Argon2id engine is unavailable or uninitialized, this method throws immediately.
    */
   async hashPassword(
     password: string,
     params: Argon2Parameters = DEFAULT_ARGON2_PARAMS,
   ): Promise<string> {
     const argon2 = await this.getArgon2();
-    if (argon2) {
-      return argon2.hash(password, {
-        memoryCost: params.memoryCost,
-        timeCost: params.timeCost,
-        outputLen: 32,
-        parallelism: params.parallelism,
-        algorithm: 2, // 2 = Argon2id
-      });
-    }
-
-    // Deterministic fallback for environments where native C++ .node compilation is restricted (e.g. Windows WDAC)
-    const salt = crypto.randomBytes(16).toString('hex');
-    const derived = crypto.scryptSync(password, salt, 32, {
-      N: 16384,
-      r: 8,
-      p: 1,
-      maxmem: 32 * 1024 * 1024,
-    }).toString('hex');
-    return `$argon2id$v=19$m=${params.memoryCost},t=${params.timeCost},p=${params.parallelism}$${salt}$${derived}`;
+    return argon2.hash(password, {
+      memoryCost: params.memoryCost,
+      timeCost: params.timeCost,
+      outputLen: 32,
+      parallelism: params.parallelism,
+      algorithm: 2, // 2 = Argon2id
+    });
   }
 
   /**
-   * Verifies a plaintext password against an existing hash string using constant-time comparison.
+   * Verifies a plaintext password against an existing hash string using Argon2id.
+   * Refuses any non-Argon2 hash formats.
    */
   async verifyPassword(hash: string, password: string): Promise<boolean> {
+    if (!hash || !hash.startsWith('$argon2id$')) {
+      return false;
+    }
+
     const argon2 = await this.getArgon2();
-    if (argon2 && !hash.includes('$argon2id$v=19$m=') && !hash.startsWith('$argon2id$emulated$')) {
-      try {
-        return await argon2.verify(hash, password);
-      } catch {
-        return false;
-      }
+    try {
+      return await argon2.verify(hash, password);
+    } catch {
+      return false;
     }
-
-    if (hash.startsWith('$argon2id$v=19$m=')) {
-      const parts = hash.split('$');
-      if (parts.length >= 6) {
-        const salt = parts[4]!;
-        const expected = parts[5]!;
-        const derived = crypto.scryptSync(password, salt, 32, {
-          N: 16384,
-          r: 8,
-          p: 1,
-          maxmem: 32 * 1024 * 1024,
-        }).toString('hex');
-        return crypto.timingSafeEqual(Buffer.from(derived), Buffer.from(expected));
-      }
-    }
-
-    if (argon2) {
-      try {
-        return await argon2.verify(hash, password);
-      } catch {
-        return false;
-      }
-    }
-
-    return false;
   }
 }
-

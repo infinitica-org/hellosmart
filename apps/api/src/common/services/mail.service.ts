@@ -73,7 +73,7 @@ export class MailService implements EmailSender {
    * Must be called ONLY after the organization/invitation database transaction commits.
    */
   async sendInvitationEmail(input: SendInvitationInput): Promise<{ providerId: string; inviteUrl?: string }> {
-    const inviteUrl = `${this.config.APP_BASE_URL}/set-password?token=${encodeURIComponent(input.token)}`;
+    const inviteUrl = `${this.config.APP_BASE_URL}/accept-invite?token=${encodeURIComponent(input.token)}`;
 
     if (this.config.EMAIL_PROVIDER === 'fake') {
       this.lastInviteLink = inviteUrl;

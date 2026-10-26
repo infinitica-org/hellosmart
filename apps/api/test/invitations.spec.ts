@@ -15,6 +15,7 @@ import {
   REQUEST_ID_HEADER,
 } from '../src/modules/observability/index.js';
 import {
+  type Argon2Engine,
   AuthModule,
   DB_POOL,
   HasherService,
@@ -94,6 +95,9 @@ function createMockDbPool() {
 
     async connect(): Promise<PoolClient> {
       let inTx = false;
+      let snapshotInvitations: Map<string, InMemoryInvitation> | null = null;
+      let snapshotUsers: Map<string, InMemoryUser> | null = null;
+      let snapshotAuditLen = 0;
 
       const client = {
         async query(sql: string, params: unknown[] = []): Promise<{ rows: any[]; rowCount: number }> {
@@ -101,14 +105,38 @@ function createMockDbPool() {
 
           if (normalized === 'BEGIN') {
             inTx = true;
+            snapshotInvitations = new Map(
+              Array.from(invitations.entries()).map(([k, v]) => [k, { ...v }]),
+            );
+            snapshotUsers = new Map(
+              Array.from(users.entries()).map(([k, v]) => [k, { ...v }]),
+            );
+            snapshotAuditLen = auditEvents.length;
             return { rows: [], rowCount: 0 };
           }
           if (normalized === 'COMMIT') {
             inTx = false;
+            snapshotInvitations = null;
+            snapshotUsers = null;
             return { rows: [], rowCount: 0 };
           }
           if (normalized === 'ROLLBACK') {
             inTx = false;
+            if (snapshotInvitations) {
+              invitations.clear();
+              for (const [k, v] of snapshotInvitations) {
+                invitations.set(k, v);
+              }
+            }
+            if (snapshotUsers) {
+              users.clear();
+              for (const [k, v] of snapshotUsers) {
+                users.set(k, v);
+              }
+            }
+            auditEvents.length = snapshotAuditLen;
+            snapshotInvitations = null;
+            snapshotUsers = null;
             return { rows: [], rowCount: 0 };
           }
 
@@ -354,7 +382,22 @@ describe('Stream 8 — Invitation Validate, Accept API & Mail Service (S0-T08-1,
       APP_BASE_URL: 'https://app.hellosmart.test',
     };
 
-    hasherService = new HasherService();
+    const testArgon2Engine: Argon2Engine = {
+      async hash(plain, options) {
+        const salt = crypto.randomBytes(16).toString('base64url');
+        const hash = crypto.createHash('sha256').update(plain).digest('base64url');
+        return `$argon2id$v=19$m=${options?.memoryCost ?? 19456},t=${options?.timeCost ?? 2},p=${options?.parallelism ?? 1}$${salt}$${hash}`;
+      },
+      async verify(hash, plain) {
+        if (!hash.startsWith('$argon2id$')) return false;
+        const parts = hash.split('$');
+        const expected = parts[5];
+        const actual = crypto.createHash('sha256').update(plain).digest('base64url');
+        return expected === actual;
+      },
+    };
+
+    hasherService = new HasherService(testArgon2Engine);
     invitationsService = new InvitationsService(hasherService, mockPool as unknown as Pool);
     mailService = new MailService(testConfig);
 
@@ -648,7 +691,7 @@ describe('Stream 8 — Invitation Validate, Accept API & Mail Service (S0-T08-1,
 
     const result = await mailService.sendInvitationEmail(input);
 
-    expect(result.inviteUrl).toBe('https://app.hellosmart.test/set-password?token=raw_invite_token_xyz_123');
+    expect(result.inviteUrl).toBe('https://app.hellosmart.test/accept-invite?token=raw_invite_token_xyz_123');
     expect(mailService.getLastInviteLink()).toBe(result.inviteUrl);
   });
 
@@ -732,5 +775,83 @@ describe('Stream 8 — Invitation Validate, Accept API & Mail Service (S0-T08-1,
     });
 
     expect(res.statusCode).toBe(200);
+  });
+
+  // Requirement 14: HasherService throws securely when Argon2id engine is unavailable and refuses fallback
+  it('14. HasherService throws securely when Argon2id engine is unavailable and refuses fallback', async () => {
+    const failingHasher = new HasherService({
+      async hash() {
+        throw new Error('Argon2id hashing engine is unavailable. Refusing to hash or verify password with insecure fallback.');
+      },
+      async verify() {
+        throw new Error('Argon2id hashing engine is unavailable. Refusing to hash or verify password with insecure fallback.');
+      },
+    });
+
+    await expect(failingHasher.hashPassword('StrongPassword123!')).rejects.toThrow(
+      'Argon2id hashing engine is unavailable',
+    );
+  });
+
+  // Requirement 15: Proving no password is saved to database if Argon2id hashing fails
+  it('15. Proving no password is saved to database if Argon2id hashing fails', async () => {
+    const failingHasher = new HasherService({
+      async hash() {
+        throw new Error('Argon2id native binding missing: simulated crash');
+      },
+      async verify() {
+        return false;
+      },
+    });
+
+    const brokenInvitationsService = new InvitationsService(
+      failingHasher,
+      mockPool as unknown as Pool,
+    );
+
+    const targetUserId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    const originalUser = mockPool.users.get(targetUserId)!;
+    expect(originalUser.password_hash).toBeNull();
+    expect(originalUser.status).toBe('invited');
+    expect(originalUser.must_reset_password).toBe(true);
+
+    await expect(
+      brokenInvitationsService.acceptInvitation({
+        token: validToken,
+        password: strongPassword,
+      }),
+    ).rejects.toThrow('Argon2id native binding missing');
+
+    // Verify user record in database was NOT modified
+    const userAfterFailure = mockPool.users.get(targetUserId)!;
+    expect(userAfterFailure.password_hash).toBeNull();
+    expect(userAfterFailure.status).toBe('invited');
+    expect(userAfterFailure.must_reset_password).toBe(true);
+
+    // Verify invitation record in database was NOT marked used
+    const inv = mockPool.invitations.get(hashToken(validToken).toString('hex'))!;
+    expect(inv.used_at).toBeNull();
+
+    // Verify audit log has no entry created
+    expect(mockPool.auditEvents.length).toBe(0);
+  });
+
+  // Requirement 16: HasherService refuses to verify any non-Argon2id hash formats
+  it('16. HasherService refuses to verify any non-Argon2id hash formats', async () => {
+    const validArgon2Engine: Argon2Engine = {
+      async hash() {
+        return '$argon2id$v=19$m=19456,t=2,p=1$fakeSalt$fakeHash';
+      },
+      async verify() {
+        return true;
+      },
+    };
+    const hasher = new HasherService(validArgon2Engine);
+
+    // Any legacy or fallback hash string not starting with $argon2id$ is immediately rejected
+    expect(await hasher.verifyPassword('$2a$12$someBcryptHash', 'Password123!')).toBe(false);
+    expect(await hasher.verifyPassword('$scrypt$someScryptHash', 'Password123!')).toBe(false);
+    expect(await hasher.verifyPassword('plaintext', 'Password123!')).toBe(false);
+    expect(await hasher.verifyPassword('', 'Password123!')).toBe(false);
   });
 });
