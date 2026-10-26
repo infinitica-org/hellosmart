@@ -46,3 +46,4 @@ export const MAX_SESSION_TTL_SECONDS = 7 * 24 * 3600; // 604,800 seconds
 // Inactivity timeout: 30 minutes for normal users, 15 minutes for platform_admin
 export const IDLE_TIMEOUT_SECONDS = 30 * 60; // 1,800 seconds
 export const ADMIN_IDLE_TIMEOUT_SECONDS = 15 * 60; // 900 seconds
+

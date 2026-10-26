@@ -9,12 +9,23 @@ export interface ThrottlerStorageRecord {
   timeToBlockExpire: number;
 }
 
+export interface ThrottlerRedisOptions {
+  /**
+   * In strict mode (production/staging), failure to reach Redis fails closed
+   * (blocks the request) rather than silently downgrading to per-instance memory counters.
+   */
+  strictMode?: boolean;
+}
+
 @Injectable()
 export class ThrottlerStorageRedis implements ThrottlerStorage {
   private readonly logger = new Logger(ThrottlerStorageRedis.name);
   private memoryFallback = new Map<string, { totalHits: number; expiresAt: number; blockedUntil?: number }>();
 
-  constructor(@Optional() private readonly redis?: Redis | null) {}
+  constructor(
+    @Optional() private readonly redis?: Redis | null,
+    private readonly options: ThrottlerRedisOptions = {},
+  ) {}
 
   async increment(
     key: string,
@@ -23,7 +34,20 @@ export class ThrottlerStorageRedis implements ThrottlerStorage {
     blockDuration: number,
     throttlerName: string,
   ): Promise<ThrottlerStorageRecord> {
+    const isStrict = this.options.strictMode ?? (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging');
+
     if (!this.redis) {
+      if (isStrict) {
+        this.logger.error(
+          'CRITICAL: Redis client is missing in strict mode for ThrottlerStorageRedis. Failing closed to prevent unthrottled access.',
+        );
+        return {
+          totalHits: limit + 1,
+          timeToExpire: 60,
+          isBlocked: true,
+          timeToBlockExpire: 60,
+        };
+      }
       return this.incrementMemory(key, ttl, limit, blockDuration, throttlerName);
     }
 
@@ -73,7 +97,20 @@ export class ThrottlerStorageRedis implements ThrottlerStorage {
         timeToBlockExpire,
       };
     } catch (err: unknown) {
-      this.logger.warn(`Redis throttling error, falling back to memory: ${err instanceof Error ? err.message : String(err)}`);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (isStrict) {
+        this.logger.error(
+          `CRITICAL: Redis throttling failure in strict mode (${errMsg}). Enforcing fail-closed policy (blocking request).`,
+        );
+        return {
+          totalHits: limit + 1,
+          timeToExpire: 60,
+          isBlocked: true,
+          timeToBlockExpire: 60,
+        };
+      }
+
+      this.logger.warn(`Redis throttling error, falling back to memory in non-strict mode: ${errMsg}`);
       return this.incrementMemory(key, ttl, limit, blockDuration, throttlerName);
     }
   }
@@ -122,3 +159,4 @@ export class ThrottlerStorageRedis implements ThrottlerStorage {
     };
   }
 }
+

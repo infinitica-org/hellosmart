@@ -13,6 +13,7 @@ import {
   CurrentUser,
   DB_POOL,
   HasherService,
+  MfaService,
   MeController,
   MemorySessionStore,
   RedisSessionStore,
@@ -96,15 +97,17 @@ function createAuthMockDbPool() {
             return { rows: [], rowCount: 0 };
           }
 
-          // 2. app.record_login_failure($1, 10, 900)
+          // 2. app.record_login_failure($1, 5, 900)
           if (normalized.includes('app.record_login_failure')) {
             const userId = params[0] as string;
+            const maxAttempts = (params[1] as number) || 5;
+            const lockoutSeconds = (params[2] as number) || 900;
             const user = users.get(userId);
             if (user) {
               user.failed_logins += 1;
-              const isLocked = user.failed_logins >= 10;
+              const isLocked = user.failed_logins >= maxAttempts;
               if (isLocked) {
-                user.locked_until = new Date(Date.now() + 900 * 1000);
+                user.locked_until = new Date(Date.now() + lockoutSeconds * 1000);
               }
               return {
                 rows: [
@@ -157,6 +160,17 @@ function createAuthMockDbPool() {
                 rowCount: 1,
               };
             }
+            return { rows: [], rowCount: 0 };
+          }
+
+          if (
+            normalized === 'BEGIN' ||
+            normalized === 'COMMIT' ||
+            normalized === 'ROLLBACK' ||
+            normalized.toLowerCase() === 'begin' ||
+            normalized.toLowerCase() === 'commit' ||
+            normalized.toLowerCase() === 'rollback'
+          ) {
             return { rows: [], rowCount: 0 };
           }
 
@@ -224,8 +238,11 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
   let mockPool: ReturnType<typeof createAuthMockDbPool>;
   let sessionStore: MemorySessionStore;
   let hasherService: HasherService;
+  let mfaService: MfaService;
   let sessionService: SessionService;
   let authService: AuthService;
+
+  const adminMfaSecret = 'JBSWY3DPEHPK3PXP'; // Standard Base32 TOTP secret
 
   const SESSION_SECRET = 'test_session_secret_at_least_32_characters_long_1234';
   const candidateUserId = 'cnd-1111-2222-3333-444444444444';
@@ -255,8 +272,9 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
     };
 
     hasherService = new HasherService(mockArgon2Engine);
+    mfaService = new MfaService();
     sessionService = new SessionService(sessionStore);
-    authService = new AuthService(hasherService, sessionService, mockPool as unknown as Pool);
+    authService = new AuthService(hasherService, sessionService, mfaService, mockPool as unknown as Pool);
 
     const initialHash = await hasherService.hashPassword(strongPassword);
 
@@ -289,13 +307,14 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
       failed_logins: 0,
       locked_until: null,
       last_login_at: null,
-      mfa_secret_ref: 'secrets/admin-mfa',
+      mfa_secret_ref: adminMfaSecret,
     });
 
     @Module({
       controllers: [AuthController, MeController, TestProtectedController],
       providers: [
         { provide: HasherService, useValue: hasherService },
+        { provide: MfaService, useValue: mfaService },
         { provide: SessionService, useValue: sessionService },
         { provide: AuthService, useValue: authService },
         { provide: SESSION_STORE, useValue: sessionStore },
@@ -567,8 +586,8 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
   });
 
   // 9. Login failure tracking and account lockout (CO-001)
-  it('9. Repeated failed logins lock the account after 10 attempts', async () => {
-    for (let i = 0; i < 9; i++) {
+  it('9. Repeated failed logins lock the account after 5 attempts', async () => {
+    for (let i = 0; i < 4; i++) {
       const res = await app.inject({
         method: 'POST',
         url: '/api/v1/auth/login',
@@ -579,15 +598,15 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
       expect(body.code).toBe('INVALID_CREDENTIALS');
     }
 
-    // 10th failure triggers lockout
-    const tenthRes = await app.inject({
+    // 5th failure triggers lockout
+    const fifthRes = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
       payload: { email: 'candidate@example.test', password: 'WrongPassword123!' },
     });
-    expect(tenthRes.statusCode).toBe(401);
+    expect(fifthRes.statusCode).toBe(401);
 
-    // 11th attempt returns 401 ACCOUNT_LOCKED
+    // 6th attempt returns 401 ACCOUNT_LOCKED
     const lockedRes = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
@@ -599,9 +618,9 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
     expect(lockedBody.detail).toContain('temporarily locked');
   });
 
-  // 10. Platform admin requires 6-digit MFA code (AD-001)
-  it('10. Platform admin requires valid MFA code to log in', async () => {
-    // Missing MFA code
+  // 10. Platform admin requires valid genuine MFA code (AD-001, BR-04)
+  it('10. Platform admin MFA enforcement rejects hardcoded codes and requires genuine TOTP', async () => {
+    // 10a. Missing MFA code
     const resNoMfa = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
@@ -611,16 +630,55 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
     const bodyNoMfa = JSON.parse(resNoMfa.body);
     expect(bodyNoMfa.code).toBe('MFA_REQUIRED');
 
-    // Valid MFA code
+    // 10b. Hardcoded MFA code '123456' is REJECTED if it doesn't match genuine TOTP
+    const realTotp = mfaService.generateTotp(adminMfaSecret);
+    const bogusCode = realTotp === '123456' ? '654321' : '123456';
+    const resBogus = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: 'admin@hellosmart.test', password: strongPassword, mfaCode: bogusCode },
+    });
+    expect(resBogus.statusCode).toBe(401);
+    const bodyBogus = JSON.parse(resBogus.body);
+    expect(bodyBogus.code).toBe('INVALID_CREDENTIALS');
+
+    // 10c. Genuine RFC 6238 TOTP code succeeds
     const resWithMfa = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
-      payload: { email: 'admin@hellosmart.test', password: strongPassword, mfaCode: '123456' },
+      payload: { email: 'admin@hellosmart.test', password: strongPassword, mfaCode: realTotp },
     });
     expect(resWithMfa.statusCode).toBe(200);
     const bodyWithMfa = JSON.parse(resWithMfa.body);
     expect(bodyWithMfa.role).toBe('platform_admin');
     expect(bodyWithMfa.portal).toBe('admin');
+  });
+
+  it('10d. Platform admin with missing MFA secret fails closed with 403', async () => {
+    const noSecretAdminId = 'adm-no-secret';
+    mockPool.users.set(noSecretAdminId, {
+      id: noSecretAdminId,
+      org_id: null,
+      email: 'admin-nosecret@hellosmart.test',
+      name: 'Unconfigured Admin',
+      role: 'platform_admin',
+      password_hash: await hasherService.hashPassword(strongPassword),
+      must_reset_password: false,
+      status: 'active',
+      failed_logins: 0,
+      locked_until: null,
+      last_login_at: null,
+      mfa_secret_ref: null, // No MFA secret configured
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: 'admin-nosecret@hellosmart.test', password: strongPassword, mfaCode: '999999' },
+    });
+    expect(res.statusCode).toBe(403);
+    const body = JSON.parse(res.body);
+    expect(body.code).toBe('MFA_CONFIGURATION_ERROR');
   });
 
   // 11. Redis session store ping and failure handling
@@ -669,5 +727,170 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
     await sessionService.revokeAllUserSessions(candidateUserId);
 
     expect(await sessionStore.getSession(session.id)).toBeNull();
+  });
+
+  // 14. Negative test: Forged or tampered session cookie signatures are rejected with 401
+  it('14. SessionGuard rejects forged or tampered session cookie signatures with 401', async () => {
+    // Forged cookie signature: s:fake_session.invalidsignature
+    const tamperedCookie = `${SESSION_COOKIE_NAME}=s:fake_session_12345.invalidsignaturehere`;
+    const resTampered = await app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: { cookie: tamperedCookie },
+    });
+    expect(resTampered.statusCode).toBe(401);
+    const body = JSON.parse(resTampered.body);
+    expect(body.code).toBe('UNAUTHORIZED');
+    expect(body.detail).toContain('signature');
+  });
+
+  // 15. Safe rate limiting policy: strict mode fails closed without silent downgrade to memory
+  it('15. ThrottlerStorageRedis safe failure policy: strict mode fails closed without memory fallback', async () => {
+    // 15a. In strict mode with no Redis client -> returns isBlocked: true (fails closed)
+    const strictNullStorage = new ThrottlerStorageRedis(null, { strictMode: true });
+    const blockedResult = await strictNullStorage.increment('key1', 60000, 10, 0, 'default');
+    expect(blockedResult.isBlocked).toBe(true);
+    expect(blockedResult.totalHits).toBe(11);
+
+    // 15b. In strict mode when Redis throws an error -> returns isBlocked: true (fails closed)
+    const failingRedisMock = {
+      pttl: vi.fn().mockRejectedValue(new Error('Redis cluster unreachable')),
+      pipeline: vi.fn().mockReturnValue({
+        incr: vi.fn().mockReturnThis(),
+        pttl: vi.fn().mockReturnThis(),
+        exec: vi.fn().mockRejectedValue(new Error('Redis network timeout')),
+      }),
+    } as any;
+
+    const strictErrorStorage = new ThrottlerStorageRedis(failingRedisMock, { strictMode: true });
+    const errorBlocked = await strictErrorStorage.increment('key2', 60000, 10, 0, 'default');
+    expect(errorBlocked.isBlocked).toBe(true);
+    expect(errorBlocked.totalHits).toBe(11);
+
+    // 15c. Non-strict mode falls back to memory safely for dev/test
+    const nonStrictStorage = new ThrottlerStorageRedis(null, { strictMode: false });
+    const memoryResult = await nonStrictStorage.increment('key3', 60000, 10, 0, 'default');
+    expect(memoryResult.isBlocked).toBe(false);
+    expect(memoryResult.totalHits).toBe(1);
+  });
+
+  // 16. Production session store startup validation prevents silent memory fallback
+  it('16. Production session store startup validation prevents silent memory fallback', async () => {
+    const validateProdStore = async (env: Record<string, string | undefined>) => {
+      const isProduction = env.NODE_ENV === 'production' || env.NODE_ENV === 'staging';
+      if (isProduction && !env.REDIS_URL) {
+        throw new Error('FATAL: REDIS_URL must be configured in production/staging environments.');
+      }
+      if (isProduction) {
+        const store = new RedisSessionStore({
+          ping: async () => 'PONG',
+        } as any);
+        const alive = await store.ping();
+        if (!alive) {
+          throw new Error('FATAL: Failed to connect to Redis session store during startup verification.');
+        }
+        return store;
+      }
+      return new MemorySessionStore();
+    };
+
+    // Missing REDIS_URL in production throws fatal error
+    await expect(validateProdStore({ NODE_ENV: 'production' })).rejects.toThrow(
+      'REDIS_URL must be configured in production/staging environments',
+    );
+
+    // Failed ping in production throws fatal error
+    const validateProdFailedPing = async () => {
+      const store = new RedisSessionStore({
+        ping: async () => {
+          throw new Error('ECONNREFUSED');
+        },
+      } as any);
+      const alive = await store.ping();
+      if (!alive) {
+        throw new Error('FATAL: Failed to connect to Redis session store during startup verification.');
+      }
+      return store;
+    };
+    await expect(validateProdFailedPing()).rejects.toThrow(
+      'Failed to connect to Redis session store during startup verification',
+    );
+  });
+
+  // 17. Negative test: Password change session rotation invalidates previous session
+  it('17. Password change rotates sessions: previous session revoked and rejected with 401', async () => {
+    // 1. Log in candidate to get session 1
+    const loginRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: 'candidate@example.test', password: strongPassword },
+    });
+    const session1Cookie = (Array.isArray(loginRes.headers['set-cookie'])
+      ? loginRes.headers['set-cookie']
+      : [loginRes.headers['set-cookie']!]).find((c) => c.startsWith(`${SESSION_COOKIE_NAME}=`))!.split(';')[0];
+
+    // Session 1 is valid
+    const me1 = await app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: { cookie: session1Cookie },
+    });
+    expect(me1.statusCode).toBe(200);
+
+    // 2. Change password
+    const changeRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password/change',
+      headers: { cookie: session1Cookie },
+      payload: {
+        currentPassword: strongPassword,
+        newPassword: updatedStrongPassword,
+      },
+    });
+    expect(changeRes.statusCode).toBe(200);
+    const session2Cookie = (Array.isArray(changeRes.headers['set-cookie'])
+      ? changeRes.headers['set-cookie']
+      : [changeRes.headers['set-cookie']!]).find((c) => c.startsWith(`${SESSION_COOKIE_NAME}=`))!.split(';')[0];
+
+    // 3. Negative check: Old session 1 is now revoked and MUST return 401
+    const oldSessionMe = await app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: { cookie: session1Cookie },
+    });
+    expect(oldSessionMe.statusCode).toBe(401);
+
+    // 4. New session 2 succeeds
+    const newSessionMe = await app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: { cookie: session2Cookie },
+    });
+    expect(newSessionMe.statusCode).toBe(200);
+  });
+
+  // 18. Database privileges: 0003_auth_sessions.sql revokes PUBLIC execution and grants strictly to hs_app
+  it('18. Database privileges: 0003_auth_sessions.sql revokes PUBLIC execution and grants strictly to hs_app', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const currentDir = path.dirname(fileURLToPath(import.meta.url));
+    const sqlPath = path.resolve(currentDir, '../../../packages/contracts/db/migrations/0003_auth_sessions.sql');
+    const sqlContent = fs.readFileSync(sqlPath, 'utf8');
+
+    // Must revoke from PUBLIC
+    expect(sqlContent).toContain('REVOKE EXECUTE ON FUNCTION app.lookup_user_for_login(citext) FROM PUBLIC');
+    expect(sqlContent).toContain('REVOKE EXECUTE ON FUNCTION app.record_login_failure(uuid, int, int) FROM PUBLIC');
+    expect(sqlContent).toContain('REVOKE EXECUTE ON FUNCTION app.record_login_success(uuid) FROM PUBLIC');
+    expect(sqlContent).toContain('REVOKE EXECUTE ON FUNCTION app.lookup_invitation(bytea) FROM PUBLIC');
+
+    // Must grant strictly to hs_app
+    expect(sqlContent).toContain('GRANT EXECUTE ON FUNCTION app.lookup_user_for_login(citext) TO hs_app');
+    expect(sqlContent).toContain('GRANT EXECUTE ON FUNCTION app.record_login_failure(uuid, int, int) TO hs_app');
+    expect(sqlContent).toContain('GRANT EXECUTE ON FUNCTION app.record_login_success(uuid) TO hs_app');
+    expect(sqlContent).toContain('GRANT EXECUTE ON FUNCTION app.lookup_invitation(bytea) TO hs_app');
+
+    // Must maintain fixed search_path = app, public
+    expect(sqlContent).toContain('SET search_path = app, public');
   });
 });

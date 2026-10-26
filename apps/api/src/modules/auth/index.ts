@@ -1,4 +1,5 @@
 export * from './hasher.service.js';
+export * from './mfa.service.js';
 export * from './invitations.service.js';
 export * from './invitations.controller.js';
 export * from './auth.service.js';

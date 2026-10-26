@@ -6,6 +6,7 @@ import { Redis } from 'ioredis';
 import { loadConfig } from '../../config/config.js';
 import { MailService } from '../../common/services/mail.service.js';
 import { HasherService } from './hasher.service.js';
+import { MfaService } from './mfa.service.js';
 import { DB_POOL, InvitationsService } from './invitations.service.js';
 import { InvitationsController } from './invitations.controller.js';
 import { AuthController, MeController } from './auth.controller.js';
@@ -23,19 +24,23 @@ import { ThrottlerProblemFilter } from './auth-exception.filter.js';
   imports: [
     ThrottlerModule.forRootAsync({
       useFactory: () => {
-        let storage: ThrottlerStorage | undefined;
+        let isStrict = false;
+        let redisClient: Redis | null = null;
         try {
           const config = loadConfig();
-          if (config.NODE_ENV !== 'test' && config.REDIS_URL) {
-            const redis = new Redis(config.REDIS_URL, {
+          isStrict = config.NODE_ENV === 'production' || config.NODE_ENV === 'staging';
+          if (config.REDIS_URL) {
+            redisClient = new Redis(config.REDIS_URL, {
               lazyConnect: true,
               maxRetriesPerRequest: 2,
             });
-            storage = new ThrottlerStorageRedis(redis);
           }
         } catch {
-          // fallback to in-memory storage
+          // ignore config load errors during non-runtime tasks
         }
+
+        const storage = new ThrottlerStorageRedis(redisClient, { strictMode: isStrict });
+
         return {
           throttlers: [
             {
@@ -43,7 +48,7 @@ import { ThrottlerProblemFilter } from './auth-exception.filter.js';
               limit: 10,
             },
           ],
-          storage: storage ?? new ThrottlerStorageRedis(null),
+          storage,
         };
       },
     }),
@@ -51,6 +56,7 @@ import { ThrottlerProblemFilter } from './auth-exception.filter.js';
   controllers: [AuthController, MeController, InvitationsController],
   providers: [
     HasherService,
+    MfaService,
     SessionService,
     AuthService,
     InvitationsService,
@@ -59,17 +65,50 @@ import { ThrottlerProblemFilter } from './auth-exception.filter.js';
     RolesGuard,
     {
       provide: SESSION_STORE,
-      useFactory: () => {
+      useFactory: async () => {
+        const nodeEnv = process.env.NODE_ENV;
+        if (nodeEnv === 'test') {
+          return new MemorySessionStore();
+        }
+
+        let config: ReturnType<typeof loadConfig>;
         try {
-          const config = loadConfig();
-          if (config.NODE_ENV === 'test') {
-            return new MemorySessionStore();
+          config = loadConfig();
+        } catch (err) {
+          if (nodeEnv === 'production' || nodeEnv === 'staging') {
+            throw err;
           }
-          if (config.REDIS_URL) {
-            return new RedisSessionStore(config.REDIS_URL);
+          return new MemorySessionStore();
+        }
+
+        const isProduction = config.NODE_ENV === 'production' || config.NODE_ENV === 'staging';
+
+        if (isProduction) {
+          if (!config.REDIS_URL) {
+            throw new Error(
+              'FATAL: REDIS_URL must be configured in production/staging environments. Silent in-memory session fallback is prohibited.',
+            );
           }
-        } catch {
-          // fallback
+          const store = new RedisSessionStore(config.REDIS_URL);
+          const isHealthy = await store.ping();
+          if (!isHealthy) {
+            throw new Error(
+              'FATAL: Failed to connect to Redis session store during startup verification.',
+            );
+          }
+          return store;
+        }
+
+        if (config.REDIS_URL) {
+          try {
+            const store = new RedisSessionStore(config.REDIS_URL);
+            const isHealthy = await store.ping();
+            if (isHealthy) {
+              return store;
+            }
+          } catch {
+            // fallback in development
+          }
         }
         return new MemorySessionStore();
       },
@@ -96,6 +135,7 @@ import { ThrottlerProblemFilter } from './auth-exception.filter.js';
   ],
   exports: [
     AuthService,
+    MfaService,
     SessionService,
     InvitationsService,
     HasherService,

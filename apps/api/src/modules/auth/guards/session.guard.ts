@@ -71,6 +71,13 @@ export class SessionGuard implements CanActivate {
         const unsigned = request.unsignCookie(rawCookie);
         if (unsigned.valid && unsigned.value) {
           sessionId = unsigned.value;
+        } else {
+          // Cookie signature is invalid or tampered with
+          this.logger.warn(`Tampered or invalid session cookie received for request ${requestId}`);
+          throw new SessionUnauthorizedException(
+            'Authentication required: invalid or forged session cookie signature.',
+            requestId,
+          );
         }
       } else {
         sessionId = rawCookie;

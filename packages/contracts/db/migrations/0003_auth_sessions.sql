@@ -47,7 +47,9 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION app.lookup_user_for_login(citext) TO PUBLIC;
+ALTER FUNCTION app.lookup_user_for_login(citext) OWNER TO hs_migrator;
+REVOKE EXECUTE ON FUNCTION app.lookup_user_for_login(citext) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.lookup_user_for_login(citext) TO hs_app;
 
 -- Records a failed login attempt and conditionally locks the account
 CREATE OR REPLACE FUNCTION app.record_login_failure(
@@ -81,7 +83,9 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION app.record_login_failure(uuid, int, int) TO PUBLIC;
+ALTER FUNCTION app.record_login_failure(uuid, int, int) OWNER TO hs_migrator;
+REVOKE EXECUTE ON FUNCTION app.record_login_failure(uuid, int, int) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.record_login_failure(uuid, int, int) TO hs_app;
 
 -- Resets failed logins on successful authentication
 CREATE OR REPLACE FUNCTION app.record_login_success(p_user_id uuid)
@@ -99,4 +103,11 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION app.record_login_success(uuid) TO PUBLIC;
+ALTER FUNCTION app.record_login_success(uuid) OWNER TO hs_migrator;
+REVOKE EXECUTE ON FUNCTION app.record_login_success(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.record_login_success(uuid) TO hs_app;
+
+-- Ensure invitation lookup from 0002 is also restricted to hs_app
+REVOKE EXECUTE ON FUNCTION app.lookup_invitation(bytea) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.lookup_invitation(bytea) TO hs_app;
+

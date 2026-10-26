@@ -14,6 +14,7 @@ import {
   PasswordPolicySchema,
 } from '@hs/contracts';
 import { HasherService } from './hasher.service.js';
+import { MfaService } from './mfa.service.js';
 import { DB_POOL } from './invitations.service.js';
 import type { Session } from './session/session.interface.js';
 import { SessionService } from './session/session.service.js';
@@ -94,6 +95,22 @@ export class MfaRequiredException extends HttpException {
   }
 }
 
+export class MfaConfigurationException extends HttpException {
+  constructor(requestId?: string | undefined) {
+    super(
+      {
+        type: 'https://hellosmart.ai/problems/mfa-configuration-error',
+        title: 'MFA Configuration Error',
+        status: HttpStatus.FORBIDDEN,
+        detail: 'Platform administrator accounts require MFA configuration. Login blocked.',
+        code: 'MFA_CONFIGURATION_ERROR',
+        ...(requestId ? { requestId } : {}),
+      },
+      HttpStatus.FORBIDDEN,
+    );
+  }
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -101,6 +118,7 @@ export class AuthService {
   constructor(
     @Inject(HasherService) private readonly hasherService: HasherService,
     @Inject(SessionService) private readonly sessionService: SessionService,
+    @Inject(MfaService) private readonly mfaService: MfaService,
     @Optional() @Inject(DB_POOL) private readonly pool?: Pool,
   ) {}
 
@@ -154,9 +172,9 @@ export class AuthService {
 
     const isValidPassword = await this.hasherService.verifyPassword(user.password_hash, input.password);
     if (!isValidPassword) {
-      // Record failure and check for lockout (10 attempts -> 15 min lockout per CLAUDE.md)
+      // Record failure and check for lockout (5 attempts -> 15 min lockout per spec)
       await this.pool.query(
-        `SELECT new_failed_logins, is_locked, locked_until FROM app.record_login_failure($1, 10, 900)`,
+        `SELECT new_failed_logins, is_locked, locked_until FROM app.record_login_failure($1, 5, 900)`,
         [user.id],
       );
 
@@ -177,12 +195,42 @@ export class AuthService {
       throw new InvalidCredentialsException(options.requestId);
     }
 
-    // 5. MFA enforcement for platform_admin (AD-001, BR-04)
-    if (user.role === 'platform_admin' && user.mfa_secret_ref) {
-      if (!input.mfaCode || input.mfaCode.length !== 6) {
+    // 5. Mandatory MFA enforcement for platform_admin (AD-001, BR-04)
+    if (user.role === 'platform_admin') {
+      // Platform admin MUST have MFA configured. Fail closed if missing or unconfigured.
+      if (!user.mfa_secret_ref) {
+        this.logger.error(`Platform admin ${user.id} has no MFA secret configured. Failing closed.`);
+        throw new MfaConfigurationException(options.requestId);
+      }
+
+      // MFA code is strictly mandatory for platform_admin
+      if (!input.mfaCode || !/^[0-9]{6}$/.test(input.mfaCode)) {
         throw new MfaRequiredException(options.requestId);
       }
-      if (input.mfaCode !== '123456' && process.env.NODE_ENV !== 'test') {
+
+      // Genuine RFC 6238 TOTP verification against the secret. No hardcoded codes or bypasses.
+      const isValidMfa = this.mfaService.verifyTotp(input.mfaCode, user.mfa_secret_ref);
+      if (!isValidMfa) {
+        // Record failure and check for lockout (5 attempts -> 15 min lockout)
+        await this.pool.query(
+          `SELECT new_failed_logins, is_locked, locked_until FROM app.record_login_failure($1, 5, 900)`,
+          [user.id],
+        );
+
+        await this.appendAudit({
+          actorId: user.id,
+          actorRole: user.role,
+          orgId: user.org_id,
+          action: 'user.login_failed',
+          entity: 'user',
+          entityId: user.id,
+          before: null,
+          after: { reason: 'invalid_mfa_code' },
+          ip: options.ip,
+          userAgent: options.userAgent,
+          requestId: options.requestId,
+        });
+
         throw new InvalidCredentialsException(options.requestId);
       }
     }
@@ -359,17 +407,77 @@ export class AuthService {
     // 3. Hash new password with Argon2id
     const newHash = await this.hasherService.hashPassword(input.newPassword);
 
-    // 4. Update password in database and clear must_reset_password
-    await this.pool.query(
-      `UPDATE app.users
-       SET password_hash = $1,
-           must_reset_password = false,
-           status = 'active',
-           failed_logins = 0,
-           locked_until = NULL
-       WHERE id = $2`,
-      [newHash, session.userId],
-    );
+    // 4. Update database and write audit record in an atomic transaction (BR-31, ACID)
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        `UPDATE app.users
+         SET password_hash = $1,
+             must_reset_password = false,
+             status = 'active',
+             failed_logins = 0,
+             locked_until = NULL
+         WHERE id = $2`,
+        [newHash, session.userId],
+      );
+
+      // Lock tail of audit.events to append tamper-evident hash chain atomically
+      const lastAuditResult = await client.query(
+        `SELECT hash FROM audit.events ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+      );
+      const prevHash: Buffer = lastAuditResult.rows[0]?.hash ?? Buffer.alloc(0);
+
+      const auditPayload = {
+        action: 'user.password_change',
+        entity: 'user',
+        entityId: session.userId,
+        actorId: session.userId,
+        actorRole: session.role,
+        orgId: session.orgId,
+        before: { must_reset_password: user.must_reset_password },
+        after: { must_reset_password: false },
+        ip: options.ip ?? '127.0.0.1',
+        userAgent: options.userAgent ?? 'unknown',
+        requestId: options.requestId ?? '',
+      };
+
+      const eventHash = crypto
+        .createHash('sha256')
+        .update(Buffer.concat([prevHash, Buffer.from(JSON.stringify(auditPayload))]))
+        .digest();
+
+      await client.query(
+        `INSERT INTO audit.events (
+           actor_id, actor_role, org_id, action, entity, entity_id,
+           before, after, ip, user_agent, request_id, prev_hash, hash
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        [
+          session.userId,
+          session.role,
+          session.orgId,
+          auditPayload.action,
+          auditPayload.entity,
+          auditPayload.entityId,
+          JSON.stringify(auditPayload.before),
+          JSON.stringify(auditPayload.after),
+          auditPayload.ip,
+          auditPayload.userAgent,
+          auditPayload.requestId,
+          prevHash,
+          eventHash,
+        ],
+      );
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      this.logger.error(`Password change transaction failed: ${err instanceof Error ? err.message : String(err)}`);
+      throw err;
+    } finally {
+      client.release();
+    }
 
     // 5. Invalidate all previous sessions for this user across all devices (session rotation / revocation)
     await this.sessionService.revokeAllUserSessions(session.userId);
@@ -385,21 +493,6 @@ export class AuthService {
       mustResetPassword: false,
       ip: options.ip,
       userAgent: options.userAgent,
-    });
-
-    // 7. Append audit log
-    await this.appendAudit({
-      actorId: session.userId,
-      actorRole: session.role,
-      orgId: session.orgId,
-      action: 'user.password_change',
-      entity: 'user',
-      entityId: session.userId,
-      before: { must_reset_password: user.must_reset_password },
-      after: { must_reset_password: false },
-      ip: options.ip,
-      userAgent: options.userAgent,
-      requestId: options.requestId,
     });
 
     return {
@@ -476,3 +569,4 @@ export class AuthService {
     }
   }
 }
+
