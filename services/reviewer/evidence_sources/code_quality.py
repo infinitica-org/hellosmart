@@ -1,10 +1,12 @@
 """Evidence builder for the code-quality agent (AD-014b).
 
-Ported from ProjAgentScan's src/agents/code_quality/evidence.py: same selection logic (3
-largest Python files by line count, up to 8 docstring samples, cognitive-complexity aggregate,
-README), adapted to emit EvidencePack v1 (app/evidence.py) with `repo:`-prefixed refs instead of
-ProjAgentScan's own EvidencePack, and routed through this service's sanitizer
-(app.sanitizer.wrap_untrusted) instead of ProjAgentScan's injection_scanner.
+Full-depth port of ProjAgentScan's src/agents/code_quality/evidence.py: 3 largest Python files by
+line count, up to 8 docstring samples, cognitive-complexity aggregate, duplicated-code detection
+(duplication.py), lint findings via ruff-in-isolated-mode (lint_count.py), docstring-substance
+("does it just restate the name" -- docstring_substance.py), and README. Emits EvidencePack v1
+(app/evidence.py) with `repo:`-prefixed refs; routed through this service's sanitizer
+(normalise()/suspicious() at build time, wrap_untrusted() once per prompt render -- see
+app/prompt.py) instead of ProjAgentScan's injection_scanner.
 
 Candidate files are read only through evidence_sources.repo_io.RepoReader. Quotable items are
 rendered as plain text (one fact/sample per item), never a JSON blob the model would need to
@@ -19,6 +21,9 @@ from app.sanitizer import normalise, suspicious
 
 from .checks.cognitive_complexity import percentile, score_tree
 from .checks.docstring_coverage import analyze_tree
+from .checks.docstring_substance import analyze_substance
+from .checks.duplication import find_duplication
+from .checks.lint_count import lint_candidate_files
 from .repo_io import RepoReader, safe_id, safe_parse_python
 
 TOP_FILES_FOR_SAMPLING = 3
@@ -147,6 +152,105 @@ def _add_readme(pack: EvidencePack, reader: RepoReader) -> bool:
     return True
 
 
+def _all_python_texts(reader: RepoReader) -> dict[str, str]:
+    texts: dict[str, str] = {}
+    for rel in reader.iter_files("source", suffixes={".py"}):
+        text = reader.read_text(rel)
+        if text is not None:
+            texts[rel] = text
+    return texts
+
+
+def _add_duplication(pack: EvidencePack, file_texts: dict[str, str]) -> None:
+    result = find_duplication(file_texts)
+    if result is None:
+        pack.coverage.append(
+            EvidenceCoverage(
+                channel="artifact", status="not_applicable",
+                reason="no significant lines in the analyzed Python files",
+            )
+        )
+        return
+    ref = "repo:fact.duplication.summary"
+    content = (
+        f"duplicated_line_ratio={result['duplicated_line_ratio']}; "
+        f"duplicated_lines={result['duplicated_lines']}; total_lines={result['total_lines']}"
+    )
+    pack.items.append(
+        EvidenceItem(ref=ref, source="artifact", content=content, untrusted=False, sanitized=False)
+    )
+    for i, block in enumerate(result["blocks"][:5]):
+        ref = f"repo:ev.duplication.block.{i}"
+        content = (
+            f"file={block['file']}; lines {block['start_line']}-{block['end_line']} "
+            f"({block['lines']} lines); also_in={block['also_in']}"
+        )
+        pack.items.append(
+            EvidenceItem(
+                ref=ref, source="artifact", content=_sanitize(pack, ref, content),
+                untrusted=True, sanitized=True,
+            )
+        )
+
+
+def _add_lint(pack: EvidencePack, clone_dir: str, file_texts: dict[str, str]) -> None:
+    result = lint_candidate_files(clone_dir, file_texts)
+    if result is None:
+        pack.coverage.append(
+            EvidenceCoverage(
+                channel="artifact", status="unavailable", reason="ruff is not installed"
+            )
+        )
+        return
+    ref = "repo:fact.lint_count.summary"
+    content = (
+        f"total_findings={result['total_findings']}; "
+        f"findings_per_kloc={result['findings_per_kloc']}; total_lines={result['total_lines']}"
+    )
+    pack.items.append(
+        EvidenceItem(ref=ref, source="artifact", content=content, untrusted=False, sanitized=False)
+    )
+    if result["by_rule"]:
+        ref = "repo:ev.lint.by_rule"
+        content = "; ".join(f"{r['code']}={r['count']}" for r in result["by_rule"])
+        pack.items.append(
+            EvidenceItem(
+                ref=ref, source="artifact", content=_sanitize(pack, ref, content),
+                untrusted=True, sanitized=True,
+            )
+        )
+
+
+def _add_docstring_substance(pack: EvidencePack, file_texts: dict[str, str]) -> None:
+    trees = {}
+    for rel, text in file_texts.items():
+        tree, _reason = safe_parse_python(text, rel)
+        if tree is not None:
+            trees[rel] = tree
+    result = analyze_substance(trees)
+    if result is None:
+        return
+    ref = "repo:fact.docstring_substance.summary"
+    content = (
+        f"public_functions={result['public_functions']}; "
+        f"substantive_coverage={result['substantive_coverage']}; "
+        f"restating_docstrings={result['restating_docstrings']}"
+    )
+    pack.items.append(
+        EvidenceItem(ref=ref, source="artifact", content=content, untrusted=False, sanitized=False)
+    )
+    for ex in result["restating_examples"]:
+        safe_name, _ = safe_id(f"{ex['file']}_{ex['name']}")
+        ref = f"repo:ev.restating_docstring.{safe_name}"
+        content = f"file={ex['file']}; name={ex['name']}; line={ex['line']}"
+        pack.items.append(
+            EvidenceItem(
+                ref=ref, source="artifact", content=_sanitize(pack, ref, content),
+                untrusted=True, sanitized=True,
+            )
+        )
+
+
 def build_evidence(
     submission_id: str, clone_dir: str, manifest: dict[str, object] | None = None
 ) -> EvidencePack:
@@ -156,6 +260,11 @@ def build_evidence(
     _add_complexity(pack, reader)
     sampled = _add_docstring_samples(pack, reader)
     has_readme = _add_readme(pack, reader)
+
+    file_texts = _all_python_texts(reader)
+    _add_duplication(pack, file_texts)
+    _add_lint(pack, clone_dir, file_texts)
+    _add_docstring_substance(pack, file_texts)
 
     pack.truncations.extend(reader.truncations)
     if sampled == 0 and not has_readme:

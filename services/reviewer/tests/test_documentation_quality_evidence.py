@@ -40,3 +40,20 @@ def test_pack_is_deterministic(tmp_path: Path) -> None:
     pack1 = build_evidence("sub-1", str(root))
     pack2 = build_evidence("sub-1", str(root))
     assert pack1.model_dump() == pack2.model_dump()
+
+
+def test_restating_docstring_is_flagged_as_a_fact_this_agent_cites(tmp_path: Path) -> None:
+    """documentation-quality.yaml's own anchors cite "a docstring that only restates the name"
+    as a low-score signal -- the narrower first pass of this evidence builder had no fact to back
+    that up at all; this is the gap it closes."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("app.py").write_text(
+        'def get_user(user_id):\n    """Get user."""\n    return user_id\n', encoding="utf-8"
+    )
+
+    pack = build_evidence("sub-1", str(root))
+    summary = pack.resolve("repo:fact.docstring_substance.summary")
+    assert summary is not None
+    assert "restating_docstrings=1" in summary.content
+    assert any(r.startswith("repo:ev.restating_docstring.") for r in pack.refs)

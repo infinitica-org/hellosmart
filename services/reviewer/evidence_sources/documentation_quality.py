@@ -1,8 +1,10 @@
 """Evidence builder for the documentation-quality agent (AD-014b).
 
-Ported from ProjAgentScan's src/agents/documentation_quality/evidence.py: README presence/
-content and public-docstring samples. Shares the docstring-coverage logic with code-quality's
-evidence builder (evidence_sources/checks/docstring_coverage.py).
+Full-depth port of ProjAgentScan's src/agents/documentation_quality/evidence.py: README
+presence/content, public-docstring samples (sharing code-quality's docstring-coverage logic,
+evidence_sources/checks/docstring_coverage.py), and now docstring-substance ("does it just
+restate the function's own name" -- docstring_substance.py), the check the narrower first pass
+deliberately left out even though this agent's own rubric cites it directly.
 """
 
 from __future__ import annotations
@@ -11,6 +13,7 @@ from app.evidence import EvidenceCoverage, EvidenceItem, EvidencePack
 from app.sanitizer import normalise, suspicious
 
 from .checks.docstring_coverage import analyze_tree
+from .checks.docstring_substance import analyze_substance
 from .repo_io import RepoReader, safe_id, safe_parse_python
 
 TOP_FILES_FOR_SAMPLING = 3
@@ -82,6 +85,39 @@ def _add_readme(pack: EvidencePack, reader: RepoReader) -> bool:
     return True
 
 
+def _add_docstring_substance(pack: EvidencePack, reader: RepoReader) -> None:
+    trees = {}
+    for rel in reader.iter_files("source", suffixes={".py"}):
+        text = reader.read_text(rel)
+        if text is None:
+            continue
+        tree, _reason = safe_parse_python(text, rel)
+        if tree is not None:
+            trees[rel] = tree
+    result = analyze_substance(trees)
+    if result is None:
+        return
+    ref = "repo:fact.docstring_substance.summary"
+    content = (
+        f"public_functions={result['public_functions']}; "
+        f"substantive_coverage={result['substantive_coverage']}; "
+        f"restating_docstrings={result['restating_docstrings']}"
+    )
+    pack.items.append(
+        EvidenceItem(ref=ref, source="artifact", content=content, untrusted=False, sanitized=False)
+    )
+    for ex in result["restating_examples"]:
+        safe_name, _ = safe_id(f"{ex['file']}_{ex['name']}")
+        ref = f"repo:ev.restating_docstring.{safe_name}"
+        content = f"file={ex['file']}; name={ex['name']}; line={ex['line']}"
+        pack.items.append(
+            EvidenceItem(
+                ref=ref, source="artifact", content=_sanitize(pack, ref, content),
+                untrusted=True, sanitized=True,
+            )
+        )
+
+
 def build_evidence(
     submission_id: str, clone_dir: str, manifest: dict[str, object] | None = None
 ) -> EvidencePack:
@@ -90,6 +126,7 @@ def build_evidence(
 
     sampled = _add_docstring_samples(pack, reader)
     has_readme = _add_readme(pack, reader)
+    _add_docstring_substance(pack, reader)
 
     pack.truncations.extend(reader.truncations)
     if sampled == 0 and not has_readme:
