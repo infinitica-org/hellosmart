@@ -2,10 +2,12 @@
 
 Full-depth port of ProjAgentScan's src/agents/ai_authorship_maturity/evidence.py: real git-log
 parsing (evidence_sources/checks/git_log.py) feeding the full edit-concentration/revision-count/
-substantive-revision-count/signal-stuffing analysis (ai_boilerplate_signals.py), plus the
-current-text boilerplate-marker scan -- the same facts the original agent's rubric cites
-(`refinement_evidence`, `boilerplate_markers`), not the narrower first-commit-vs-later-commit
-diff-size comparison this builder started as.
+substantive-revision-count/signal-stuffing analysis (ai_boilerplate_signals.py), the
+current-text boilerplate-marker scan, and now also the separate `commit_history` fact (total
+commits, distinct files touched, average time between successive commits on the same file) plus
+a raw, oldest-first commit-timeline sample -- the same facts the original agent's rubric cites
+(`commit_history`, `refinement_evidence`, `boilerplate_markers`), not the narrower
+first-commit-vs-later-commit diff-size comparison this builder started as.
 """
 
 from __future__ import annotations
@@ -14,10 +16,43 @@ from app.evidence import EvidenceCoverage, EvidenceItem, EvidencePack
 from app.sanitizer import normalise, suspicious
 
 from .checks.ai_boilerplate_signals import analyze_revision_history, find_boilerplate_markers
-from .checks.git_log import git_log, has_git_history, parse_log
+from .checks.git_log import Commit, git_log, has_git_history, parse_log
 from .repo_io import RepoReader, safe_id
 
 MAX_FILES_REPORTED = 20
+MAX_COMMITS_SHOWN = 20
+
+
+def _commit_history_fact(commits: list[Commit]) -> tuple[str, int]:
+    """(summary content, total_commits) from the raw commit list, oldest-first."""
+    file_times: dict[str, list[int]] = {}
+    files_touched: set[str] = set()
+    for commit in commits:
+        for f in commit["files"]:
+            files_touched.add(f["path"])
+            file_times.setdefault(f["path"], []).append(commit["ts"])
+
+    gaps = [
+        b - a
+        for times in file_times.values()
+        for a, b in zip(sorted(times), sorted(times)[1:], strict=False)
+    ]
+    avg_hours = round(sum(gaps) / len(gaps) / 3600, 2) if gaps else None
+
+    content = (
+        f"total_commits={len(commits)}; files_touched={len(files_touched)}; "
+        f"avg_time_between_commits_hours={avg_hours}"
+    )
+    return content, len(commits)
+
+
+def _commits_sample_text(commits: list[Commit]) -> str:
+    lines: list[str] = []
+    for commit in commits:
+        lines.append(f"commit {commit['sha'][:12]} at {commit['ts']}:")
+        for f in commit["files"]:
+            lines.append(f"  {f['path']} +{f['added']}/-{f['removed']}")
+    return "\n".join(lines)
 
 
 def _sanitize(pack: EvidencePack, ref: str, text: str) -> str:
@@ -58,6 +93,25 @@ def build_evidence(submission_id: str, clone_dir: str) -> EvidencePack:
             )
         )
         return pack
+
+    history_content, total_commits = _commit_history_fact(commits)
+    pack.items.append(
+        EvidenceItem(
+            ref="repo:fact.commit_history", source="git_timeline", content=history_content,
+            untrusted=False, sanitized=False,
+        )
+    )
+    shown_commits = commits[:MAX_COMMITS_SHOWN]
+    if len(commits) > MAX_COMMITS_SHOWN:
+        pack.truncations.append(f"commits: {MAX_COMMITS_SHOWN} of {total_commits} shown")
+    ref = "repo:ev.commits.sample"
+    pack.items.append(
+        EvidenceItem(
+            ref=ref, source="git_timeline",
+            content=_sanitize(pack, ref, _commits_sample_text(shown_commits)),
+            untrusted=True, sanitized=True,
+        )
+    )
 
     signals = analyze_revision_history(commits)
     summary = signals["summary"]

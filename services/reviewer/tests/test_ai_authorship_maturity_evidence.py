@@ -123,6 +123,29 @@ def test_no_git_history_is_missing_required(tmp_path: Path) -> None:
     assert "commit_log" in pack.missing_required
 
 
+def test_commit_history_fact_and_raw_sample_are_reported(tmp_path: Path) -> None:
+    """commit_history is a structurally distinct fact from refinement/boilerplate signals --
+    total activity and cadence, not revision-stuffing -- and the rubric cites it separately;
+    the narrower depth pass had no fact or raw commit sample to back it at all."""
+    repo = _init_repo(tmp_path)
+    (repo / "a.py").write_text("x = 1\n", encoding="utf-8")
+    _commit(repo, "initial", 0)
+    (repo / "a.py").write_text("x = 1\ny = 2\n", encoding="utf-8")
+    _commit(repo, "follow up", 1)
+
+    pack = build_evidence("sub-1", str(repo))
+    history = pack.resolve("repo:fact.commit_history")
+    assert history is not None
+    assert "total_commits=2" in history.content
+    assert "files_touched=1" in history.content
+    assert "avg_time_between_commits_hours=24.0" in history.content
+
+    sample = pack.resolve("repo:ev.commits.sample")
+    assert sample is not None
+    assert "a.py +1/-0" in sample.content
+    assert "a.py +1/-0" in sample.content or "a.py +2/-0" in sample.content
+
+
 def test_pack_is_deterministic(tmp_path: Path) -> None:
     repo = _init_repo(tmp_path)
     (repo / "a.py").write_text("x = 1\n", encoding="utf-8")
