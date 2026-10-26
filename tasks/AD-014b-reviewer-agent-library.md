@@ -21,7 +21,7 @@ AD-014a (merged to `dev`, PR #29) scaffolded the AI gateway and the versioned `E
 - [x] AC9: `EvidenceRef`'s regex (`app/schemas.py`) gains a `repo:` prefix, additive only -- every evidence id these 8 agents mint is `repo:...`; the existing `term|diff|ai|file|event|test` prefixes are untouched and `schemas/evidence.v1.schema.json` is regenerated (`tools/export_evidence_schema.py`) to match
 - [x] AC10: `app/gateway/adapters/fake.py` (AD-014a) returns `AgentScore`-shaped replies instead of its pre-`AgentScore` placeholder -- found by actually running the full pipeline against the real `FakeAdapter` (`LLM_PROVIDER=fake`, the repo-wide zero-network local dev/test convention) for two agents, which failed validation every time until this fix; no existing AD-014a test asserted the old shape
 
-All 10 verified under the repo's actual required command (`uv run pytest && uv run ruff check && uv run mypy .`): 95/95 tests pass, ruff clean, mypy strict clean (0 issues / 69 files) -- after the full-depth follow-up below. No new third-party dependency (stdlib `ast`/`tomllib`/`subprocess`/`re` plus the `pydantic`/`pyyaml` already in `pyproject.toml`). Beyond the automated suite: manually ran evidence-build -> prompt -> gateway -> validate end-to-end against the real `FakeAdapter` for `code-quality` and `process` with real sample repos -- both `outcome=ok` on the first attempt.
+All 10 verified under the repo's actual required command (`uv run pytest && uv run ruff check && uv run mypy .`): 109/109 tests pass, ruff clean, mypy strict clean (0 issues / 69 files) -- after the full-depth follow-up and the line-by-line audit pass below, both. No new third-party dependency (stdlib `ast`/`tomllib`/`subprocess`/`re`/`hashlib` plus the `pydantic`/`pyyaml` already in `pyproject.toml`). Beyond the automated suite: manually ran evidence-build -> prompt -> gateway -> validate end-to-end against the real `FakeAdapter` for `code-quality` and `process` with real sample repos -- both `outcome=ok` on the first attempt.
 
 ## Business rules touched
 BR-18 (independent agents, evidence-cited, sanitized input, adversarial suite -- every evidence builder's untrusted items are prompt-injection-tested), BR-20 (scores immutable; model-substitution confidence cap carried through to the runner)
@@ -55,6 +55,18 @@ The first pass of this ticket shipped 7 of the 8 evidence builders narrower than
 - `process`: PR/review-quality evidence is still not sourced here (no template-specific PR-export data available to this ticket) -- the agent's own rubric already treats that signal as `not_applicable` when absent, which is the correct behavior, not a gap; no further depth needed.
 
 Also carried over from ProjAgentScan but adapted rather than ported file-for-file: `documentation-quality`'s evidence builder reuses `code-quality`'s docstring-coverage logic rather than duplicating it.
+
+## Line-by-line audit against ProjAgentScan originals (closed -- a second, deeper pass)
+After the full-depth follow-up above, each of the 8 ports was diffed against its full ProjAgentScan original (including `skills_depth/evidence.py`'s ~1000 lines, not fully read in the first pass). The aggregate facts held up; a real, consistent gap did not: the originals quote actual **text evidence** (function source, docstring text, route-handler bodies, raw commit timelines) that several ports had replaced with summary counts. Closed in further follow-up commits, before merge:
+- `code-quality`: samples real function source (3 most complex + rest in a fixed hash order, up to 8) as `ev.code.<id>` -- was aggregate-only.
+- `documentation-quality`: samples real docstring text (up to 8, from the 3 largest files) as `ev.docstring.sample.<id>` -- was coverage-count-only.
+- `comprehension`: excerpts real route-handler source (up to 6, 40 lines each) as `ev.handler.<id>` -- was metadata-only.
+- `ai-authorship-maturity`: adds the `commit_history` fact (total_commits/files_touched/avg_time_between_commits_hours) and a raw commit-timeline sample -- this fact was missing entirely, not narrowed.
+- `architecture-design`: adds `code_map`'s aggregate (class/function/method counts, abstract/protocol/dataclass/enum/exception kinds) -- `checks/code_map.py` had been narrowed to `{name, line, bases}` only.
+- `production-readiness`: adds `uses_env_vars`/`typed_settings` detection, IaC-type classification (docker_compose/kubernetes/terraform, not a bare `.tf` boolean), CI provider identification, `Cargo.lock`/`go.sum`, and the README as a deployment-docs evidence item.
+- `skills-depth`: adds the distribution-name-to-import-name alias table (`scikit-learn` declared / `sklearn` imported now correctly counts as used) and Poetry (`[tool.poetry.dependencies]`) + multi-file `requirements*.txt` detection -- two real correctness bugs, not depth gaps.
+
+ProjAgentScan's own fact-store cross-references (`read_fact("secrets_scan")`, `stubs`, `complexity`) are correctly still excluded -- architecturally inapplicable here, not a gap. 14 new tests added, each against a real computed result (an actual FastAPI route, Dockerfile, git history), not a scripted mock. Verified again under `uv run pytest && uv run ruff check && uv run mypy .`: 109/109 tests, ruff clean, mypy strict clean (69 files).
 
 ## Test plan
 | AC / BR | Test name | Type |
