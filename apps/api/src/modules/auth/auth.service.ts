@@ -16,6 +16,7 @@ import {
 import { HasherService } from './hasher.service.js';
 import { MfaService } from './mfa.service.js';
 import { DB_POOL } from './invitations.service.js';
+import { SECRET_STORE, type SecretStore } from './secret-store.interface.js';
 import type { Session } from './session/session.interface.js';
 import { SessionService } from './session/session.service.js';
 
@@ -120,6 +121,7 @@ export class AuthService {
     @Inject(SessionService) private readonly sessionService: SessionService,
     @Inject(MfaService) private readonly mfaService: MfaService,
     @Optional() @Inject(DB_POOL) private readonly pool?: Pool,
+    @Optional() @Inject(SECRET_STORE) private readonly secretStore?: SecretStore,
   ) {}
 
   /**
@@ -199,7 +201,7 @@ export class AuthService {
     if (user.role === 'platform_admin') {
       // Platform admin MUST have MFA configured. Fail closed if missing or unconfigured.
       if (!user.mfa_secret_ref) {
-        this.logger.error(`Platform admin ${user.id} has no MFA secret configured. Failing closed.`);
+        this.logger.error(`Platform admin ${user.id} has no MFA secret reference configured. Failing closed.`);
         throw new MfaConfigurationException(options.requestId);
       }
 
@@ -208,8 +210,42 @@ export class AuthService {
         throw new MfaRequiredException(options.requestId);
       }
 
-      // Genuine RFC 6238 TOTP verification against the secret. No hardcoded codes or bypasses.
-      const isValidMfa = this.mfaService.verifyTotp(input.mfaCode, user.mfa_secret_ref);
+      // Secure secret resolution:
+      // The database column mfa_secret_ref stores an opaque reference/ARN (never the Base32 seed itself).
+      // We must resolve the plaintext Base32 seed using the SecretStore adapter into ephemeral process memory.
+      if (!this.secretStore) {
+        this.logger.error(
+          `No SecretStore adapter configured to resolve MFA secret reference '${user.mfa_secret_ref}'. Failing closed.`,
+        );
+        throw new MfaConfigurationException(options.requestId);
+      }
+
+      let resolvedSeed: string;
+      try {
+        resolvedSeed = await this.secretStore.get(user.mfa_secret_ref);
+      } catch (err: unknown) {
+        this.logger.error(
+          `Failed to resolve MFA secret for ref '${user.mfa_secret_ref}': ${err instanceof Error ? err.message : String(err)}. Failing closed.`,
+        );
+        throw new MfaConfigurationException(options.requestId);
+      }
+
+      if (!resolvedSeed || typeof resolvedSeed !== 'string' || resolvedSeed.trim().length === 0) {
+        this.logger.error(`Resolved MFA secret for ref '${user.mfa_secret_ref}' is empty. Failing closed.`);
+        throw new MfaConfigurationException(options.requestId);
+      }
+
+      try {
+        this.mfaService.decodeBase32(resolvedSeed);
+      } catch (err: unknown) {
+        this.logger.error(
+          `Resolved MFA seed for ref '${user.mfa_secret_ref}' is not valid Base32: ${err instanceof Error ? err.message : String(err)}. Failing closed.`,
+        );
+        throw new MfaConfigurationException(options.requestId);
+      }
+
+      // Genuine RFC 6238 TOTP verification against the resolved Base32 seed. No bypasses.
+      const isValidMfa = this.mfaService.verifyTotp(input.mfaCode, resolvedSeed);
       if (!isValidMfa) {
         // Record failure and check for lockout (5 attempts -> 15 min lockout)
         await this.pool.query(
@@ -407,10 +443,13 @@ export class AuthService {
     // 3. Hash new password with Argon2id
     const newHash = await this.hasherService.hashPassword(input.newPassword);
 
-    // 4. Update database and write audit record in an atomic transaction (BR-31, ACID)
+    // 4. Update database, write audit record, and invalidate sessions atomically (BR-31, ACID)
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+
+      // Advisory transaction lock serializes audit hash chain writes under concurrency
+      await client.query(`SELECT pg_advisory_xact_lock(hashtext('audit.events'))`);
 
       await client.query(
         `UPDATE app.users
@@ -470,6 +509,28 @@ export class AuthService {
         ],
       );
 
+      // Invalidate all previous sessions across all devices before committing.
+      // If Redis session revocation fails, abort the transaction so user is not left
+      // with a changed password but unrevoked sessions.
+      try {
+        await this.sessionService.revokeAllUserSessions(session.userId);
+      } catch (revocationErr: unknown) {
+        this.logger.error(
+          `Session revocation failed during password change for user ${session.userId}: ${revocationErr instanceof Error ? revocationErr.message : String(revocationErr)}`,
+        );
+        throw new HttpException(
+          {
+            type: 'https://hellosmart.ai/problems/session-revocation-failed',
+            title: 'Session Revocation Failed',
+            status: HttpStatus.SERVICE_UNAVAILABLE,
+            detail: 'Failed to revoke existing sessions. Password change was aborted for security.',
+            code: 'SESSION_REVOCATION_FAILED',
+            ...(options.requestId ? { requestId: options.requestId } : {}),
+          },
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
+
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
@@ -479,10 +540,7 @@ export class AuthService {
       client.release();
     }
 
-    // 5. Invalidate all previous sessions for this user across all devices (session rotation / revocation)
-    await this.sessionService.revokeAllUserSessions(session.userId);
-
-    // 6. Create fresh active session with mustResetPassword = false
+    // 5. Create fresh active session with mustResetPassword = false
     const updatedSession = await this.sessionService.createSession({
       userId: session.userId,
       orgId: session.orgId,

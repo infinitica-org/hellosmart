@@ -43,7 +43,8 @@ export class RedisSessionStore implements SessionStore {
     try {
       return JSON.parse(raw) as Session;
     } catch {
-      await this.destroySession(sessionId);
+      this.logger.warn(`Corrupt session JSON for ${sessionId}, cleaning up`);
+      await this.redis.del(sessionKey);
       return null;
     }
   }
@@ -60,12 +61,21 @@ export class RedisSessionStore implements SessionStore {
 
   async destroySession(sessionId: string): Promise<void> {
     const sessionKey = `hs_session:${sessionId}`;
-    const session = await this.getSession(sessionId);
+    const raw = await this.redis.get(sessionKey);
+    let userId: string | null = null;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as { userId?: string };
+        userId = parsed.userId ?? null;
+      } catch {
+        // Ignore corrupt JSON during deletion
+      }
+    }
 
     const pipeline = this.redis.pipeline();
     pipeline.del(sessionKey);
-    if (session) {
-      pipeline.srem(`hs_user_sessions:${session.userId}`, sessionId);
+    if (userId) {
+      pipeline.srem(`hs_user_sessions:${userId}`, sessionId);
     }
     await pipeline.exec();
   }

@@ -10,6 +10,7 @@ export * from './session/session.service.js';
 export * from './session/memory.session.store.js';
 export * from './session/redis.session.store.js';
 export * from './session/throttler-storage-redis.js';
+export * from './secret-store.interface.js';
 export * from './guards/session.guard.js';
 export * from './guards/roles.guard.js';
 export * from './guards/roles.decorator.js';

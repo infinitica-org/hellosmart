@@ -65,5 +65,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION app.lookup_invitation(bytea) TO PUBLIC;
+ALTER FUNCTION app.lookup_invitation(bytea) OWNER TO hs_migrator;
+REVOKE EXECUTE ON FUNCTION app.lookup_invitation(bytea) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.lookup_invitation(bytea) TO hs_app;
 

@@ -13,6 +13,7 @@ import {
   CurrentUser,
   DB_POOL,
   HasherService,
+  MfaConfigurationException,
   MfaService,
   MeController,
   MemorySessionStore,
@@ -22,6 +23,8 @@ import {
   Session,
   SESSION_COOKIE_NAME,
   SESSION_STORE,
+  SECRET_STORE,
+  type SecretStore,
   SessionGuard,
   SessionService,
   ThrottlerStorageRedis,
@@ -163,14 +166,31 @@ function createAuthMockDbPool() {
             return { rows: [], rowCount: 0 };
           }
 
-          if (
-            normalized === 'BEGIN' ||
-            normalized === 'COMMIT' ||
-            normalized === 'ROLLBACK' ||
-            normalized.toLowerCase() === 'begin' ||
-            normalized.toLowerCase() === 'commit' ||
-            normalized.toLowerCase() === 'rollback'
-          ) {
+          if (normalized.includes('pg_advisory_xact_lock')) {
+            return { rows: [{ pg_advisory_xact_lock: null }], rowCount: 1 };
+          }
+
+          if (normalized === 'BEGIN' || normalized.toLowerCase() === 'begin') {
+            (client as any).snapshot = new Map();
+            for (const [k, v] of users.entries()) {
+              (client as any).snapshot.set(k, JSON.stringify(v));
+            }
+            return { rows: [], rowCount: 0 };
+          }
+
+          if (normalized === 'ROLLBACK' || normalized.toLowerCase() === 'rollback') {
+            if ((client as any).snapshot) {
+              users.clear();
+              for (const [k, v] of (client as any).snapshot.entries()) {
+                users.set(k, JSON.parse(v));
+              }
+              (client as any).snapshot = null;
+            }
+            return { rows: [], rowCount: 0 };
+          }
+
+          if (normalized === 'COMMIT' || normalized.toLowerCase() === 'commit') {
+            (client as any).snapshot = null;
             return { rows: [], rowCount: 0 };
           }
 
@@ -242,7 +262,9 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
   let sessionService: SessionService;
   let authService: AuthService;
 
-  const adminMfaSecret = 'JBSWY3DPEHPK3PXP'; // Standard Base32 TOTP secret
+  const adminMfaRef = 'secrets/admin-mfa';
+  const adminMfaSeed = 'JBSWY3DPEHPK3PXP'; // Standard Base32 TOTP secret resolved via SecretStore
+  let mockSecretStore: SecretStore;
 
   const SESSION_SECRET = 'test_session_secret_at_least_32_characters_long_1234';
   const candidateUserId = 'cnd-1111-2222-3333-444444444444';
@@ -255,6 +277,28 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
   beforeEach(async () => {
     mockPool = createAuthMockDbPool();
     sessionStore = new MemorySessionStore();
+
+    mockSecretStore = {
+      async get(ref: string): Promise<string> {
+        if (ref === adminMfaRef) {
+          return adminMfaSeed;
+        }
+        if (ref === 'secrets/corrupt-mfa') {
+          return 'corrupt-seed-not-base32!#';
+        }
+        if (ref === 'secrets/empty-mfa') {
+          return '';
+        }
+        if (ref === 'secrets/permission-denied') {
+          throw new Error('AccessDeniedException: User is not authorized to perform: secretsmanager:GetSecretValue');
+        }
+        throw new Error(`ResourceNotFoundException: Secret ${ref} not found`);
+      },
+      async put() {
+        return { ref: 'ref', last4: '1234' };
+      },
+      async delete() {},
+    };
 
     const mockArgon2Engine: Argon2Engine = {
       async hash(plain, options) {
@@ -274,7 +318,7 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
     hasherService = new HasherService(mockArgon2Engine);
     mfaService = new MfaService();
     sessionService = new SessionService(sessionStore);
-    authService = new AuthService(hasherService, sessionService, mfaService, mockPool as unknown as Pool);
+    authService = new AuthService(hasherService, sessionService, mfaService, mockPool as unknown as Pool, mockSecretStore);
 
     const initialHash = await hasherService.hashPassword(strongPassword);
 
@@ -307,7 +351,7 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
       failed_logins: 0,
       locked_until: null,
       last_login_at: null,
-      mfa_secret_ref: adminMfaSecret,
+      mfa_secret_ref: adminMfaRef,
     });
 
     @Module({
@@ -318,6 +362,7 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
         { provide: SessionService, useValue: sessionService },
         { provide: AuthService, useValue: authService },
         { provide: SESSION_STORE, useValue: sessionStore },
+        { provide: SECRET_STORE, useValue: mockSecretStore },
         { provide: DB_POOL, useValue: mockPool },
         SessionGuard,
         RolesGuard,
@@ -631,7 +676,7 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
     expect(bodyNoMfa.code).toBe('MFA_REQUIRED');
 
     // 10b. Hardcoded MFA code '123456' is REJECTED if it doesn't match genuine TOTP
-    const realTotp = mfaService.generateTotp(adminMfaSecret);
+    const realTotp = mfaService.generateTotp(adminMfaSeed);
     const bogusCode = realTotp === '123456' ? '654321' : '123456';
     const resBogus = await app.inject({
       method: 'POST',
@@ -642,7 +687,7 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
     const bodyBogus = JSON.parse(resBogus.body);
     expect(bodyBogus.code).toBe('INVALID_CREDENTIALS');
 
-    // 10c. Genuine RFC 6238 TOTP code succeeds
+    // 10c. Genuine RFC 6238 TOTP code (generated from resolved SecretStore seed) succeeds
     const resWithMfa = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
@@ -654,7 +699,7 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
     expect(bodyWithMfa.portal).toBe('admin');
   });
 
-  it('10d. Platform admin with missing MFA secret fails closed with 403', async () => {
+  it('10d. Platform admin with missing MFA secret ref fails closed with 403', async () => {
     const noSecretAdminId = 'adm-no-secret';
     mockPool.users.set(noSecretAdminId, {
       id: noSecretAdminId,
@@ -679,6 +724,79 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
     expect(res.statusCode).toBe(403);
     const body = JSON.parse(res.body);
     expect(body.code).toBe('MFA_CONFIGURATION_ERROR');
+  });
+
+  it('10e. SecretStore failure or permission denied fails closed with 403', async () => {
+    const permDeniedAdminId = 'adm-perm-denied';
+    mockPool.users.set(permDeniedAdminId, {
+      id: permDeniedAdminId,
+      org_id: null,
+      email: 'admin-perm@hellosmart.test',
+      name: 'Perm Denied Admin',
+      role: 'platform_admin',
+      password_hash: await hasherService.hashPassword(strongPassword),
+      must_reset_password: false,
+      status: 'active',
+      failed_logins: 0,
+      locked_until: null,
+      last_login_at: null,
+      mfa_secret_ref: 'secrets/permission-denied',
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: 'admin-perm@hellosmart.test', password: strongPassword, mfaCode: '123456' },
+    });
+    expect(res.statusCode).toBe(403);
+    const body = JSON.parse(res.body);
+    expect(body.code).toBe('MFA_CONFIGURATION_ERROR');
+  });
+
+  it('10f. SecretStore returning corrupt or non-base32 seed fails closed with 403', async () => {
+    const corruptAdminId = 'adm-corrupt-seed';
+    mockPool.users.set(corruptAdminId, {
+      id: corruptAdminId,
+      org_id: null,
+      email: 'admin-corrupt@hellosmart.test',
+      name: 'Corrupt Admin',
+      role: 'platform_admin',
+      password_hash: await hasherService.hashPassword(strongPassword),
+      must_reset_password: false,
+      status: 'active',
+      failed_logins: 0,
+      locked_until: null,
+      last_login_at: null,
+      mfa_secret_ref: 'secrets/corrupt-mfa',
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: 'admin-corrupt@hellosmart.test', password: strongPassword, mfaCode: '123456' },
+    });
+    expect(res.statusCode).toBe(403);
+    const body = JSON.parse(res.body);
+    expect(body.code).toBe('MFA_CONFIGURATION_ERROR');
+  });
+
+  it('10g. Platform admin without SecretStore adapter configured fails closed with 403', async () => {
+    // Service with secretStore = undefined
+    const authServiceNoVault = new AuthService(
+      hasherService,
+      sessionService,
+      mfaService,
+      mockPool as unknown as Pool,
+      undefined, // No SecretStore adapter provided
+    );
+
+    await expect(
+      authServiceNoVault.login({
+        email: 'admin@hellosmart.test',
+        password: strongPassword,
+        mfaCode: '123456',
+      }),
+    ).rejects.toThrow(MfaConfigurationException);
   });
 
   // 11. Redis session store ping and failure handling
@@ -892,5 +1010,248 @@ describe('Sprint 1 / S0-T10: Secure Session Management & Authentication Flow', (
 
     // Must maintain fixed search_path = app, public
     expect(sqlContent).toContain('SET search_path = app, public');
+  });
+
+  // 19. Password change rollback on session revocation failure (ACID & consistency)
+  it('19. Password change aborts and rolls back DB transaction if session revocation fails', async () => {
+    // 1. Candidate logs in to obtain valid session
+    const loginRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: 'candidate@example.test', password: strongPassword },
+    });
+    expect(loginRes.statusCode).toBe(200);
+    const sessionCookie = (Array.isArray(loginRes.headers['set-cookie'])
+      ? loginRes.headers['set-cookie']
+      : [loginRes.headers['set-cookie']!]).find((c) => c.startsWith(`${SESSION_COOKIE_NAME}=`))!.split(';')[0];
+
+    const initialUser = mockPool.users.get(candidateUserId)!;
+    const initialHash = initialUser.password_hash;
+
+    // 2. Simulate Redis failure during session revocation
+    const revokeSpy = vi.spyOn(sessionService, 'revokeAllUserSessions').mockRejectedValueOnce(
+      new Error('ECONNREFUSED: Redis cluster unavailable during session revocation'),
+    );
+
+    // 3. Attempt password change
+    const changeRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password/change',
+      headers: { cookie: sessionCookie },
+      payload: {
+        currentPassword: strongPassword,
+        newPassword: updatedStrongPassword,
+      },
+    });
+
+    // 4. Assert service returns 503 SESSION_REVOCATION_FAILED
+    expect(changeRes.statusCode).toBe(503);
+    const changeBody = JSON.parse(changeRes.body);
+    expect(changeBody.code).toBe('SESSION_REVOCATION_FAILED');
+    expect(changeBody.detail).toContain('Failed to revoke existing sessions');
+
+    // 5. Assert DB was rolled back: password_hash remains the old hash
+    const userAfterRollback = mockPool.users.get(candidateUserId)!;
+    expect(userAfterRollback.password_hash).toBe(initialHash);
+
+    // 6. User can still log in with the original password
+    const oldLoginRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: 'candidate@example.test', password: strongPassword },
+    });
+    expect(oldLoginRes.statusCode).toBe(200);
+
+    // 7. New password was NOT committed and fails authentication
+    const newLoginRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: 'candidate@example.test', password: updatedStrongPassword },
+    });
+    expect(newLoginRes.statusCode).toBe(401);
+
+    revokeSpy.mockRestore();
+  });
+
+  // 20. Migration verification: 001_roles.sql, 0002_invitations.sql, 0003_auth_sessions.sql
+  it('20. Clean and upgrade migration verification for database roles and least privilege', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const currentDir = path.dirname(fileURLToPath(import.meta.url));
+
+    const rolesPath = path.resolve(currentDir, '../../../packages/contracts/db/init/001_roles.sql');
+    const invPath = path.resolve(currentDir, '../../../packages/contracts/db/migrations/0002_invitations.sql');
+    const sessionsPath = path.resolve(currentDir, '../../../packages/contracts/db/migrations/0003_auth_sessions.sql');
+
+    const rolesSql = fs.readFileSync(rolesPath, 'utf8');
+    const invSql = fs.readFileSync(invPath, 'utf8');
+    const sessionsSql = fs.readFileSync(sessionsPath, 'utf8');
+
+    // 1. Roles bootstrap defines hs_migrator, hs_app, hs_readonly
+    expect(rolesSql).toContain('CREATE ROLE hs_migrator');
+    expect(rolesSql).toContain('CREATE ROLE hs_app');
+    expect(rolesSql).toContain('CREATE ROLE hs_readonly');
+    expect(rolesSql).toContain('REVOKE ALL ON SCHEMA public FROM PUBLIC');
+
+    // 2. 0002_invitations.sql (clean bootstrap) locks down app.lookup_invitation
+    expect(invSql).toContain('ALTER FUNCTION app.lookup_invitation(bytea) OWNER TO hs_migrator');
+    expect(invSql).toContain('REVOKE EXECUTE ON FUNCTION app.lookup_invitation(bytea) FROM PUBLIC');
+    expect(invSql).toContain('GRANT EXECUTE ON FUNCTION app.lookup_invitation(bytea) TO hs_app');
+
+    // 3. 0003_auth_sessions.sql locks down all auth SECURITY DEFINER functions for upgrades
+    const sensitiveFunctions = [
+      'app.lookup_user_for_login(citext)',
+      'app.record_login_failure(uuid, int, int)',
+      'app.record_login_success(uuid)',
+      'app.lookup_invitation(bytea)',
+    ];
+
+    for (const fn of sensitiveFunctions) {
+      expect(sessionsSql).toContain(`ALTER FUNCTION ${fn} OWNER TO hs_migrator;`);
+      expect(sessionsSql).toContain(`REVOKE EXECUTE ON FUNCTION ${fn} FROM PUBLIC;`);
+      expect(sessionsSql).toContain(`GRANT EXECUTE ON FUNCTION ${fn} TO hs_app;`);
+    }
+
+    // 4. Ensure hs_readonly is NOT granted execution on these SECURITY DEFINER functions
+    for (const fn of sensitiveFunctions) {
+      expect(sessionsSql).not.toContain(`GRANT EXECUTE ON FUNCTION ${fn} TO hs_readonly`);
+      expect(invSql).not.toContain(`GRANT EXECUTE ON FUNCTION ${fn} TO hs_readonly`);
+    }
+  });
+
+  // 21. RedisSessionStore lifecycle, TTL, and user session indexing
+  it('21. RedisSessionStore lifecycle: create, get, touch, destroy, multi-session revocation, and error handling', async () => {
+    // Create an in-memory mock of Redis client to verify RedisSessionStore logic
+    const storeMap = new Map<string, string>();
+    const setMap = new Map<string, Set<string>>();
+
+    const mockRedisClient = {
+      async get(key: string) {
+        return storeMap.get(key) ?? null;
+      },
+      async set(key: string, value: string, _mode?: string, _duration?: number) {
+        storeMap.set(key, value);
+        return 'OK';
+      },
+      async del(...keys: string[]) {
+        let count = 0;
+        for (const k of keys) {
+          if (storeMap.delete(k)) count++;
+          if (setMap.delete(k)) count++;
+        }
+        return count;
+      },
+      async smembers(key: string) {
+        const s = setMap.get(key);
+        return s ? Array.from(s) : [];
+      },
+      async ping() {
+        return 'PONG';
+      },
+      pipeline() {
+        const operations: Array<() => void> = [];
+        const pipe = {
+          set(key: string, val: string, _mode?: string, _duration?: number) {
+            operations.push(() => storeMap.set(key, val));
+            return pipe;
+          },
+          sadd(key: string, member: string) {
+            operations.push(() => {
+              let s = setMap.get(key);
+              if (!s) {
+                s = new Set();
+                setMap.set(key, s);
+              }
+              s.add(member);
+            });
+            return pipe;
+          },
+          expire(_key: string, _seconds: number) {
+            operations.push(() => {});
+            return pipe;
+          },
+          srem(key: string, member: string) {
+            operations.push(() => {
+              setMap.get(key)?.delete(member);
+            });
+            return pipe;
+          },
+          del(...keys: string[]) {
+            operations.push(() => {
+              for (const k of keys) {
+                storeMap.delete(k);
+                setMap.delete(k);
+              }
+            });
+            return pipe;
+          },
+          async exec() {
+            for (const op of operations) op();
+            return operations.map(() => [null, 'OK']);
+          },
+        };
+        return pipe;
+      },
+    };
+
+    const redisStore = new RedisSessionStore(mockRedisClient as any);
+
+    // 1. Ping returns true
+    expect(await redisStore.ping()).toBe(true);
+
+    // 2. Create session 1 for user A
+    const sessionA1: Session = {
+      id: 'sess-a1',
+      userId: 'usr-A',
+      orgId: 'org-1',
+      email: 'a@test.com',
+      name: 'User A',
+      role: 'candidate',
+      portal: 'candidate',
+      mustResetPassword: false,
+      createdAt: Date.now(),
+      lastActiveAt: Date.now(),
+      idleTimeoutSeconds: 1800,
+    };
+    await redisStore.createSession(sessionA1, 1800);
+
+    // Verify session stored and indexed under user
+    const fetchedA1 = await redisStore.getSession('sess-a1');
+    expect(fetchedA1).not.toBeNull();
+    expect(fetchedA1?.userId).toBe('usr-A');
+    expect(setMap.get('hs_user_sessions:usr-A')?.has('sess-a1')).toBe(true);
+
+    // 3. Create session 2 for user A (e.g. second device)
+    const sessionA2: Session = {
+      ...sessionA1,
+      id: 'sess-a2',
+    };
+    await redisStore.createSession(sessionA2, 1800);
+    expect(setMap.get('hs_user_sessions:usr-A')?.size).toBe(2);
+
+    // 4. Touch session updates lastActiveAt
+    const oldActiveAt = sessionA1.lastActiveAt;
+    await new Promise((r) => setTimeout(r, 10));
+    await redisStore.touchSession('sess-a1', 1800);
+    const touchedA1 = await redisStore.getSession('sess-a1');
+    expect(touchedA1?.lastActiveAt).toBeGreaterThanOrEqual(oldActiveAt);
+
+    // 5. Corrupt JSON in Redis is cleaned up safely
+    storeMap.set('hs_session:corrupt-sess', 'not-valid-json{{');
+    const corruptFetched = await redisStore.getSession('corrupt-sess');
+    expect(corruptFetched).toBeNull();
+    expect(storeMap.has('hs_session:corrupt-sess')).toBe(false);
+
+    // 6. Destroy single session removes it from store and from user index
+    await redisStore.destroySession('sess-a1');
+    expect(await redisStore.getSession('sess-a1')).toBeNull();
+    expect(setMap.get('hs_user_sessions:usr-A')?.has('sess-a1')).toBe(false);
+    expect(await redisStore.getSession('sess-a2')).not.toBeNull();
+
+    // 7. Destroy all user sessions revokes all remaining sessions for that user
+    await redisStore.destroyUserSessions('usr-A');
+    expect(await redisStore.getSession('sess-a2')).toBeNull();
+    expect(setMap.has('hs_user_sessions:usr-A')).toBe(false);
   });
 });

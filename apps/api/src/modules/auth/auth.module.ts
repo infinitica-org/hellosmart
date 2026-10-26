@@ -8,6 +8,7 @@ import { MailService } from '../../common/services/mail.service.js';
 import { HasherService } from './hasher.service.js';
 import { MfaService } from './mfa.service.js';
 import { DB_POOL, InvitationsService } from './invitations.service.js';
+import { SECRET_STORE } from './secret-store.interface.js';
 import { InvitationsController } from './invitations.controller.js';
 import { AuthController, MeController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
@@ -114,6 +115,14 @@ import { ThrottlerProblemFilter } from './auth-exception.filter.js';
       },
     },
     {
+      provide: SECRET_STORE,
+      useFactory: () => {
+        // AWS Secrets Manager adapter is not yet implemented on disk in @hs/adapters.
+        // Defaults to null; platform admin MFA fails closed until the adapter is provided.
+        return null;
+      },
+    },
+    {
       provide: DB_POOL,
       useFactory: () => {
         try {
@@ -143,6 +152,7 @@ import { ThrottlerProblemFilter } from './auth-exception.filter.js';
     SessionGuard,
     RolesGuard,
     SESSION_STORE,
+    SECRET_STORE,
     DB_POOL,
   ],
 })

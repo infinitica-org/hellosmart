@@ -108,6 +108,7 @@ REVOKE EXECUTE ON FUNCTION app.record_login_success(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION app.record_login_success(uuid) TO hs_app;
 
 -- Ensure invitation lookup from 0002 is also restricted to hs_app
+ALTER FUNCTION app.lookup_invitation(bytea) OWNER TO hs_migrator;
 REVOKE EXECUTE ON FUNCTION app.lookup_invitation(bytea) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION app.lookup_invitation(bytea) TO hs_app;
 

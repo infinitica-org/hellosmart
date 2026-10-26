@@ -54,3 +54,4 @@ describe('MfaService: RFC 6238 TOTP Implementation', () => {
     expect(mfaService.verifyTotp('123456', 'corrupt-secret-89')).toBe(false);
   });
 });
+
