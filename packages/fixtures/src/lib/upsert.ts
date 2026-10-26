@@ -38,6 +38,14 @@ export interface SeedOptions {
  * Uses an advisory transaction lock to avoid concurrent DDL race conditions.
  */
 export async function ensureInvitationsTable(client: ClientBase): Promise<void> {
+  const check = await client.query(`
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'app' AND table_name = 'invitations'
+  `);
+  if (check.rowCount && check.rowCount > 0) {
+    return;
+  }
+
   const ddl = `
     SELECT pg_advisory_xact_lock(hashtext('app.invitations'));
     CREATE TABLE IF NOT EXISTS app.invitations (
@@ -72,11 +80,24 @@ export async function ensureInvitationsTable(client: ClientBase): Promise<void> 
 /**
  * Upserts an organization record using ON CONFLICT (id) DO UPDATE.
  * Does NOT overwrite created_at; updates updated_at.
+ * If an organization with the same slug exists under an outdated ID,
+ * its stale hierarchy is cleaned up so deterministic UUIDs are preserved.
  */
 export async function upsertOrganization(
   client: ClientBase,
   org: OrganizationEntity,
 ): Promise<void> {
+  const existingBySlug = await client.query('SELECT id FROM app.organizations WHERE slug = $1', [
+    org.slug,
+  ]);
+  if (existingBySlug.rows.length > 0 && existingBySlug.rows[0].id !== org.id) {
+    const staleId = existingBySlug.rows[0].id;
+    await client.query('DELETE FROM app.invitations WHERE org_id = $1', [staleId]);
+    await client.query('DELETE FROM app.users WHERE org_id = $1', [staleId]);
+    await client.query('DELETE FROM app.entitlements WHERE org_id = $1', [staleId]);
+    await client.query('DELETE FROM app.organizations WHERE id = $1', [staleId]);
+  }
+
   const query = `
     INSERT INTO app.organizations (
       id, name, slug, status, logo_key, custom_domain, retention_days, created_by, updated_at
@@ -138,8 +159,22 @@ export async function upsertEntitlement(client: ClientBase, ent: EntitlementEnti
 /**
  * Upserts a user record using ON CONFLICT (id) DO UPDATE.
  * Does NOT overwrite created_at; schema has no updated_at column on app.users.
+ * If a user with the same email exists under an outdated ID in the same tenant,
+ * the stale record is cleaned up so deterministic UUIDs are preserved.
  */
 export async function upsertUser(client: ClientBase, user: UserEntity): Promise<void> {
+  const existingUser = await client.query(
+    user.org_id
+      ? 'SELECT id FROM app.users WHERE org_id = $1 AND email = $2'
+      : 'SELECT id FROM app.users WHERE org_id IS NULL AND email = $1',
+    user.org_id ? [user.org_id, user.email] : [user.email],
+  );
+  if (existingUser.rows.length > 0 && existingUser.rows[0].id !== user.id) {
+    const staleUserId = existingUser.rows[0].id;
+    await client.query('DELETE FROM app.invitations WHERE user_id = $1', [staleUserId]);
+    await client.query('DELETE FROM app.users WHERE id = $1', [staleUserId]);
+  }
+
   const query = `
     INSERT INTO app.users (
       id, org_id, email, name, role, status, email_verified_at,
@@ -185,11 +220,20 @@ export async function upsertUser(client: ClientBase, user: UserEntity): Promise<
 /**
  * Upserts an invitation record using ON CONFLICT (id) DO UPDATE.
  * Preserves used_at if already set in the database (idempotency requirement).
+ * If an invitation with the same token_hash exists under an outdated ID,
+ * the stale record is cleaned up.
  */
 export async function upsertInvitation(
   client: ClientBase,
   invitation: InvitationEntity,
 ): Promise<void> {
+  const existingInv = await client.query('SELECT id FROM app.invitations WHERE token_hash = $1', [
+    invitation.token_hash,
+  ]);
+  if (existingInv.rows.length > 0 && existingInv.rows[0].id !== invitation.id) {
+    await client.query('DELETE FROM app.invitations WHERE id = $1', [existingInv.rows[0].id]);
+  }
+
   const query = `
     INSERT INTO app.invitations (
       id, org_id, user_id, token_hash, invited_by, expires_at, used_at, created_at
