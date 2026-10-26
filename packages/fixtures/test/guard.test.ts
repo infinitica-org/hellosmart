@@ -110,7 +110,7 @@ describe('Secret Masking Unit Tests ([6.2])', () => {
   it('redacts sensitive keys including password and hash in nested objects and arrays', () => {
     const sample = {
       username: 'admin@asterridge.com',
-      password: 'DevPassword123!',
+      password: 'MockSecretPassword456!',
       password_hash: '$argon2id$v=19$m=19456,t=2,p=1$secretHash',
       token: 'jwt.token.secret',
       api_key: 'sk_live_12345',
@@ -137,7 +137,7 @@ describe('Secret Masking Unit Tests ([6.2])', () => {
     assert.strictEqual(masked.safeField, 'This is visible');
 
     const json = safeStringify(sample);
-    assert.doesNotMatch(json, /DevPassword123!/);
+    assert.doesNotMatch(json, /MockSecretPassword456!/);
     assert.doesNotMatch(json, /secretHash/);
     assert.doesNotMatch(json, /jwt\.token\.secret/);
     assert.doesNotMatch(json, /pw123/);

@@ -19,6 +19,9 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
   let dbAvailable = false;
 
   before(async () => {
+    process.env.SEED_DEFAULT_PASSWORD = 'TestSeedPassword123!';
+    process.env.SEED_PLATFORM_ADMIN_TOTP_SECRET = 'JBSWY3DPEHPK3PXP';
+
     try {
       client = new pg.Client({ connectionString: TEST_DB_URL });
       await client.connect();
@@ -79,6 +82,8 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
   });
 
   describe('Idempotent Upsert & Database Integration', () => {
+    const TEST_PASSWORD = 'TestSeedPassword123!';
+
     it('Run 1: seeds initial dataset into empty database', async (t) => {
       if (!dbAvailable || !client) {
         return t.skip('Postgres test database not available');
@@ -87,15 +92,16 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
       const summary = await runSafeSeed(client, {
         nodeEnv: 'test',
         databaseUrl: TEST_DB_URL,
+        seedPassword: TEST_PASSWORD,
       });
 
-      assert.strictEqual(summary.organizationsUpserted, 2);
-      assert.strictEqual(summary.entitlementsUpserted, 2);
+      assert.strictEqual(summary.organizationsUpserted, 3);
+      assert.strictEqual(summary.entitlementsUpserted, 3);
       assert.strictEqual(summary.platformAdminsUpserted, 1);
-      assert.strictEqual(summary.companyAdminsUpserted, 2);
+      assert.strictEqual(summary.companyAdminsUpserted, 3);
       assert.strictEqual(summary.candidatesUpserted, 110);
       assert.strictEqual(summary.invitationsUpserted, 3);
-      assert.strictEqual(summary.totalRecordsUpserted, 120);
+      assert.strictEqual(summary.totalRecordsUpserted, 123);
 
       // Verify row counts in DB
       const orgsCount = await client.query('SELECT count(*)::int AS count FROM app.organizations;');
@@ -103,27 +109,30 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
       const usersCount = await client.query('SELECT count(*)::int AS count FROM app.users;');
       const invsCount = await client.query('SELECT count(*)::int AS count FROM app.invitations;');
 
-      assert.strictEqual(orgsCount.rows[0].count, 2);
-      assert.strictEqual(entsCount.rows[0].count, 2);
-      assert.strictEqual(usersCount.rows[0].count, 113); // 1 superadmin + 2 company admins + 110 candidates
+      assert.strictEqual(orgsCount.rows[0].count, 3);
+      assert.strictEqual(entsCount.rows[0].count, 3);
+      assert.strictEqual(usersCount.rows[0].count, 114); // 1 superadmin + 3 company admins + 110 candidates
       assert.strictEqual(invsCount.rows[0].count, 3);
     });
 
-    it('Run 2: re-running seed immediately results in exactly 0 extra rows (idempotency)', async (t) => {
+    it('Run 2: re-running seed immediately results in exactly 0 extra rows and unchanged password_hash (idempotency)', async (t) => {
       if (!dbAvailable || !client) {
         return t.skip('Postgres test database not available');
       }
 
-      // Record created_at timestamps from Run 1
-      const preRunUsers = await client.query('SELECT id, created_at FROM app.users ORDER BY id;');
+      // Record created_at timestamps and password hashes from Run 1
+      const preRunUsers = await client.query(
+        'SELECT id, created_at, password_hash FROM app.users ORDER BY id;',
+      );
 
       // Execute seed a second time
       const summary = await runSafeSeed(client, {
         nodeEnv: 'test',
         databaseUrl: TEST_DB_URL,
+        seedPassword: TEST_PASSWORD,
       });
 
-      assert.strictEqual(summary.totalRecordsUpserted, 120);
+      assert.strictEqual(summary.totalRecordsUpserted, 123);
 
       // Verify row counts remain identical (0 extra rows created)
       const orgsCount = await client.query('SELECT count(*)::int AS count FROM app.organizations;');
@@ -131,13 +140,15 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
       const usersCount = await client.query('SELECT count(*)::int AS count FROM app.users;');
       const invsCount = await client.query('SELECT count(*)::int AS count FROM app.invitations;');
 
-      assert.strictEqual(orgsCount.rows[0].count, 2, 'Orgs count must remain 2');
-      assert.strictEqual(entsCount.rows[0].count, 2, 'Entitlements count must remain 2');
-      assert.strictEqual(usersCount.rows[0].count, 113, 'Users count must remain 113');
+      assert.strictEqual(orgsCount.rows[0].count, 3, 'Orgs count must remain 3');
+      assert.strictEqual(entsCount.rows[0].count, 3, 'Entitlements count must remain 3');
+      assert.strictEqual(usersCount.rows[0].count, 114, 'Users count must remain 114');
       assert.strictEqual(invsCount.rows[0].count, 3, 'Invitations count must remain 3');
 
-      // Verify created_at was NOT modified on conflict
-      const postRunUsers = await client.query('SELECT id, created_at FROM app.users ORDER BY id;');
+      // Verify created_at and password_hash were NOT modified on conflict
+      const postRunUsers = await client.query(
+        'SELECT id, created_at, password_hash FROM app.users ORDER BY id;',
+      );
       for (let i = 0; i < preRunUsers.rows.length; i++) {
         const pre = preRunUsers.rows[i];
         const post = postRunUsers.rows[i];
@@ -145,6 +156,11 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
           pre.created_at.toISOString(),
           post.created_at.toISOString(),
           `User ${pre.id} created_at must remain unchanged on upsert`,
+        );
+        assert.strictEqual(
+          pre.password_hash,
+          post.password_hash,
+          `User ${pre.id} password_hash must remain unchanged on upsert (idempotency)`,
         );
       }
     });
@@ -180,6 +196,7 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
           runSafeSeed(failingClient, {
             nodeEnv: 'test',
             databaseUrl: TEST_DB_URL,
+            seedPassword: TEST_PASSWORD,
           }),
         /SIMULATED_TRANSACTION_FAILURE/,
       );

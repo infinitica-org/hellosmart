@@ -5,6 +5,7 @@ import {
   SUPERADMIN_ID,
   ASTER_RIDGE_ID,
   BRINDLE_CO_ID,
+  CRESTVIEW_ID,
   TRIAL_DURATION_DAYS,
 } from '../dist/entities/organizations.js';
 import {
@@ -21,12 +22,14 @@ describe('HelloSmart Test Data Matrix Entities ([6.1])', () => {
   const orgs = getOrganizations(refDate);
   const aster = orgs.find((o) => o.slug === 'aster-ridge');
   const brindle = orgs.find((o) => o.slug === 'brindle-co');
+  const crestview = orgs.find((o) => o.slug === 'crestview-suspended');
 
   describe('Organizations & Entitlements', () => {
-    it('defines exactly two sample companies', () => {
-      assert.strictEqual(orgs.length, 2);
+    it('defines exactly three sample companies', () => {
+      assert.strictEqual(orgs.length, 3);
       assert.ok(aster, 'Aster Ridge must exist');
       assert.ok(brindle, 'Brindle & Co must exist');
+      assert.ok(crestview, 'Crestview Financial must exist');
     });
 
     it('Aster Ridge matches paid_active specifications', () => {
@@ -72,6 +75,21 @@ describe('HelloSmart Test Data Matrix Entities ([6.1])', () => {
       assert.strictEqual(diffDays, TRIAL_DURATION_DAYS);
       assert.strictEqual(diffDays, 14);
     });
+
+    it('Crestview Financial matches suspended negative-test specifications', () => {
+      assert.strictEqual(crestview?.name, 'Crestview Financial');
+      assert.strictEqual(crestview?.slug, 'crestview-suspended');
+      assert.strictEqual(crestview?.status, 'suspended');
+      assert.strictEqual(crestview?.custom_domain, null);
+      assert.strictEqual(crestview?.retention_days, 90);
+      assert.strictEqual(crestview?.created_by, SUPERADMIN_ID);
+
+      // Entitlements
+      assert.strictEqual(crestview?.entitlements.org_id, CRESTVIEW_ID);
+      assert.strictEqual(crestview?.entitlements.max_templates, 1);
+      assert.strictEqual(crestview?.entitlements.max_candidates, 5);
+      assert.strictEqual(crestview?.entitlements.trial_ends_at, null);
+    });
   });
 
   describe('Users & Role Boundaries', () => {
@@ -87,9 +105,9 @@ describe('HelloSmart Test Data Matrix Entities ([6.1])', () => {
       assert.ok(superadmin.mfa_secret_ref, 'MFA must be enabled for platform admin');
     });
 
-    it('defines company admins for both organizations', () => {
+    it('defines company admins for all three organizations', () => {
       const companyAdmins = getCompanyAdmins(refDate);
-      assert.strictEqual(companyAdmins.length, 2);
+      assert.strictEqual(companyAdmins.length, 3);
 
       const asterAdmin = companyAdmins.find((u) => u.email === 'admin@asterridge.com');
       assert.ok(asterAdmin);
@@ -102,6 +120,12 @@ describe('HelloSmart Test Data Matrix Entities ([6.1])', () => {
       assert.strictEqual(brindleAdmin.org_id, BRINDLE_CO_ID);
       assert.strictEqual(brindleAdmin.status, 'active');
       assert.strictEqual(brindleAdmin.role, 'company_admin');
+
+      const crestviewAdmin = companyAdmins.find((u) => u.email === 'admin@crestview.test');
+      assert.ok(crestviewAdmin);
+      assert.strictEqual(crestviewAdmin.org_id, CRESTVIEW_ID);
+      assert.strictEqual(crestviewAdmin.status, 'active');
+      assert.strictEqual(crestviewAdmin.role, 'company_admin');
     });
 
     it('Aster Ridge has exactly 100 candidates covering active, invited, suspended, deleted', () => {
@@ -156,6 +180,7 @@ describe('HelloSmart Test Data Matrix Entities ([6.1])', () => {
 
     it('all user and candidate IDs are valid deterministic UUIDv5', () => {
       const allUsers = getUsers(refDate);
+      assert.strictEqual(allUsers.length, 114);
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
       for (const u of allUsers) {
@@ -164,7 +189,7 @@ describe('HelloSmart Test Data Matrix Entities ([6.1])', () => {
           assert.strictEqual(u.org_id, null);
         } else {
           assert.ok(
-            u.org_id === ASTER_RIDGE_ID || u.org_id === BRINDLE_CO_ID,
+            u.org_id === ASTER_RIDGE_ID || u.org_id === BRINDLE_CO_ID || u.org_id === CRESTVIEW_ID,
             `User ${u.email} must belong to a valid org`,
           );
         }

@@ -13,9 +13,21 @@ import {
 import {
   ASTER_RIDGE_ID,
   BRINDLE_CO_ID,
+  CRESTVIEW_ID,
   SUPERADMIN_ID,
   TRIAL_DURATION_DAYS,
 } from '../dist/entities/organizations.js';
+import {
+  verifyPassword,
+  ARGON2ID_PREFIX,
+  LOGINABLE_SUPERADMIN_EMAIL,
+  LOGINABLE_ASTER_ADMIN_EMAIL,
+  LOGINABLE_BRINDLE_ADMIN_EMAIL,
+  LOGINABLE_CANDIDATE_EMAIL,
+  NEGATIVE_SUSPENDED_CANDIDATE_EMAIL,
+  NEGATIVE_DELETED_CANDIDATE_EMAIL,
+  NEGATIVE_CRESTVIEW_ADMIN_EMAIL,
+} from '../dist/index.js';
 import { ensureInvitationsTable } from '../dist/lib/upsert.js';
 
 // Resolve directory of current file
@@ -55,20 +67,20 @@ const ROOT_CLI_PATH = path.resolve(__dirname, '../dist/index.js');
  * and exposes clearly defined constants so adjusting to alternative datasets is trivial.
  * ============================================================================
  */
-export const EXPECTED_ORGS_COUNT = 2;
-export const EXPECTED_ENTITLEMENTS_COUNT = 2;
+export const EXPECTED_ORGS_COUNT = 3;
+export const EXPECTED_ENTITLEMENTS_COUNT = 3;
 export const EXPECTED_PLATFORM_ADMINS_COUNT = 1;
-export const EXPECTED_COMPANY_ADMINS_COUNT = 2;
+export const EXPECTED_COMPANY_ADMINS_COUNT = 3;
 export const EXPECTED_CANDIDATES_COUNT = 110; // 100 Aster Ridge + 10 Brindle Co
 export const EXPECTED_USERS_COUNT =
-  EXPECTED_PLATFORM_ADMINS_COUNT + EXPECTED_COMPANY_ADMINS_COUNT + EXPECTED_CANDIDATES_COUNT; // 113
+  EXPECTED_PLATFORM_ADMINS_COUNT + EXPECTED_COMPANY_ADMINS_COUNT + EXPECTED_CANDIDATES_COUNT; // 114
 export const EXPECTED_INVITATIONS_COUNT = 3;
 
 export const EXPECTED_TOTAL_RECORDS =
   EXPECTED_ORGS_COUNT +
   EXPECTED_ENTITLEMENTS_COUNT +
   EXPECTED_USERS_COUNT +
-  EXPECTED_INVITATIONS_COUNT; // 120
+  EXPECTED_INVITATIONS_COUNT; // 123
 
 function resolveTestDbUrl(): string {
   if (process.env.TEST_DATABASE_URL) {
@@ -83,6 +95,9 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
   let dbAvailable = false;
 
   before(async () => {
+    process.env.SEED_DEFAULT_PASSWORD = 'TestSeedPassword123!';
+    process.env.SEED_PLATFORM_ADMIN_TOTP_SECRET = 'JBSWY3DPEHPK3PXP';
+
     try {
       client = new pg.Client({ connectionString: TEST_DB_URL });
       await client.connect();
@@ -271,16 +286,45 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
         ORDER BY email
       `);
 
-      assert.strictEqual(res.rowCount, 2);
-      const [asterAdmin, brindleAdmin] = res.rows;
+      assert.strictEqual(res.rowCount, 3);
+      const [asterAdmin, crestviewAdmin, brindleAdmin] = res.rows;
 
       assert.strictEqual(asterAdmin.email, 'admin@asterridge.com');
       assert.strictEqual(asterAdmin.org_id, ASTER_RIDGE_ID);
       assert.strictEqual(asterAdmin.status, 'active');
 
+      assert.strictEqual(crestviewAdmin.email, 'admin@crestview.test');
+      assert.strictEqual(crestviewAdmin.org_id, CRESTVIEW_ID);
+      assert.strictEqual(crestviewAdmin.status, 'active');
+
       assert.strictEqual(brindleAdmin.email, 'trialadmin@brindle.co');
       assert.strictEqual(brindleAdmin.org_id, BRINDLE_CO_ID);
       assert.strictEqual(brindleAdmin.status, 'active');
+    });
+
+    it('asserts Crestview Financial is suspended negative-test sample', async (t) => {
+      if (!dbAvailable || !client) {
+        return t.skip('Postgres test database not available');
+      }
+
+      const res = await client.query(`
+        SELECT o.*, e.max_templates, e.max_candidates, e.trial_ends_at
+        FROM app.organizations o
+        JOIN app.entitlements e ON e.org_id = o.id
+        WHERE o.slug = 'crestview-suspended'
+      `);
+
+      assert.strictEqual(res.rowCount, 1, 'Crestview organization must exist');
+      const row = res.rows[0];
+      assert.strictEqual(row.id, CRESTVIEW_ID);
+      assert.strictEqual(row.name, 'Crestview Financial');
+      assert.strictEqual(row.status, 'suspended', 'Org status must be suspended');
+      assert.strictEqual(row.custom_domain, null);
+      assert.strictEqual(row.retention_days, 90);
+      assert.strictEqual(row.created_by, SUPERADMIN_ID);
+      assert.strictEqual(row.max_templates, 1);
+      assert.strictEqual(row.max_candidates, 5);
+      assert.strictEqual(row.trial_ends_at, null);
     });
 
     it('asserts candidate state coverage (active, invited, suspended, deleted)', async (t) => {
@@ -579,24 +623,150 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
 
     it('formatSummaryTable builds a structured table array matching expected counts', () => {
       const summary = {
-        organizationsUpserted: 2,
-        entitlementsUpserted: 2,
+        organizationsUpserted: 3,
+        entitlementsUpserted: 3,
         platformAdminsUpserted: 1,
-        companyAdminsUpserted: 2,
+        companyAdminsUpserted: 3,
         candidatesUpserted: 110,
         invitationsUpserted: 3,
-        totalRecordsUpserted: 120,
+        totalRecordsUpserted: 123,
       };
 
       const table = formatSummaryTable(summary);
       assert.strictEqual(table.length, 8);
-      assert.strictEqual(table[0].Count, 2);
-      assert.strictEqual(table[1].Count, 2);
+      assert.strictEqual(table[0].Count, 3);
+      assert.strictEqual(table[1].Count, 3);
       assert.strictEqual(table[2].Count, 1);
-      assert.strictEqual(table[3].Count, 2);
+      assert.strictEqual(table[3].Count, 3);
       assert.strictEqual(table[4].Count, 110);
       assert.strictEqual(table[5].Count, 3);
-      assert.strictEqual(table[7].Count, 120);
+      assert.strictEqual(table[7].Count, 123);
+    });
+  });
+
+  describe('Argon2id Hashes & Credential Verification ([13.1])', () => {
+    it('stored password_hash for each loginable account has 64MB/3/1 Argon2id params and verifies', async (t) => {
+      if (!dbAvailable || !client) {
+        return t.skip('Postgres test database not available');
+      }
+
+      const loginableEmails = [
+        LOGINABLE_SUPERADMIN_EMAIL,
+        LOGINABLE_ASTER_ADMIN_EMAIL,
+        LOGINABLE_BRINDLE_ADMIN_EMAIL,
+        LOGINABLE_CANDIDATE_EMAIL,
+      ];
+
+      for (const email of loginableEmails) {
+        const res = await client.query(
+          'SELECT email, password_hash, status FROM app.users WHERE email = $1',
+          [email],
+        );
+        assert.strictEqual(res.rowCount, 1, `User ${email} must exist`);
+        const user = res.rows[0];
+        assert.ok(user.password_hash, `User ${email} must have a password_hash`);
+        assert.ok(
+          user.password_hash.startsWith(ARGON2ID_PREFIX),
+          `User ${email} password_hash must start with exact Argon2id prefix ${ARGON2ID_PREFIX}`,
+        );
+
+        const expectedPwd = process.env.SEED_DEFAULT_PASSWORD;
+        assert.ok(expectedPwd, 'SEED_DEFAULT_PASSWORD must be configured');
+        const isValid = await verifyPassword(user.password_hash, expectedPwd);
+        assert.strictEqual(
+          isValid,
+          true,
+          `User ${email} password_hash must verify against SEED_DEFAULT_PASSWORD`,
+        );
+      }
+    });
+
+    it('asserts non-loginable candidates have NULL password_hash for performance', async (t) => {
+      if (!dbAvailable || !client) {
+        return t.skip('Postgres test database not available');
+      }
+
+      // Check all candidates except the designated loginable (001) and negative samples (086, 096)
+      const res = await client.query(
+        `SELECT count(*)::int AS count FROM app.users 
+         WHERE role = 'candidate' 
+           AND email NOT IN ($1, $2, $3)
+           AND password_hash IS NOT NULL`,
+        [
+          LOGINABLE_CANDIDATE_EMAIL,
+          NEGATIVE_SUSPENDED_CANDIDATE_EMAIL,
+          NEGATIVE_DELETED_CANDIDATE_EMAIL,
+        ],
+      );
+
+      assert.strictEqual(
+        res.rows[0].count,
+        0,
+        'All other candidates must have NULL password_hash to meet < 3s seed performance',
+      );
+    });
+
+    it('asserts negative test samples are correctly marked and distinct from loginable accounts', async (t) => {
+      if (!dbAvailable || !client) {
+        return t.skip('Postgres test database not available');
+      }
+
+      // 1. Suspended candidate
+      const suspRes = await client.query(
+        'SELECT email, status FROM app.users WHERE email = $1',
+        [NEGATIVE_SUSPENDED_CANDIDATE_EMAIL],
+      );
+      assert.strictEqual(suspRes.rowCount, 1);
+      assert.strictEqual(suspRes.rows[0].status, 'suspended');
+
+      // 2. Deleted candidate (soft-deleted with deleted_at)
+      const delRes = await client.query(
+        'SELECT email, status, deleted_at FROM app.users WHERE email = $1',
+        [NEGATIVE_DELETED_CANDIDATE_EMAIL],
+      );
+      assert.strictEqual(delRes.rowCount, 1);
+      assert.strictEqual(delRes.rows[0].status, 'deleted');
+      assert.ok(delRes.rows[0].deleted_at !== null);
+
+      // 3. User in suspended organization
+      const crestRes = await client.query(
+        `SELECT u.email, u.status AS user_status, o.status AS org_status 
+         FROM app.users u 
+         JOIN app.organizations o ON o.id = u.org_id 
+         WHERE u.email = $1`,
+        [NEGATIVE_CRESTVIEW_ADMIN_EMAIL],
+      );
+      assert.strictEqual(crestRes.rowCount, 1);
+      assert.strictEqual(crestRes.rows[0].org_status, 'suspended');
+    });
+
+    it('aborts with clear non-secret error when SEED_DEFAULT_PASSWORD is empty or missing', async () => {
+      await assert.rejects(
+        () =>
+          runCliSeed({
+            databaseUrl: TEST_DB_URL,
+            nodeEnv: 'test',
+            seedPassword: '',
+            exitProcess: false,
+            quiet: true,
+          }),
+        /SEED_DEFAULT_PASSWORD/,
+      );
+    });
+
+    it('aborts with clear error when SEED_PLATFORM_ADMIN_TOTP_SECRET has invalid Base32 format', async () => {
+      await assert.rejects(
+        () =>
+          runCliSeed({
+            databaseUrl: TEST_DB_URL,
+            nodeEnv: 'test',
+            totpSecret: 'invalid-not-base32-189!',
+            exitProcess: false,
+            quiet: true,
+          }),
+        /Base32/,
+      );
     });
   });
 });
+

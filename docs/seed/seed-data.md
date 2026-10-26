@@ -20,12 +20,20 @@ Before running the seed command, verify that your local environment satisfies th
      ```
    - Standard local PostgreSQL port forwarded is **`5434`** (via `docker-compose.override.yml`) or standard `5432`.
 3. **Environment Variables Configured**:
-   - Ensure a `.env` file exists in the repo root (copied from `.env.example`).
-   - Example configuration:
+   - Ensure `.env` and `.env.local` files exist in the repo root (copied from `.env.example` and `.env.local.example`).
+   - Example `.env` configuration:
      ```env
      NODE_ENV=development
      DATABASE_URL=postgres://hs_app:hs_app_local@localhost:5434/hellosmart
      DATABASE_MIGRATOR_URL=postgres://hs_migrator:hs_migrator_local@localhost:5434/hellosmart
+     ```
+   - Example `.env.local` configuration (uncommitted, local dev credentials):
+     ```env
+     # Shared local test password used to generate Argon2id hashes for loginable accounts (uncommitted)
+     SEED_DEFAULT_PASSWORD=
+
+     # Base32 TOTP secret for local testing of Platform Admin MFA (RFC 4648 Base32: A-Z, 2-7, uncommitted)
+     SEED_PLATFORM_ADMIN_TOTP_SECRET=
      ```
 4. **Database Schema Migrated**:
    - The foundation migration ([`packages/contracts/db/migrations/0001_tenancy_foundation.sql`](file:///c:/Users/Vedika/OneDrive/Infinitica/hellosmart/packages/contracts/db/migrations/0001_tenancy_foundation.sql)) must be applied. On Docker startup, this is automatically initialized from `/docker-entrypoint-initdb.d`.
@@ -47,42 +55,42 @@ Upon successful execution, the CLI runner displays the connection target (host a
 ```
 Connecting to local test database at localhost:5434 (hellosmart)...
 Upserted 1 platform admin(s) (superadmin@hellosmart.ai)
-Upserted 2 organization(s) and 2 entitlement record(s)
-Upserted 2 company admin(s)
+Upserted 3 organization(s) and 3 entitlement record(s)
+Upserted 3 company admin(s)
 Upserted 110 candidate(s)
 Upserted 3 candidate invitation token(s) (valid, expired, used)
-Seed completed successfully: 120 total records processed.
+Seed completed successfully: 123 total records processed.
 
 ================ HelloSmart Seed Summary ================
 ┌─────────┬────────────────────────────────────────────┬─────────────┬─────────┐
 │ (index) │ Entity                                     │ Status      │ Count   │
 ├─────────┼────────────────────────────────────────────┼─────────────┼─────────┤
-│ 0       │ 'Organizations (app.organizations)'        │ 'Upserted'  │ 2       │
-│ 1       │ 'Entitlements (app.entitlements)'          │ 'Upserted'  │ 2       │
+│ 0       │ 'Organizations (app.organizations)'        │ 'Upserted'  │ 3       │
+│ 1       │ 'Entitlements (app.entitlements)'          │ 'Upserted'  │ 3       │
 │ 2       │ 'Platform Admins (app.users)'              │ 'Upserted'  │ 1       │
-│ 3       │ 'Company Admins (app.users)'               │ 'Upserted'  │ 2       │
+│ 3       │ 'Company Admins (app.users)'               │ 'Upserted'  │ 3       │
 │ 4       │ 'Candidates (app.users)'                   │ 'Upserted'  │ 110     │
 │ 5       │ 'Candidate Invitations (app.invitations)'  │ 'Upserted'  │ 3       │
 │ 6       │ '────────────────────────────────────────' │ '────────'  │ '─────' │
-│ 7       │ 'Grand Total'                              │ 'Processed' │ 120     │
+│ 7       │ 'Grand Total'                              │ 'Processed' │ 123     │
 └─────────┴────────────────────────────────────────────┴─────────────┴─────────┘
 Target Database : localhost:5434 / hellosmart
-Execution Time  : 1010ms
+Execution Time  : ~1150ms
 Status          : Seed Completed Successfully (Idempotent)
 =========================================================
 ```
 
-### Record Count Breakdown: 37 Prototype Records vs 120 Enterprise Records
+### Record Count Breakdown: 37 Prototype Records vs 123 Enterprise Records
 
-| Entity Group              | Prototype (Legacy) | Enterprise Seed (Current) | Purpose & Details                                                                                                                                                                                                  |
-| ------------------------- | ------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Organizations**         | 2                  | **2**                     | Aster Ridge Technologies (`paid_active`) and Brindle & Co (`trial_active`).                                                                                                                                        |
-| **Entitlements**          | 2                  | **2**                     | Quota definitions, feature flags (`cloud`, `chat`), and trial window (14 days).                                                                                                                                    |
-| **Platform Admins**       | 3                  | **1**                     | `superadmin@hellosmart.ai` with MFA enabled (`mfa_secret_ref`).                                                                                                                                                    |
-| **Company Admins**        | 2                  | **2**                     | `admin@asterridge.com` (Aster Ridge) and `trialadmin@brindle.co` (Brindle & Co).                                                                                                                                   |
-| **Candidates**            | 28                 | **110**                   | **Aster Ridge**: 100 candidates (full quota capacity test: 70 active, 15 invited, 10 suspended, 5 deleted).<br>**Brindle & Co**: 10 candidates (full trial cap test: 4 active, 3 invited, 1 suspended, 2 deleted). |
-| **Candidate Invitations** | 0                  | **3**                     | Candidate onboarding tokens: 1 valid (72h expiry), 1 expired (-24h), 1 used (`used_at` set).                                                                                                                       |
-| **GRAND TOTAL**           | **37**             | **120**                   | **120 persistent records across 4 tenant-isolated tables.**                                                                                                                                                        |
+| Entity Group              | Prototype (Legacy) | Enterprise Seed (Current) | Purpose & Details                                                                                                                                                                                                                                              |
+| ------------------------- | ------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Organizations**         | 2                  | **3**                     | Aster Ridge Technologies (`paid_active`), Brindle & Co (`trial_active`), and Crestview Financial (`suspended` negative sample).                                                                                                                              |
+| **Entitlements**          | 2                  | **3**                     | Quota definitions, feature flags (`cloud`, `chat`), and trial window (14 days).                                                                                                                                                                                |
+| **Platform Admins**       | 3                  | **1**                     | `superadmin@hellosmart.ai` with MFA enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`).                                                                                                                                                           |
+| **Company Admins**        | 2                  | **3**                     | `admin@asterridge.com` (Aster Ridge), `trialadmin@brindle.co` (Brindle & Co), and `admin@crestview.test` (Crestview Financial negative test sample).                                                                                                          |
+| **Candidates**            | 28                 | **110**                   | **Aster Ridge**: 100 candidates (full quota capacity test: 70 active, 15 invited, 10 suspended, 5 deleted).<br>**Brindle & Co**: 10 candidates (full trial cap test: 4 active, 3 invited, 1 suspended, 2 deleted). Includes designated loginable candidate. |
+| **Candidate Invitations** | 0                  | **3**                     | Candidate onboarding tokens: 1 valid (72h expiry), 1 expired (-24h), 1 used (`used_at` set).                                                                                                                                                                   |
+| **GRAND TOTAL**           | **37**             | **123**                   | **123 persistent records across 4 tenant-isolated tables.**                                                                                                                                                                                                    |
 
 ---
 
@@ -95,6 +103,7 @@ The seed engine is **100% idempotent**:
 - **Preserved State**:
   - `created_at` timestamps on existing organizations, entitlements, and users are never overwritten on conflict.
   - `used_at` timestamps on redeemed candidate invitation tokens are preserved on conflict.
+  - `password_hash` values are verified against `SEED_DEFAULT_PASSWORD` and preserved without expensive re-hashing on rerun.
 - **Outdated Data Migration**: If an existing development database contains outdated records with different UUIDs for the same slug or email (e.g., from older prototypes), the engine cleans up the stale records automatically and establishes the deterministic UUID hierarchy cleanly.
 
 ### Resetting Database State (Optional)
@@ -150,13 +159,28 @@ For full credential details, passwords, and candidate distribution tables, see t
 
 ### Quick Reference:
 
-| Persona                        | Email                                   | Dev Password      | Notes                                        |
-| ------------------------------ | --------------------------------------- | ----------------- | -------------------------------------------- |
-| **Platform Super Admin**       | `superadmin@hellosmart.ai`              | `DevPassword123!` | MFA Enabled (`mfa_secret_ref`)               |
-| **Aster Ridge Company Admin**  | `admin@asterridge.com`                  | `DevPassword123!` | Mature paid tenant administrator             |
-| **Brindle & Co Company Admin** | `trialadmin@brindle.co`                 | `DevPassword123!` | Active 14-day trial administrator            |
-| **Active Candidates**          | `candidate.aster-ridge.001@example.com` | `DevPassword123!` | Ready for immediate login                    |
-| **Invited Candidates**         | `candidate.aster-ridge.071@example.com` | _Pending Reset_   | Must reset password on first login (`BR-24`) |
+| Persona                                      | Email                                   | Password Hash                    | Role / Classification | Notes                                                                               |
+| -------------------------------------------- | --------------------------------------- | -------------------------------- | --------------------- | ----------------------------------------------------------------------------------- |
+| **Platform Super Admin**                     | `superadmin@hellosmart.ai`              | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | MFA Enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`)                  |
+| **Aster Ridge Company Admin**                | `admin@asterridge.com`                  | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Mature paid tenant administrator (`paid_active`)                                    |
+| **Brindle & Co Company Admin**               | `trialadmin@brindle.co`                 | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Active 14-day trial administrator (`trial_active`)                                  |
+| **Active Candidate**                         | `candidate.aster-ridge.001@example.com` | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Ready for immediate login and workspace connection                                  |
+| **Suspended Candidate (Negative Sample)**    | `candidate.aster-ridge.086@example.com` | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to user `status = 'suspended'`    |
+| **Deleted Candidate (Negative Sample)**      | `candidate.aster-ridge.096@example.com` | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to soft-deletion (`deleted_at`)   |
+| **Crestview Admin (Suspended Org Sample)**   | `admin@crestview.test`                  | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to tenant `status = 'suspended'`  |
+| **Remaining Candidates (~107)**              | `candidate.*`                           | `null`                           | Bulk Candidate Pool   | Unhashed for sub-3-second seed performance; not individually loginable               |
+| **Invited Candidates**                       | `candidate.aster-ridge.071@example.com` | `null` (Pending Reset)           | Onboarding Testing    | Must complete first-login onboarding & password reset via invite token (`BR-24`)    |
+
+### Setting Up Platform Admin TOTP in Authenticator Apps
+
+To test Platform Admin login with two-factor authentication locally:
+1. Copy `.env.local.example` to `.env.local`:
+   ```bash
+   cp .env.local.example .env.local
+   ```
+2. Set `SEED_PLATFORM_ADMIN_TOTP_SECRET` to a valid RFC 4648 Base32 key (e.g. `JBSWY3DPEHPK3PXP`).
+3. Add the key manually to your authenticator app (Google Authenticator, 1Password, etc.) as a Time-based (TOTP) account.
+4. **Never print, commit, or log the TOTP secret string or an `otpauth://` URI.**
 
 ---
 

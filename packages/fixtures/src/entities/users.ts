@@ -1,5 +1,5 @@
 import { deterministicUuid, normaliseEmail, relativeDate } from '../lib/keys.js';
-import { SUPERADMIN_ID, ASTER_RIDGE_ID, BRINDLE_CO_ID } from './organizations.js';
+import { SUPERADMIN_ID, ASTER_RIDGE_ID, BRINDLE_CO_ID, CRESTVIEW_ID } from './organizations.js';
 
 export interface UserEntity {
   id: string;
@@ -19,8 +19,21 @@ export interface UserEntity {
   deleted_at: Date | null;
 }
 
-// Dev mock password hash for seeded accounts (obviously fake, non-production)
-export const SEED_DEV_PASSWORD_MOCK = 'dev_mock_argon2id_hash_not_for_production';
+export interface UserEntityOptions {
+  passwordHash?: string | null;
+  platformAdminMfaSecretRef?: string | null;
+}
+
+// Well-known loginable account emails (Task 13.1)
+export const LOGINABLE_SUPERADMIN_EMAIL = 'superadmin@hellosmart.ai';
+export const LOGINABLE_ASTER_ADMIN_EMAIL = 'admin@asterridge.com';
+export const LOGINABLE_BRINDLE_ADMIN_EMAIL = 'trialadmin@brindle.co';
+export const LOGINABLE_CANDIDATE_EMAIL = 'candidate.aster-ridge.001@example.com';
+
+// Well-known negative-test sample emails (Task 13.1)
+export const NEGATIVE_SUSPENDED_CANDIDATE_EMAIL = 'candidate.aster-ridge.086@example.com';
+export const NEGATIVE_DELETED_CANDIDATE_EMAIL = 'candidate.aster-ridge.096@example.com';
+export const NEGATIVE_CRESTVIEW_ADMIN_EMAIL = 'admin@crestview.test';
 
 export const ASTER_CANDIDATE_STATE_DISTRIBUTION = {
   active: 70,
@@ -41,19 +54,22 @@ export const BRINDLE_CANDIDATE_STATE_DISTRIBUTION = {
 /**
  * Returns the platform admin user entity (superadmin@hellosmart.ai).
  */
-export function getPlatformAdmins(refDate: Date = new Date('2026-10-23T00:00:00Z')): UserEntity[] {
+export function getPlatformAdmins(
+  refDate: Date = new Date('2026-10-23T00:00:00Z'),
+  options?: UserEntityOptions,
+): UserEntity[] {
   return [
     {
       id: SUPERADMIN_ID,
       org_id: null,
-      email: normaliseEmail('superadmin@hellosmart.ai'),
+      email: normaliseEmail(LOGINABLE_SUPERADMIN_EMAIL),
       name: 'Super Admin',
       role: 'platform_admin',
       status: 'active',
       email_verified_at: relativeDate(refDate, -30),
       must_reset_password: false,
-      mfa_secret_ref: 'secrets/seed-superadmin-mfa',
-      password_hash: SEED_DEV_PASSWORD_MOCK,
+      mfa_secret_ref: options?.platformAdminMfaSecretRef ?? 'secrets/seed-superadmin-mfa',
+      password_hash: options?.passwordHash ?? null,
       failed_logins: 0,
       locked_until: null,
       last_login_at: relativeDate(refDate, -1),
@@ -64,23 +80,27 @@ export function getPlatformAdmins(refDate: Date = new Date('2026-10-23T00:00:00Z
 }
 
 /**
- * Returns the primary company admin users:
- * - admin@asterridge.com (Aster Ridge Technologies)
- * - trialadmin@brindle.co (Brindle & Co)
+ * Returns company admin users:
+ * - admin@asterridge.com (Aster Ridge Technologies - paid_active) [loginable]
+ * - trialadmin@brindle.co (Brindle & Co - trial_active) [loginable]
+ * - admin@crestview.test (Crestview Financial - suspended) [negative-test sample]
  */
-export function getCompanyAdmins(refDate: Date = new Date('2026-10-23T00:00:00Z')): UserEntity[] {
+export function getCompanyAdmins(
+  refDate: Date = new Date('2026-10-23T00:00:00Z'),
+  options?: UserEntityOptions,
+): UserEntity[] {
   return [
     {
-      id: deterministicUuid('user', 'admin@asterridge.com'),
+      id: deterministicUuid('user', LOGINABLE_ASTER_ADMIN_EMAIL),
       org_id: ASTER_RIDGE_ID,
-      email: normaliseEmail('admin@asterridge.com'),
+      email: normaliseEmail(LOGINABLE_ASTER_ADMIN_EMAIL),
       name: 'Aster Ridge Admin',
       role: 'company_admin',
       status: 'active',
       email_verified_at: relativeDate(refDate, -20),
       must_reset_password: false,
       mfa_secret_ref: null,
-      password_hash: SEED_DEV_PASSWORD_MOCK,
+      password_hash: options?.passwordHash ?? null,
       failed_logins: 0,
       locked_until: null,
       last_login_at: relativeDate(refDate, -2),
@@ -88,20 +108,37 @@ export function getCompanyAdmins(refDate: Date = new Date('2026-10-23T00:00:00Z'
       deleted_at: null,
     },
     {
-      id: deterministicUuid('user', 'trialadmin@brindle.co'),
+      id: deterministicUuid('user', LOGINABLE_BRINDLE_ADMIN_EMAIL),
       org_id: BRINDLE_CO_ID,
-      email: normaliseEmail('trialadmin@brindle.co'),
+      email: normaliseEmail(LOGINABLE_BRINDLE_ADMIN_EMAIL),
       name: 'Brindle Trial Admin',
       role: 'company_admin',
       status: 'active',
       email_verified_at: relativeDate(refDate, -14),
       must_reset_password: false,
       mfa_secret_ref: null,
-      password_hash: SEED_DEV_PASSWORD_MOCK,
+      password_hash: options?.passwordHash ?? null,
       failed_logins: 0,
       locked_until: null,
       last_login_at: relativeDate(refDate, -3),
       created_at: relativeDate(refDate, -14),
+      deleted_at: null,
+    },
+    {
+      id: deterministicUuid('user', NEGATIVE_CRESTVIEW_ADMIN_EMAIL),
+      org_id: CRESTVIEW_ID,
+      email: normaliseEmail(NEGATIVE_CRESTVIEW_ADMIN_EMAIL),
+      name: 'Crestview Admin (Suspended Org)',
+      role: 'company_admin',
+      status: 'active',
+      email_verified_at: relativeDate(refDate, -30),
+      must_reset_password: false,
+      mfa_secret_ref: null,
+      password_hash: options?.passwordHash ?? null,
+      failed_logins: 0,
+      locked_until: null,
+      last_login_at: relativeDate(refDate, -15),
+      created_at: relativeDate(refDate, -90),
       deleted_at: null,
     },
   ];
@@ -115,8 +152,9 @@ function generateCompanyCandidates(options: {
   orgSlug: string;
   distribution: { active: number; invited: number; suspended: number; deleted: number };
   refDate: Date;
+  userOptions?: UserEntityOptions | undefined;
 }): UserEntity[] {
-  const { orgId, orgSlug, distribution, refDate } = options;
+  const { orgId, orgSlug, distribution, refDate, userOptions } = options;
   const candidates: UserEntity[] = [];
   let index = 1;
 
@@ -126,6 +164,10 @@ function generateCompanyCandidates(options: {
   for (let i = 0; i < distribution.active; i++) {
     const num = pad(index++);
     const email = normaliseEmail(`candidate.${orgSlug}.${num}@example.com`);
+    // Only designated loginable candidate (001) receives a password hash.
+    // Remaining candidates have NULL password_hash for performance (< 3s target).
+    const isLoginable = email === LOGINABLE_CANDIDATE_EMAIL;
+
     candidates.push({
       id: deterministicUuid('candidate', email),
       org_id: orgId,
@@ -136,7 +178,7 @@ function generateCompanyCandidates(options: {
       email_verified_at: relativeDate(refDate, -10),
       must_reset_password: false,
       mfa_secret_ref: null,
-      password_hash: SEED_DEV_PASSWORD_MOCK,
+      password_hash: isLoginable ? (userOptions?.passwordHash ?? null) : null,
       failed_logins: 0,
       locked_until: null,
       last_login_at: relativeDate(refDate, -1),
@@ -145,7 +187,7 @@ function generateCompanyCandidates(options: {
     });
   }
 
-  // 2. Invited Candidates
+  // 2. Invited Candidates (password_hash is NULL until invite link onboarding)
   for (let i = 0; i < distribution.invited; i++) {
     const num = pad(index++);
     const email = normaliseEmail(`candidate.${orgSlug}.${num}@example.com`);
@@ -172,6 +214,8 @@ function generateCompanyCandidates(options: {
   for (let i = 0; i < distribution.suspended; i++) {
     const num = pad(index++);
     const email = normaliseEmail(`candidate.${orgSlug}.${num}@example.com`);
+    const isNegativeSample = email === NEGATIVE_SUSPENDED_CANDIDATE_EMAIL;
+
     candidates.push({
       id: deterministicUuid('candidate', email),
       org_id: orgId,
@@ -182,7 +226,7 @@ function generateCompanyCandidates(options: {
       email_verified_at: relativeDate(refDate, -15),
       must_reset_password: false,
       mfa_secret_ref: null,
-      password_hash: SEED_DEV_PASSWORD_MOCK,
+      password_hash: isNegativeSample ? (userOptions?.passwordHash ?? null) : null,
       failed_logins: 0,
       locked_until: null,
       last_login_at: relativeDate(refDate, -5),
@@ -195,6 +239,8 @@ function generateCompanyCandidates(options: {
   for (let i = 0; i < distribution.deleted; i++) {
     const num = pad(index++);
     const email = normaliseEmail(`candidate.${orgSlug}.${num}@example.com`);
+    const isNegativeSample = email === NEGATIVE_DELETED_CANDIDATE_EMAIL;
+
     candidates.push({
       id: deterministicUuid('candidate', email),
       org_id: orgId,
@@ -205,7 +251,7 @@ function generateCompanyCandidates(options: {
       email_verified_at: relativeDate(refDate, -20),
       must_reset_password: false,
       mfa_secret_ref: null,
-      password_hash: SEED_DEV_PASSWORD_MOCK,
+      password_hash: isNegativeSample ? (userOptions?.passwordHash ?? null) : null,
       failed_logins: 0,
       locked_until: null,
       last_login_at: relativeDate(refDate, -8),
@@ -221,12 +267,16 @@ function generateCompanyCandidates(options: {
  * Returns candidates for Aster Ridge Technologies (exactly 100) and Brindle & Co (exactly 10),
  * covering active, invited, suspended, and deleted states for both companies.
  */
-export function getCandidates(refDate: Date = new Date('2026-10-23T00:00:00Z')): UserEntity[] {
+export function getCandidates(
+  refDate: Date = new Date('2026-10-23T00:00:00Z'),
+  options?: UserEntityOptions,
+): UserEntity[] {
   const asterCandidates = generateCompanyCandidates({
     orgId: ASTER_RIDGE_ID,
     orgSlug: 'aster-ridge',
     distribution: ASTER_CANDIDATE_STATE_DISTRIBUTION,
     refDate,
+    userOptions: options,
   });
 
   const brindleCandidates = generateCompanyCandidates({
@@ -234,6 +284,7 @@ export function getCandidates(refDate: Date = new Date('2026-10-23T00:00:00Z')):
     orgSlug: 'brindle-co',
     distribution: BRINDLE_CANDIDATE_STATE_DISTRIBUTION,
     refDate,
+    userOptions: options,
   });
 
   return [...asterCandidates, ...brindleCandidates];
@@ -242,6 +293,13 @@ export function getCandidates(refDate: Date = new Date('2026-10-23T00:00:00Z')):
 /**
  * Returns all user fixtures: platform admins, company admins, and candidates.
  */
-export function getUsers(refDate: Date = new Date('2026-10-23T00:00:00Z')): UserEntity[] {
-  return [...getPlatformAdmins(refDate), ...getCompanyAdmins(refDate), ...getCandidates(refDate)];
+export function getUsers(
+  refDate: Date = new Date('2026-10-23T00:00:00Z'),
+  options?: UserEntityOptions,
+): UserEntity[] {
+  return [
+    ...getPlatformAdmins(refDate, options),
+    ...getCompanyAdmins(refDate, options),
+    ...getCandidates(refDate, options),
+  ];
 }

@@ -13,6 +13,7 @@ export * from './entities/index.js';
 export * from './lib/keys.js';
 export * from './lib/guard.js';
 export * from './lib/masker.js';
+export * from './lib/credentials.js';
 export * from './lib/upsert.js';
 
 // Test fixtures and tenant context helpers for integration tests
@@ -38,52 +39,72 @@ export interface CliSeedOptions {
   exitProcess?: boolean;
   quiet?: boolean;
   logger?: (msg: string) => void;
+  seedPassword?: string;
+  totpSecret?: string;
 }
 
 /**
- * Parses and loads environment variables from .env or .env.local if present.
- * Uses process.loadEnvFile (Node 20.6+ built-in) with fallback to key=value parsing.
+ * Parses and loads environment variables from .env and .env.local files.
+ * Searches cwd and workspace root directories.
+ * Variables from .env.local take precedence over .env.
  */
 export function loadEnvFiles(): void {
-  const possiblePaths = [
-    path.resolve(process.cwd(), '.env'),
-    path.resolve(process.cwd(), '.env.local'),
-    path.resolve(process.cwd(), '../../.env'),
-    path.resolve(process.cwd(), '../.env'),
+  const currentDir = process.cwd();
+  const fileDir = path.dirname(fileURLToPath(import.meta.url));
+
+  const candidateDirs = [
+    currentDir,
+    path.resolve(currentDir, '..'),
+    path.resolve(currentDir, '../..'),
+    fileDir,
+    path.resolve(fileDir, '..'),
+    path.resolve(fileDir, '../..'),
+    path.resolve(fileDir, '../../..'),
   ];
 
-  for (const envPath of possiblePaths) {
-    if (fs.existsSync(envPath)) {
-      try {
-        if (typeof (process as any).loadEnvFile === 'function') {
-          (process as any).loadEnvFile(envPath);
-          return;
+  // Helper to parse key-value lines
+  const parseEnvContent = (content: string, overwrite: boolean) => {
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx > 0) {
+        const key = trimmed.slice(0, eqIdx).trim();
+        let val = trimmed.slice(eqIdx + 1).trim();
+        if (
+          (val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))
+        ) {
+          val = val.slice(1, -1);
         }
-      } catch {}
+        if (overwrite || process.env[key] === undefined) {
+          process.env[key] = val;
+        }
+      }
+    }
+  };
 
-      // Fallback simple line-by-line parser for .env files
+  // 1. First pass: load base .env without overwriting existing environment
+  for (const dir of candidateDirs) {
+    const envFile = path.resolve(dir, '.env');
+    if (fs.existsSync(envFile)) {
       try {
-        const content = fs.readFileSync(envPath, 'utf8');
-        for (const line of content.split('\n')) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed.startsWith('#')) continue;
-          const eqIdx = trimmed.indexOf('=');
-          if (eqIdx > 0) {
-            const key = trimmed.slice(0, eqIdx).trim();
-            let val = trimmed.slice(eqIdx + 1).trim();
-            if (
-              (val.startsWith('"') && val.endsWith('"')) ||
-              (val.startsWith("'") && val.endsWith("'"))
-            ) {
-              val = val.slice(1, -1);
-            }
-            if (!process.env[key]) {
-              process.env[key] = val;
-            }
-          }
-        }
-        return;
+        const content = fs.readFileSync(envFile, 'utf8');
+        parseEnvContent(content, false);
       } catch {}
+      break;
+    }
+  }
+
+  // 2. Second pass: load .env.local with overwrite=true so local uncommitted overrides take precedence
+  for (const dir of candidateDirs) {
+    const envLocalFile = path.resolve(dir, '.env.local');
+    if (fs.existsSync(envLocalFile)) {
+      try {
+        const content = fs.readFileSync(envLocalFile, 'utf8');
+        parseEnvContent(content, true);
+      } catch {}
+      break;
     }
   }
 }
@@ -230,6 +251,8 @@ export async function runCliSeed(options: CliSeedOptions = {}): Promise<SeedSumm
       referenceDate: options.referenceDate ?? new Date(),
       skipSafetyCheck: true, // Guard already ran in Step 2
       logger: options.quiet ? () => {} : (m) => log(m),
+      seedPassword: options.seedPassword,
+      totpSecret: options.totpSecret,
     });
 
     const elapsedMs = Date.now() - startTime;

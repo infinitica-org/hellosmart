@@ -30,6 +30,9 @@ describe('Candidate Invitation Tokens & First-Login Password Reset Fixtures ([6.
   let dbAvailable = false;
 
   before(async () => {
+    process.env.SEED_DEFAULT_PASSWORD = 'TestSeedPassword123!';
+    process.env.SEED_PLATFORM_ADMIN_TOTP_SECRET = 'JBSWY3DPEHPK3PXP';
+
     try {
       client = new pg.Client({ connectionString: TEST_DB_URL });
       await client.connect();

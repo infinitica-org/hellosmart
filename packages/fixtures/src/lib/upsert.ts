@@ -2,6 +2,12 @@ import type { ClientBase } from 'pg';
 import { assertEnvironmentSafe } from './guard.js';
 import { maskSensitiveData } from './masker.js';
 import {
+  getSeedDefaultPassword,
+  resolveSeedPasswordHash,
+  hashPassword,
+  getPlatformAdminTotpSecret,
+} from './credentials.js';
+import {
   getOrganizations,
   type OrganizationEntity,
   type EntitlementEntity,
@@ -25,11 +31,13 @@ export interface SeedSummary {
 }
 
 export interface SeedOptions {
-  referenceDate?: Date;
-  logger?: (msg: string) => void;
-  nodeEnv?: string;
-  databaseUrl?: string;
-  skipSafetyCheck?: boolean; // Only for unit test harness with mock clients
+  referenceDate?: Date | undefined;
+  logger?: ((msg: string) => void) | undefined;
+  nodeEnv?: string | undefined;
+  databaseUrl?: string | undefined;
+  skipSafetyCheck?: boolean | undefined; // Only for unit test harness with mock clients
+  seedPassword?: string | undefined;
+  totpSecret?: string | undefined;
 }
 
 /**
@@ -294,13 +302,48 @@ export async function runSafeSeed(
     assertEnvironmentSafe(nodeEnv, dbUrl);
   }
 
-  const refDate = options.referenceDate ?? new Date('2026-10-23T00:00:00Z');
+  // 2. Validate & resolve credentials
+  const defaultPassword =
+    options.seedPassword !== undefined ? options.seedPassword : getSeedDefaultPassword();
+  if (!defaultPassword || defaultPassword.trim().length === 0) {
+    throw new Error(
+      'Missing required environment variable SEED_DEFAULT_PASSWORD. Configure it in .env.local before running the seed.',
+    );
+  }
 
-  // Load datasets from 6.1 & 6.3 entities
-  const platformAdmins = getPlatformAdmins(refDate);
+  // Validate TOTP secret format if configured in options or env
+  const rawTotp =
+    options.totpSecret !== undefined ? options.totpSecret : process.env.SEED_PLATFORM_ADMIN_TOTP_SECRET;
+  if (rawTotp && rawTotp.trim()) {
+    const cleaned = rawTotp.trim().replace(/\s+/g, '').toUpperCase();
+    if (!/^[A-Z2-7]+=*$/.test(cleaned)) {
+      throw new Error(
+        'Invalid format for SEED_PLATFORM_ADMIN_TOTP_SECRET: secret must be a valid Base32 string.',
+      );
+    }
+  }
+
+  // Check existing hash for superadmin in DB to avoid re-hashing if already matching
+  let resolvedPasswordHash: string;
+  try {
+    const existingUser = await client.query(
+      'SELECT password_hash FROM app.users WHERE email = $1 LIMIT 1',
+      ['superadmin@hellosmart.ai'],
+    );
+    const existingHash = existingUser.rows[0]?.password_hash;
+    resolvedPasswordHash = await resolveSeedPasswordHash(existingHash, defaultPassword);
+  } catch {
+    resolvedPasswordHash = await hashPassword(defaultPassword);
+  }
+
+  const refDate = options.referenceDate ?? new Date('2026-10-23T00:00:00Z');
+  const userOptions = { passwordHash: resolvedPasswordHash };
+
+  // Load datasets from 6.1 & 6.3 entities with resolved Argon2id password hash
+  const platformAdmins = getPlatformAdmins(refDate, userOptions);
   const organizations = getOrganizations(refDate, platformAdmins[0]!.id);
-  const companyAdmins = getCompanyAdmins(refDate);
-  const candidates = getCandidates(refDate);
+  const companyAdmins = getCompanyAdmins(refDate, userOptions);
+  const candidates = getCandidates(refDate, userOptions);
   const invitations = getInvitations(refDate);
 
   let orgsCount = 0;

@@ -33,10 +33,12 @@ export interface OrganizationEntity {
 export const SUPERADMIN_ID = deterministicUuid('user', 'superadmin@hellosmart.ai');
 export const ASTER_RIDGE_ID = deterministicUuid('org', 'aster-ridge');
 export const BRINDLE_CO_ID = deterministicUuid('org', 'brindle-co');
+export const CRESTVIEW_ID = deterministicUuid('org', 'crestview-suspended');
 
 /**
- * Generates the test data matrix for Aster Ridge Technologies (Paid Active)
- * and Brindle & Co (Trial Active), adhering strictly to 0001_tenancy_foundation.sql.
+ * Generates the test data matrix for Aster Ridge Technologies (Paid Active),
+ * Brindle & Co (Trial Active), and Crestview Financial (Suspended),
+ * adhering strictly to 0001_tenancy_foundation.sql.
  *
  * @param refDate Anchor date for deterministic date calculations.
  * @param superadminId Platform admin UUID responsible for creating the organizations.
@@ -92,6 +94,28 @@ export function getOrganizations(
         pending_invite_multiplier: 2.0,
         flags: { chat: true },
         updated_at: brindleTrialStart,
+      },
+    },
+    {
+      id: CRESTVIEW_ID,
+      name: 'Crestview Financial',
+      slug: 'crestview-suspended',
+      status: 'suspended',
+      logo_key: null,
+      custom_domain: null,
+      retention_days: 90,
+      created_by: superadminId,
+      created_at: relativeDate(refDate, -90),
+      updated_at: relativeDate(refDate, -10),
+      entitlements: {
+        org_id: CRESTVIEW_ID,
+        max_templates: 1,
+        max_candidates: 5,
+        trial_started_at: null,
+        trial_ends_at: null,
+        pending_invite_multiplier: 2.0,
+        flags: {},
+        updated_at: relativeDate(refDate, -10),
       },
     },
   ];
