@@ -49,7 +49,9 @@ export function generateRawInviteToken(): string {
 }
 
 /**
- * Computes the SHA-256 hash of a raw invitation token.
+ * PROVISIONAL: must match S0-T08 accept-invite hashing; verify when S0-T08 lands.
+ *
+ * Computes the SHA-256 hash of a raw invitation token string.
  * Stores the hex-encoded digest in app.invitations.token_hash matching schema constraints.
  *
  * @param rawToken The plaintext token string.

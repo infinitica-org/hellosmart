@@ -54,6 +54,8 @@ export interface SeedOptions {
 }
 
 /**
+ * TODO: Remove when app.invitations has a real migration (seed must not run DDL).
+ *
  * Ensures the app.invitations table exists with strict tenant isolation,
  * indexes, and foreign keys matching HelloSmart specifications.
  * Uses an advisory transaction lock to avoid concurrent DDL race conditions.
@@ -248,11 +250,15 @@ export async function upsertInvitation(
   client: ClientBase,
   invitation: InvitationEntity,
 ): Promise<void> {
-  const existingInv = await client.query('SELECT id FROM app.invitations WHERE token_hash = $1', [
-    invitation.token_hash,
-  ]);
+  const existingInv = await client.query(
+    'SELECT id FROM app.invitations WHERE org_id = $1 AND token_hash = $2',
+    [invitation.org_id, invitation.token_hash],
+  );
   if (existingInv.rows.length > 0 && existingInv.rows[0].id !== invitation.id) {
-    await client.query('DELETE FROM app.invitations WHERE id = $1', [existingInv.rows[0].id]);
+    await client.query('DELETE FROM app.invitations WHERE id = $1 AND org_id = $2', [
+      existingInv.rows[0].id,
+      invitation.org_id,
+    ]);
   }
 
   const validId = deterministicUuid('invitation', 'valid');
@@ -291,6 +297,7 @@ export async function upsertInvitation(
   ]);
 
   // Valid case reset: on every seed run, restore candidate 071 to invited state without password
+  // Scoped by BOTH the user's deterministic id AND org_id (BR-01, BR-24)
   if (invitation.id === validId) {
     await client.query(
       `UPDATE app.users
@@ -299,8 +306,8 @@ export async function upsertInvitation(
            password_hash = NULL,
            email_verified_at = NULL,
            last_login_at = NULL
-       WHERE org_id = $1 AND email = $2;`,
-      [invitation.org_id, 'candidate.aster-ridge.071@example.com'],
+       WHERE id = $1 AND org_id = $2;`,
+      [invitation.user_id, invitation.org_id],
     );
   }
 }

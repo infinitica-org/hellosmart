@@ -23,7 +23,7 @@ import {
   type SeedTokensMap,
 } from '../dist/lib/invite-links.js';
 import { deterministicUuid } from '../dist/lib/keys.js';
-import { ASTER_RIDGE_ID } from '../dist/entities/organizations.js';
+import { ASTER_RIDGE_ID, BRINDLE_CO_ID } from '../dist/entities/organizations.js';
 
 function resolveTestDbUrl(): string {
   if (process.env.TEST_DATABASE_URL) {
@@ -189,6 +189,51 @@ describe('Hashed Invitation Tokens Aligned with Invite Flow ([13.2])', () => {
       assert.ok(
         used!.expires_at.getTime() > refDate.getTime(),
         'Used token was used within validity window',
+      );
+    });
+
+    it('TTL consistency: for all 3 invitations expires_at - created_at === 72h, and timing states hold', () => {
+      const refDate = new Date();
+      const mockTokens: SeedTokensMap = {
+        valid: generateRawInviteToken(),
+        expired: generateRawInviteToken(),
+        used: generateRawInviteToken(),
+      };
+
+      const [valid, expired, used] = getInvitations(refDate, mockTokens);
+
+      // Assert that for all three invitations expires_at minus created_at equals exactly INVITE_TTL_HOURS (72h)
+      for (const inv of [valid, expired, used]) {
+        assert.strictEqual(
+          inv!.expires_at.getTime() - inv!.created_at.getTime(),
+          INVITE_TTL_HOURS * 3600 * 1000,
+          `Invitation ${inv!.id} expires_at minus created_at must equal exactly INVITE_TTL_HOURS (72h)`,
+        );
+      }
+
+      // Valid has expires_at in the future and used_at null
+      assert.ok(
+        valid!.expires_at.getTime() > refDate.getTime(),
+        'Valid invitation has expires_at in the future',
+      );
+      assert.strictEqual(valid!.used_at, null, 'Valid invitation has used_at null');
+
+      // Expired has expires_at in the past and used_at null
+      assert.ok(
+        expired!.expires_at.getTime() < refDate.getTime(),
+        'Expired invitation has expires_at in the past',
+      );
+      assert.strictEqual(expired!.used_at, null, 'Expired invitation has used_at null');
+
+      // Used has used_at after created_at and before expires_at
+      assert.ok(used!.used_at !== null, 'Used invitation must have used_at timestamp set');
+      assert.ok(
+        used!.used_at!.getTime() > used!.created_at.getTime(),
+        'Used invitation used_at must be strictly after created_at',
+      );
+      assert.ok(
+        used!.used_at!.getTime() < used!.expires_at.getTime(),
+        'Used invitation used_at must be strictly before expires_at',
       );
     });
 
@@ -537,19 +582,106 @@ describe('Hashed Invitation Tokens Aligned with Invite Flow ([13.2])', () => {
         'Candidate 071 email_verified_at must be cleared to null',
       );
     });
+
+    it('proves valid reset is strictly scoped by BOTH id and org_id and leaves same-email user in another org untouched', async (t) => {
+      if (!dbAvailable || !client) {
+        return t.skip('Postgres test database not available');
+      }
+
+      const validId = deterministicUuid('invitation', 'valid');
+      const validCandidateId = deterministicUuid(
+        'candidate',
+        'candidate.aster-ridge.071@example.com',
+      );
+      const otherOrgCandidateId = deterministicUuid(
+        'candidate',
+        'other-org-candidate-same-email-71',
+      );
+
+      // 1. Insert a candidate in Brindle & Co with the exact same email as candidate 071, but active and with a password
+      await client.query(
+        `INSERT INTO app.users (
+          id, org_id, email, name, role, status, email_verified_at, must_reset_password, password_hash
+        ) VALUES (
+          $1, $2, $3, $4, 'candidate', 'active', now(), false, '$argon2id$mock_other_org_pwd_hash'
+        ) ON CONFLICT (id) DO UPDATE SET
+          status = 'active',
+          password_hash = '$argon2id$mock_other_org_pwd_hash',
+          must_reset_password = false;`,
+        [
+          otherOrgCandidateId,
+          BRINDLE_CO_ID,
+          'candidate.aster-ridge.071@example.com',
+          'Cross-Tenant Same Email User',
+        ],
+      );
+
+      // 2. Simulate consumption of the Aster Ridge valid invitation
+      await client.query('UPDATE app.invitations SET used_at = now() WHERE id = $1;', [validId]);
+      await client.query(
+        `UPDATE app.users
+         SET status = 'active',
+             must_reset_password = false,
+             password_hash = '$argon2id$mock_aster_consumed_hash'
+         WHERE id = $1 AND org_id = $2;`,
+        [validCandidateId, ASTER_RIDGE_ID],
+      );
+
+      // 3. Re-run seed
+      await runSafeSeed(client, {
+        nodeEnv: 'test',
+        databaseUrl: TEST_DB_URL,
+      });
+
+      // 4. Assert Aster Ridge candidate 071 was reset to invited
+      const asterCand = await client.query(
+        'SELECT status, must_reset_password, password_hash FROM app.users WHERE id = $1 AND org_id = $2;',
+        [validCandidateId, ASTER_RIDGE_ID],
+      );
+      assert.strictEqual(asterCand.rows[0].status, 'invited');
+      assert.strictEqual(asterCand.rows[0].must_reset_password, true);
+      assert.strictEqual(asterCand.rows[0].password_hash, null);
+
+      // 5. Assert the other org's same-email user was NOT touched
+      const otherOrgCand = await client.query(
+        'SELECT status, must_reset_password, password_hash FROM app.users WHERE id = $1 AND org_id = $2;',
+        [otherOrgCandidateId, BRINDLE_CO_ID],
+      );
+      assert.strictEqual(
+        otherOrgCand.rows[0].status,
+        'active',
+        'User in other org must remain active',
+      );
+      assert.strictEqual(
+        otherOrgCand.rows[0].must_reset_password,
+        false,
+        'must_reset_password in other org must remain false',
+      );
+      assert.strictEqual(
+        otherOrgCand.rows[0].password_hash,
+        '$argon2id$mock_other_org_pwd_hash',
+        'password_hash in other org must remain unchanged',
+      );
+
+      // Clean up test user
+      await client.query('DELETE FROM app.users WHERE id = $1 AND org_id = $2;', [
+        otherOrgCandidateId,
+        BRINDLE_CO_ID,
+      ]);
+    });
   });
 
   describe('Acceptance Flow S0-T08 Status & Verification', () => {
-    it('notes S0-T08 invite acceptance flow status in the codebase', () => {
-      // S0-T08 (API controller / service and /accept-invite UI) has not been implemented yet.
-      // Therefore, live HTTP acceptance requests cannot be tested against a running server.
-      // We verify the exact prerequisite contract:
-      // - 32-byte entropy tokens
-      // - SHA-256 hexadecimal token_hash storage
-      // - Route format /accept-invite?token=<rawToken>
-      // - Generic state isolation without data leakage
-      assert.strictEqual(typeof getAcceptInviteLink, 'function');
-      assert.strictEqual(typeof hashInvitationToken, 'function');
+    it('valid link activates candidate account once', (t) => {
+      t.skip('blocked on S0-T08: accept-invite flow API/UI not yet implemented');
+    });
+
+    it('replay fails on already activated invitation link', (t) => {
+      t.skip('blocked on S0-T08: accept-invite flow API/UI not yet implemented');
+    });
+
+    it('expired and used tokens return the same generic error as an unknown token', (t) => {
+      t.skip('blocked on S0-T08: accept-invite flow API/UI not yet implemented');
     });
   });
 });

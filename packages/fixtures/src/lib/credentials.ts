@@ -123,7 +123,5 @@ export function getPlatformAdminTotpSecret(): string | null {
  * Per requirement: Do NOT invent a custom encryption scheme when S0-T14-3 is missing.
  */
 export function encryptTotpSecret(secret: string): string {
-  throw new Error(
-    'S0-T14-3 AES-256-GCM encryption helper is missing. Cannot encrypt TOTP secret.',
-  );
+  throw new Error('S0-T14-3 AES-256-GCM encryption helper is missing. Cannot encrypt TOTP secret.');
 }
