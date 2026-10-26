@@ -90,7 +90,7 @@ Sales-assisted and behind the curtain: landing page, cal.com booking, discovery 
 ```mermaid
 flowchart LR
   A["1. Candidate Workspace (Sysbox VM / Chat)"] -->|"AI Prompts & Tools"| B["2. AI Proxy (Vault, Model Allowlist, Caps)"]
-  B -->|"Real Work Output & Diffs"| C["3. Continuous Autosave (RPO &le; 30s)"]
+  B -->|"Real Work Output & Diffs"| C["3. Continuous Autosave (RPO <= 30s)"]
   C -->|"Submission Final Snapshot"| D["4. Independent AI Reviewer Agents"]
   D -->|"Scores with Cited Evidence"| E["5. Hiring Manager Decision (Human-in-the-Loop)"]
 ```
