@@ -1,29 +1,39 @@
 """Evidence builder for the production-readiness agent (AD-014b).
 
-Narrower first-pass port of ProjAgentScan's src/agents/production_readiness/evidence.py: file-
-presence and lightweight-content signals for deployment/infra, CI, config hygiene and health
-endpoints. ProjAgentScan's original check suite also does deeper static analysis (parsed
-structured-logging usage, migration-tool detection); that depth is a follow-up, not carried over
-here -- see tasks/AD-014b-reviewer-agent-library.md.
+Full-depth port of ProjAgentScan's src/agents/production_readiness/evidence.py: Dockerfile
+quality (placeholder/pinned-base/multistage), CI-configured test/lint steps (not just "a
+workflow file exists"), structured-logging and custom-exception usage, health/observability
+tool detection, and database-migration detection -- the checks the narrower first pass
+deliberately left out even though this agent's own rubric cites "configured, not proven" CI and
+real logging/error-handling usage directly.
 """
 
 from __future__ import annotations
 
 import re
+from pathlib import PurePosixPath
 
 from app.evidence import EvidenceCoverage, EvidenceItem, EvidencePack
 from app.sanitizer import normalise, suspicious
 
-from .repo_io import RepoReader
+from .checks.production_signals import (
+    analyze_ci_workflows,
+    analyze_dockerfile,
+    analyze_health_and_observability,
+    analyze_logging_and_errors,
+    analyze_migrations,
+)
+from .repo_io import RepoReader, safe_parse_python
 
 _DOCKER_NAMES = ("Dockerfile", "docker-compose.yml", "docker-compose.yaml")
 _IAC_SUFFIXES = {".tf"}
-_CI_PATHS = (".github/workflows", ".gitlab-ci.yml", "Jenkinsfile", ".circleci/config.yml")
+_CI_PATHS = (".gitlab-ci.yml", "Jenkinsfile", ".circleci/config.yml")
 _LOCKFILE_NAMES = (
     "uv.lock", "poetry.lock", "package-lock.json", "pnpm-lock.yaml", "yarn.lock",
     "Pipfile.lock", "requirements.txt",
 )
 _ENV_SECRET_RE = re.compile(r"^[A-Z0-9_]+\s*=\s*[^\s#]{6,}", re.MULTILINE)
+_SOURCE_SUFFIXES = {".py", ".js", ".ts", ".go"}
 
 
 def _sanitize(pack: EvidencePack, ref: str, text: str) -> str:
@@ -46,15 +56,46 @@ def build_evidence(
     reader = RepoReader(clone_dir, manifest=manifest)
     all_files = reader.iter_files("any")
 
-    docker_present = any(reader.exists(n) for n in _DOCKER_NAMES)
+    dockerfile_name = next((n for n in ("Dockerfile", "dockerfile") if reader.exists(n)), None)
+    docker_present = dockerfile_name is not None or any(
+        reader.exists(n) for n in _DOCKER_NAMES[1:]
+    )
     iac_present = any(f.endswith(tuple(_IAC_SUFFIXES)) for f in all_files)
+    quality = (
+        analyze_dockerfile(reader.read_text(dockerfile_name) or "")
+        if dockerfile_name
+        else {
+            "is_empty_or_placeholder": True, "has_pinned_base_image": False,
+            "is_multistage": False,
+        }
+    )
     _add_fact(
         pack, "repo:fact.deployment_and_infrastructure",
-        f"docker_or_compose_present={docker_present}; infrastructure_as_code_present={iac_present}",
+        f"docker_or_compose_present={docker_present}; "
+        f"infrastructure_as_code_present={iac_present}; "
+        f"dockerfile_is_placeholder={quality['is_empty_or_placeholder']}; "
+        f"dockerfile_has_pinned_base={quality['has_pinned_base_image']}; "
+        f"dockerfile_is_multistage={quality['is_multistage']}",
     )
 
-    ci_present = any(f.startswith(".github/workflows") or f in _CI_PATHS for f in all_files)
-    _add_fact(pack, "repo:fact.cicd", f"ci_pipeline_present={ci_present}")
+    workflow_files = [
+        f for f in all_files
+        if f.startswith(".github/workflows/") and f.endswith((".yml", ".yaml"))
+    ] + [f for f in all_files if f in _CI_PATHS]
+    ci_present = bool(workflow_files)
+    workflow_texts: list[str] = []
+    for f in workflow_files:
+        text = reader.read_text(f)
+        if text is not None:
+            workflow_texts.append(text)
+    ci_depth = analyze_ci_workflows(workflow_texts)
+    _add_fact(
+        pack, "repo:fact.cicd",
+        f"ci_pipeline_present={ci_present}; "
+        f"runs_tests_configured={ci_depth['runs_tests_configured']}; "
+        f"runs_linter_configured={ci_depth['runs_linter_configured']}; "
+        f"workflow_count={ci_depth['workflow_count']}",
+    )
 
     env_example = reader.read_text(".env.example") or reader.read_text(".env.sample")
     committed_env = reader.exists(".env")
@@ -73,17 +114,44 @@ def build_evidence(
     )
 
     lockfile_present = any(reader.exists(n) for n in _LOCKFILE_NAMES)
-    _add_fact(pack, "repo:fact.dependency_readiness", f"lockfile_present={lockfile_present}")
-
-    health_pattern = re.compile(r"(/health|/healthz|/ready|/readyz|/livez)")
-    health_present = False
-    for rel in reader.iter_files("source", suffixes={".py", ".js", ".ts", ".go"}):
-        source_text = reader.read_text(rel)
-        if source_text and health_pattern.search(source_text):
-            health_present = True
-            break
+    migration_dirs = {
+        str(PurePosixPath(f).parent) for f in all_files if not PurePosixPath(f).name.startswith(".")
+    }
+    migrations = analyze_migrations(migration_dirs)
     _add_fact(
-        pack, "repo:fact.health_and_observability", f"health_endpoint_present={health_present}"
+        pack, "repo:fact.dependency_readiness",
+        f"lockfile_present={lockfile_present}; has_migrations={migrations['has_migrations']}; "
+        f"migration_framework={migrations['migration_framework']}",
+    )
+
+    source_files = reader.iter_files("source", suffixes=_SOURCE_SUFFIXES)
+    file_texts: dict[str, str] = {}
+    for rel in source_files:
+        text = reader.read_text(rel)
+        if text is not None:
+            file_texts[rel] = text
+    py_trees = {}
+    for rel, text in file_texts.items():
+        if rel.endswith(".py"):
+            tree, _reason = safe_parse_python(text, rel)
+            if tree is not None:
+                py_trees[rel] = tree
+
+    logging_info = analyze_logging_and_errors(py_trees, file_texts)
+    _add_fact(
+        pack, "repo:fact.logging_and_errors",
+        f"uses_logging_library={logging_info['uses_logging_library']}; "
+        f"has_error_handling={logging_info['has_error_handling']}; "
+        f"custom_exceptions_count={logging_info['custom_exceptions_count']}",
+    )
+
+    health_info = analyze_health_and_observability(file_texts)
+    health_present = bool(health_info["endpoint_paths"])
+    _add_fact(
+        pack, "repo:fact.health_and_observability",
+        f"health_endpoint_present={health_present}; "
+        f"endpoint_paths={', '.join(health_info['endpoint_paths']) or 'none'}; "
+        f"observability_tools={', '.join(health_info['observability_tools']) or 'none'}",
     )
 
     pack.coverage.append(EvidenceCoverage(channel="artifact", status="available"))
