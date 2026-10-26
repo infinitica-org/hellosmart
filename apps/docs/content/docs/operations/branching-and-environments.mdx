@@ -9,7 +9,7 @@ description: "Git branch flow, environment progression, and release triggers"
 
 ```
 feat/CO-012-…  ─┐
-fix/CA-009-…   ─┼─▶  dev  ──(auto)──▶  QA  (KVM VPS · qa.hellosmart.ai)
+fix/CA-009-…   ─┼─▶  dev  ──(auto)──▶  QA  (AWS EC2 · qa.hellosmart.ai)
 sec/…          ─┘     │
                       │  weekly release PR  release/YYYY-MM-DD  (QA sign-off Friday)
                       ▼
@@ -22,7 +22,7 @@ hotfix/… ─────────────┘  (then back-merge main →
 | Env | Branch | Infra | Data | Who deploys | Access |
 |---|---|---|---|---|---|
 | Local | any | Docker Compose (`pnpm infra:up`) | fixtures | you | you |
-| QA | `dev` | KVM VPS, Docker Compose, Sysbox, LocalStack, Mailpit | fixtures (resettable) | CI on every merge | team IP allowlist + basic auth |
+| QA | `dev` | AWS EC2, Docker Compose, Sysbox, LocalStack, Mailpit | fixtures (resettable) | CI on every merge | team IP allowlist + basic auth |
 | Production | `main` | AWS (ECS, Aurora, EC2 workspace hosts…) | real | CI after approval on `production` environment | public |
 
 ## Weekly rhythm

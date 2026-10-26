@@ -59,7 +59,7 @@ Full glossary and every requirement: **[AGENTS.md](AGENTS.md)**.
 | 1 | [docs/ONBOARDING.md](docs/ONBOARDING.md) | Day-one setup and first ticket |
 | 2 | [AGENTS.md](AGENTS.md) | The spec: 150 requirements, business rules (BR-xx), flows |
 | 3 | [docs/00-architecture-and-delivery-plan.md](docs/00-architecture-and-delivery-plan.md) | Architecture, AI-SDLC, schedule, departments |
-| 4 | [docs/BRANCHING-AND-ENVIRONMENTS.md](docs/BRANCHING-AND-ENVIRONMENTS.md) | `feature → dev (QA VPS) → main (AWS prod)` |
+| 4 | [docs/BRANCHING-AND-ENVIRONMENTS.md](docs/BRANCHING-AND-ENVIRONMENTS.md) | `feature → dev (QA AWS EC2) → main (AWS prod)` |
 | 5 | [CONTRIBUTING.md](CONTRIBUTING.md) | How we work with AI agents, PRs, reviews |
 | 6 | [CLAUDE.md](CLAUDE.md) | Rules every AI coding agent follows |
 | 7 | [SECURITY.md](SECURITY.md) + [docs/security/](docs/security/) | Security policy, threat model, data classes |
@@ -90,7 +90,7 @@ Submission ─▶ reviewer (FastAPI) ─▶ sanitizer ─▶ N independent agent
 | Async | SQS, EventBridge Scheduler, Step Functions |
 | Workspaces | EC2 hosts + Sysbox containers, code-server, Claude Code / Codex |
 | Infra | AWS ap-south-1, Terraform, Packer, GitHub Actions (OIDC) |
-| QA env | KVM VPS, Docker Compose, LocalStack, Mailpit |
+| QA env | AWS EC2 (ap-south-1), Docker Compose, LocalStack, Mailpit |
 
 ---
 
@@ -144,7 +144,7 @@ All external providers default to **fakes**, so you need no cloud credentials to
 | Branch | Environment | Where | Deploys |
 |---|---|---|---|
 | `feat/*`, `fix/*` | Local + PR checks | Your machine / CI | n/a |
-| `dev` | **QA** | KVM VPS · `qa.hellosmart.ai` (allowlisted) | Automatically on merge |
+| `dev` | **QA** | AWS EC2 · `qa.hellosmart.ai` (allowlisted) | Automatically on merge |
 | `main` | **Production** | AWS ap-south-1 · `app.hellosmart.ai` | Monday release, approval required |
 
 Details: [docs/BRANCHING-AND-ENVIRONMENTS.md](docs/BRANCHING-AND-ENVIRONMENTS.md).

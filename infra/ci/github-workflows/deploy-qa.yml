@@ -1,4 +1,4 @@
-# dev branch → QA VPS (KVM). Runs on every merge to dev.
+# dev branch → QA AWS EC2. Runs on every merge to dev.
 # Install: copy to .github/workflows/ (agents cannot edit that folder by design).
 name: deploy-qa
 on:

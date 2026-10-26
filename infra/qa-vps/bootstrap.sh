@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Hardens a fresh Ubuntu 24.04 KVM VPS and installs Docker + Sysbox for the QA environment.
+# Hardens a fresh Ubuntu 24.04 AWS EC2 instance and installs Docker + Sysbox for the QA environment.
 # Run once as root. Idempotent where practical. Read before running.
 set -euo pipefail
 
