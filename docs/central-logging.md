@@ -167,9 +167,21 @@ pnpm --filter @hs/api build
 
 ---
 
-## 8. Log Collection by Deployment Infrastructure
+## 8. Log Collection, Retention, and Archival Infrastructure
 
 All logs are written to standard output (`process.stdout`), following the Twelve-Factor App specification for logs.
 
-> [!NOTE]
-> No hosted log aggregation platform (e.g. AWS CloudWatch, Datadog, Sentry, or Grafana Loki) is currently provisioned or connected in this environment. In production deployment, container runtime collectors (such as AWS ECS log driver or AWS FireLens / Fluent Bit sidecar) will scrape stdout and forward structured JSON events to the designated log store.
+### Production Log Ingestion & Lifecycle Pipeline
+
+In deployed environments (Staging and Production):
+1. **Container Log Driver:** Containers run on AWS ECS using the `awslogs` driver, streaming `stdout`/`stderr` JSON records into service-specific CloudWatch Log Groups (`/aws/ecs/hellosmart-<service>-<env>`).
+2. **Active 7-Day Retention:** CloudWatch Log Groups enforce an explicit **7-day retention period** (`retention_in_days = 7`). Logs older than 7 days expire automatically from active query storage to optimize performance and control operational costs.
+3. **Continuous Cold Archival Pipeline:** CloudWatch Subscription Filters forward all log records in real time to Amazon Data Firehose delivery streams (`hs-logs-<service>-<env>`).
+4. **Partitioned S3 Cold Archive:** Firehose compresses logs using GZIP and writes batches into a dedicated, encrypted S3 bucket (`hs-logs-archive-<account_id>-<env>`) partitioned by service, year, month, day, and hour:
+   ```
+   s3://hs-logs-archive-<account_id>-<env>/services/<service>/year=YYYY/month=MM/day=DD/hour=HH/
+   ```
+5. **Separation of Concerns:** The log archive bucket is completely distinct from candidate work artifact buckets (`hs-candidate-<env>`) and database-backed business audit event tables (`app.audit_log`).
+6. **Configurable Archive Lifecycle:** Logs transition to S3 Glacier storage after 90 days. Expiration of cold archived logs is explicitly left unset in Terraform pending formal legal and regulatory compliance approval.
+
+For complete infrastructure specifications, Athena query examples, and operational runbooks, see [Log Retention and Archival Policy](log-retention-and-archival.md).

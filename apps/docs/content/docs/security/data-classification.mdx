@@ -13,7 +13,7 @@ description: "Candidate PII, session recordings, LLM transcripts, and secrets"
 | **Candidate-sensitive** | Recordings, terminal logs, AI transcripts, submissions, scores, notes | S3 `hs-candidate-<env>` (org-prefixed), Aurora | KMS CMK `hs-candidate` | Owning org + platform admin (audited) | 90 days after assessment closes (configurable, BR-27) |
 | **Personal** | Names, emails, IPs, consent records, user agents | Aurora | KMS CMK `hs-data` | Owning org; candidate sees own | Account life + legal hold; erasure on request |
 | **Commercial** | Templates, rubrics, quotes, invoices | Aurora, S3, ECR | KMS CMK `hs-data` | Assigned org + platform | Contract life; invoices 8 years (tax) |
-| **Internal** | Metrics, non-PII logs | CloudWatch | AWS-managed KMS | Engineering | 30–90 days |
+| **Internal** | Metrics, non-PII logs | CloudWatch (active: 7 days) → S3 archive `hs-logs-archive-<env>` | KMS CMK `hs-observability` / AWS KMS | Engineering / SecOps | CloudWatch: 7 days; S3 archive: pending legal confirmation (default: unset) |
 | **Public** | Landing page content | S3/CloudFront | n/a | Anyone | n/a |
 
-Rules: logs never contain Secret or Candidate-sensitive content (refs only). Lower environments never receive production data. Fixtures are synthetic.
+Rules: logs never contain Secret or Candidate-sensitive content (refs only). Active container and application logs are retained in CloudWatch Logs for exactly 7 days before automated expiration. All logs are continuously delivered via Kinesis Data Firehose with GZIP compression to dedicated S3 cold storage (`hs-logs-archive-<env>`) partitioned by service and date for audit, forensics, and verification. Expiration for the S3 cold archive is left unset until approved by legal and compliance counsel. Lower environments never receive production data. Fixtures are synthetic.
