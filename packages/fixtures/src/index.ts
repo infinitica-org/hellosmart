@@ -15,6 +15,19 @@ export * from './lib/guard.js';
 export * from './lib/masker.js';
 export * from './lib/upsert.js';
 
+// Test fixtures and tenant context helpers for integration tests
+export interface TenantContext {
+  orgId: string;
+  sessionToken: string;
+}
+
+export async function createTenantContext(slug: string): Promise<TenantContext> {
+  return {
+    orgId: `org_${slug}`,
+    sessionToken: `token_${slug}`,
+  };
+}
+
 /**
  * Options for programmatic invocation of the CLI seed runner.
  */

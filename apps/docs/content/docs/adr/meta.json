@@ -1,0 +1,13 @@
+{
+  "title": "Architecture Decisions (ADR)",
+  "pages": [
+    "0001-modular-monolith-and-services",
+    "0002-tenancy-rls",
+    "0003-shared-host-sysbox-workspaces",
+    "0004-contract-first",
+    "0005-auth-in-house",
+    "0006-aws-multi-account",
+    "0007-supply-chain",
+    "0008-ai-sdlc"
+  ]
+}

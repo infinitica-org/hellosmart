@@ -1,0 +1,29 @@
+{
+  "title": "Complete Knowledge Base",
+  "description": "The complete 20-chapter HelloSmart product & engineering manual",
+  "pages": [
+    "00-start-here",
+    "01-the-product",
+    "02-core-concepts",
+    "03-who-uses-the-platform",
+    "04-how-a-customer-goes-live",
+    "05-the-company-journey",
+    "06-the-candidate-journey",
+    "07-workspaces",
+    "08-ai-controls",
+    "09-reviewer-agents-and-scoring",
+    "10-timing-and-windows",
+    "11-entitlements-plans-and-add-ons",
+    "12-the-platform-admin-journey",
+    "13-quotes-payments-and-billing",
+    "14-lifecycles-at-a-glance",
+    "15-when-things-go-wrong",
+    "16-security-privacy-and-compliance",
+    "17-platform-architecture-conceptual",
+    "18-roadmap-what-ships-first-and-what-follows",
+    "19-frequently-asked-questions",
+    "20-glossary",
+    "21-appendix-a",
+    "22-appendix-b"
+  ]
+}

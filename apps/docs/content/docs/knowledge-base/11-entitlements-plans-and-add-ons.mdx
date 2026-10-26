@@ -1,0 +1,33 @@
+---
+title: "Entitlements, plans and add-ons"
+description: "HelloSmart MMP Knowledge Base — Chapter 11: Entitlements, plans and add-ons"
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+### 11.1 What controls what a company can do
+
+The Platform Admin sets, per company, the trial limits (X, Y, Z) and feature switches. Plans have a price, a billing interval, included limits and a feature set. A new plan never silently changes an existing customer's contract.
+
+### 11.2 Add-ons
+
+| Add-on | What it unlocks |
+|---|---|
+| Own routing / custom domain | Candidate links and emails on the company's own domain, with DNS verification and automatic SSL. |
+| White label and branding | Removes the "Powered by hellosmart.ai" mark; custom colors, logo and email sender domain. |
+| Custom template build | Templates prepared for one company, quoted per template or role. |
+| AI credits | A capped HelloSmart-held AI key allocated to the company. |
+| Local mode, Browser workspace, extra reviewer agents, extended data retention | Phase 2 and later options. |
+
+Features remain **locked until paid** (or granted by a Platform Admin).
+
+```mermaid
+flowchart TD
+  A["Add-on appears on the quote"] --> B{"Paid?"}
+  B -->|"No"| L["Feature stays locked with a request-a-quote prompt"]
+  B -->|"Yes"| U["Platform Admin enables it"]
+  U --> D["Own domain: enter domain, verify DNS, issue SSL"]
+  U --> W["White label: remove mark, apply branding and email domain"]
+```
+
+---
