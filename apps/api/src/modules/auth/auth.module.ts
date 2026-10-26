@@ -34,7 +34,9 @@ import { ThrottlerProblemFilter } from './auth-exception.filter.js';
           if (config.REDIS_URL) {
             redisClient = new Redis(config.REDIS_URL, {
               lazyConnect: true,
-              maxRetriesPerRequest: 2,
+              maxRetriesPerRequest: isStrict ? 2 : 0,
+              connectTimeout: isStrict ? 5000 : 300,
+              retryStrategy: isStrict ? undefined : () => null,
             });
           }
         } catch {
@@ -104,7 +106,10 @@ import { ThrottlerProblemFilter } from './auth-exception.filter.js';
         if (config.REDIS_URL) {
           try {
             const store = new RedisSessionStore(config.REDIS_URL);
-            const isHealthy = await store.ping();
+            const isHealthy = await Promise.race([
+              store.ping(),
+              new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 300)),
+            ]);
             if (isHealthy) {
               return store;
             }
