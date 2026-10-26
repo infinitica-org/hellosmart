@@ -99,11 +99,16 @@ Adhering to HelloSmart Security Policies and BRD compliance:
   - `password`, `*.password`
   - `secret`, `*.secret`
   - `token`, `*.token`
-  - `apiKey`, `*.apiKey`
-  - `access_token`, `refresh_token`
+  - `apiKey`, `*.apiKey`, `api_key`, `*.api_key`
+  - `accessToken`, `*.accessToken`, `access_token`, `*.access_token`
+  - `refreshToken`, `*.refreshToken`, `refresh_token`, `*.refresh_token`
+  - `sessionSecret`, `*.sessionSecret`, `session_secret`, `*.session_secret`
+  - `clientSecret`, `*.clientSecret`, `client_secret`, `*.client_secret`
   - `DATABASE_URL`, `REDIS_URL`, `SESSION_SECRET`
+- **URI Credential Sanitization:** Connection strings in error messages (e.g. `postgres://user:pass@host/db`) are automatically sanitized to `postgres://[REDACTED]@host/db`.
 - **Request Bodies:** HTTP request bodies are **never** logged.
-- **Query Parameters:** Query strings are stripped from the logged `url` to prevent tokens, API keys, or personal information in query strings from reaching logs.
+- **Query Parameters:** Query strings are stripped from both the logged `url` and error diagnostic messages to prevent tokens, API keys, or personal information from reaching logs.
+- **Route Normalization:** Trailing slashes are normalized so health check probes (`/health`, `/health/`, `/api/v1/health`, `/api/v1/health/`) consistently receive `debug`-level dampening.
 - **Error Obfuscation:** Internal error stack traces are never exposed to API clients or placed in public response payloads.
 
 ---

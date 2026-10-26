@@ -58,6 +58,13 @@ class LoggingTestController {
     throw new InternalServerErrorException('Unexpected database failure');
   }
 
+  @Get('database-error')
+  getDatabaseError() {
+    throw new InternalServerErrorException(
+      'Database connection failed: postgres://hs_app:super_secret_db_pass_999@localhost:5432/hellosmart?sslmode=disable&token=leak_token',
+    );
+  }
+
   @Post('credentials')
   postCredentials(@Body() body: Record<string, unknown>) {
     return { ok: true, keysReceived: Object.keys(body) };
@@ -73,6 +80,11 @@ class LoggingTestController {
 class HealthController {
   @Get('health')
   getHealth() {
+    return { status: 'healthy' };
+  }
+
+  @Get('api/v1/health')
+  getApiHealth() {
     return { status: 'healthy' };
   }
 }
@@ -103,10 +115,11 @@ describe('Central Logging Framework (Fastify + Pino)', () => {
       logger: rootLogger,
       disableRequestLogging: true,
       genReqId: resolveRequestId,
+      ignoreTrailingSlash: true,
     });
 
     registerLoggingHooks(adapter.getInstance(), {
-      healthCheckPaths: ['/health'],
+      healthCheckPaths: ['/health', '/api/v1/health'],
       healthCheckLevel: 'debug',
     });
 
@@ -327,18 +340,60 @@ describe('Central Logging Framework (Fastify + Pino)', () => {
     expect(res.headers[REQUEST_ID_HEADER]).toBeDefined();
   });
 
-  // Requirement 2: Health check noise reduction policy
-  it('logs health check requests at debug level to avoid log flooding', async () => {
-    const res = await fastifyInstance.inject({
+  // Requirement 2 & COR-02: Health check noise reduction policy with trailing slash normalization
+  it('logs health check requests at debug level to avoid log flooding, even with trailing slashes', async () => {
+    const res1 = await fastifyInstance.inject({
       method: 'GET',
       url: '/health',
     });
+    const res2 = await fastifyInstance.inject({
+      method: 'GET',
+      url: '/health/',
+    });
+    const res3 = await fastifyInstance.inject({
+      method: 'GET',
+      url: '/api/v1/health',
+    });
+    const res4 = await fastifyInstance.inject({
+      method: 'GET',
+      url: '/api/v1/health/',
+    });
 
-    expect(res.statusCode).toBe(200);
+    expect(res1.statusCode).toBe(200);
+    expect(res2.statusCode).toBe(200);
+    expect(res3.statusCode).toBe(200);
+    expect(res4.statusCode).toBe(200);
 
-    const healthLog = capturedLogs.find((l) => l.url === '/health' && l.msg === 'request completed');
-    expect(healthLog).toBeDefined();
-    expect(healthLog!.level).toBe(20); // 20 = debug
+    const healthLogs = capturedLogs.filter(
+      (l) => l.msg === 'request completed' && (l.url === '/health' || l.url === '/api/v1/health'),
+    );
+    expect(healthLogs.length).toBe(4);
+    for (const hLog of healthLogs) {
+      expect(hLog.level).toBe(20); // 20 = debug
+    }
+  });
+
+  // SEC-01: Redacts credentials embedded in database URI error messages
+  it('redacts database credentials and connection URIs from error messages', async () => {
+    const res = await fastifyInstance.inject({
+      method: 'GET',
+      url: '/test/database-error',
+    });
+
+    expect(res.statusCode).toBe(500);
+
+    const completionLogs = capturedLogs.filter((l) => l.msg === 'request completed');
+    const [log] = completionLogs;
+
+    expect(log).toBeDefined();
+    expect(log!.level).toBe(50); // 50 = error
+    expect(log!.err?.message).not.toContain('super_secret_db_pass_999');
+    expect(log!.err?.message).not.toContain('leak_token');
+    expect(log!.err?.message).toContain('postgres://[REDACTED]@localhost:5432/hellosmart');
+
+    const serialized = JSON.stringify(log);
+    expect(serialized).not.toContain('super_secret_db_pass_999');
+    expect(serialized).not.toContain('leak_token');
   });
 
   // Requirement 5: Query strings with tokens are not logged in url

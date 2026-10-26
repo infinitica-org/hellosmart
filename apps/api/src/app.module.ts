@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { type DynamicModule, Module } from '@nestjs/common';
+import type { Logger } from 'pino';
 import { ObservabilityModule } from './modules/observability/observability.module.js';
 
 // Module map (owner: Core Backend unless noted). Each folder in ./modules is one bounded context.
@@ -10,4 +11,15 @@ import { ObservabilityModule } from './modules/observability/observability.modul
 @Module({
   imports: [ObservabilityModule],
 })
-export class AppModule {}
+export class AppModule {
+  static forRoot(options?: { logger?: Logger }): DynamicModule {
+    const observability = options?.logger
+      ? ObservabilityModule.forRoot({ logger: options.logger })
+      : ObservabilityModule.forRoot();
+
+    return {
+      module: AppModule,
+      imports: [observability],
+    };
+  }
+}

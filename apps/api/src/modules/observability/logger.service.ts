@@ -95,12 +95,42 @@ export class AppLoggerService implements LoggerService {
     const result: { context?: string; trace?: string; extra?: Record<string, unknown> } = {};
 
     if (isError) {
-      if (typeof params[0] === 'string') {
-        result.trace = params[0];
+      if (params[0] instanceof Error) {
+        if (params[0].stack !== undefined) {
+          result.trace = params[0].stack;
+        } else {
+          result.trace = params[0].message;
+        }
+        if (typeof params[1] === 'string') {
+          result.context = params[1];
+        }
+      } else if (params.length === 1 && typeof params[0] === 'string') {
+        // Lone string parameter: determine if it is a stack trace or context identifier
+        if (this.isStackLike(params[0])) {
+          result.trace = params[0];
+        } else {
+          result.context = params[0];
+        }
+      } else {
+        // Multiple parameters: standard NestJS (trace, context) positional ordering
+        if (typeof params[0] === 'string') {
+          result.trace = params[0];
+        }
+        if (typeof params[1] === 'string') {
+          result.context = params[1];
+        }
       }
-      if (typeof params[1] === 'string') {
-        result.context = params[1];
+
+      let extra: Record<string, unknown> | undefined;
+      for (const p of params) {
+        if (typeof p === 'object' && p !== null && !(p instanceof Error) && !Array.isArray(p)) {
+          extra = { ...extra, ...(p as Record<string, unknown>) };
+        }
       }
+      if (extra !== undefined) {
+        result.extra = extra;
+      }
+
       return result;
     }
 
@@ -120,5 +150,9 @@ export class AppLoggerService implements LoggerService {
     }
 
     return result;
+  }
+
+  private isStackLike(val: string): boolean {
+    return val.includes('\n') || val.includes('at ') || /^([a-zA-Z0-9_]*Error|Exception):/i.test(val);
   }
 }

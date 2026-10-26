@@ -17,6 +17,48 @@ export function resolveRequestId(rawReq: RawRequestLike): string {
   return crypto.randomUUID();
 }
 
+/**
+ * Sanitizes an error message before structured logging:
+ * 1. Redacts user credentials embedded in URI connection strings:
+ *    `postgres://user:password@host:5432/db` -> `postgres://[REDACTED]@host:5432/db`
+ *    `redis://:mypassword@localhost:6379` -> `redis://[REDACTED]@localhost:6379`
+ * 2. Strips query parameters (?token=... or ?apiKey=...)
+ */
+export function sanitizeErrorMessage(message: unknown): string {
+  if (typeof message !== 'string') {
+    return 'Request failed';
+  }
+
+  let sanitized = message;
+
+  // 1. Redact credentials embedded in URI connection strings (scheme://user:pass@host)
+  // Handles encoded characters (e.g. %40, %3A), password-only (redis://:pass@host), and username:password
+  sanitized = sanitized.replace(
+    /\b([a-zA-Z][a-zA-Z0-9+.-]*:\/\/)(?:[^@\s/]+)@/g,
+    '$1[REDACTED]@',
+  );
+
+  // 2. Strip query parameters if included in framework error messages (e.g. NestJS "Cannot GET /path?token=...")
+  if (sanitized.includes('?')) {
+    sanitized = sanitized.replace(/\?[^\s"']*/g, '');
+  }
+
+  return sanitized;
+}
+
+/**
+ * Normalizes route path by removing trailing slashes for consistent routing and health check dampening:
+ * - "/health/" -> "/health"
+ * - "/api/v1/health/" -> "/api/v1/health"
+ * - "/" -> "/"
+ */
+export function normalizePath(path: string): string {
+  if (!path || path === '/') {
+    return '/';
+  }
+  return path.replace(/\/+$/, '') || '/';
+}
+
 export interface LoggingHooksOptions {
   healthCheckPaths?: readonly string[];
   healthCheckLevel?: 'info' | 'debug' | 'trace' | 'silent';
@@ -113,8 +155,8 @@ export function registerLoggingHooks(
 
   fastify.addHook('onResponse', (req: FastifyLikeRequest, reply: FastifyLikeReply, done: () => void) => {
     const rawUrl = req.raw?.url ?? req.url ?? '/';
-    const [normalizedUrl] = rawUrl.split('?');
-    const safePath = normalizedUrl || '/';
+    const [pathWithoutQuery] = rawUrl.split('?');
+    const safePath = normalizePath(pathWithoutQuery || '/');
 
     const statusCode = reply.statusCode;
 
@@ -153,14 +195,11 @@ export function registerLoggingHooks(
 
     const err = req.rawError ?? req.errorInfo;
     if (err) {
-      let rawMessage = typeof err.message === 'string' ? err.message : 'Request failed';
-      // Strip query parameters if included in framework error messages (e.g. NestJS "Cannot GET /path?token=...")
-      if (rawMessage.includes('?')) {
-        rawMessage = rawMessage.replace(/\?[^\s"']*/g, '');
-      }
+      const rawMessage = typeof err.message === 'string' ? err.message : 'Request failed';
+      const cleanMessage = sanitizeErrorMessage(rawMessage);
 
       const errPayload: Record<string, unknown> = {
-        message: rawMessage,
+        message: cleanMessage,
       };
       if (err.name && err.name !== 'Error') {
         errPayload['name'] = err.name;

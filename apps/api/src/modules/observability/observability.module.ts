@@ -9,13 +9,39 @@ import {
 import type { Logger } from 'pino';
 import { AppLoggerService, PINO_LOGGER } from './logger.service.js';
 import { createLogger, type CreateLoggerOptions } from './logger.config.js';
+import { loadConfig } from '../../config/config.js';
+
+let activeSharedLogger: Logger | undefined;
+
+export function setSharedLogger(logger?: Logger): void {
+  activeSharedLogger = logger;
+}
+
+export function getSharedLogger(): Logger | undefined {
+  return activeSharedLogger;
+}
+
+function resolveEffectiveLogger(configOptions?: CreateLoggerOptions): Logger {
+  if (activeSharedLogger) {
+    return activeSharedLogger;
+  }
+  if (configOptions) {
+    return createLogger(configOptions);
+  }
+  try {
+    const config = loadConfig();
+    return createLogger({ level: config.LOG_LEVEL });
+  } catch {
+    return createLogger();
+  }
+}
 
 @Global()
 @Module({
   providers: [
     {
       provide: PINO_LOGGER,
-      useFactory: () => createLogger(),
+      useFactory: () => resolveEffectiveLogger(),
     },
     AppLoggerService,
   ],
@@ -27,9 +53,13 @@ export class ObservabilityModule implements OnApplicationShutdown {
   ) {}
 
   static forRoot(options?: { logger?: Logger; config?: CreateLoggerOptions }): DynamicModule {
+    if (options?.logger) {
+      setSharedLogger(options.logger);
+    }
+
     const loggerProvider = {
       provide: PINO_LOGGER,
-      useValue: options?.logger ?? createLogger(options?.config),
+      useFactory: () => resolveEffectiveLogger(options?.config),
     };
 
     return {
