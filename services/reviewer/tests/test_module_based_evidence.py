@@ -161,6 +161,29 @@ def test_architecture_design_reports_coupling_hubs(tmp_path: Path) -> None:
     assert hub is not None and "pkg.config=3" in hub.content
 
 
+def test_architecture_design_reports_code_map_aggregate_counts(tmp_path: Path) -> None:
+    """ProjAgentScan's architecture-design rubric cites "how much of the codebase is
+    object-oriented vs procedural" via code_map's aggregate -- class/function/method counts and
+    dataclass/enum/exception kinds -- not just per-module summaries."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("models.py").write_text(
+        "from dataclasses import dataclass\n\n\n"
+        "@dataclass\nclass Point:\n    x: int\n    y: int\n\n\n"
+        "class ConfigError(Exception):\n    pass\n\n\n"
+        "def helper():\n    return 1\n",
+        encoding="utf-8",
+    )
+
+    pack = build_arch_evidence("sub-1", str(root))
+    agg = pack.resolve("repo:fact.code_map.aggregate")
+    assert agg is not None
+    assert "class_count=2" in agg.content
+    assert "function_count=1" in agg.content
+    assert "dataclasses=1" in agg.content
+    assert "exceptions=1" in agg.content
+
+
 def test_architecture_design_computes_inheritance_depth(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     root.mkdir()

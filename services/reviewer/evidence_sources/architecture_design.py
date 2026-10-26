@@ -15,7 +15,7 @@ import ast
 from app.evidence import EvidenceCoverage, EvidenceItem, EvidencePack
 from app.sanitizer import normalise, suspicious
 
-from .checks.code_map import extract_classes
+from .checks.code_map import ModuleClasses, compute_code_map_aggregate, extract_classes
 from .checks.coupling import analyze_coupling
 from .checks.dependency_cycles import find_dependency_cycles
 from .checks.import_graph import ImportGraph, build_import_graph, module_id_for
@@ -114,8 +114,19 @@ def _add_coupling(pack: EvidencePack, graph: ImportGraph) -> None:
         )
 
 
+def _add_code_map_aggregate(pack: EvidencePack, modules: list[ModuleClasses]) -> None:
+    agg = compute_code_map_aggregate(modules)
+    pack.items.append(
+        EvidenceItem(
+            ref="repo:fact.code_map.aggregate", source="artifact",
+            content="; ".join(f"{k}={v}" for k, v in agg.items()),
+            untrusted=False, sanitized=False,
+        )
+    )
+
+
 def _add_inheritance(pack: EvidencePack, reader: RepoReader, py_files: list[str]) -> None:
-    modules = []
+    modules: list[ModuleClasses] = []
     for rel in py_files:
         text = reader.read_text(rel)
         if text is None:
@@ -124,6 +135,8 @@ def _add_inheritance(pack: EvidencePack, reader: RepoReader, py_files: list[str]
         if tree is None:
             continue
         modules.append(extract_classes(rel, tree))
+
+    _add_code_map_aggregate(pack, modules)
 
     result = analyze_inheritance(modules)
     if result is None:
