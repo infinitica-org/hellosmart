@@ -90,21 +90,79 @@ Status          : Seed Completed Successfully (Idempotent)
 =========================================================
 ```
 
-### Record Count Breakdown: 37 Prototype Records vs 123 Enterprise Records
+### Record Count Breakdown: 123 Enterprise Seed Records
 
-| Entity Group              | Prototype (Legacy) | Enterprise Seed (Current) | Purpose & Details                                                                                                                                                                                                                                           |
-| ------------------------- | ------------------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Organizations**         | 2                  | **3**                     | Aster Ridge Technologies (`paid_active`), Brindle & Co (`trial_active`), and Crestview Financial (`suspended` negative sample).                                                                                                                             |
-| **Entitlements**          | 2                  | **3**                     | Quota definitions, feature flags (`cloud`, `chat`), and trial window (14 days).                                                                                                                                                                             |
-| **Platform Admins**       | 3                  | **1**                     | `superadmin@hellosmart.ai` with MFA enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`).                                                                                                                                                         |
-| **Company Admins**        | 2                  | **3**                     | `admin@asterridge.com` (Aster Ridge), `trialadmin@brindle.co` (Brindle & Co), and `admin@crestview.test` (Crestview Financial negative test sample).                                                                                                        |
-| **Candidates**            | 28                 | **110**                   | **Aster Ridge**: 100 candidates (full quota capacity test: 70 active, 15 invited, 10 suspended, 5 deleted).<br>**Brindle & Co**: 10 candidates (full trial cap test: 4 active, 3 invited, 1 suspended, 2 deleted). Includes designated loginable candidate. |
-| **Candidate Invitations** | 0                  | **3**                     | Candidate onboarding tokens: 1 valid (72h expiry), 1 expired (-24h), 1 used (`used_at` set).                                                                                                                                                                |
-| **GRAND TOTAL**           | **37**             | **123**                   | **123 persistent records across 4 tenant-isolated tables.**                                                                                                                                                                                                 |
+| Entity Group              | Count   | Purpose & Details                                                                                                                                                                                                                                           |
+| ------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Organizations**         | **3**   | Aster Ridge Technologies (`paid_active`), Brindle & Co (`trial_active`), and Crestview Financial (`suspended` negative sample).                                                                                                                             |
+| **Entitlements**          | **3**   | Quota definitions, feature flags (`cloud`, `chat`), and trial window (14 days).                                                                                                                                                                             |
+| **Platform Admins**       | **1**   | `superadmin@hellosmart.ai` with MFA enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`).                                                                                                                                                         |
+| **Company Admins**        | **3**   | `admin@asterridge.com` (Aster Ridge), `trialadmin@brindle.co` (Brindle & Co), and `admin@crestview.test` (Crestview Financial negative test sample).                                                                                                        |
+| **Candidates**            | **110** | **Aster Ridge**: 100 candidates (full quota capacity test: 70 active, 15 invited, 10 suspended, 5 deleted).<br>**Brindle & Co**: 10 candidates (full trial cap test: 4 active, 3 invited, 1 suspended, 2 deleted). Includes designated loginable candidate. |
+| **Candidate Invitations** | **3**   | Candidate onboarding tokens: 1 valid (72h expiry), 1 expired (-24h), 1 used (`used_at` set).                                                                                                                                                                |
+| **GRAND TOTAL**           | **123** | **123 persistent records across 4 tenant-isolated tables.**                                                                                                                                                                                                 |
 
 ---
 
-## 3. Idempotency & Safe Re-runs
+## 3. Seed Verification & Data Integrity Checks (`pnpm db:verify-seed`)
+
+To independently verify that the seeded database satisfies all schema constraints, tenant scoping rules, foreign key relationships, and security invariants, execute:
+
+```bash
+# Run verification checks against the local database
+pnpm db:verify-seed
+
+# Run verification with loginable accounts check (skipping bulk unhashed candidates)
+pnpm db:verify-seed -- --loginable-only-hashes
+
+# Run verification with full programmatic seed idempotency benchmark
+pnpm db:verify-seed -- --loginable-only-hashes --check-idempotency
+```
+
+### Verification Checks Performed
+
+The verification runner connects using the schema owner role (`DATABASE_MIGRATOR_URL`) and evaluates 11 comprehensive integrity gates:
+
+1. **Environment Safety Guard**: Pre-flight verification that `NODE_ENV` is non-production and target database is local.
+2. **Database Connectivity & Role**: Asserts successful connection to PostgreSQL and verifies the executing user context.
+3. **Table Record Counts**: Asserts exact row counts for `app.organizations` (3), `app.entitlements` (3), `app.users` (114), and `app.invitations` (3), matching the 123 total.
+4. **User Role & Status Distribution**: Asserts exact breakdown across roles and statuses (78 active, 18 invited, 11 suspended, 7 deleted).
+5. **Tenant Scoping & Foreign Keys**: Verifies all 113 tenant users have valid `org_id` foreign keys, platform admin has `org_id IS NULL`, and invitations match user organization context.
+6. **Active User Password Hashes**: Verifies that active accounts have valid Argon2id password hashes ($64\text{ MB}$, $3$ iterations, parallelism $1$).
+7. **Platform Admin MFA Configuration**: Verifies `mfa_secret_ref` is populated and contains a Secrets Manager reference rather than a raw plaintext Base32 secret.
+8. **Entitlements & Trial Windows**: Verifies 1:1 entitlement mapping with organizations and valid trial deadlines.
+9. **Invitations State & Token Hashes**: Verifies exactly 1 valid, 1 expired, and 1 used invitation, each storing a 64-character hexadecimal SHA-256 digest (`token_hash`).
+10. **Soft-Deletion Invariants**: Asserts that `status = 'deleted'` users have `deleted_at` timestamps populated while active users have `null`.
+11. **Plaintext Secret & Pattern Scan**: Scans all text columns across all tables to guarantee zero plaintext passwords (`$SEED_DEFAULT_PASSWORD`), TOTP secrets, or leaked tokens are stored.
+
+### Expected Verification Output
+
+```text
+================ HelloSmart Seed Verification ================
+┌─────────┬─────────────────────────────────────────────────────────┬────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ (index) │ Check                                                   │ Status │ Details                                                                                                           │
+├─────────┼─────────────────────────────────────────────────────────┼────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 0       │ 'Environment Safety Guard'                              │ 'PASS' │ "Environment 'development', local target host 'localhost:5434' verified"                                          │
+│ 1       │ 'Database Connectivity & Role'                          │ 'PASS' │ "Connected to localhost:5434/hellosmart as role 'hs_migrator'"                                                    │
+│ 2       │ 'Table Record Counts'                                   │ 'PASS' │ '123 records total (3 orgs, 3 ents, 114 users, 3 invs)'                                                           │
+│ 3       │ 'User Role & Status Distribution'                       │ 'PASS' │ '78 active, 18 invited, 11 suspended, 7 deleted'                                                                  │
+│ 4       │ 'Tenant Scoping & Foreign Keys'                         │ 'PASS' │ 'All tenant records strictly scoped; platform_has_no_org holds; FKs match'                                        │
+│ 5       │ 'Active User Password Hashes (Loginable Accounts Only)' │ 'PASS' │ 'All designated loginable active accounts have valid Argon2id hashes (73 bulk accounts unhashed for performance)' │
+│ 6       │ 'Platform Admin MFA Configuration'                      │ 'PASS' │ "Platform admin MFA configured via secret reference 'secrets/seed-superadmin-mfa' (not plain Base32)"             │
+│ 7       │ 'Entitlements & Trial Windows'                          │ 'PASS' │ '1:1 mapping with orgs, trial_ends_at set for trial_active, valid statuses'                                       │
+│ 8       │ 'Invitations State & Token Hashes'                      │ 'PASS' │ '1 valid, 1 expired, 1 used; all tokens are 64-hex SHA-256 digests'                                               │
+│ 9       │ 'Soft-Deletion Invariants'                              │ 'PASS' │ 'Deleted users have deleted_at populated; active users have deleted_at null'                                      │
+│ 10      │ 'Plaintext Secret & Pattern Scan'                       │ 'PASS' │ 'Zero plaintext passwords, TOTP secrets, or leaked tokens detected (verified against local raw tokens)'           │
+└─────────┴─────────────────────────────────────────────────────────┴────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+Target Database : localhost:5434 / hellosmart
+Execution Time  : ~140ms
+Status          : Verification Passed (All checks OK)
+==============================================================
+```
+
+---
+
+## 4. Idempotency & Safe Re-runs
 
 The seed engine is **100% idempotent**:
 

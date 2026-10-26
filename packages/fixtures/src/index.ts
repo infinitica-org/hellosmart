@@ -16,6 +16,7 @@ export * from './lib/masker.js';
 export * from './lib/credentials.js';
 export * from './lib/upsert.js';
 export * from './lib/invite-links.js';
+export * from './verify.js';
 import { getAcceptInviteLink } from './lib/invite-links.js';
 
 // Test fixtures and tenant context helpers for integration tests
