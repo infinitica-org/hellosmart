@@ -1,4 +1,4 @@
-# QA stack on the KVM VPS. Images are the same ones built for prod (tagged with the dev commit SHA).
+# QA stack on the AWS EC2 instance. Images are the same ones built for prod (tagged with the dev commit SHA).
 # Only Caddy publishes ports; everything else is on the internal network.
 name: hellosmart-qa
 

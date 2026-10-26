@@ -19,7 +19,7 @@ Zoho item (has requirement ID)
   → agent builds against packages/contracts + fakes
   → agent self-verifies (tests, /security-check)
   → PR into dev → CI + AI review + human review (CODEOWNERS)
-  → squash-merge → auto-deploy to QA VPS
+  → squash-merge → auto-deploy to QA on AWS EC2
   → QA verifies on qa.hellosmart.ai → Zoho item "Done"
   → weekly release PR dev → main → AWS prod (Monday)
 ```
