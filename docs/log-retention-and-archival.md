@@ -1,5 +1,15 @@
 # Central Log Retention and Archival Policy — HelloSmart.ai
 
+> [!IMPORTANT]
+> **Runtime Environment & Deployment Status:**
+> The existing QA deployment currently runs on a single KVM VPS via Docker Compose (`infra/qa-vps/docker-compose.qa.yml`), where logs are managed locally on host disk by the Docker daemon's `json-file` log driver (50 MB cap, 5 rotated files).
+> 
+> The Terraform module under [`infra/terraform/modules/observability/`](../infra/terraform/modules/observability/) provisions the **target AWS cloud observability architecture** (CloudWatch Log Groups, Subscription Filters, Amazon Data Firehose streams, and the S3 cold archive).
+> 
+> Containers will begin streaming into this pipeline once the AWS ECS compute module (`infra/terraform/modules/compute/`) and ECS task definitions (`awslogs` log driver) are deployed. **Live cloud logging and S3 archival are not currently active in the QA VPS environment.**
+
+---
+
 ## 1. Executive Summary & Policy Objectives
 
 HelloSmart.ai operates high-stakes hiring simulations where technical diagnostic data must be preserved securely, efficiently, and compliantly. This document defines the infrastructure architecture and operational policy for storing, retaining, and archiving backend application and container logs.
@@ -10,12 +20,12 @@ HelloSmart.ai operates high-stakes hiring simulations where technical diagnostic
 |---|---|---|
 | **Active Retention** | Exactly 7 days (168 hours) | AWS CloudWatch Log Groups with `retention_in_days = 7` |
 | **Cold Archival** | High-durability S3 storage | Amazon Data Firehose streaming to dedicated encrypted S3 bucket |
-| **Compression & Format** | GZIP compressed JSON | Native Firehose GZIP compression of structured log batches |
+| **Compression & Format** | Single-GZIP compressed JSON | CloudWatch subscription filter native GZIP payload passed uncompressed by Firehose |
 | **Partitioning Layout** | Hive-compliant date partitioning | `services/<service>/year=YYYY/month=MM/day=DD/hour=HH/` |
 | **Data Separation** | Dedicated archive bucket | Strictly isolated from candidate work (`hs-candidate-*`) and business audit events (`app.audit_log`) |
 | **Archive Expiration** | Unset (Indefinite pending legal approval) | Configurable Terraform parameter `archive_retention_days = null` |
-| **Cost Optimization** | Glacier transition at 90 days | S3 Lifecycle configuration moving cold logs to `GLACIER` storage |
-| **Monitoring & Alarms** | Real-time delivery health checks | CloudWatch Metric Alarms on Firehose delivery freshness and error streams |
+| **Cold Storage Class** | Glacier Instant Retrieval (`GLACIER_IR`) | S3 Lifecycle transition at 90 days; sub-second query latency in Athena without restore jobs |
+| **Monitoring & Alarms** | Real-time delivery health checks | CloudWatch Metric Alarms on Firehose delivery freshness routed to dedicated SNS alert topic |
 
 ---
 
@@ -23,60 +33,64 @@ HelloSmart.ai operates high-stakes hiring simulations where technical diagnostic
 
 ```mermaid
 flowchart TD
-  subgraph ECS["AWS ECS Cluster"]
-    A["API (Fastify + Pino)"]
-    W["Worker (BullMQ / NestJS)"]
-    P["AI Proxy (FastAPI)"]
-    R["Reviewer (FastAPI)"]
-    G["WS Gateway"]
+  subgraph ECS["AWS ECS Cluster (Target State)"]
+    WEB["Web (Next.js 15 SSR)"]
+    API["API (Fastify + Pino)"]
+    WRK["Worker (BullMQ / NestJS)"]
+    PRX["AI Proxy (FastAPI)"]
+    REV["Reviewer (FastAPI)"]
+    WSG["WS Gateway"]
   end
 
-  subgraph CW["CloudWatch Logs (Active: 7 Days)"]
-    LG_A["/aws/ecs/hellosmart-api-<env>"]
-    LG_W["/aws/ecs/hellosmart-worker-<env>"]
-    LG_P["/aws/ecs/hellosmart-ai-proxy-<env>"]
-    LG_R["/aws/ecs/hellosmart-reviewer-<env>"]
-    LG_G["/aws/ecs/hellosmart-ws-gateway-<env>"]
+  subgraph CW["CloudWatch Logs (Active: 7-Day TTL)"]
+    LG["/aws/ecs/hellosmart-{service}-{env}<br/><b>retention_in_days = 7</b>"]
   end
 
   subgraph FH["Amazon Data Firehose"]
-    SF["CloudWatch Subscription Filters"]
-    DS["Delivery Streams (GZIP, 5MB / 300s buffer)"]
-    ERR["Error Log Group"]
+    SF["CloudWatch Subscription Filters (Sends GZIP batches)"]
+    DS["Firehose Delivery Streams<br/>• compression_format = UNCOMPRESSED<br/>• 5 MB / 300s buffer"]
+    ERR["Error Log Group: /aws/kinesisfirehose/hellosmart-errors-{env}"]
   end
 
-  subgraph S3["S3 Cold Archive: hs-logs-archive-<env>"]
+  subgraph S3["S3 Cold Archive: hs-logs-archive-*"]
     PART["services/{service}/year={YYYY}/month={MM}/day={DD}/hour={HH}/"]
-    GLACIER["Glacier Transition (Day 90)"]
+    GLACIER["Glacier Instant Retrieval (Day 90 Transition)"]
     EXPIRATION["Expiration (Unset / Configurable)"]
   end
 
-  A & W & P & R & G -->|"stdout (JSON)"| CW
-  LG_A & LG_W & LG_P & LG_R & LG_G -->|"Real-time stream"| SF
+  subgraph MON["Observability & Alarms"]
+    ALARM["CloudWatch Metric Alarm: DeliveryToS3.DataFreshness > 900s"]
+    SNS["Dedicated SNS Topic: hs-observability-alerts-{env}"]
+  end
+
+  WEB & API & WRK & PRX & REV & WSG -->|"stdout (JSON)"| LG
+  LG -->|"Real-time stream"| SF
   SF --> DS
-  DS -->|"GZIP Batches"| PART
+  DS -->|"Single-GZIP Batches"| PART
   DS -.->|"Delivery failures"| ERR
   PART --> GLACIER
   GLACIER --> EXPIRATION
+  DS --> ALARM --> SNS
 ```
 
 ---
 
-## 3. Scope of Backend Services
+## 3. Scope of In-Scope Container Services
 
-The retention and archival pipeline captures all backend container services across all deployed environments (`staging`, `prod`):
+The retention and archival pipeline captures all six container services defined across HelloSmart's architecture and deployment workflows:
 
-1. **`api` (`apps/api`):** HTTP request completions, authentication events, lifecycle operations, and caught exceptions.
-2. **`worker` (`apps/worker`):** Background jobs, email delivery tasks, session timeouts, and scheduled maintenance.
-3. **`ai-proxy` (`services/ai-proxy`):** Token quotas, model routing, upstream LLM latency, and rate-limiting enforcement.
-4. **`reviewer` (`services/reviewer`):** Rubric evaluation jobs, grading agent invocations, and evidence synthesis.
-5. **`ws-gateway` (`services/ws-gateway`):** Candidate terminal/IDE WebSocket connections, heartbeats, and session disconnections.
+1. **`web` (`apps/web`):** Next.js 15 server-side rendering (SSR), authentication callbacks, client error reporting, and front-door HTTP routing.
+2. **`api` (`apps/api`):** HTTP request completions, session evaluations, assessment workflows, lifecycle operations, and caught exceptions.
+3. **`worker` (`apps/worker`):** Background jobs, email delivery tasks, session timeouts, and scheduled maintenance.
+4. **`ai-proxy` (`services/ai-proxy`):** Token quotas, model routing, upstream LLM latency, and rate-limiting enforcement.
+5. **`reviewer` (`services/reviewer`):** Rubric evaluation jobs, grading agent invocations, and evidence synthesis.
+6. **`ws-gateway` (`services/ws-gateway`):** Candidate terminal/IDE WebSocket connections, heartbeats, and session disconnections.
 
 Each service is provisioned with an isolated CloudWatch Log Group and a dedicated Firehose delivery stream to prevent cross-service head-of-line blocking or resource starvation.
 
 ---
 
-## 4. S3 Archive Partition Structure & Storage Format
+## 4. S3 Archive Partition Structure & Compression Mechanism
 
 Archived logs are delivered to a dedicated S3 bucket:
 `s3://hs-logs-archive-<account_id>-<env>/`
@@ -84,7 +98,7 @@ Archived logs are delivered to a dedicated S3 bucket:
 ### Object Key Structure
 
 ```
-services/<service>/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/hs-logs-<service>-<env>-<stream_id>-<timestamp>.gz
+services/<service>/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/hs-logs-<service>-<env>-<stream_id>-<timestamp>
 ```
 
 For failed delivery records:
@@ -92,25 +106,15 @@ For failed delivery records:
 errors/services/<service>/!{firehose:error-output-type}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/
 ```
 
-### Format Details
-- **Compression:** Standard GZIP (`.gz`).
-- **Payload:** Batched newline-delimited JSON objects wrapped in the standard CloudWatch Logs subscription envelope:
-  ```json
-  {
-    "messageType": "DATA_MESSAGE",
-    "owner": "123456789012",
-    "logGroup": "/aws/ecs/hellosmart-api-prod",
-    "logStream": "ecs/api/1234567890",
-    "subscriptionFilters": ["hs-sub-api-prod"],
-    "logEvents": [
-      {
-        "id": "39564812345678901234567890",
-        "timestamp": 1792995301402,
-        "message": "{\"level\":30,\"time\":1792995301402,\"name\":\"hellosmart-api\",\"reqId\":\"9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d\",\"method\":\"POST\",\"url\":\"/api/v1/auth/login\",\"statusCode\":200,\"responseTime\":12.45,\"msg\":\"request completed\"}"
-      }
-    ]
-  }
-  ```
+### Compression Architecture (Preventing Double-Compression)
+
+> [!NOTE]
+> **Why `compression_format = "UNCOMPRESSED"` in Firehose:**
+> When CloudWatch Logs forwards records to Firehose via a Subscription Filter, CloudWatch **already compresses the batch payload using gzip**.
+> 
+> If Firehose were configured with `compression_format = "GZIP"`, Firehose would compress the gzipped byte stream a second time, creating a double-compressed binary file. Downstream tools like Amazon Athena decompress gzip only once and fail with `MalformedJsonException` when encountering binary gzip headers.
+> 
+> By setting `compression_format = "UNCOMPRESSED"`, Firehose writes the native single-GZIP stream directly to S3. Standard utilities (`gzip -dc`) and Athena's `JsonSerDe` decompress the file once into valid JSON records.
 
 ---
 
@@ -126,7 +130,7 @@ The storage architecture enforces defense-in-depth across storage, delivery, and
    - Firehose delivery streams enforce server-side encryption.
 4. **Versioning:** S3 object versioning is enabled (`status = "Enabled"`) to protect against accidental overwrites or malicious deletion.
 5. **Least-Privilege IAM:**
-   - **CloudWatch to Firehose Role:** Can only assume `logs.amazonaws.com` and invoke `firehose:PutRecord`/`firehose:PutRecordBatch` on the specific delivery streams in the module.
+   - **CloudWatch to Firehose Role:** Can only assume `logs.amazonaws.com` and invoke `firehose:PutRecord`/`firehose:PutRecordBatch` on the specific delivery streams in the module. If a customer-managed KMS key is used, it also receives scoped `kms:GenerateDataKey*` and `kms:Decrypt` permissions.
    - **Firehose to S3 Role:** Can only assume `firehose.amazonaws.com` and perform scoped S3 object operations (`s3:PutObject`, `s3:AbortMultipartUpload`) on the archive bucket ARN prefix.
 6. **Separation from Candidate & Audit Data:**
    - Candidate work artifacts are stored in `hs-candidate-<env>` with 90-day assessment-bound retention (BR-27).
@@ -135,7 +139,7 @@ The storage architecture enforces defense-in-depth across storage, delivery, and
 
 ---
 
-## 6. Lifecycle Management & Retention Rules
+## 6. Lifecycle Management & Retrieval Trade-Offs
 
 ### Active Tier (CloudWatch)
 - **Retention:** Explicitly set to 7 days (`retention_in_days = 7`).
@@ -143,7 +147,9 @@ The storage architecture enforces defense-in-depth across storage, delivery, and
 
 ### Cold Tier (S3 Archive)
 - **Incomplete Multipart Uploads:** Automatically aborted after 7 days to eliminate orphaned upload charges.
-- **Glacier Transition:** Objects automatically transition from S3 Standard to `GLACIER` (Glacier Flexible Retrieval) after 90 days (`archive_transition_glacier_days = 90`) to reduce long-term storage costs by over 70%.
+- **Storage Class Choice — `GLACIER_IR` vs `GLACIER`:**
+  - By default, objects transition to `GLACIER_IR` (Glacier Instant Retrieval) after 90 days (`archive_storage_class = "GLACIER_IR"`).
+  - **Rationale:** Unlike standard `GLACIER` (which requires asynchronous restore jobs taking 3–5 hours before data can be read), `GLACIER_IR` provides **sub-second query access** in Amazon Athena while still reducing storage costs by over 78% compared to S3 Standard ($0.005 vs $0.023/GB-month). This ensures compliance officers and security engineers can query historical logs immediately during audit or incident investigations.
 - **Cold Expiration Policy:**
   - `archive_retention_days` is parameterized in Terraform with default value `null`.
   - The Terraform module utilizes a dynamic `expiration` block that remains omitted while the parameter is `null`.
@@ -153,12 +159,12 @@ The storage architecture enforces defense-in-depth across storage, delivery, and
 
 ## 7. Querying and Verifying Archived Logs
 
-### Method 1: Amazon Athena (High-Throughput Analytics)
+### Amazon Athena (High-Throughput Analytics)
 
 Archived logs can be queried directly in Amazon Athena using partition projection.
 
 ```sql
-CREATE EXTERNAL TABLE IF NOT EXISTS hellosmart_observability.api_logs (
+CREATE EXTERNAL TABLE IF NOT EXISTS hellosmart_observability.service_logs (
   messageType STRING,
   owner STRING,
   logGroup STRING,
@@ -182,7 +188,7 @@ LOCATION 's3://hs-logs-archive-<account_id>-prod/services/'
 TBLPROPERTIES (
   'projection.enabled' = 'true',
   'projection.service.type' = 'enum',
-  'projection.service.values' = 'api,worker,ai-proxy,reviewer,ws-gateway',
+  'projection.service.values' = 'web,api,worker,ai-proxy,reviewer,ws-gateway',
   'projection.year.type' = 'date',
   'projection.year.format' = 'yyyy',
   'projection.year.range' = '2026,2030',
@@ -210,7 +216,7 @@ SELECT
   json_extract_scalar(event.message, '$.statusCode') AS statusCode,
   json_extract_scalar(event.message, '$.responseTime') AS responseTime,
   json_extract_scalar(event.message, '$.msg') AS msg
-FROM hellosmart_observability.api_logs
+FROM hellosmart_observability.service_logs
 CROSS JOIN UNNEST(logEvents) AS t(event)
 WHERE service = 'api'
   AND year = '2026'
@@ -219,16 +225,16 @@ WHERE service = 'api'
   AND json_extract_scalar(event.message, '$.reqId') = '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
 ```
 
-### Method 2: AWS CLI & Local Decompression
+### AWS CLI & Local Decompression
 
-To retrieve and inspect logs from a specific hour using the AWS CLI:
+To retrieve and inspect logs from a specific hour:
 
 ```bash
 # 1. Download logs for a given service and hour
 aws s3 sync s3://hs-logs-archive-123456789012-prod/services/api/year=2026/month=10/day=26/hour=13/ ./tmp-logs/
 
-# 2. Decompress and inspect
-gzip -dc ./tmp-logs/*.gz | jq '.logEvents[].message | fromjson'
+# 2. Decompress single-GZIP payload and extract JSON messages
+gzip -dc ./tmp-logs/* | jq '.logEvents[].message | fromjson'
 ```
 
 ---
@@ -240,20 +246,21 @@ Each service's delivery stream is monitored by a dedicated CloudWatch Metric Ala
 - **Alarm Name:** `hs-firehose-delivery-errors-<service>-<env>`
 - **Metric:** `DeliveryToS3.DataFreshness` (Namespace: `AWS/Firehose`)
 - **Evaluation:** Triggers if data freshness age exceeds 900 seconds (15 minutes).
-- **Notification:** Dispatches alerts to `alerts_topic_arn` (SNS connected to on-call engineers).
+- **Missing Data Handling:** `treat_missing_data = "notBreaching"` prevents false alarm triggers during low-traffic periods.
+- **Notification Destination:** Dispatches alerts to `local.alerts_topic_arn`, which automatically provisions a dedicated SNS topic `hs-observability-alerts-<env>` when no external topic is supplied.
 - **Error Logs:** Delivery errors (such as IAM permission issues or S3 bucket policy rejections) are logged directly to:
   `/aws/kinesisfirehose/hellosmart-errors-<env>` with separate streams for each service.
 
 ---
 
-## 9. Local & QA Environment Strategy
+## 9. Environment Runtime Strategy & Current Status
 
-| Environment | Mechanism | Archival Behavior |
+| Environment | Current Runtime | Archival Status & Mechanism |
 |---|---|---|
-| **Local Development** (`docker compose`) | Standard output via terminal / Docker logs | Ephemeral; destroyed on `docker compose down`. LocalStack emulates S3/SQS/KMS; Firehose is not emulated locally to preserve developer system resources. |
-| **QA VPS** (`infra/qa-vps`) | Docker daemon `json-file` log driver with local rotation | Rotates locally (`max-size: 50m`, `max-file: 5`). No cloud storage egress to prevent test data pollution. |
-| **Staging** (AWS ECS) | `awslogs` driver → CloudWatch (7d) → Firehose → S3 | Fully mirrors production; tests end-to-end archival and partition schemas. |
-| **Production** (AWS ECS) | `awslogs` driver → CloudWatch (7d) → Firehose → S3 | Production-grade 7-day active search and cold partitioned archive. |
+| **Local Development** | Docker Compose (`docker-compose.yml`) | Ephemeral; destroyed on `docker compose down`. LocalStack emulates S3/SQS/KMS; Firehose is not emulated locally to preserve developer system resources. |
+| **QA VPS** | Docker Compose on KVM VPS (`infra/qa-vps`) | **Local rotation only.** Managed by Docker daemon's `json-file` driver (`max-size: 50m`, `max-file: 5`). No cloud storage egress to prevent test data pollution. CloudWatch/Firehose not active. |
+| **Staging** (Target) | AWS ECS (`awslogs` driver) | Prospective IaC provisioned. Will stream container logs to CloudWatch (7d) → Firehose → S3 archive once the `compute/` ECS module is deployed. |
+| **Production** (Target) | AWS ECS (`awslogs` driver) | Prospective IaC provisioned. Will stream container logs to CloudWatch (7d) → Firehose → S3 archive once the `compute/` ECS module is deployed. |
 
 ---
 
@@ -279,8 +286,5 @@ terraform plan -out=tfplan.staging
 terraform apply tfplan.staging
 ```
 
-### Emergency Rollback Procedure
-If a subscription filter causes unexpected throttling:
-1. Disable subscription filters by temporarily commenting out `aws_cloudwatch_log_subscription_filter.firehose` in Terraform or setting `count = 0`.
-2. CloudWatch Log Groups will continue ingesting and enforcing 7-day retention unimpeded.
-3. Apply the rollback plan via CI/CD.
+### ECS Task Definition Guidelines
+When authoring upcoming ECS task definitions, ensure `"awslogs-create-group"` is omitted or set to `"false"`. The task execution role requires `logs:CreateLogStream` and `logs:PutLogEvents`, relying on Terraform to pre-provision the log group with the 7-day retention policy.

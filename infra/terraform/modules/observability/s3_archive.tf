@@ -83,7 +83,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "archive" {
 
     transition {
       days          = var.archive_transition_glacier_days
-      storage_class = "GLACIER"
+      storage_class = var.archive_storage_class
     }
 
     dynamic "expiration" {
@@ -95,7 +95,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "archive" {
 
     noncurrent_version_transition {
       noncurrent_days = 30
-      storage_class   = "GLACIER"
+      storage_class   = var.archive_storage_class
     }
 
     dynamic "noncurrent_version_expiration" {

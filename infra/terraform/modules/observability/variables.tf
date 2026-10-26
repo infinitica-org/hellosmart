@@ -11,8 +11,8 @@ variable "aws_region" {
 
 variable "services" {
   type        = list(string)
-  description = "List of backend/container service names to ingest, retain, and archive."
-  default     = ["api", "worker", "ai-proxy", "reviewer", "ws-gateway"]
+  description = "List of container service names to ingest, retain, and archive. Encompasses all deployed container images."
+  default     = ["web", "api", "worker", "ai-proxy", "reviewer", "ws-gateway"]
 }
 
 variable "retention_in_days" {
@@ -46,8 +46,19 @@ variable "archive_retention_days" {
 
 variable "archive_transition_glacier_days" {
   type        = number
-  description = "Number of days before transitioning archived logs to S3 Glacier Flexible Retrieval."
+  description = "Number of days before transitioning archived logs to cold storage."
   default     = 90
+}
+
+variable "archive_storage_class" {
+  type        = string
+  description = "S3 storage class for cold archived logs after the transition period. Defaults to GLACIER_IR to support immediate, low-latency Amazon Athena queries without asynchronous restore delays."
+  default     = "GLACIER_IR"
+
+  validation {
+    condition     = contains(["GLACIER_IR", "GLACIER", "INTELLIGENT_TIERING", "DEEP_ARCHIVE"], var.archive_storage_class)
+    error_message = "archive_storage_class must be one of GLACIER_IR, GLACIER, INTELLIGENT_TIERING, or DEEP_ARCHIVE."
+  }
 }
 
 variable "s3_bucket_name_override" {
@@ -80,7 +91,7 @@ variable "firehose_buffer_interval_seconds" {
 
 variable "alerts_topic_arn" {
   type        = string
-  description = "ARN of the SNS topic for observability alarms (e.g. Firehose delivery errors)."
+  description = "ARN of the SNS topic for observability alarms. If null, a dedicated topic is provisioned by the module."
   default     = null
 }
 

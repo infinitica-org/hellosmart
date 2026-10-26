@@ -15,4 +15,7 @@ locals {
   }
 
   merged_tags = merge(local.default_tags, var.tags)
+
+  # Fallback to module-provisioned SNS topic if no external topic ARN is provided
+  alerts_topic_arn = var.alerts_topic_arn != null ? var.alerts_topic_arn : aws_sns_topic.alerts[0].arn
 }

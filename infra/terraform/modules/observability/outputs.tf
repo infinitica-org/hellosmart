@@ -37,3 +37,13 @@ output "archive_lifecycle_expiration_days" {
   description = "Expiration period in days configured for S3 log archives (null if unconfigured)."
   value       = var.archive_retention_days
 }
+
+output "archive_storage_class" {
+  description = "S3 storage class configured for long-term cold log archives."
+  value       = var.archive_storage_class
+}
+
+output "alerts_topic_arn" {
+  description = "ARN of the SNS topic receiving observability and delivery alarms."
+  value       = local.alerts_topic_arn
+}

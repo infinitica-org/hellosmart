@@ -24,12 +24,26 @@ resource "aws_iam_role" "cw_to_firehose" {
 
 data "aws_iam_policy_document" "cw_to_firehose" {
   statement {
+    sid    = "FirehosePut"
     effect = "Allow"
     actions = [
       "firehose:PutRecord",
       "firehose:PutRecordBatch"
     ]
     resources = [for stream in aws_kinesis_firehose_delivery_stream.archive : stream.arn]
+  }
+
+  dynamic "statement" {
+    for_each = var.s3_kms_key_arn != null ? [var.s3_kms_key_arn] : []
+    content {
+      sid    = "KmsFirehosePut"
+      effect = "Allow"
+      actions = [
+        "kms:GenerateDataKey*",
+        "kms:Decrypt"
+      ]
+      resources = [statement.value]
+    }
   }
 }
 
@@ -138,7 +152,8 @@ resource "aws_kinesis_firehose_delivery_stream" "archive" {
     error_output_prefix = "errors/services/${each.key}/!{firehose:error-output-type}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/"
     buffer_size         = var.firehose_buffer_size_mb
     buffer_interval     = var.firehose_buffer_interval_seconds
-    compression_format  = "GZIP"
+    compression_format  = "UNCOMPRESSED" # CloudWatch Logs subscription filter delivers GZIP batches; avoid double-compression
+    kms_key_arn         = var.s3_kms_key_arn
 
     cloudwatch_logging_options {
       enabled         = true

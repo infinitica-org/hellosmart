@@ -1,4 +1,15 @@
-# CloudWatch Log Groups with explicit 7-day retention and Firehose subscription filters.
+# CloudWatch Log Groups with explicit 7-day retention, Firehose subscription filters, and delivery alarms.
+
+# Dedicated SNS topic for observability alarms when none is passed from the environment
+resource "aws_sns_topic" "alerts" {
+  count = var.alerts_topic_arn == null ? 1 : 0
+
+  name = "hs-observability-alerts-${var.env}"
+
+  tags = merge(local.merged_tags, {
+    Name = "hs-observability-alerts-${var.env}"
+  })
+}
 
 resource "aws_cloudwatch_log_group" "services" {
   for_each = toset(var.services)
@@ -39,8 +50,9 @@ resource "aws_cloudwatch_metric_alarm" "firehose_delivery_errors" {
   statistic           = "Maximum"
   threshold           = 900 # 15 minutes freshness threshold
   alarm_description   = "Firehose delivery to S3 is delayed or failing for service ${each.key} (${var.env})."
-  alarm_actions       = var.alerts_topic_arn != null ? [var.alerts_topic_arn] : []
-  ok_actions          = var.alerts_topic_arn != null ? [var.alerts_topic_arn] : []
+  alarm_actions       = [local.alerts_topic_arn]
+  ok_actions          = [local.alerts_topic_arn]
+  treat_missing_data  = "notBreaching"
 
   dimensions = {
     DeliveryStreamName = aws_kinesis_firehose_delivery_stream.archive[each.key].name
