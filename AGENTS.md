@@ -33,6 +33,7 @@ If still ambiguous, **do not guess on anything touching security, tenancy, conse
 - Make webhooks and jobs **idempotent**.
 - Keep feature flags per org for gated features (see BR-05, BR-29).
 - Add or update tests with every change; tests are part of done (Section 16).
+- **Synchronize documentation on all schema or architecture changes (AIDLC Rule)**: Whenever modifying database tables/migrations, OpenAPI paths, or service architecture, you MUST update the corresponding Fumadocs documentation in `apps/docs/content/docs/` (database, api, architecture) and verify with `pnpm docs:sync-check`. Documentation drift is treated as a breaking bug.
 
 **Do not**
 - Do not add a public self-signup or a public template catalog (BR-02, BR-04).

@@ -1,0 +1,36 @@
+---
+title: "Team Seats & RACI Matrix"
+description: "Engineering seats, ownership departments, and decision rights"
+---
+
+<RoleBadge roles={["mgmt"]} />
+
+# Team, departments and ownership
+
+9 engineers in 7 departments. Each department owns paths (see [.github/CODEOWNERS](../.github/CODEOWNERS)), a Zoho epic set, and reviews its own PRs. Nobody needs another department's code to make progress: everyone builds against `packages/contracts` and fakes.
+
+| Department | Seat(s) | Owns | Zoho epics |
+|---|---|---|---|
+| **Architecture & Platform** | System Architect (Team Lead) | Contracts, ADRs, AWS + Terraform, QA VPS, CI/CD, security, observability, release management, sensitive-path reviews | EP-01 Platform & DevOps, EP-02 Security & Compliance |
+| **Core Backend** | Backend Engineer | `apps/api`: auth, SSO, MFA, RBAC, tenancy, entitlements, trial, timing engine, audit, candidates/assessments APIs, billing, Razorpay, quotes, cal.com | EP-03 Identity & Access, EP-04 Org & Entitlements, EP-11 Billing & Payments, EP-12 Sales & Leads |
+| **Product Eng: Company & Admin** | SDE-1 | `apps/web` company portal, admin console, landing; `packages/ui` | EP-05 Templates & Assessments (UI), EP-06 Candidates (UI), EP-10 Review & Results (UI), EP-13 Analytics, EP-14 Settings & Branding |
+| **Product Eng: Candidate & Workspace** | SDE-2 | `apps/web/(candidate)`, `apps/worker` + orchestrator, `ws-agent`, `ws-gateway` | EP-07 Candidate Portal, EP-08 Workspaces |
+| **AI Engineering** | AI Engineer-1 (proxy & chat) · AI Engineer-2 (reviewer agents) | `services/ai-proxy`, Chat workspace backend, `services/reviewer`, agent library, sanitizer, evals | EP-09 AI Proxy & Keys, EP-10 Review pipeline (agents) |
+| **Data Ops** | Data Ops Engineer | `templates/`, Packer recipes per template, seeds, golden submissions, injection corpus, `packages/fixtures`, analytics SQL | EP-15 Template Content |
+| **Quality Assurance** | QA-1 (functional, E2E, UAT) · QA-2 (automation, load, security) | `tests/*`, test plans, regression, release sign-off | EP-16 Quality & Release |
+
+Supporting (non-engineering): Product Design (Figma, one sprint ahead), Product Delivery (Zoho board, ceremonies, risks), Business Operations (accounts, vendors, legal, pilots).
+
+## Review matrix
+| Path type | Reviewer |
+|---|---|
+| Own department paths | Department seat (the other AI engineer / QA reviews within the dept) |
+| Single-seat departments | Architecture & Platform is the second reviewer |
+| Sensitive paths | + Architecture & Platform |
+| Tests touching a module | Module owner + QA |
+
+## Capacity rules
+- Each engineer runs 2–4 agents in parallel worktrees.
+- WIP limit: 3 open PRs per engineer.
+- Review SLA: 4 working hours. Contract request SLA: 4 working hours.
+- Daily async standup in Zoho (yesterday / today / blocked).

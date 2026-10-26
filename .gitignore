@@ -44,3 +44,9 @@ Thumbs.db
 
 # personal Claude Code settings
 .claude/settings.local.json
+
+# spreadsheets
+*.xlsx
+
+# zoho
+zoho/

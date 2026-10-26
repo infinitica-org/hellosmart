@@ -17,6 +17,9 @@
     "db:seed": "pnpm --filter @hs/fixtures seed",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
+    "docs:dev": "pnpm --dir apps/docs dev",
+    "docs:build": "pnpm --dir apps/docs build",
+    "docs:sync-check": "node scripts/aidlc-docs-check.mjs",
     "secrets:scan": "gitleaks detect --no-banner --redact",
     "format": "prettier --write ."
   },
