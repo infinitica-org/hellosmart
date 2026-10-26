@@ -57,6 +57,54 @@ def test_no_python_files_marks_missing_required(tmp_path: Path) -> None:
     assert "code_map" in build_comprehension_evidence("sub-1", str(root)).missing_required
 
 
+def test_comprehension_detects_a_real_route_and_entry_point(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("app.py").write_text(
+        "from fastapi import FastAPI\n\napp = FastAPI()\n\n\n"
+        '@app.get("/items")\ndef list_items():\n    return []\n\n\n'
+        'if __name__ == "__main__":\n    pass\n',
+        encoding="utf-8",
+    )
+    root.joinpath("README.md").write_text("# App\n\nBuilt with FastAPI.\n", encoding="utf-8")
+
+    pack = build_comprehension_evidence("sub-1", str(root))
+    assert any(r.startswith("repo:ev.route.") for r in pack.refs)
+    assert any(r.startswith("repo:ev.entry_point.") for r in pack.refs)
+    surface = pack.resolve("repo:fact.api_surface.aggregate")
+    assert surface is not None
+    assert "route_count=1" in surface.content
+
+
+def test_comprehension_flags_an_unsupported_readme_claim(tmp_path: Path) -> None:
+    """The README claims a GET /orders endpoint and a Django dependency, neither of which the
+    code actually has -- this is the gap the narrower first pass had no fact to catch."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("app.py").write_text(
+        "from fastapi import FastAPI\n\napp = FastAPI()\n\n\n"
+        '@app.get("/items")\ndef list_items():\n    return []\n',
+        encoding="utf-8",
+    )
+    root.joinpath("README.md").write_text(
+        "# App\n\nServes `GET /orders` and is built on Django.\n", encoding="utf-8"
+    )
+
+    pack = build_comprehension_evidence("sub-1", str(root))
+    unsupported = [r for r in pack.refs if r.startswith("repo:ev.readme_claim_unsupported.")]
+    assert len(unsupported) >= 2
+    agg = pack.resolve("repo:fact.readme_claims.aggregate")
+    assert agg is not None
+    assert "not_found=2" in agg.content
+
+
+def test_comprehension_full_depth_pack_is_deterministic(tmp_path: Path) -> None:
+    repo = _write_layered_repo(tmp_path)
+    p1 = build_comprehension_evidence("sub-1", str(repo))
+    p2 = build_comprehension_evidence("sub-1", str(repo))
+    assert p1.model_dump() == p2.model_dump()
+
+
 def test_architecture_design_detects_a_real_dependency_cycle(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     (root / "pkg").mkdir(parents=True)
