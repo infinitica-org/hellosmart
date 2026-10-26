@@ -59,6 +59,59 @@ Content-Type: application/json
 }
 ```
 
+```http
+POST /api/v1/auth/sso/verify
+Content-Type: application/json
+
+{
+  "provider": "google",
+  "idToken": "eyJhbGciOiJSUzI1NiIs..."
+}
+```
+
+```http
+POST /api/v1/auth/mfa/verify
+Content-Type: application/json
+
+{
+  "preAuthToken": "preauth_token_xyz",
+  "totpCode": "123456"
+}
+```
+
+```http
+POST /api/v1/auth/logout
+```
+
+```http
+GET /api/v1/me
+```
+
+### Platform Admin Organization Management
+```http
+POST /api/v1/admin/organizations
+Content-Type: application/json
+
+{
+  "name": "Brindle & Co",
+  "slug": "brindle-co",
+  "adminEmail": "admin@brindle.co",
+  "adminName": "Jane Doe",
+  "planId": "plan_trial",
+  "retentionDays": 90
+}
+```
+
+```http
+PATCH /api/v1/admin/organizations/:id/status
+Content-Type: application/json
+
+{
+  "status": "suspended",
+  "reason": "Trial period expired"
+}
+```
+
 ### Candidates Management
 ```http
 POST /api/v1/candidates
