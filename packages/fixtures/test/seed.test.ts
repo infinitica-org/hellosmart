@@ -692,28 +692,35 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
       }
     });
 
-    it('asserts non-loginable candidates have NULL password_hash for performance', async (t) => {
+    it('asserts all active candidates have valid password_hash and invited candidates have NULL password_hash', async (t) => {
       if (!dbAvailable || !client) {
         return t.skip('Postgres test database not available');
       }
 
-      // Check all candidates except the designated loginable (001) and negative samples (086, 096)
-      const res = await client.query(
+      // 1. All active candidates must have non-null password_hash
+      const activeWithoutHash = await client.query(
         `SELECT count(*)::int AS count FROM app.users 
          WHERE role = 'candidate' 
-           AND email NOT IN ($1, $2, $3)
-           AND password_hash IS NOT NULL`,
-        [
-          LOGINABLE_CANDIDATE_EMAIL,
-          NEGATIVE_SUSPENDED_CANDIDATE_EMAIL,
-          NEGATIVE_DELETED_CANDIDATE_EMAIL,
-        ],
+           AND status = 'active'
+           AND password_hash IS NULL`,
+      );
+      assert.strictEqual(
+        activeWithoutHash.rows[0].count,
+        0,
+        'All active candidates must have non-null password_hash',
       );
 
+      // 2. Invited candidates must have NULL password_hash until first-login onboarding (BR-24)
+      const invitedWithHash = await client.query(
+        `SELECT count(*)::int AS count FROM app.users 
+         WHERE role = 'candidate' 
+           AND status = 'invited'
+           AND password_hash IS NOT NULL`,
+      );
       assert.strictEqual(
-        res.rows[0].count,
+        invitedWithHash.rows[0].count,
         0,
-        'All other candidates must have NULL password_hash to meet < 3s seed performance',
+        'Invited candidates must have NULL password_hash',
       );
     });
 

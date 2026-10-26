@@ -160,13 +160,10 @@ function generateCompanyCandidates(options: {
 
   const pad = (n: number) => n.toString().padStart(orgSlug === 'aster-ridge' ? 3 : 2, '0');
 
-  // 1. Active Candidates
+  // 1. Active Candidates (all active candidates receive the seed-resolved password hash)
   for (let i = 0; i < distribution.active; i++) {
     const num = pad(index++);
     const email = normaliseEmail(`candidate.${orgSlug}.${num}@example.com`);
-    // Only designated loginable candidate (001) receives a password hash.
-    // Remaining candidates have NULL password_hash for performance (< 3s target).
-    const isLoginable = email === LOGINABLE_CANDIDATE_EMAIL;
 
     candidates.push({
       id: deterministicUuid('candidate', email),
@@ -178,7 +175,7 @@ function generateCompanyCandidates(options: {
       email_verified_at: relativeDate(refDate, -10),
       must_reset_password: false,
       mfa_secret_ref: null,
-      password_hash: isLoginable ? (userOptions?.passwordHash ?? null) : null,
+      password_hash: userOptions?.passwordHash ?? null,
       failed_logins: 0,
       locked_until: null,
       last_login_at: relativeDate(refDate, -1),

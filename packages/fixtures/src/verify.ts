@@ -84,6 +84,7 @@ export interface VerifyOptions {
   totpSecret?: string;
   tokens?: SeedTokensMap;
   runIdempotencyCheck?: boolean;
+  skipIdempotency?: boolean;
   quiet?: boolean;
   logger?: (msg: string) => void;
   exitProcess?: boolean;
@@ -424,7 +425,7 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
           checks.push({
             name: 'Active User Password Hashes (Loginable Accounts Only)',
             status: 'PASS',
-            details: `All designated loginable active accounts have valid Argon2id hashes (${activeWithoutHash.length} bulk accounts unhashed for performance)`,
+            details: 'All designated loginable active accounts have valid Argon2id hashes',
           });
         } else {
           checks.push({
@@ -474,7 +475,7 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
         checks.push({
           name: 'Platform Admin MFA Configuration',
           status: 'PASS',
-          details: `Platform admin MFA configured via secret reference '${platAdmins.rows[0]?.mfa_secret_ref}' (not plain Base32)`,
+          details: `Platform admin MFA configured via secret reference '${platAdmins.rows[0]?.mfa_secret_ref}' (not plain Base32; AES-GCM decryption not checked because S0-T14-3 does not exist yet)`,
         });
       } else {
         checks.push({
@@ -785,8 +786,12 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
       });
     }
 
-    // Check 12: Seed Idempotency & Run Timing (Optional / on-demand)
-    if (options.runIdempotencyCheck) {
+    // Check 12: Seed Idempotency & Run Timing (Runs by default; skip with --skip-idempotency)
+    const shouldRunIdempotency = options.skipIdempotency
+      ? false
+      : (options.runIdempotencyCheck ?? true);
+
+    if (shouldRunIdempotency) {
       try {
         const t1Start = Date.now();
         await runSafeSeed(client, {
@@ -858,6 +863,12 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
           errors: [err.message],
         });
       }
+    } else {
+      checks.push({
+        name: 'Seed Idempotency & Run Timing',
+        status: 'SKIPPED',
+        details: 'Seed idempotency check skipped via --skip-idempotency',
+      });
     }
   } finally {
     // Cleanly close database connection (never hang)
@@ -948,11 +959,11 @@ function isMain(): boolean {
 
 if (isMain()) {
   const checkAllActive = !process.argv.includes('--loginable-only-hashes');
-  const checkIdempotency = process.argv.includes('--check-idempotency');
+  const skipIdempotency = process.argv.includes('--skip-idempotency');
   runVerifySeed({
     exitProcess: true,
     checkAllActiveUsersHaveHash: checkAllActive,
-    runIdempotencyCheck: checkIdempotency,
+    skipIdempotency,
   }).catch(() => {
     process.exit(1);
   });

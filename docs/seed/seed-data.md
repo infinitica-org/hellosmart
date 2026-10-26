@@ -109,53 +109,56 @@ Status          : Seed Completed Successfully (Idempotent)
 To independently verify that the seeded database satisfies all schema constraints, tenant scoping rules, foreign key relationships, and security invariants, execute:
 
 ```bash
-# Run verification checks against the local database
+# Run verification checks against the local database (includes double-seed idempotency check by default)
 pnpm db:verify-seed
 
-# Run verification with loginable accounts check (skipping bulk unhashed candidates)
-pnpm db:verify-seed -- --loginable-only-hashes
+# Run verification skipping the double-seed idempotency check
+pnpm db:verify-seed -- --skip-idempotency
 
-# Run verification with full programmatic seed idempotency benchmark
-pnpm db:verify-seed -- --loginable-only-hashes --check-idempotency
+# Run verification restricting the password check to designated loginable accounts
+pnpm db:verify-seed -- --loginable-only-hashes
 ```
 
 ### Verification Checks Performed
 
-The verification runner connects using the schema owner role (`DATABASE_MIGRATOR_URL`) and evaluates 11 comprehensive integrity gates:
+The verification runner connects using the schema owner role (`DATABASE_MIGRATOR_URL`) and evaluates 12 comprehensive integrity gates:
 
 1. **Environment Safety Guard**: Pre-flight verification that `NODE_ENV` is non-production and target database is local.
-2. **Database Connectivity & Role**: Asserts successful connection to PostgreSQL and verifies the executing user context.
+2. **Database Connectivity & Role**: Asserts successful connection to PostgreSQL and verifies the executing user context (`hs_migrator`).
 3. **Table Record Counts**: Asserts exact row counts for `app.organizations` (3), `app.entitlements` (3), `app.users` (114), and `app.invitations` (3), matching the 123 total.
 4. **User Role & Status Distribution**: Asserts exact breakdown across roles and statuses (78 active, 18 invited, 11 suspended, 7 deleted).
 5. **Tenant Scoping & Foreign Keys**: Verifies all 113 tenant users have valid `org_id` foreign keys, platform admin has `org_id IS NULL`, and invitations match user organization context.
-6. **Active User Password Hashes**: Verifies that active accounts have valid Argon2id password hashes ($64\text{ MB}$, $3$ iterations, parallelism $1$).
-7. **Platform Admin MFA Configuration**: Verifies `mfa_secret_ref` is populated and contains a Secrets Manager reference rather than a raw plaintext Base32 secret.
+6. **Active User Password Hashes**: Verifies that all 78 active users (platform admin, 3 company admins, and 74 candidates) have valid Argon2id password hashes ($64\text{ MB}$, $3$ iterations, parallelism $1$), sharing a single seed-computed hash for sub-3-second seed performance.
+7. **Platform Admin MFA Configuration**: Verifies `mfa_secret_ref` is populated and contains a Secrets Manager reference rather than a raw plaintext Base32 secret. (Note: AES-256-GCM decryption is not checked because S0-T14-3 does not exist yet).
 8. **Entitlements & Trial Windows**: Verifies 1:1 entitlement mapping with organizations and valid trial deadlines.
 9. **Invitations State & Token Hashes**: Verifies exactly 1 valid, 1 expired, and 1 used invitation, each storing a 64-character hexadecimal SHA-256 digest (`token_hash`).
 10. **Soft-Deletion Invariants**: Asserts that `status = 'deleted'` users have `deleted_at` timestamps populated while active users have `null`.
 11. **Plaintext Secret & Pattern Scan**: Scans all text columns across all tables to guarantee zero plaintext passwords (`$SEED_DEFAULT_PASSWORD`), TOTP secrets, or leaked tokens are stored.
+12. **Seed Idempotency & Run Timing**: Runs by default (skippable via `--skip-idempotency`). Re-runs the seed programmatically, benchmarks execution times (asserting $< 3.0\text{ s}$ SLA), and asserts that exactly zero extra rows were created.
 
 ### Expected Verification Output
 
 ```text
 ================ HelloSmart Seed Verification ================
-┌─────────┬─────────────────────────────────────────────────────────┬────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ (index) │ Check                                                   │ Status │ Details                                                                                                           │
-├─────────┼─────────────────────────────────────────────────────────┼────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 0       │ 'Environment Safety Guard'                              │ 'PASS' │ "Environment 'development', local target host 'localhost:5434' verified"                                          │
-│ 1       │ 'Database Connectivity & Role'                          │ 'PASS' │ "Connected to localhost:5434/hellosmart as role 'hs_migrator'"                                                    │
-│ 2       │ 'Table Record Counts'                                   │ 'PASS' │ '123 records total (3 orgs, 3 ents, 114 users, 3 invs)'                                                           │
-│ 3       │ 'User Role & Status Distribution'                       │ 'PASS' │ '78 active, 18 invited, 11 suspended, 7 deleted'                                                                  │
-│ 4       │ 'Tenant Scoping & Foreign Keys'                         │ 'PASS' │ 'All tenant records strictly scoped; platform_has_no_org holds; FKs match'                                        │
-│ 5       │ 'Active User Password Hashes (Loginable Accounts Only)' │ 'PASS' │ 'All designated loginable active accounts have valid Argon2id hashes (73 bulk accounts unhashed for performance)' │
-│ 6       │ 'Platform Admin MFA Configuration'                      │ 'PASS' │ "Platform admin MFA configured via secret reference 'secrets/seed-superadmin-mfa' (not plain Base32)"             │
-│ 7       │ 'Entitlements & Trial Windows'                          │ 'PASS' │ '1:1 mapping with orgs, trial_ends_at set for trial_active, valid statuses'                                       │
-│ 8       │ 'Invitations State & Token Hashes'                      │ 'PASS' │ '1 valid, 1 expired, 1 used; all tokens are 64-hex SHA-256 digests'                                               │
-│ 9       │ 'Soft-Deletion Invariants'                              │ 'PASS' │ 'Deleted users have deleted_at populated; active users have deleted_at null'                                      │
-│ 10      │ 'Plaintext Secret & Pattern Scan'                       │ 'PASS' │ 'Zero plaintext passwords, TOTP secrets, or leaked tokens detected (verified against local raw tokens)'           │
-└─────────┴─────────────────────────────────────────────────────────┴────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─────────┬────────────────────────────────────┬────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ (index) │ Check                              │ Status │ Details                                                                                                                     │
+├─────────┼────────────────────────────────────┼────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 0       │ 'Environment Safety Guard'         │ 'PASS' │ "Environment 'development', local target host 'localhost:5434' verified"                                                    │
+│ 1       │ 'Database Connectivity & Role'     │ 'PASS' │ "Connected to localhost:5434/hellosmart as role 'hs_migrator'"                                                              │
+│ 2       │ 'Table Record Counts'              │ 'PASS' │ '123 records total (3 orgs, 3 ents, 114 users, 3 invs)'                                                                     │
+│ 3       │ 'User Role & Status Distribution'  │ 'PASS' │ '78 active, 18 invited, 11 suspended, 7 deleted'                                                                            │
+│ 4       │ 'Tenant Scoping & Foreign Keys'    │ 'PASS' │ 'All tenant records strictly scoped; platform_has_no_org holds; FKs match'                                                  │
+│ 5       │ 'Active User Password Hashes'      │ 'PASS' │ 'All 78 active users have non-null Argon2id password_hash'                                                                 │
+│ 6       │ 'Platform Admin MFA Configuration' │ 'PASS' │ "Platform admin MFA configured via secret reference 'secrets/seed-superadmin-mfa' (not plain Base32; AES-GCM decryption not  │
+│         │                                    │        │  checked because S0-T14-3 does not exist yet)"                                                                              │
+│ 7       │ 'Entitlements & Trial Windows'     │ 'PASS' │ '1:1 mapping with orgs, trial_ends_at set for trial_active, valid statuses'                                                 │
+│ 8       │ 'Invitations State & Token Hashes' │ 'PASS' │ '1 valid, 1 expired, 1 used; all tokens are 64-hex SHA-256 digests'                                                         │
+│ 9       │ 'Soft-Deletion Invariants'         │ 'PASS' │ 'Deleted users have deleted_at populated; active users have deleted_at null'                                                │
+│ 10      │ 'Plaintext Secret & Pattern Scan'  │ 'PASS' │ 'Zero plaintext passwords, TOTP secrets, or leaked tokens detected (verified against local raw tokens)'                     │
+│ 11      │ 'Seed Idempotency & Run Timing'    │ 'PASS' │ 'Run 1: 918ms, Run 2: 1019ms (0 extra rows)'                                                                                │
+└─────────┴────────────────────────────────────┴────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 Target Database : localhost:5434 / hellosmart
-Execution Time  : ~140ms
+Execution Time  : ~2000ms
 Status          : Verification Passed (All checks OK)
 ==============================================================
 ```
@@ -227,17 +230,17 @@ For full credential details, passwords, and candidate distribution tables, see t
 
 ### Quick Reference:
 
-| Persona                                    | Email                                   | Password Hash                    | Role / Classification | Notes                                                                              |
-| ------------------------------------------ | --------------------------------------- | -------------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
-| **Platform Super Admin**                   | `superadmin@hellosmart.ai`              | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | MFA Enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`)                 |
-| **Aster Ridge Company Admin**              | `admin@asterridge.com`                  | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Mature paid tenant administrator (`paid_active`)                                   |
-| **Brindle & Co Company Admin**             | `trialadmin@brindle.co`                 | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Active 14-day trial administrator (`trial_active`)                                 |
-| **Active Candidate**                       | `candidate.aster-ridge.001@example.com` | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Ready for immediate login and workspace connection                                 |
-| **Suspended Candidate (Negative Sample)**  | `candidate.aster-ridge.086@example.com` | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to user `status = 'suspended'`   |
-| **Deleted Candidate (Negative Sample)**    | `candidate.aster-ridge.096@example.com` | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to soft-deletion (`deleted_at`)  |
-| **Crestview Admin (Suspended Org Sample)** | `admin@crestview.test`                  | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to tenant `status = 'suspended'` |
-| **Remaining Candidates (~107)**            | `candidate.*`                           | `null`                           | Bulk Candidate Pool   | Unhashed for sub-3-second seed performance; not individually loginable             |
-| **Invited Candidates**                     | `candidate.aster-ridge.071@example.com` | `null` (Pending Reset)           | Onboarding Testing    | Must complete first-login onboarding & password reset via invite token (`BR-24`)   |
+| Persona                                    | Email                                               | Password Hash                    | Role / Classification | Notes                                                                              |
+| ------------------------------------------ | --------------------------------------------------- | -------------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
+| **Platform Super Admin**                   | `superadmin@hellosmart.ai`                          | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | MFA Enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`)                 |
+| **Aster Ridge Company Admin**              | `admin@asterridge.com`                              | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Mature paid tenant administrator (`paid_active`)                                   |
+| **Brindle & Co Company Admin**             | `trialadmin@brindle.co`                             | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Active 14-day trial administrator (`trial_active`)                                 |
+| **Active Candidates (74 total)**           | `candidate.aster-ridge.*`, `candidate.brindle-co.*` | Hash of `$SEED_DEFAULT_PASSWORD` | Active Pool           | All 74 active candidates share a single precomputed seed Argon2id hash             |
+| **Suspended Candidate (Negative Sample)**  | `candidate.aster-ridge.086@example.com`             | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to user `status = 'suspended'`   |
+| **Deleted Candidate (Negative Sample)**    | `candidate.aster-ridge.096@example.com`             | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to soft-deletion (`deleted_at`)  |
+| **Crestview Admin (Suspended Org Sample)** | `admin@crestview.test`                              | Hash of `$SEED_DEFAULT_PASSWORD` | **Negative Sample**   | Valid password credentials; rejected at login due to tenant `status = 'suspended'` |
+| **Invited Candidates (18 total)**          | `candidate.aster-ridge.071@example.com`, etc.       | `null` (Pending Reset)           | Onboarding Testing    | Must complete first-login onboarding & password reset via invite token (`BR-24`)   |
+| **Other Suspended/Deleted Candidates**     | `candidate.*` (bulk suspended/deleted)              | `null`                           | Inactive Sample Pool  | Non-sample suspended/deleted candidates retain NULL hash                           |
 
 ### Setting Up Platform Admin TOTP in Authenticator Apps
 

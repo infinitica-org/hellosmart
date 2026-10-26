@@ -20,6 +20,7 @@ import {
 import { deterministicUuid } from './keys.js';
 import {
   getOrganizations,
+  ASTER_RIDGE_ID,
   type OrganizationEntity,
   type EntitlementEntity,
 } from '../entities/organizations.js';
@@ -27,6 +28,7 @@ import {
   getPlatformAdmins,
   getCompanyAdmins,
   getCandidates,
+  LOGINABLE_CANDIDATE_EMAIL,
   type UserEntity,
 } from '../entities/users.js';
 import { getInvitations, type InvitationEntity } from '../entities/invitations.js';
@@ -368,14 +370,21 @@ export async function runSafeSeed(
     }
   }
 
-  // Check existing hash for superadmin in DB to avoid re-hashing if already matching
+  // Check existing hash for a loginable candidate in DB to avoid re-hashing if already matching
   let resolvedPasswordHash: string;
   try {
-    const existingUser = await client.query(
-      'SELECT password_hash FROM app.users WHERE email = $1 LIMIT 1',
-      ['superadmin@hellosmart.ai'],
+    const existingCandidate = await client.query(
+      'SELECT password_hash FROM app.users WHERE email = $1 AND org_id = $2 LIMIT 1',
+      [LOGINABLE_CANDIDATE_EMAIL, ASTER_RIDGE_ID],
     );
-    const existingHash = existingUser.rows[0]?.password_hash;
+    let existingHash = existingCandidate.rows[0]?.password_hash;
+    if (!existingHash) {
+      const existingSuperadmin = await client.query(
+        'SELECT password_hash FROM app.users WHERE email = $1 AND org_id IS NULL LIMIT 1',
+        ['superadmin@hellosmart.ai'],
+      );
+      existingHash = existingSuperadmin.rows[0]?.password_hash;
+    }
     resolvedPasswordHash = await resolveSeedPasswordHash(existingHash, defaultPassword);
   } catch {
     resolvedPasswordHash = await hashPassword(defaultPassword);
