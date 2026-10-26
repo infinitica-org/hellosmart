@@ -1,0 +1,177 @@
+---
+title: "Database Visualization & ER Diagram"
+description: "Interactive Entity-Relationship diagrams, PostgreSQL schema architectures, foreign keys, indexes, and Row-Level Security."
+---
+
+<RoleBadge roles={["sde", "qa"]} />
+
+# Database Visualization & ER Schema
+
+HelloSmart uses **PostgreSQL 16** with `citext` and `pgcrypto` extensions. Multi-tenancy is enforced strictly at the database kernel level through **Row-Level Security (RLS)** policies on all tenant tables (BR-01).
+
+---
+
+## 1. Complete Entity-Relationship (ER) Diagram
+
+```mermaid
+erDiagram
+    ORGANIZATIONS ||--o{ ENTITLEMENTS : "governs"
+    ORGANIZATIONS ||--o{ USERS : "contains"
+    ORGANIZATIONS ||--o{ TEMPLATE_ASSIGNMENTS : "licensed_to"
+    ORGANIZATIONS ||--o{ ASSESSMENTS : "creates"
+    ORGANIZATIONS ||--o{ CANDIDATES : "owns"
+    ORGANIZATIONS ||--o{ QUOTES : "billed_for"
+    
+    TEMPLATES ||--o{ TEMPLATE_VERSIONS : "versions"
+    TEMPLATES ||--o{ TEMPLATE_ASSIGNMENTS : "grants_access"
+    TEMPLATE_VERSIONS ||--o{ ASSESSMENTS : "pins_version"
+    
+    ASSESSMENTS ||--o{ RUBRIC_ITEMS : "configures"
+    ASSESSMENTS ||--o{ ASSIGNMENTS : "assigns"
+    
+    CANDIDATES ||--o{ ASSIGNMENTS : "takes"
+    
+    ASSIGNMENTS ||--o{ WORKSPACES : "executes"
+    ASSIGNMENTS ||--o{ CONSENTS : "records"
+    ASSIGNMENTS ||--o{ SUBMISSIONS : "yields"
+    
+    WORKSPACES ||--o{ ACTIVITY_EVENTS : "logs"
+    WORKSPACES ||--o{ AI_MESSAGES : "transcribes"
+    
+    SUBMISSIONS ||--o{ AGENT_RUNS : "evaluates"
+    AGENT_RUNS ||--o{ AGENT_SCORES : "emits"
+    SUBMISSIONS ||--o{ REVIEWS : "finalized_into"
+    
+    QUOTES ||--o{ PAYMENTS : "reconciles"
+
+    ORGANIZATIONS {
+        uuid id PK
+        string name
+        citext slug UK
+        string status "provisioned | trial_active | paid_active | suspended"
+        string logo_key
+        citext custom_domain UK
+        int retention_days
+        uuid created_by
+        timestamptz created_at
+    }
+
+    ENTITLEMENTS {
+        uuid org_id PK,FK
+        int max_templates
+        int max_candidates
+        timestamptz trial_ends_at
+        numeric pending_invite_multiplier
+        jsonb flags
+    }
+
+    USERS {
+        uuid id PK
+        uuid org_id FK "NULL for platform_admin"
+        citext email
+        string name
+        string role "platform_admin | company_admin | candidate"
+        string password_hash "argon2id"
+        boolean must_reset_password
+        string status "invited | active | suspended | deleted"
+        timestamptz locked_until
+    }
+
+    ASSESSMENTS {
+        uuid id PK
+        uuid org_id FK
+        uuid template_version_id FK
+        string name
+        string workspace_mode "cloud | chat"
+        jsonb ai_policy
+        jsonb timing
+        string status "draft | dry_run_passed | published | closed"
+    }
+
+    ASSIGNMENTS {
+        uuid id PK
+        uuid org_id FK
+        uuid assessment_id FK
+        uuid candidate_id FK
+        string status "invited | ready | in_progress | submitted | expired"
+        timestamptz first_connect_at
+        timestamptz deadline_at
+        timestamptz submitted_at
+        boolean auto_submitted
+    }
+
+    WORKSPACES {
+        uuid id PK
+        uuid org_id FK
+        uuid assignment_id FK
+        string mode "cloud | chat"
+        string status "queued | provisioning | connected | disconnected | ended"
+        string runtime_ref "Sysbox container ID"
+        timestamptz started_at
+        timestamptz last_activity_at
+    }
+
+    SUBMISSIONS {
+        uuid id PK
+        uuid assignment_id FK
+        string artifacts_ref "S3 bucket key"
+        string final_snapshot_ref
+        timestamptz submitted_at
+        boolean auto_submitted
+    }
+
+    AGENT_SCORES {
+        uuid id PK
+        uuid run_id FK
+        uuid rubric_item_id FK
+        numeric score "1.0 - 5.0"
+        text rationale
+        jsonb evidence "Citations: file, lines, git SHA, message ID"
+        numeric confidence "0.0 - 1.0"
+        jsonb flags "Red flags and discrepancies"
+    }
+```
+
+---
+
+## 2. PostgreSQL Row-Level Security (RLS) Mechanics
+
+Every table containing tenant data implements the following security pattern:
+
+```sql
+-- 1. Enable and FORCE Row-Level Security
+ALTER TABLE app.assessments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app.assessments FORCE ROW LEVEL SECURITY;
+
+-- 2. Define strict tenant isolation policy
+CREATE POLICY tenant_isolation ON app.assessments
+  USING (org_id = app.current_org_id() OR app.is_platform())
+  WITH CHECK (org_id = app.current_org_id() OR app.is_platform());
+```
+
+### Context Injection on Every Transaction
+Before running any application query, the NestJS Fastify API sets the current organization context in the PostgreSQL transaction:
+
+```sql
+SELECT set_config('app.org_id', '7f8a9b0c-1234-4567-89ab-cdef01234567', true);
+```
+
+When `app.current_org_id()` is evaluated by PostgreSQL, any rows belonging to other organizations are **automatically filtered out at the kernel query planner level**.
+
+---
+
+## 3. Tamper-Evident Audit Ledger (`audit.events`)
+
+For SOC 2 Type II compliance and BR-31 invariants, the audit log uses a **cryptographic SHA-256 hash chain**:
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | `bigint GENERATED ALWAYS AS IDENTITY` | Sequential monotonic ID |
+| `at` | `timestamptz` | Immutable UTC timestamp |
+| `actor_id` | `uuid` | User ID or System Actor |
+| `actor_role` | `text` | `platform_admin`, `company_admin`, etc. |
+| `action` | `text` | E.g. `workspace.destroy`, `candidate.create` |
+| `prev_hash` | `bytea` | SHA-256 digest of previous audit row |
+| `hash` | `bytea` | `SHA256(prev_hash || row_payload)` |
+
+Because each row's hash includes the previous row's hash, **no row can be modified, deleted, or back-dated without invalidating the entire subsequent audit chain**.

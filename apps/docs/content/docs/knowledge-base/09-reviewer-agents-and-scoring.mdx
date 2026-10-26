@@ -1,0 +1,54 @@
+---
+title: "Reviewer agents and scoring"
+description: "HelloSmart MMP Knowledge Base — Chapter 9: Reviewer agents and scoring"
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+### 9.1 How reviews work
+
+```mermaid
+flowchart TD
+  S["Candidate submits, or auto-submit at expiry"] --> A["Final snapshot saved, workspace destroyed"]
+  A --> R1["Agent 1 scores rubric item 1"]
+  A --> R2["Agent 2 scores rubric item 2"]
+  A --> RN["Agent N scores rubric item N"]
+  R1 --> AG["Aggregator builds the report"]
+  R2 --> AG
+  RN --> AG
+  AG --> F{"Agents disagree or confidence is low?"}
+  F -->|"Yes"| H["Flagged for human attention"]
+  F -->|"No"| HR["Human review"]
+  H --> HR
+  HR --> FIN["Company scores, adds notes and finalizes"]
+  FIN --> REL{"Release to the candidate?"}
+  REL -->|"Yes"| C["Candidate sees scores"]
+  REL -->|"No, the default"| N["Results stay internal"]
+```
+
+### 9.2 Principles
+
+- **Independent.** Each agent scores one rubric item on its own. A separate aggregator builds the report and flags disagreement.
+- **Evidence for every score.** An agent must cite specific moments or artifacts.
+- **Observe, never interrupt.** Live monitors (Phase 2) flag but do not disturb the candidate.
+- **Protected from gaming.** Inputs to the graders are sanitized, suspected prompt-injection attempts are flagged, and affected scores are marked low-confidence for human review.
+- **Humans decide.** The company's reviewer can accept or override any score. Overrides keep the original, and edits after finalization create versions.
+
+### 9.3 Review lifecycle
+
+```mermaid
+stateDiagram-v2
+  [*] --> Pending
+  Pending --> AgentsRunning
+  AgentsRunning --> AgentReportReady
+  AgentReportReady --> HumanReview
+  HumanReview --> Finalized
+  Finalized --> Finalized: edited, new version saved
+  Finalized --> Released: company releases to candidate
+```
+
+### 9.4 Agent health (Platform Admin)
+
+HelloSmart monitors each agent: success and failure rate, latency, queue depth, cost per review, score consistency and agreement between agents, and drift over time, with alerts on thresholds. If an agent fails, the system retries, then alerts an admin, and the report shows the missing dimension while human review remains possible. An admin can re-run an agent on a submission, and both runs are kept (Phase 2).
+
+---

@@ -1,0 +1,89 @@
+---
+title: "HelloSmart Engineering & Product Docs"
+description: "Internal developer documentation, system architecture, database visualization, API references, and role-oriented playbooks."
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+# HelloSmart.ai Engineering & Product Portal
+
+Welcome to the internal engineering and product documentation for **HelloSmart.ai**. HelloSmart is an AI-native work simulation platform for technical hiring—*"Hire by doing."*
+
+Candidates solve real problems with AI co-pilots inside sandboxed Sysbox containers. Independent AI reviewer agents score candidate submissions against explicit rubrics with exact evidence citations, while human hiring managers make the final decision.
+
+---
+
+## 🎯 Role Perspectives
+
+Choose your team perspective using the **Role Switcher** in the top navigation bar or jump directly to your group's dedicated playbook:
+
+<Cards>
+  <Card
+    title="💻 SDE Team Playbook"
+    href="/docs/roles/sde"
+    description="Backend NestJS Fastify API, Next.js web portals, Sysbox workspace orchestration, Docker-in-Docker, and Drizzle ORM."
+  />
+  <Card
+    title="🧠 AI Team Playbook"
+    href="/docs/roles/ai"
+    description="Reviewer agent pipelines, rubric evaluation, AI Proxy egress firewalls, model allowlists, and spend cap enforcement."
+  />
+  <Card
+    title="🛡️ QA Team Playbook"
+    href="/docs/roles/qa"
+    description="PostgreSQL Row-Level Security verification, cross-tenant 404 tests (BR-01), Playwright E2E suites, and SOC 2 audits."
+  />
+  <Card
+    title="📊 Managing Team Playbook"
+    href="/docs/roles/managing"
+    description="Product roadmap, commercial pricing, quote builder, Razorpay billing, and the 33 Inviolable Business Rules (BR-01 to BR-33)."
+  />
+</Cards>
+
+---
+
+## ⚡ Core Technical Sections
+
+<Cards>
+  <Card
+    title="📐 System Architecture"
+    href="/docs/architecture/system-architecture"
+    description="Complete interactive topology: modular monolith, container orchestrator, AI proxy gateway, and Redis BullMQ queues."
+  />
+  <Card
+    title="📦 Frameworks & Versions"
+    href="/docs/architecture/frameworks-and-versions"
+    description="Frozen versions matrix: Node 24, pnpm 9, Next.js, Fastify, Drizzle, PostgreSQL 16, Sysbox, and architectural rationale."
+  />
+  <Card
+    title="🗄️ Database Visualization"
+    href="/docs/database/db-visualization"
+    description="Interactive Mermaid ER diagram of all tables, foreign keys, indexes, and Row-Level Security (RLS) policies."
+  />
+  <Card
+    title="🔌 API Documentation"
+    href="/docs/api/overview"
+    description="RESTful OpenAPI 3.1 contracts, HttpOnly session cookies, workspace tokens, RFC 7807 problem details, and webhooks."
+  />
+  <Card
+    title="🚀 Production Release"
+    href="/docs/production/release-runbook"
+    description="Zero-downtime expand-and-contract migrations, canary rollouts, smoke verification, and rollback runbooks."
+  />
+  <Card
+    title="📚 Complete Knowledge Base"
+    href="/docs/knowledge-base/00-start-here"
+    description="The complete 20-chapter product and business specification migrated from the HelloSmart knowledge base."
+  />
+</Cards>
+
+---
+
+## 🤖 AIDLC Automation Protocol
+
+> [!IMPORTANT]
+> HelloSmart operates under the **AI Developer Life Cycle (AIDLC) Documentation Rule**:
+>
+> Whenever a developer or AI coding agent modifies database schemas (`packages/contracts/db/`), changes API schemas (`packages/contracts/openapi/`), or alters service architecture, the agent **must update these docs in the same PR**.
+>
+> Run `pnpm docs:sync-check` to assert that zero documentation drift has occurred.

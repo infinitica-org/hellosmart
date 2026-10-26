@@ -1,0 +1,101 @@
+---
+title: "QA Team Playbook"
+description: "Test automation strategy, multi-tenant isolation validation, Playwright E2E suites, and acceptance criteria verification."
+---
+
+<RoleBadge role="qa" />
+
+Welcome to the HelloSmart Quality Assurance and Test Engineering team. As a QA Engineer on HelloSmart, your mission is to guarantee uncompromising security, rock-solid multi-tenancy, and flawless candidate examination experiences.
+
+Because HelloSmart simulates real work in sandboxed environments, software reliability directly impacts candidates' career opportunities and companies' hiring decisions.
+
+---
+
+## 1. Test Architecture Matrix
+
+Our testing pyramid is divided into four automated tiers:
+
+| Tier | Focus | Tooling | Execution Frequency |
+|---|---|---|---|
+| **Tenancy Isolation** | RLS enforcement, cross-org 404s (BR-01) | Vitest, PostgreSQL test containers | Every PR & commit |
+| **Contract Checks** | OpenAPI 3.1 & Zod schema validation | Prism, `@hs/contracts` | Every PR |
+| **Integration** | Workspace orchestration, AI proxy quotas | Vitest, Docker local mock | Hourly / Nightly |
+| **End-to-End (E2E)** | Candidate portal, full-screen events, review | Playwright, Chromium | Pre-merge & Nightly |
+
+---
+
+## 2. Multi-Tenant Isolation Testing (BR-01)
+
+The most critical invariant in HelloSmart is **strict tenant isolation**. Data belonging to Organization A must never be accessible, visible, or inferable by Organization B.
+
+### The 404 Invariant
+When a user from Org A queries a resource ID belonging to Org B, the API **must return HTTP 404 Not Found**, never HTTP 403 Forbidden. Returning 403 leaks the existence of IDs across tenant boundaries.
+
+### Running Tenancy Tests
+```bash
+# Run the dedicated cross-tenant suite
+pnpm test:tenancy
+```
+
+### Writing a Tenancy Test
+```typescript
+import { describe, it, expect } from 'vitest';
+import { createTenantContext, testClient } from '@hs/fixtures';
+
+describe('BR-01: Candidate Access Cross-Tenant Boundary', () => {
+  it('returns 404 when Org B queries a candidate in Org A', async () => {
+    const orgA = await createTenantContext('acme-corp');
+    const orgB = await createTenantContext('beta-industries');
+    
+    // Create candidate in Org A
+    const candidateA = await orgA.createCandidate({ email: 'jane@example.com' });
+
+    // Attempt access using Org B session token
+    const res = await testClient(orgB.sessionToken).get(`/api/v1/candidates/${candidateA.id}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({
+      type: 'https://hellosmart.ai/problems/not-found',
+      title: 'Not Found',
+      status: 404,
+      detail: `Candidate not found`,
+    });
+  });
+});
+```
+
+---
+
+## 3. Playwright End-to-End Testing
+
+The E2E suite lives in `tests/e2e/` and validates the complete user journey:
+
+```bash
+# Run all browser test scenarios
+pnpm test:e2e
+
+# Run with interactive UI
+pnpm --filter @hs/e2e test:ui
+```
+
+### Critical Flow Test Scenarios
+1. **First-Login Password Reset (BR-24)**: Asserts that an invited candidate with `must_reset_password=true` is forced to reset their password before accessing their dashboard.
+2. **Consent Screen Gate (BR-12)**: Asserts that the "Connect to Workspace" button remains disabled until the candidate explicitly accepts the mode-specific recording consent.
+3. **Full-Screen Exit Detection (BR-10)**: Simulates exiting fullscreen mode (`document.exitFullscreen()`), asserting that the WebSocket gateway logs a `fullscreen_exit` activity event and displays the disconnect overlay.
+4. **Auto-Submit on Timer Expiry (BR-08)**: Simulates deadline expiration, asserting that the orchestrator creates a snapshot, marks the assignment as `auto_submitted`, and closes the session.
+
+---
+
+## 4. Security & Audit Verification (BR-31)
+
+All security-sensitive operations must generate an immutable audit log row in `audit.events`:
+- Organization creation and suspension
+- Entitlement limit changes
+- Candidate creation, destruction, or result release
+- AI provider key updates (only storing last 4 digits)
+
+The QA team verifies the tamper-evident SHA-256 hash chain:
+```
+hash_n = SHA256(hash_(n-1) || row_payload_n)
+```
+Any modified or deleted rows immediately break the cryptographic chain and trigger an alert.

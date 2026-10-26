@@ -19,5 +19,6 @@
 - [ ] New dependencies justified below (or none)
 - [ ] Feature flag for incomplete work
 - [ ] Migration reviewed for `org_id`, index, RLS (if any)
+- [ ] Documentation updated in `apps/docs/content/docs/` for DB schema, API, or architecture changes (`pnpm docs:sync-check` passes)
 
 ## New dependencies / risks

@@ -1,0 +1,62 @@
+---
+title: "Frequently asked questions"
+description: "HelloSmart MMP Knowledge Base — Chapter 19: Frequently asked questions"
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+**Can a company sign up on its own?**
+Not in the first release. A HelloSmart Platform Admin creates every company after a sales call. Self-serve will be revisited after the first 10 to 15 paying customers.
+
+**Are templates shared between companies?**
+No. Each template is assigned to specific companies, and no company can see another's. There is no public template catalog.
+
+**Who pays for the AI candidates use?**
+The company, through its own provider key, including during the trial. HelloSmart can also allocate a capped platform key as a quoted add-on. Self-serve managed credits come in Phase 2.
+
+**Does the AI decide who gets hired?**
+No. Reviewer agents produce scores with cited evidence. A person scores, overrides and finalizes, and the product never auto-rejects a candidate.
+
+**Can candidates see their scores?**
+Only if the company releases them. The default is off.
+
+**What happens if a candidate leaves full screen?**
+In Cloud mode the workspace disconnects, the event is logged, and the candidate can resume. Their work is saved. It is evidence for a reviewer, not an automatic failure.
+
+**What if the candidate's internet drops?**
+Work is saved continuously. They can reconnect until their time or window ends. The timer keeps running unless the assessment has "Pause timer on disconnect" turned on.
+
+**What exactly is recorded?**
+It depends on the mode and the consent the candidate gave: activity, the AI conversation and screen recording as configured in Cloud; the chat transcript in Chat. The candidate sees exactly what is recorded before they connect.
+
+**How long is candidate data kept?**
+By default 90 days after the assessment closes, configurable per company. Candidates and companies can request deletion.
+
+**Which roles can be assessed?**
+Any role the template and rubric can describe. In the first release Cloud VM covers technical roles and Chat covers non-technical roles. Browser-based roles come in Phase 2.
+
+**Can candidates use their own computer?**
+Local mode, Phase 2, allows it with a one-line command or small desktop agent, while AI calls still go through the proxy.
+
+**What does a trial include?**
+X templates, Y candidates and Z days, set by HelloSmart. Suggested defaults are 3, 10 and 14. A candidate counts once, at first workspace launch.
+
+**What happens when the trial ends or a cap is reached?**
+New assessments, candidates and workspace launches are blocked with a prompt to contact HelloSmart or pay. Running sessions finish and data stays readable.
+
+**Can a company use its own domain or remove the HelloSmart mark?**
+Yes, as paid add-ons: own routing for the domain and white label for the mark and branding.
+
+**How do companies pay?**
+Through an emailed payment link or inside the app, once or on a recurring plan, through Razorpay (cards, UPI, netbanking), with GST invoices. Stripe follows in Phase 2.
+
+**Can a company edit a score after finalizing?**
+Yes. Every edit creates a new version, and the original agent scores and earlier versions are kept.
+
+**What if a workspace will not start?**
+The system retries, then gives the candidate a support route and extra time automatically, and alerts HelloSmart.
+
+**Is the product compliant with hiring-AI regulations?**
+It is built around the principles those rules require: human oversight, logging, transparency and consent. Specific requirements by market, including the retention period, are to be confirmed with legal counsel.
+
+---

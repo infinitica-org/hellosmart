@@ -1,0 +1,116 @@
+---
+title: "The candidate journey"
+description: "HelloSmart MMP Knowledge Base — Chapter 6: The candidate journey"
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+```mermaid
+flowchart TD
+  E["Receives the account email"] --> L["Opens the link and sets a new password"]
+  L --> D["Dashboard: assigned workspaces"]
+  D --> W{"Is the window open?"}
+  W -->|"No"| X["Connect disabled with a clear message"]
+  W -->|"Yes"| P["Read the brief, rules and AI policy"]
+  P --> CO["Accept consent for this mode"]
+  CO --> CN["Connect. Cloud mode goes full screen"]
+  CN --> WK["Work, using the AI assistant if enabled"]
+  WK --> Q{"Left full screen or lost connection?"}
+  Q -->|"Yes"| DC["Disconnected, work saved"]
+  DC --> RS["Resume. The timer kept running"]
+  RS --> WK
+  Q -->|"No, finished"| SB["Submit, or auto-submit at expiry"]
+  SB --> RES["Wait for results. Seen only if released"]
+```
+
+### 6.1 Getting access
+
+The candidate receives an email with a secure link, sets a new password (the first login forces a reset), and signs in. Candidates can also use the master login, which routes them to the candidate portal.
+
+### 6.2 The dashboard
+
+Each assigned task shows the company, mode, time rules and a status:
+
+| Status | Meaning |
+|---|---|
+| Invited | Account created, not yet signed in. |
+| Window not open | The start window has not begun. |
+| Ready | Can start now. |
+| Not connected | Workspace is provisioned, candidate has not connected. |
+| Connected | Workspace is live. |
+| In progress | Timer is running. |
+| Disconnected (resumable) | Left full screen or lost connection; work is saved. |
+| Submitted | Finished and waiting for review. |
+| Expired | The window or time ran out before the candidate started. |
+
+### 6.3 Before connecting
+
+The candidate sees the brief, deliverables, duration or window, the AI policy (on or off, caps) and exactly what is recorded. They must accept a **consent** screen specific to the workspace mode. Connect stays disabled until they do.
+
+| Mode | What consent covers |
+|---|---|
+| Cloud | Activity, AI transcript and screen recording as configured. |
+| Chat | AI chat transcript. |
+| Local (Phase 2) | Installing the agent, and capture of terminal, files and git history. |
+| Browser (Phase 2) | Page and action logging. |
+
+The consent screen also tells the candidate that the timer keeps running if they disconnect. The system stores which consent text was shown, when it was accepted and from which IP address.
+
+### 6.4 The session
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor C as Candidate
+  participant P as Candidate portal
+  participant S as Server
+  participant WS as Workspace
+  participant AP as AI proxy
+  C->>P: Opens the assignment
+  P->>C: Shows brief, rules and consent
+  C->>P: Accepts consent
+  C->>P: Clicks Connect
+  P->>S: Connect request
+  S->>S: Checks window, time, caps and consent
+  S->>WS: Provision, load repo, inject secrets, start recorder
+  WS-->>C: Workspace ready, timer starts
+  C->>WS: Works on the task
+  WS->>AP: AI requests with a session token
+  AP-->>WS: Responses after policy checks
+  C->>P: Exits full screen
+  P->>S: Disconnect event
+  S->>WS: Keeps the saved state
+  C->>S: Resumes
+  C->>WS: Continues from the saved state
+  C->>S: Submits
+  S->>WS: Final snapshot, then destroy workspace
+```
+
+### 6.5 Full screen in Cloud mode
+
+On connect the workspace asks for full screen and is active only while the candidate stays in it. If they exit, the workspace **disconnects**, an overlay invites them to resume, and the event is logged for the reviewers. Browsers cannot truly prevent a person from leaving full screen, so the system detects it and reacts. The event is treated as evidence for a human, never as an automatic failure.
+
+### 6.6 Nothing is lost
+
+Files, terminal history, editor state, the chat transcript and drafts are saved continuously (target: no more than 30 seconds of loss). On resume, everything is restored. A candidate can reconnect until the timer or the window ends, and every disconnect and resume is logged.
+
+### 6.7 Timer and warnings
+
+A countdown is always visible, with warnings at set thresholds (for example 15 and 5 minutes). The server, not the browser, decides access and expiry.
+
+### 6.8 Submitting
+
+The candidate confirms, a final snapshot is saved, and the session closes. They cannot re-enter unless the company reopens it. If time runs out, the current state is auto-submitted.
+
+### 6.9 Results
+
+Candidates see results only if the company released them. When released, they see overall and per-dimension scores and any notes the company chose to share.
+
+### 6.10 Support and fairness
+
+- If a workspace fails to start, the candidate gets a support route and extra time automatically.
+- Candidates can request accommodations such as extra time (Phase 2), and the company can grant it.
+- The interface targets WCAG 2.2 AA accessibility.
+- Candidates can request to see, correct or delete their data (Phase 2).
+
+---
