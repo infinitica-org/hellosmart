@@ -1,12 +1,29 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD, APP_FILTER } from '@nestjs/core';
+import { RedisModule } from './common/redis/redis.module.js';
+import { DatabaseModule } from './common/database/database.module.js';
+import { SessionGuard } from './common/guards/session.guard.js';
+import { RolesGuard } from './common/guards/roles.guard.js';
+import { ProblemDetailsFilter } from './common/exceptions/problem-details.filter.js';
 
-// Module map (owner: Core Backend unless noted). Each folder in ./modules is one bounded context.
-// auth · rbac · tenancy · orgs · entitlements · audit            (S1)
-// templates · assessments · candidates · assignments · ai-keys   (S2)
-// workspaces · consent · timing                                  (S3, with Candidate & Workspace)
-// submissions · reviews                                          (S4, with AI Engineering)
-// billing · quotes · leads · analytics · retention · webhooks    (S5)
 @Module({
-  imports: [],
+  imports: [
+    RedisModule,
+    DatabaseModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: SessionGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: ProblemDetailsFilter,
+    },
+  ],
 })
 export class AppModule {}
