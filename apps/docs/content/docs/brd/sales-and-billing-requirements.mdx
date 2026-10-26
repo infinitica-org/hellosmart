@@ -1,0 +1,80 @@
+---
+title: "BRD: Sales, Provisioning & Billing (SP-001 – SP-022)"
+description: "Commercial sales path, cal.com lead capture, deal pipeline, quote builder, Razorpay payment processing, and enterprise tiers."
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+# Business Requirements: Sales, Provisioning and Payments (SP-001 – SP-022)
+
+The commercial path: landing page, cal.com booking, discovery call, quote, payment and provisioning on the standard HelloSmart route, with paid add-ons for own routing, white label and custom templates.
+
+Total Sales & Provisioning Requirements: **22** (Must: 15, Should: 6, Could: 1 | MMP: 18, Phase 2: 3, Phase 3: 1).
+
+---
+
+The commercial path: landing page, cal.com booking, discovery call, quote, payment and provisioning on the standard HelloSmart route, with paid add-ons for own routing, white label and custom templates.
+
+### 10.1 Landing and booking
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **SP-001** | Landing page with product pitch and category | States category (AI-native work simulation), vision, how it works and use cases; single primary CTA 'Book a meeting'. | Must | MMP |  |
+| **SP-002** | cal.com meeting booking | Embedded cal.com booking; UTM and source captured; booking confirmation email. | Must | MMP |  |
+| **SP-003** | Booking webhook creates a lead in admin | cal.com webhook creates/updates a lead with name, email, company and time. | Should | MMP |  |
+
+### 10.2 Deal pipeline
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **SP-004** | Track deal stages in admin | Stages: Lead, Meeting booked, Meeting held, Quoted, Paid, Provisioned; owner and notes. | Should | MMP |  |
+
+### 10.3 Provisioning
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **SP-005** | Provision the customer directly on the standard HelloSmart route | Admin creates org on the multi-tenant app route (e.g. `app.hellosmart.ai/{org}`) in minutes; no separate infrastructure. | Must | MMP | Default delivery model. |
+| **SP-006** | Customer-specific custom templates | Templates prepared for a company are assigned to that company only; custom template build is quoted as a line item. | Must | MMP | Private templates; HelloSmart works behind the curtain. |
+
+### 10.4 Add-ons
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **SP-007** | Own routing / custom domain as a paid add-on | Add-on on the quote; once paid, admin enables custom domain; absent payment, feature stays locked. | Must | MMP | Decision accepted (Open Q3): routing = own domain and portal routing. Separate instance/VPC is an Enterprise quote. |
+| **SP-008** | White label and branding as a paid add-on | Add-on on the quote; unlocks removal of 'Powered by' and custom branding. | Must | MMP |  |
+
+### 10.5 Quoting
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **SP-009** | Quote builder | Line items (platform plan, candidate pack, custom templates, white label, custom routing, AI credits), discounts, tax (GST), currency, validity date, one-time vs recurring. | Must | MMP |  |
+| **SP-010** | Send quote and track acceptance | Quote is emailed with a secure link; status Sent, Viewed, Accepted, Expired. | Must | MMP |  |
+
+### 10.6 Payments
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **SP-011** | Email payment collection | Admin emails a payment link for a quote/invoice; link opens a hosted checkout; status updates automatically. | Must | MMP |  |
+| **SP-012** | In-app payment | Company Admin sees quoted amounts in Billing and pays in-app (card, UPI, netbanking depending on gateway). | Must | MMP |  |
+| **SP-013** | Recurring payments | Monthly or annual subscriptions with auto-renew, failed-payment retries (dunning), cancel and plan change. | Must | MMP |  |
+| **SP-014** | One-time payments | Setup fees and custom template builds are billed as one-time charges. | Must | MMP |  |
+| **SP-015** | Custom payment code | Admin can generate a code tied to a custom quote/price or discount; company redeems it in-app or via the email link; single-use or limited-use; expiry. | Should | MMP | Decision accepted (Open Q4): custom code = custom quote/coupon code. |
+| **SP-016** | Automatic entitlement changes on payment | Payment success unlocks plan limits and add-ons; failure after grace period downgrades or suspends. | Must | MMP |  |
+| **SP-017** | Invoices, receipts and tax | GST-compliant invoice PDF; receipts emailed; history in Billing. | Must | MMP |  |
+| **SP-018** | Payment gateway integration | MMP: Razorpay (cards, UPI, netbanking, subscriptions, GST invoices) with webhook signature verification; no card data stored by HelloSmart. Built behind a payment abstraction so other gateways can be added. | Must | MMP | Decision accepted (Open Q5). |
+| **SP-019** | Stripe gateway for international customers | Stripe checkout, subscriptions and webhooks behind the same payment abstraction; multi-currency pricing. | Should | Phase 2 | Decision accepted (Open Q5). |
+| **SP-020** | Refunds and credit notes | Admin can refund fully or partially and issue credit notes with an audit trail. | Should | Phase 2 |  |
+
+### 10.7 Reporting
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **SP-021** | Revenue and payment reporting for admin | MRR, collections, outstanding quotes, add-on revenue, services share of revenue. | Should | Phase 2 | Keep services under about 20-30% of revenue. |
+
+### 10.8 Enterprise
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **SP-022** | Dedicated instance / VPC deployment | Quoted individually; only for enterprise customers; not part of MMP build. | Could | Phase 3 |  |
+
+---
