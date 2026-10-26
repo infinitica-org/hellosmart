@@ -1,12 +1,13 @@
 """Evidence builder for the skills-depth agent (AD-014b).
 
-Narrower first-pass port of ProjAgentScan's src/agents/skills_depth/evidence.py: declared
+Full-depth port of ProjAgentScan's src/agents/skills_depth/evidence.py: declared
 (requirements.txt/pyproject.toml) vs genuinely-used dependencies, carrying over the one
 security-relevant fix from that port's history (docs/memory/pitfalls.md #26): a Python file
 whose entire body is import statements and nothing else does not count as "using" what it
 imports -- that exact shape is the gaming vector a dummy file importing every declared package
-would otherwise exploit. Stub-function detection (pass-only / NotImplementedError bodies) is
-also ported; technology-domain breadth classification is a follow-up, not carried over here.
+would otherwise exploit. Stub-function detection (pass-only / NotImplementedError bodies) and
+now technology-domain breadth classification (_TECH_DOMAINS) are also ported -- the fact this
+agent's own rubric cites directly ("breadth across domains", not just "many used dependencies").
 """
 
 from __future__ import annotations
@@ -21,6 +22,34 @@ from app.sanitizer import normalise, suspicious
 from .repo_io import RepoReader, safe_parse_python
 
 _REQ_LINE = re.compile(r"^\s*([A-Za-z0-9_.\-]+)")
+
+# Standard library modules (argparse, unittest) are excluded from domain counts.
+_TECH_DOMAINS: dict[str, set[str]] = {
+    "web": {
+        "fastapi", "flask", "django", "starlette", "tornado", "aiohttp", "bottle", "falcon",
+        "sanic",
+    },
+    "database": {
+        "sqlalchemy", "psycopg2", "asyncpg", "aiomysql", "pymongo", "motor", "redis",
+        "tortoise", "peewee", "alembic", "prisma",
+    },
+    "testing": {
+        "pytest", "mock", "pytest_mock", "hypothesis", "nose", "tox", "coverage",
+    },
+    "data_ml": {
+        "pandas", "numpy", "scipy", "sklearn", "torch", "tensorflow", "keras", "polars",
+        "pyarrow", "matplotlib", "seaborn", "xgboost", "lightgbm",
+    },
+    "cli_system": {
+        "click", "typer", "rich", "prompt_toolkit", "colorama", "paramiko", "fabric", "fire",
+    },
+    "api_network": {
+        "requests", "httpx", "aiohttp", "urllib3",
+    },
+    "serialization": {
+        "pydantic", "marshmallow", "attrs", "jsonschema", "msgpack", "protobuf",
+    },
+}
 
 
 def _sanitize(pack: EvidencePack, ref: str, text: str) -> str:
@@ -121,6 +150,15 @@ def _stub_count(reader: RepoReader) -> int:
     return count
 
 
+def _classify_domains(used: list[str]) -> dict[str, list[str]]:
+    by_domain: dict[str, list[str]] = {}
+    for domain, modules in _TECH_DOMAINS.items():
+        hits = sorted(u for u in used if u in modules)
+        if hits:
+            by_domain[domain] = hits
+    return by_domain
+
+
 def build_evidence(
     submission_id: str, clone_dir: str, manifest: dict[str, object] | None = None
 ) -> EvidencePack:
@@ -143,6 +181,27 @@ def build_evidence(
             untrusted=True, sanitized=True,
         )
     )
+
+    domains = _classify_domains(used)
+    domain_ref = "repo:fact.skills.domain_breadth"
+    domain_content = (
+        f"domain_count={len(domains)}; domains={sorted(domains)}"
+    )
+    pack.items.append(
+        EvidenceItem(
+            ref=domain_ref, source="artifact", content=domain_content,
+            untrusted=False, sanitized=False,
+        )
+    )
+    for domain, modules in sorted(domains.items()):
+        ref = f"repo:ev.skill_domain.{domain}"
+        content = f"domain={domain}; modules={modules}"
+        pack.items.append(
+            EvidenceItem(
+                ref=ref, source="artifact", content=_sanitize(pack, ref, content),
+                untrusted=True, sanitized=True,
+            )
+        )
 
     stubs = _stub_count(reader)
     pack.items.append(
