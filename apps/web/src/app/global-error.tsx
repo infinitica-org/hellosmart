@@ -15,8 +15,8 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen bg-[#090d16] text-slate-100 flex items-center justify-center p-4">
+    <html lang="en" className="light">
+      <body className="min-h-screen bg-canvas text-neutral-900 flex items-center justify-center p-4">
         <ServerError
           title="System Error"
           description="A critical platform error occurred. Our engineering team has been notified."

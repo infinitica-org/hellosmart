@@ -21,19 +21,19 @@ export const StatCard = forwardRef<HTMLDivElement, StatCardProps>(
     ref
   ) => {
     const trendColors = {
-      up: 'text-emerald-400 bg-emerald-950/60 border-emerald-800/60',
-      down: 'text-rose-400 bg-rose-950/60 border-rose-800/60',
-      neutral: 'text-slate-400 bg-slate-800 border-slate-700',
+      up: 'text-emerald-700 bg-emerald-50 border-emerald-200 font-normal',
+      down: 'text-rose-700 bg-rose-50 border-rose-200 font-normal',
+      neutral: 'text-neutral-600 bg-neutral-100 border-neutral-200 font-normal',
     };
 
     const cardContent = (
       <>
         <div className="flex items-center justify-between gap-3">
-          <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+          <div className="text-xs font-normal text-neutral-500 uppercase tracking-wider">
             {label}
           </div>
           {icon && (
-            <div className="w-8 h-8 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-center text-slate-400 shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-600 shrink-0">
               {icon}
             </div>
           )}
@@ -41,12 +41,12 @@ export const StatCard = forwardRef<HTMLDivElement, StatCardProps>(
         </div>
 
         <div className="flex items-baseline gap-3 mt-3">
-          <div className="text-3xl font-extrabold font-mono text-white tracking-tight">
+          <div className="text-3xl font-medium font-mono text-neutral-900 tracking-tight">
             {value}
           </div>
           {trend && (
             <span
-              className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+              className={`inline-flex items-center gap-1 text-[11px] font-normal px-2 py-0.5 rounded-full border ${
                 trendColors[trend.direction || 'neutral']
               }`}
             >
@@ -58,7 +58,7 @@ export const StatCard = forwardRef<HTMLDivElement, StatCardProps>(
         </div>
 
         {description && (
-          <div className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+          <div className="text-[11px] text-neutral-500 font-light mt-2 leading-relaxed">
             {description}
           </div>
         )}
@@ -66,13 +66,13 @@ export const StatCard = forwardRef<HTMLDivElement, StatCardProps>(
     );
 
     const baseClasses =
-      'rounded-2xl border border-slate-800/80 bg-slate-900/60 backdrop-blur-md p-6 shadow-lg shadow-black/20 transition-all duration-200';
+      'rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-xs transition-all duration-200';
 
     if (href) {
       return (
         <a
           href={href}
-          className={`${baseClasses} hover:border-indigo-500/40 hover:shadow-indigo-500/10 hover:-translate-y-0.5 block ${className}`}
+          className={`${baseClasses} hover:border-primary/40 hover:shadow-md hover:shadow-neutral-900/5 hover:-translate-y-0.5 block ${className}`}
         >
           {cardContent}
         </a>
@@ -135,7 +135,7 @@ export const SearchAndSortToolbar = forwardRef<HTMLDivElement, SearchAndSortTool
           value={searchQuery}
           onChange={(e) => onSearchChange?.(e.target.value)}
           placeholder={searchPlaceholder}
-          className="w-full bg-slate-900/70 border border-slate-700/80 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          className="w-full bg-white border border-neutral-300 rounded-xl px-4 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
         />
       </div>
       {children && <div className="flex items-center gap-2">{children}</div>}
@@ -156,7 +156,7 @@ export const BulkActionBar = forwardRef<HTMLDivElement, BulkActionBarProps>(
     return (
       <div
         ref={ref}
-        className={`flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-indigo-950/80 border border-indigo-800/80 text-sm text-indigo-200 shadow-xl ${className}`}
+        className={`flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-neutral-900 border border-neutral-800 text-sm text-white shadow-xl ${className}`}
         {...props}
       >
         <div className="flex items-center gap-2">
@@ -166,7 +166,7 @@ export const BulkActionBar = forwardRef<HTMLDivElement, BulkActionBarProps>(
             <button
               type="button"
               onClick={onClear}
-              className="text-xs text-indigo-400 hover:text-indigo-300 underline ml-2"
+              className="text-xs text-primary hover:text-primary-hover underline ml-2"
             >
               Deselect all
             </button>
@@ -185,7 +185,7 @@ export interface TimelineProps extends HTMLAttributes<HTMLOListElement> {
 
 export const Timeline = forwardRef<HTMLOListElement, TimelineProps>(
   ({ className = '', children, ...props }, ref) => (
-    <ol ref={ref} className={`relative border-l border-slate-800 ml-3 space-y-6 ${className}`} {...props}>
+    <ol ref={ref} className={`relative border-l border-neutral-200 ml-3 space-y-6 ${className}`} {...props}>
       {children}
     </ol>
   )
@@ -202,14 +202,14 @@ export interface TimelineItemProps extends Omit<HTMLAttributes<HTMLLIElement>, '
 export const TimelineItem = forwardRef<HTMLLIElement, TimelineItemProps>(
   ({ title, time, icon, children, className = '', ...props }, ref) => (
     <li ref={ref} className={`ml-6 ${className}`} {...props}>
-      <span className="absolute -left-3 flex items-center justify-center w-6 h-6 rounded-full bg-slate-900 border border-slate-700 text-slate-400">
-        {icon || <span className="w-2 h-2 rounded-full bg-indigo-500" />}
+      <span className="absolute -left-3 flex items-center justify-center w-6 h-6 rounded-full bg-white border border-neutral-300 text-neutral-500">
+        {icon || <span className="w-2 h-2 rounded-full bg-primary" />}
       </span>
       <div className="flex items-center justify-between gap-2">
-        <h4 className="text-sm font-semibold text-slate-200">{title}</h4>
-        {time && <time className="text-xs text-slate-500">{time}</time>}
+        <h4 className="text-sm font-semibold text-neutral-900">{title}</h4>
+        {time && <time className="text-xs text-neutral-500">{time}</time>}
       </div>
-      {children && <div className="mt-1 text-xs text-slate-400">{children}</div>}
+      {children && <div className="mt-1 text-xs text-neutral-600">{children}</div>}
     </li>
   )
 );

@@ -14,24 +14,24 @@ export interface AlertProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'
 
 const variantStyles: Record<AlertVariant, { container: string; icon: string; title: string }> = {
   info: {
-    container: 'bg-indigo-950/40 border-indigo-800/60 text-indigo-300',
-    icon: 'text-indigo-400',
-    title: 'text-indigo-200',
+    container: 'bg-primary/10 border-primary/25 text-neutral-800',
+    icon: 'text-primary',
+    title: 'text-primary',
   },
   success: {
-    container: 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300',
-    icon: 'text-emerald-400',
-    title: 'text-emerald-200',
+    container: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+    icon: 'text-emerald-600',
+    title: 'text-emerald-900',
   },
   warning: {
-    container: 'bg-amber-950/40 border-amber-800/60 text-amber-300',
-    icon: 'text-amber-400',
-    title: 'text-amber-200',
+    container: 'bg-amber-50 border-amber-200 text-amber-800',
+    icon: 'text-amber-600',
+    title: 'text-amber-900',
   },
   error: {
-    container: 'bg-rose-950/40 border-rose-800/60 text-rose-300',
-    icon: 'text-rose-400',
-    title: 'text-rose-200',
+    container: 'bg-rose-50 border-rose-200 text-rose-800',
+    icon: 'text-rose-600',
+    title: 'text-rose-900',
   },
 };
 
@@ -81,7 +81,7 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(
             type="button"
             onClick={onClose}
             aria-label="Close alert"
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors"
+            className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
           >
             <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
               <path

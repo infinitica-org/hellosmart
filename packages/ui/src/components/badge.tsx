@@ -12,28 +12,28 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 
 const badgeVariants: Record<BadgeVariant, { container: string; dot: string }> = {
   default: {
-    container: 'bg-slate-800 text-slate-300 border-slate-700',
-    dot: 'bg-slate-400',
+    container: 'bg-neutral-100 text-neutral-800 border-neutral-200',
+    dot: 'bg-neutral-500',
   },
   primary: {
-    container: 'bg-indigo-950/80 text-indigo-300 border-indigo-800/70',
-    dot: 'bg-indigo-400',
+    container: 'bg-primary/10 text-primary border-primary/30 font-medium',
+    dot: 'bg-primary',
   },
   success: {
-    container: 'bg-emerald-950/80 text-emerald-300 border-emerald-800/70',
-    dot: 'bg-emerald-400',
+    container: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    dot: 'bg-emerald-500',
   },
   warning: {
-    container: 'bg-amber-950/80 text-amber-300 border-amber-800/70',
-    dot: 'bg-amber-400',
+    container: 'bg-amber-50 text-amber-700 border-amber-200',
+    dot: 'bg-amber-500',
   },
   danger: {
-    container: 'bg-rose-950/80 text-rose-300 border-rose-800/70',
-    dot: 'bg-rose-400',
+    container: 'bg-rose-50 text-rose-700 border-rose-200',
+    dot: 'bg-rose-500',
   },
   info: {
-    container: 'bg-cyan-950/80 text-cyan-300 border-cyan-800/70',
-    dot: 'bg-cyan-400',
+    container: 'bg-primary/10 text-primary border-primary/25',
+    dot: 'bg-primary',
   },
 };
 
@@ -77,18 +77,18 @@ const statusConfig: Record<StatusType, { color: string; pingColor: string; defau
     defaultLabel: 'Online',
   },
   offline: {
-    color: 'bg-slate-500',
-    pingColor: 'bg-slate-400',
+    color: 'bg-neutral-400',
+    pingColor: 'bg-neutral-300',
     defaultLabel: 'Offline',
   },
   busy: {
-    color: 'bg-amber-500',
-    pingColor: 'bg-amber-400',
+    color: 'bg-primary',
+    pingColor: 'bg-primary/75',
     defaultLabel: 'Busy',
   },
   idle: {
-    color: 'bg-cyan-500',
-    pingColor: 'bg-cyan-400',
+    color: 'bg-neutral-500',
+    pingColor: 'bg-neutral-400',
     defaultLabel: 'Idle',
   },
   error: {
@@ -106,7 +106,7 @@ export const StatusIndicator = forwardRef<HTMLSpanElement, StatusIndicatorProps>
     return (
       <span
         ref={ref}
-        className={`inline-flex items-center gap-2 text-xs font-medium text-slate-300 ${className}`}
+        className={`inline-flex items-center gap-2 text-xs font-medium text-neutral-700 ${className}`}
         {...props}
       >
         <span className="relative flex h-2 w-2">
@@ -157,4 +157,3 @@ export const StatusTag = forwardRef<HTMLSpanElement, StatusTagProps>(
   }
 );
 StatusTag.displayName = 'StatusTag';
-

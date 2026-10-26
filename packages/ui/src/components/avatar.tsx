@@ -23,10 +23,10 @@ const sizeClasses: Record<AvatarSize, { container: string; text: string; status:
 };
 
 const statusDotColors = {
-  online: 'bg-emerald-400 ring-slate-950',
-  busy: 'bg-amber-400 ring-slate-950',
-  away: 'bg-indigo-400 ring-slate-950',
-  offline: 'bg-slate-600 ring-slate-950',
+  online: 'bg-emerald-500 ring-white',
+  busy: 'bg-primary ring-white',
+  away: 'bg-amber-400 ring-white',
+  offline: 'bg-neutral-400 ring-white',
 };
 
 function getInitials(name?: string, alt?: string): string {
@@ -60,7 +60,7 @@ export const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
     return (
       <div
         ref={ref}
-        className={`relative inline-flex items-center justify-center shrink-0 select-none bg-slate-800 border border-slate-700/80 text-slate-200 font-semibold ${
+        className={`relative inline-flex items-center justify-center shrink-0 select-none bg-primary/10 border border-primary/25 text-primary font-semibold ${
           cfg.container
         } ${shapeClass} ${className}`}
         {...props}
@@ -109,13 +109,13 @@ export function AvatarGroup({
   return (
     <div className={`flex items-center -space-x-2 overflow-hidden ${className}`} {...props}>
       {visible.map((child, idx) => (
-        <div key={idx} className="ring-2 ring-slate-950 rounded-full">
+        <div key={idx} className="ring-2 ring-white rounded-full">
           {child}
         </div>
       ))}
       {remaining > 0 && (
         <div
-          className={`relative inline-flex items-center justify-center rounded-full bg-slate-800 border border-slate-700 ring-2 ring-slate-950 text-slate-300 font-medium ${
+          className={`relative inline-flex items-center justify-center rounded-full bg-neutral-100 border border-neutral-200 ring-2 ring-white text-neutral-800 font-medium ${
             cfg.container
           } ${cfg.text}`}
         >
@@ -125,4 +125,3 @@ export function AvatarGroup({
     </div>
   );
 }
-

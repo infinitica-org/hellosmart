@@ -13,7 +13,7 @@ export interface ProgressProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const variantStyles: Record<ProgressVariant, string> = {
-  primary: 'bg-indigo-600',
+  primary: 'bg-primary',
   success: 'bg-emerald-500',
   warning: 'bg-amber-500',
   danger: 'bg-rose-500',
@@ -44,9 +44,9 @@ export const Progress = forwardRef<HTMLDivElement, ProgressProps>(
     return (
       <div ref={ref} className={`w-full flex flex-col space-y-1.5 ${className}`} {...props}>
         {(label || showValue) && (
-          <div className="flex justify-between items-center text-xs font-medium text-slate-300">
+          <div className="flex justify-between items-center text-xs font-medium text-neutral-800">
             {label && <span>{label}</span>}
-            {showValue && <span className="font-mono text-slate-400">{percentage}%</span>}
+            {showValue && <span className="font-mono text-neutral-500">{percentage}%</span>}
           </div>
         )}
 
@@ -55,10 +55,10 @@ export const Progress = forwardRef<HTMLDivElement, ProgressProps>(
           aria-valuenow={value}
           aria-valuemin={0}
           aria-valuemax={max}
-          className={`w-full bg-slate-800 rounded-full overflow-hidden ${sizeStyles[size]}`}
+          className={`w-full bg-neutral-200 rounded-full overflow-hidden ${sizeStyles[size]}`}
         >
           <div
-            className={`h-full rounded-full transition-all duration-300 ease-out ${variantStyles[variant]}`}
+            className={`h-full transition-all duration-300 rounded-full ${variantStyles[variant]}`}
             style={{ width: `${percentage}%` }}
           />
         </div>
@@ -67,7 +67,5 @@ export const Progress = forwardRef<HTMLDivElement, ProgressProps>(
   }
 );
 Progress.displayName = 'Progress';
-
 export const ProgressBar = Progress;
 export type ProgressBarProps = ProgressProps;
-

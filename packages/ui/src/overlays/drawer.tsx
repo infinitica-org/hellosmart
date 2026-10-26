@@ -50,10 +50,10 @@ export function Drawer({
   if (!open || !mounted) return null;
 
   const positionClasses: Record<DrawerPosition, string> = {
-    right: 'inset-y-0 right-0 h-full border-l border-slate-800',
-    left: 'inset-y-0 left-0 h-full border-r border-slate-800',
-    top: 'inset-x-0 top-0 w-full border-b border-slate-800',
-    bottom: 'inset-x-0 bottom-0 w-full border-t border-slate-800',
+    right: 'inset-y-0 right-0 h-full border-l border-neutral-200',
+    left: 'inset-y-0 left-0 h-full border-r border-neutral-200',
+    top: 'inset-x-0 top-0 w-full border-b border-neutral-200',
+    bottom: 'inset-x-0 bottom-0 w-full border-t border-neutral-200',
   };
 
   const horizontalSizeClasses = {
@@ -81,7 +81,7 @@ export function Drawer({
     <div className="fixed inset-0 z-50 overflow-hidden" role="presentation">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-neutral-950/60 backdrop-blur-xs transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -90,7 +90,7 @@ export function Drawer({
       <div
         role="dialog"
         aria-modal="true"
-        className={`fixed z-10 w-full bg-[#0c1222] shadow-2xl flex flex-col justify-between overflow-y-auto animate-fade-in ${positionClasses[position]} ${sizeClass} ${className}`}
+        className={`fixed z-10 w-full bg-white text-neutral-900 shadow-2xl flex flex-col justify-between overflow-y-auto animate-fade-in ${positionClasses[position]} ${sizeClass} ${className}`}
       >
         {children}
       </div>
@@ -108,7 +108,7 @@ export const DrawerHeader = forwardRef<HTMLDivElement, DrawerHeaderProps>(
   ({ className = '', children, ...props }, ref) => (
     <div
       ref={ref}
-      className={`p-6 border-b border-slate-800/80 space-y-1.5 ${className}`}
+      className={`p-6 border-b border-neutral-200 space-y-1.5 ${className}`}
       {...props}
     >
       {children}
@@ -125,7 +125,7 @@ export const DrawerTitle = forwardRef<HTMLHeadingElement, DrawerTitleProps>(
   ({ className = '', children, ...props }, ref) => (
     <h2
       ref={ref}
-      className={`text-lg font-semibold tracking-tight text-slate-100 ${className}`}
+      className={`text-lg font-semibold tracking-tight text-neutral-900 ${className}`}
       {...props}
     >
       {children}
@@ -140,7 +140,7 @@ export interface DrawerDescriptionProps extends HTMLAttributes<HTMLParagraphElem
 
 export const DrawerDescription = forwardRef<HTMLParagraphElement, DrawerDescriptionProps>(
   ({ className = '', children, ...props }, ref) => (
-    <p ref={ref} className={`text-sm text-slate-400 ${className}`} {...props}>
+    <p ref={ref} className={`text-sm text-neutral-500 ${className}`} {...props}>
       {children}
     </p>
   )
@@ -153,7 +153,7 @@ export interface DrawerContentProps extends HTMLAttributes<HTMLDivElement> {
 
 export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
   ({ className = '', children, ...props }, ref) => (
-    <div ref={ref} className={`p-6 flex-1 overflow-y-auto ${className}`} {...props}>
+    <div ref={ref} className={`p-6 flex-1 overflow-y-auto text-neutral-700 ${className}`} {...props}>
       {children}
     </div>
   )
@@ -168,7 +168,7 @@ export const DrawerFooter = forwardRef<HTMLDivElement, DrawerFooterProps>(
   ({ className = '', children, ...props }, ref) => (
     <div
       ref={ref}
-      className={`p-6 border-t border-slate-800/80 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3 gap-2 ${className}`}
+      className={`p-6 border-t border-neutral-200 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3 gap-2 ${className}`}
       {...props}
     >
       {children}

@@ -36,17 +36,17 @@ export function HumanReviewPanel({
   };
 
   return (
-    <Card variant="glass" className={`p-6 space-y-5 ${className}`}>
+    <Card variant="solid" className={`p-6 space-y-5 ${className}`}>
       <CardHeader className="p-0 border-0">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Human Review & Final Decision (BR-20)</CardTitle>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-neutral-500 mt-0.5">
               AI agent scores are advisory evidence. Human review overrides are version-tracked.
             </p>
           </div>
           {isFinalized && (
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/80">
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
               Finalized (v{currentVersion})
             </span>
           )}
@@ -55,7 +55,7 @@ export function HumanReviewPanel({
 
       <CardContent className="p-0 space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+          <label className="block text-xs font-semibold text-neutral-800 mb-1.5">
             Final Human Score (0 - 100)
           </label>
           <input
@@ -64,12 +64,12 @@ export function HumanReviewPanel({
             max={100}
             value={score}
             onChange={(e) => setScore(Number(e.target.value))}
-            className="w-32 bg-slate-900/80 border border-slate-700/80 text-slate-100 font-mono text-base font-bold rounded-xl px-3.5 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="w-32 bg-white border border-neutral-300 text-neutral-900 font-mono text-base font-bold rounded-xl px-3.5 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+          <label className="block text-xs font-semibold text-neutral-800 mb-1.5">
             Evaluator Notes & Qualitative Feedback
           </label>
           <Textarea
@@ -80,12 +80,12 @@ export function HumanReviewPanel({
           />
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between">
+        <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-slate-200">
+            <span className="text-xs font-semibold text-neutral-900">
               Release Evaluation Report to Candidate
             </span>
-            <p className="text-[11px] text-slate-400 mt-0.5">
+            <p className="text-[11px] text-neutral-500 mt-0.5">
               Allow the candidate to view their rubric breakdown in the candidate portal.
             </p>
           </div>
@@ -94,7 +94,7 @@ export function HumanReviewPanel({
       </CardContent>
 
       <CardFooter className="p-0 border-0 pt-2 flex items-center justify-between">
-        <span className="text-[11px] text-slate-500">
+        <span className="text-[11px] text-neutral-500">
           {isFinalized ? `Editing creates review version ${currentVersion + 1}` : 'Initial finalization'}
         </span>
         <Button variant="primary" isLoading={isLoading} onClick={handleSubmit}>

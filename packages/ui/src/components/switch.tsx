@@ -62,20 +62,20 @@ export const Switch = forwardRef<HTMLButtonElement, SwitchProps>(
           aria-checked={isChecked}
           disabled={disabled}
           onKeyDown={handleKeyDown}
-          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:cursor-not-allowed ${
-            isChecked ? 'bg-indigo-600' : 'bg-slate-800'
+          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-white disabled:cursor-not-allowed ${
+            isChecked ? 'bg-primary' : 'bg-neutral-200'
           }`}
         >
           <span
-            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
               isChecked ? 'translate-x-5' : 'translate-x-0'
             }`}
           />
         </button>
         {(label || description) && (
           <div className="flex flex-col">
-            {label && <span className="text-sm font-medium text-slate-200">{label}</span>}
-            {description && <span className="text-xs text-slate-400 mt-0.5">{description}</span>}
+            {label && <span className="text-sm font-medium text-neutral-900">{label}</span>}
+            {description && <span className="text-xs text-neutral-500 mt-0.5">{description}</span>}
           </div>
         )}
       </div>

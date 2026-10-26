@@ -119,7 +119,8 @@ describe('Next.js Route Protection Middleware', () => {
       },
     });
 
-  
+
+    
     const res = await middleware(req);
     expect(res.status).toBe(200);
   });

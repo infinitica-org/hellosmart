@@ -53,10 +53,10 @@ export function ToastProvider({ children }: { children: ReactNode }): React.JSX.
   );
 
   const variantStyles: Record<ToastVariant, { icon: string; border: string }> = {
-    info: { icon: 'text-indigo-400', border: 'border-indigo-500/30' },
-    success: { icon: 'text-emerald-400', border: 'border-emerald-500/30' },
-    warning: { icon: 'text-amber-400', border: 'border-amber-500/30' },
-    error: { icon: 'text-rose-400', border: 'border-rose-500/30' },
+    info: { icon: 'text-primary', border: 'border-primary/30' },
+    success: { icon: 'text-emerald-500', border: 'border-emerald-500/30' },
+    warning: { icon: 'text-amber-500', border: 'border-amber-500/30' },
+    error: { icon: 'text-rose-500', border: 'border-rose-500/30' },
   };
 
   return (
@@ -72,12 +72,12 @@ export function ToastProvider({ children }: { children: ReactNode }): React.JSX.
             <div
               key={t.id}
               role="alert"
-              className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl bg-slate-900/95 border ${cfg.border} shadow-2xl shadow-black/80 backdrop-blur-md text-slate-100 animate-fade-in`}
+              className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl bg-white border ${cfg.border} shadow-2xl backdrop-blur-md text-neutral-900 animate-fade-in`}
             >
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-semibold">{t.title}</div>
                 {t.description && (
-                  <div className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                  <div className="text-[11px] text-neutral-500 mt-0.5 leading-relaxed">
                     {t.description}
                   </div>
                 )}
@@ -86,7 +86,7 @@ export function ToastProvider({ children }: { children: ReactNode }): React.JSX.
                 type="button"
                 onClick={() => dismiss(t.id)}
                 aria-label="Dismiss notification"
-                className="text-slate-500 hover:text-slate-300 p-0.5 rounded transition-colors"
+                className="text-neutral-400 hover:text-neutral-900 p-0.5 rounded transition-colors"
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                   <path

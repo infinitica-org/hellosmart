@@ -9,19 +9,37 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
-    }
+    },
+    "./styles/*": "./src/styles/*",
+    "./fonts/*": "./src/fonts/*",
+    "./hellosmart/*": "./src/hellosmart/*",
+    "./src/*": "./src/*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "storybook": "storybook dev -p 6006 --disable-telemetry",
+    "build-storybook": "storybook build --disable-telemetry"
   },
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@storybook/addon-a11y": "8.6.14",
+    "@storybook/addon-essentials": "8.6.14",
+    "@storybook/addon-interactions": "8.6.14",
+    "@storybook/react": "8.6.14",
+    "@storybook/react-vite": "8.6.14",
+    "@storybook/test": "8.6.14",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
-    "typescript": "5.6.3"
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "10.6.1",
+    "postcss": "8.5.31",
+    "storybook": "8.6.14",
+    "tailwindcss": "3.4.14",
+    "typescript": "5.6.3",
+    "vite": "^5.4.11"
   }
 }

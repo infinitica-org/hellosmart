@@ -20,15 +20,15 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           disabled={disabled}
           aria-invalid={hasError ? 'true' : undefined}
-          className={`w-full appearance-none bg-slate-900/80 border text-slate-100 text-sm rounded-xl pl-3.5 pr-10 py-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`w-full appearance-none bg-white border text-neutral-900 text-sm rounded-xl pl-3.5 pr-10 py-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white shadow-xs disabled:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed ${
             hasError
-              ? 'border-rose-500/80 focus:border-rose-500 focus:ring-rose-500/30'
-              : 'border-slate-800 hover:border-slate-700 focus:border-indigo-500 focus:ring-indigo-500/30'
+              ? 'border-rose-500/80 focus:border-rose-500 focus:ring-rose-500/20'
+              : 'border-neutral-300 hover:border-neutral-400 focus:border-primary focus:ring-primary/20'
           } ${className}`}
           {...props}
         >
           {placeholder && (
-            <option value="" disabled className="bg-slate-900 text-slate-500">
+            <option value="" disabled className="bg-white text-neutral-400">
               {placeholder}
             </option>
           )}
@@ -38,14 +38,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
                   key={opt.value}
                   value={opt.value}
                   disabled={opt.disabled}
-                  className="bg-slate-900 text-slate-100"
+                  className="bg-white text-neutral-900"
                 >
                   {opt.label}
                 </option>
               ))
             : children}
         </select>
-        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
           </svg>
@@ -55,4 +55,3 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   }
 );
 Select.displayName = 'Select';
-

@@ -64,7 +64,7 @@ export function Dialog({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-neutral-950/60 backdrop-blur-xs transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -75,7 +75,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         data-testid={testId}
-        className={`relative z-10 w-full ${sizeClasses[size]} rounded-xl border border-slate-800 bg-[#0c1222] p-6 shadow-2xl shadow-black/80 focus:outline-none transition-all ${className}`}
+        className={`relative z-10 w-full ${sizeClasses[size]} rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl focus:outline-none transition-all ${className}`}
       >
         {children}
       </div>
@@ -106,7 +106,7 @@ export const DialogTitle = forwardRef<HTMLHeadingElement, DialogTitleProps>(
   ({ className = '', children, ...props }, ref) => (
     <h2
       ref={ref}
-      className={`text-lg font-semibold tracking-tight text-slate-100 ${className}`}
+      className={`text-lg font-semibold tracking-tight text-neutral-900 ${className}`}
       {...props}
     >
       {children}
@@ -121,7 +121,7 @@ export interface DialogDescriptionProps extends HTMLAttributes<HTMLParagraphElem
 
 export const DialogDescription = forwardRef<HTMLParagraphElement, DialogDescriptionProps>(
   ({ className = '', children, ...props }, ref) => (
-    <p ref={ref} className={`text-sm text-slate-400 ${className}`} {...props}>
+    <p ref={ref} className={`text-sm text-neutral-500 ${className}`} {...props}>
       {children}
     </p>
   )
@@ -134,7 +134,7 @@ export interface DialogContentProps extends HTMLAttributes<HTMLDivElement> {
 
 export const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
   ({ className = '', children, ...props }, ref) => (
-    <div ref={ref} className={`py-2 text-sm text-slate-300 ${className}`} {...props}>
+    <div ref={ref} className={`py-2 text-sm text-neutral-700 ${className}`} {...props}>
       {children}
     </div>
   )

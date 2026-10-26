@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
+import { companyNavigation } from '@/types/navigation';
 
 export default function CompanyLayout({
   children,
@@ -28,10 +29,13 @@ export default function CompanyLayout({
   };
 
   return (
-    <div className="min-h-screen flex bg-[#090d16] text-slate-100">
-      {/* Reusable Sidebar with Assessments, Candidates, AI Keys, Analytics, Settings */}
+    <div className="min-h-screen flex bg-canvas text-neutral-900 font-sans">
+      {/* Reusable Sidebar with Dashboard, Assessments, Candidates, Analytics, Settings */}
       <Sidebar
+        portalTitle="Company Portal"
+        portalRole="company_admin"
         companyName={companyName}
+        items={companyNavigation}
         userName={userName}
         userEmail={userEmail}
         onLogout={handleLogout}
@@ -39,22 +43,22 @@ export default function CompanyLayout({
 
       <div className="flex-1 flex flex-col min-w-0 pt-14 md:pt-0">
         {/* Top Navbar */}
-        <header className="h-16 border-b border-slate-800/80 px-6 sm:px-8 flex items-center justify-between bg-slate-950/40 backdrop-blur sticky top-0 z-20">
+        <header className="h-16 border-b border-neutral-200/80 px-6 sm:px-8 flex items-center justify-between bg-white/80 backdrop-blur sticky top-0 z-20">
           <div className="flex items-center gap-3">
-            <span className="text-xs uppercase tracking-wider text-slate-400 font-mono hidden sm:inline">
+            <span className="text-xs uppercase tracking-wider text-neutral-500 font-mono hidden sm:inline">
               Company Portal
             </span>
-            <span className="text-slate-700 hidden sm:inline">|</span>
-            <span className="text-xs text-indigo-400 font-medium">
+            <span className="text-neutral-300 hidden sm:inline">|</span>
+            <span className="text-xs text-primary font-normal">
               Multi-Agent Rubric Hiring
             </span>
           </div>
 
           {/* Top Right: Company Name and User Menu with Logout */}
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-              <span className="font-medium text-white">{companyName}</span>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-xs text-neutral-800">
+              <span className="w-2 h-2 rounded-full bg-primary" />
+              <span className="font-normal text-neutral-900">{companyName}</span>
             </div>
 
             {/* User Menu */}
@@ -62,20 +66,20 @@ export default function CompanyLayout({
               <button
                 type="button"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-900 transition-colors border border-transparent hover:border-slate-800 text-left"
+                className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-neutral-100/80 transition-colors border border-transparent hover:border-neutral-200 text-left"
                 data-testid="company-user-menu-trigger"
                 aria-label="User profile menu"
                 aria-expanded={userMenuOpen}
               >
-                <div className="w-8 h-8 rounded-full bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-xs font-semibold text-indigo-300">
+                <div className="w-8 h-8 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-xs font-medium text-primary">
                   {userName.charAt(0)}
                 </div>
                 <div className="hidden lg:block text-left">
-                  <div className="text-xs font-medium text-slate-200">{userName}</div>
-                  <div className="text-[10px] text-slate-500">Admin</div>
+                  <div className="text-xs font-normal text-neutral-800">{userName}</div>
+                  <div className="text-[10px] text-neutral-500 font-light">Admin</div>
                 </div>
                 <svg
-                  className={`w-3.5 h-3.5 text-slate-400 transition-transform ${
+                  className={`w-3.5 h-3.5 text-neutral-500 transition-transform ${
                     userMenuOpen ? 'rotate-180' : ''
                   }`}
                   fill="none"
@@ -93,25 +97,25 @@ export default function CompanyLayout({
                     className="fixed inset-0 z-30"
                     onClick={() => setUserMenuOpen(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-56 rounded-xl bg-slate-900 border border-slate-800 shadow-xl shadow-black/80 py-1.5 z-40 text-xs">
-                    <div className="px-3.5 py-2 border-b border-slate-800/80">
-                      <p className="font-medium text-slate-200">{userName}</p>
-                      <p className="text-[11px] text-slate-400 truncate">{userEmail}</p>
+                  <div className="absolute right-0 mt-2 w-56 rounded-xl bg-white border border-neutral-200 shadow-xl shadow-neutral-900/10 py-1.5 z-40 text-xs">
+                    <div className="px-3.5 py-2 border-b border-neutral-100">
+                      <p className="font-medium text-neutral-900">{userName}</p>
+                      <p className="text-[11px] text-neutral-500 font-light truncate">{userEmail}</p>
                     </div>
 
                     <div className="py-1">
-                      <div className="px-3.5 py-1.5 text-slate-400">
-                        Role: <span className="text-indigo-400 font-mono">company_admin</span>
+                      <div className="px-3.5 py-1.5 text-neutral-600 font-normal">
+                        Role: <span className="text-primary font-mono font-normal">company_admin</span>
                       </div>
                     </div>
 
-                    <div className="pt-1 border-t border-slate-800/80">
+                    <div className="pt-1 border-t border-neutral-100">
                       <button
                         type="button"
                         onClick={handleLogout}
                         disabled={isLoggingOut}
                         data-testid="company-logout-button"
-                        className="w-full text-left px-3.5 py-2 text-rose-400 hover:text-rose-300 hover:bg-rose-950/20 flex items-center gap-2 transition-colors disabled:opacity-50"
+                        className="w-full text-left px-3.5 py-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 flex items-center gap-2 transition-colors disabled:opacity-50 font-normal"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path

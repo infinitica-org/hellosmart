@@ -26,7 +26,7 @@ export function ErrorState({
     <div
       className={`min-h-[60vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
-      <div className="w-18 h-18 rounded-3xl bg-rose-950/40 border border-rose-800/40 flex items-center justify-center text-rose-400 mb-6 shadow-2xl shadow-rose-950/60 p-4">
+      <div className="w-18 h-18 rounded-3xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-6 shadow-sm p-4">
         <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
@@ -37,15 +37,15 @@ export function ErrorState({
         </svg>
       </div>
 
-      <span className="text-xs font-mono font-bold tracking-widest text-rose-400 uppercase mb-2">
+      <span className="text-xs font-mono font-bold tracking-widest text-rose-600 uppercase mb-2">
         Application Error
       </span>
 
-      <h2 className="text-2xl font-bold tracking-tight text-slate-100 max-w-md">
+      <h2 className="text-2xl font-bold tracking-tight text-neutral-900 max-w-md">
         {title}
       </h2>
 
-      <p className="mt-3 text-sm text-slate-400 max-w-md leading-relaxed">
+      <p className="mt-3 text-sm text-neutral-600 max-w-md leading-relaxed">
         {description}
       </p>
 
@@ -74,7 +74,7 @@ export function NotFound({
     <div
       className={`min-h-[70vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
-      <div className="w-20 h-20 rounded-3xl bg-indigo-950/40 border border-indigo-800/40 flex items-center justify-center text-indigo-400 mb-6 shadow-2xl shadow-indigo-950/60">
+      <div className="w-20 h-20 rounded-3xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary mb-6 shadow-sm">
         <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
@@ -85,15 +85,15 @@ export function NotFound({
         </svg>
       </div>
 
-      <span className="text-xs font-mono font-bold tracking-widest text-indigo-400 uppercase mb-2">
+      <span className="text-xs font-mono font-bold tracking-widest text-primary uppercase mb-2">
         404 &bull; Not Found
       </span>
 
-      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-100 max-w-md">
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 max-w-md">
         {title}
       </h1>
 
-      <p className="mt-3 text-sm text-slate-400 max-w-md leading-relaxed">
+      <p className="mt-3 text-sm text-neutral-600 max-w-md leading-relaxed">
         {description}
       </p>
 
@@ -117,7 +117,7 @@ export function AccessDenied({
     <div
       className={`min-h-[70vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
-      <div className="w-20 h-20 rounded-3xl bg-amber-950/40 border border-amber-800/40 flex items-center justify-center text-amber-400 mb-6 shadow-2xl shadow-amber-950/60">
+      <div className="w-20 h-20 rounded-3xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mb-6 shadow-sm">
         <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
@@ -128,15 +128,15 @@ export function AccessDenied({
         </svg>
       </div>
 
-      <span className="text-xs font-mono font-bold tracking-widest text-amber-400 uppercase mb-2">
+      <span className="text-xs font-mono font-bold tracking-widest text-amber-600 uppercase mb-2">
         403 &bull; Forbidden
       </span>
 
-      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-100 max-w-md">
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 max-w-md">
         {title}
       </h1>
 
-      <p className="mt-3 text-sm text-slate-400 max-w-md leading-relaxed">
+      <p className="mt-3 text-sm text-neutral-600 max-w-md leading-relaxed">
         {description}
       </p>
 
@@ -161,7 +161,7 @@ export function ServerError({
     <div
       className={`min-h-[70vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
-      <div className="w-20 h-20 rounded-3xl bg-rose-950/40 border border-rose-800/40 flex items-center justify-center text-rose-400 mb-6 shadow-2xl shadow-rose-950/60">
+      <div className="w-20 h-20 rounded-3xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-6 shadow-sm">
         <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
@@ -172,15 +172,15 @@ export function ServerError({
         </svg>
       </div>
 
-      <span className="text-xs font-mono font-bold tracking-widest text-rose-400 uppercase mb-2">
+      <span className="text-xs font-mono font-bold tracking-widest text-rose-600 uppercase mb-2">
         500 &bull; Server Failure
       </span>
 
-      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-100 max-w-md">
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 max-w-md">
         {title}
       </h1>
 
-      <p className="mt-3 text-sm text-slate-400 max-w-md leading-relaxed">
+      <p className="mt-3 text-sm text-neutral-600 max-w-md leading-relaxed">
         {description}
       </p>
 
@@ -208,7 +208,7 @@ export function NetworkError({
     <div
       className={`min-h-[60vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
-      <div className="w-18 h-18 rounded-3xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-slate-400 mb-6 shadow-2xl shadow-black/60 p-4">
+      <div className="w-18 h-18 rounded-3xl bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-600 mb-6 shadow-sm p-4">
         <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
@@ -219,15 +219,15 @@ export function NetworkError({
         </svg>
       </div>
 
-      <span className="text-xs font-mono font-bold tracking-widest text-slate-400 uppercase mb-2">
+      <span className="text-xs font-mono font-bold tracking-widest text-neutral-500 uppercase mb-2">
         Network Disconnected
       </span>
 
-      <h2 className="text-2xl font-bold tracking-tight text-slate-100 max-w-md">
+      <h2 className="text-2xl font-bold tracking-tight text-neutral-900 max-w-md">
         {title}
       </h2>
 
-      <p className="mt-3 text-sm text-slate-400 max-w-md leading-relaxed">
+      <p className="mt-3 text-sm text-neutral-600 max-w-md leading-relaxed">
         {description}
       </p>
 
@@ -258,9 +258,9 @@ export function LoadingState({
       className={`min-h-[50vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
       role="status"
     >
-      <Spinner size="lg" className="text-indigo-400 mb-4" />
-      <h3 className="text-base font-semibold text-slate-200">{title}</h3>
-      {description && <p className="mt-1.5 text-xs text-slate-400 max-w-sm">{description}</p>}
+      <Spinner size="lg" color="primary" className="mb-4" />
+      <h3 className="text-base font-semibold text-neutral-900">{title}</h3>
+      {description && <p className="mt-1.5 text-xs text-neutral-600 max-w-sm">{description}</p>}
     </div>
   );
 }

@@ -28,14 +28,14 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             id={inputId}
             type="checkbox"
             disabled={disabled}
-            className="peer h-4 w-4 rounded border border-slate-700 bg-slate-900/80 text-indigo-600 transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-950 checked:bg-indigo-600 checked:border-indigo-600 cursor-pointer disabled:cursor-not-allowed"
+            className="peer h-4 w-4 rounded border border-neutral-300 bg-white text-primary transition-colors focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-white checked:bg-primary checked:border-primary cursor-pointer disabled:cursor-not-allowed"
             {...props}
           />
         </div>
         {(label || description) && (
           <label htmlFor={inputId} className="flex flex-col cursor-pointer">
-            {label && <span className="text-sm font-medium text-slate-200">{label}</span>}
-            {description && <span className="text-xs text-slate-400 mt-0.5">{description}</span>}
+            {label && <span className="text-sm font-medium text-neutral-900">{label}</span>}
+            {description && <span className="text-xs text-neutral-500 mt-0.5">{description}</span>}
           </label>
         )}
       </div>
@@ -111,14 +111,14 @@ export const RadioGroupItem = forwardRef<HTMLInputElement, RadioGroupItemProps>(
             checked={isChecked}
             onChange={() => context?.onValueChange?.(value)}
             disabled={disabled}
-            className="peer h-4 w-4 rounded-full border border-slate-700 bg-slate-900/80 text-indigo-600 transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-950 checked:bg-indigo-600 checked:border-indigo-600 cursor-pointer disabled:cursor-not-allowed"
+            className="peer h-4 w-4 rounded-full border border-neutral-300 bg-white text-primary transition-colors focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-white checked:bg-primary checked:border-primary cursor-pointer disabled:cursor-not-allowed"
             {...props}
           />
         </div>
         {(label || description) && (
           <label htmlFor={inputId} className="flex flex-col cursor-pointer">
-            {label && <span className="text-sm font-medium text-slate-200">{label}</span>}
-            {description && <span className="text-xs text-slate-400 mt-0.5">{description}</span>}
+            {label && <span className="text-sm font-medium text-neutral-900">{label}</span>}
+            {description && <span className="text-xs text-neutral-500 mt-0.5">{description}</span>}
           </label>
         )}
       </div>

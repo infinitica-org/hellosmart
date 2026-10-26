@@ -6,19 +6,19 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ variant = 'glass', className = '', children, ...props }, ref) => {
+  ({ variant = 'solid', className = '', children, ...props }, ref) => {
     const variantStyles = {
-      glass: 'bg-slate-900/60 backdrop-blur-md border border-slate-800/80 shadow-xl shadow-black/20',
-      solid: 'bg-slate-900 border border-slate-800 shadow-md',
-      bordered: 'bg-transparent border border-slate-800',
+      glass: 'bg-white/90 backdrop-blur-md border border-neutral-200/80 shadow-xs',
+      solid: 'bg-white border border-neutral-200/80 shadow-xs',
+      bordered: 'bg-transparent border border-neutral-300',
       interactive:
-        'bg-slate-900/60 backdrop-blur-md border border-slate-800/80 hover:border-indigo-500/40 hover:shadow-indigo-500/10 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer',
+        'bg-white border border-neutral-200/80 hover:border-primary hover:shadow-md hover:shadow-primary/10 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer',
     };
 
     return (
       <div
         ref={ref}
-        className={`rounded-2xl text-slate-100 ${variantStyles[variant]} ${className}`}
+        className={`rounded-2xl text-neutral-900 ${variantStyles[variant]} ${className}`}
         {...props}
       >
         {children}
@@ -37,7 +37,7 @@ export const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
     return (
       <div
         ref={ref}
-        className={`flex flex-col space-y-1.5 p-6 border-b border-slate-800/60 ${className}`}
+        className={`flex flex-col space-y-1.5 p-6 border-b border-neutral-100 ${className}`}
         {...props}
       >
         {children}
@@ -57,7 +57,7 @@ export const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
     return (
       <Component
         ref={ref}
-        className={`text-lg font-semibold tracking-tight text-slate-100 ${className}`}
+        className={`text-lg font-semibold tracking-tight text-neutral-900 ${className}`}
         {...props}
       >
         {children}
@@ -76,7 +76,7 @@ export const CardDescription = forwardRef<HTMLParagraphElement, CardDescriptionP
     return (
       <p
         ref={ref}
-        className={`text-xs text-slate-400 leading-relaxed ${className}`}
+        className={`text-xs text-neutral-500 leading-relaxed ${className}`}
         {...props}
       >
         {children}
@@ -110,7 +110,7 @@ export const CardFooter = forwardRef<HTMLDivElement, CardFooterProps>(
     return (
       <div
         ref={ref}
-        className={`flex items-center justify-between p-6 pt-4 border-t border-slate-800/60 ${className}`}
+        className={`flex items-center justify-between p-6 pt-4 border-t border-neutral-100 ${className}`}
         {...props}
       >
         {children}
@@ -119,4 +119,3 @@ export const CardFooter = forwardRef<HTMLDivElement, CardFooterProps>(
   }
 );
 CardFooter.displayName = 'CardFooter';
-

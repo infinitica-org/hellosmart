@@ -14,7 +14,7 @@ export const Separator = forwardRef<HTMLDivElement, SeparatorProps>(
         ref={ref}
         role={decorative ? 'none' : 'separator'}
         aria-orientation={decorative ? undefined : orientation}
-        className={`bg-slate-800/80 shrink-0 ${
+        className={`bg-neutral-200 shrink-0 ${
           isHorizontal ? 'h-[1px] w-full my-4' : 'h-full w-[1px] mx-4'
         } ${className}`}
         {...props}

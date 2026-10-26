@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from 'next';
+import '@hs/ui/styles/fonts.css';
+import '@hs/ui/styles/tokens.css';
 import './globals.css';
+
+
 
 export const metadata: Metadata = {
   title: 'HelloSmart.ai — Hire by Doing',
@@ -11,8 +15,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#090d16',
-  colorScheme: 'dark',
+  themeColor: '#ffffff',
+  colorScheme: 'light',
 };
 
 export default function RootLayout({
@@ -21,10 +25,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" className="light" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className="min-h-screen bg-[#090d16] text-slate-100 antialiased selection:bg-indigo-500/30 selection:text-indigo-200"
+        className="min-h-screen bg-canvas text-neutral-900 font-sans font-normal antialiased selection:bg-primary/20 selection:text-primary"
       >
         {children}
       </body>

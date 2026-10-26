@@ -81,8 +81,8 @@ export const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
 
     const variantStyles =
       variant === 'pills'
-        ? 'bg-slate-900/80 p-1 rounded-xl border border-slate-800'
-        : 'border-b border-slate-800 space-x-6';
+        ? 'bg-neutral-100 p-1 rounded-xl border border-neutral-200'
+        : 'border-b border-neutral-200 space-x-6';
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
       const tabs = Array.from(
@@ -135,15 +135,15 @@ export const TabsTrigger = forwardRef<HTMLButtonElement, TabsTriggerProps>(
     const isSelected = activeValue === value;
 
     const baseStyles =
-      'inline-flex items-center gap-2 whitespace-nowrap text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:pointer-events-none disabled:opacity-40';
+      'inline-flex items-center gap-2 whitespace-nowrap text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-40';
 
     const lineStyles = isSelected
-      ? 'border-b-2 border-indigo-500 text-indigo-400 pb-3 -mb-px font-semibold'
-      : 'text-slate-400 hover:text-slate-200 border-b-2 border-transparent pb-3 -mb-px';
+      ? 'border-b-2 border-primary text-primary pb-3 -mb-px font-semibold'
+      : 'text-neutral-500 hover:text-neutral-900 border-b-2 border-transparent pb-3 -mb-px';
 
     const pillStyles = isSelected
-      ? 'bg-indigo-600 text-white rounded-lg px-3 py-1.5 shadow-sm font-semibold'
-      : 'text-slate-400 hover:text-slate-200 px-3 py-1.5 rounded-lg';
+      ? 'bg-primary text-white rounded-lg px-3 py-1.5 shadow-xs font-semibold'
+      : 'text-neutral-600 hover:text-neutral-900 px-3 py-1.5 rounded-lg';
 
     return (
       <button

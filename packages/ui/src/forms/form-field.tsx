@@ -50,7 +50,7 @@ export function FormField({
       <div>{children}</div>
 
       {errorMessage && (
-        <p id={errorId} className="text-xs text-rose-400 flex items-center gap-1 mt-1 font-medium">
+        <p id={errorId} className="text-xs text-rose-600 flex items-center gap-1 mt-1 font-medium">
           <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
             <path
               fillRule="evenodd"
@@ -63,7 +63,7 @@ export function FormField({
       )}
 
       {!errorMessage && helperText && (
-        <p id={helperId} className="text-xs text-slate-400 mt-1">
+        <p id={helperId} className="text-xs text-neutral-500 mt-1">
           {helperText}
         </p>
       )}
@@ -80,7 +80,7 @@ export interface FormDescriptionProps extends HTMLAttributes<HTMLParagraphElemen
 
 export const FormDescription = forwardRef<HTMLParagraphElement, FormDescriptionProps>(
   ({ className = '', children, ...props }, ref) => (
-    <p ref={ref} className={`text-xs text-slate-400 mt-1 ${className}`} {...props}>
+    <p ref={ref} className={`text-xs text-neutral-500 mt-1 ${className}`} {...props}>
       {children}
     </p>
   )
@@ -98,7 +98,7 @@ export const FormError = forwardRef<HTMLParagraphElement, FormErrorProps>(
       <p
         ref={ref}
         role="alert"
-        className={`text-xs text-rose-400 flex items-center gap-1 mt-1 font-medium ${className}`}
+        className={`text-xs text-rose-600 flex items-center gap-1 mt-1 font-medium ${className}`}
         {...props}
       >
         <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
@@ -163,7 +163,7 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
         type="button"
         tabIndex={-1}
         onClick={() => setShowPassword(!showPassword)}
-        className="text-slate-400 hover:text-slate-200 transition-colors focus:outline-none p-0.5"
+        className="text-neutral-400 hover:text-neutral-700 transition-colors focus:outline-none p-0.5"
         aria-label={showPassword ? 'Hide password' : 'Show password'}
       >
         {showPassword ? (

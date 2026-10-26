@@ -30,7 +30,7 @@ export const WorkspaceConnectionStatus = forwardRef<HTMLDivElement, WorkspaceCon
     return (
       <div
         ref={ref}
-        className={`inline-flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs ${className}`}
+        className={`inline-flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white border border-neutral-200 text-xs shadow-xs text-neutral-900 ${className}`}
         {...props}
       >
         <StatusIndicator status={cfg.type} label={cfg.label} />
@@ -39,7 +39,7 @@ export const WorkspaceConnectionStatus = forwardRef<HTMLDivElement, WorkspaceCon
           <button
             type="button"
             onClick={onReconnect}
-            className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 underline underline-offset-2 ml-1"
+            className="text-[11px] font-semibold text-primary hover:text-primary-hover underline underline-offset-2 ml-1"
           >
             Resume Session
           </button>

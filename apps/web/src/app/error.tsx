@@ -16,7 +16,7 @@ export default function RouteError({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#090d16] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-canvas text-neutral-900 p-4">
       <ErrorState
         title="Something went wrong"
         description="An unexpected error occurred while loading this view. You can retry the request or return to your dashboard."

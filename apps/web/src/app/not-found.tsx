@@ -3,7 +3,7 @@ import { NotFound } from '@hs/ui';
 
 export default function RootNotFound(): React.JSX.Element {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#090d16] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-canvas text-neutral-900 p-4">
       <NotFound
         title="Page Not Found"
         description="The requested route does not exist, has been moved, or belongs to another organization."

@@ -73,7 +73,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
     const pages = getPageNumbers();
 
     const buttonBase =
-      'inline-flex items-center justify-center rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-30 disabled:pointer-events-none h-8 min-w-[2rem] px-2.5';
+      'inline-flex items-center justify-center rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-30 disabled:pointer-events-none h-8 min-w-[2rem] px-2.5';
 
     return (
       <nav
@@ -90,7 +90,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
             aria-label="Go to first page"
             disabled={page <= 1 || disabled}
             onClick={() => onPageChange(1)}
-            className={`${buttonBase} text-slate-400 hover:text-slate-100 hover:bg-slate-800/60`}
+            className={`${buttonBase} text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100`}
           >
             <svg
               className="w-3.5 h-3.5"
@@ -111,7 +111,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
           aria-label="Go to previous page"
           disabled={page <= 1 || disabled}
           onClick={() => onPageChange(page - 1)}
-          className={`${buttonBase} text-slate-400 hover:text-slate-100 hover:bg-slate-800/60`}
+          className={`${buttonBase} text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100`}
         >
           <svg
             className="w-3.5 h-3.5"
@@ -131,7 +131,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
               <span
                 key={`dots-${idx}`}
                 aria-hidden="true"
-                className="px-1 text-xs text-slate-500 select-none"
+                className="px-1 text-xs text-neutral-400 select-none"
               >
                 …
               </span>
@@ -151,8 +151,8 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
               onClick={() => onPageChange(pageNum)}
               className={`${buttonBase} ${
                 isCurrent
-                  ? 'bg-indigo-600 text-white font-semibold shadow-sm'
-                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+                  ? 'bg-primary text-white font-semibold shadow-xs'
+                  : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
               }`}
             >
               {pageNum}
@@ -166,7 +166,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
           aria-label="Go to next page"
           disabled={page >= totalPages || disabled}
           onClick={() => onPageChange(page + 1)}
-          className={`${buttonBase} text-slate-400 hover:text-slate-100 hover:bg-slate-800/60`}
+          className={`${buttonBase} text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100`}
         >
           <svg
             className="w-3.5 h-3.5"
@@ -186,7 +186,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
             aria-label="Go to last page"
             disabled={page >= totalPages || disabled}
             onClick={() => onPageChange(totalPages)}
-            className={`${buttonBase} text-slate-400 hover:text-slate-100 hover:bg-slate-800/60`}
+            className={`${buttonBase} text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100`}
           >
             <svg
               className="w-3.5 h-3.5"
@@ -205,4 +205,3 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
   }
 );
 Pagination.displayName = 'Pagination';
-

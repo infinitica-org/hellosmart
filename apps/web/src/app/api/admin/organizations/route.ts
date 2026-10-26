@@ -5,7 +5,7 @@ import {
   createOrganization,
   updateOrganizationStatus,
 } from '../../../../lib/organizations-data';
-import { CreateOrganizationInput, OrganizationStatus } from '../../../../lib/types/organization';
+import { CreateOrganizationInput, OrganizationStatus } from '@/types/organization';
 
 export async function GET(): Promise<NextResponse> {
   try {

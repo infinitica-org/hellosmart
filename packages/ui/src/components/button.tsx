@@ -21,15 +21,15 @@ export type ButtonProps = ButtonBaseProps &
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-950/50 border border-indigo-500/30 focus-visible:ring-indigo-400',
+    'bg-primary hover:bg-primary-hover text-white shadow-md shadow-primary/20 border border-primary/40 focus-visible:ring-primary',
   secondary:
-    'bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700/80 focus-visible:ring-slate-400',
+    'bg-white hover:bg-neutral-50 text-neutral-800 border border-neutral-300 shadow-xs focus-visible:ring-neutral-400',
   outline:
-    'bg-transparent hover:bg-slate-800/60 text-slate-200 border border-slate-700 focus-visible:ring-slate-400',
+    'bg-transparent hover:bg-neutral-100 text-neutral-700 border border-neutral-300 focus-visible:ring-neutral-400',
   ghost:
-    'bg-transparent hover:bg-slate-800/60 text-slate-300 hover:text-white border-transparent focus-visible:ring-slate-400',
+    'bg-transparent hover:bg-neutral-100 text-neutral-700 hover:text-neutral-900 border-transparent focus-visible:ring-neutral-400',
   danger:
-    'bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-950/50 border border-rose-500/30 focus-visible:ring-rose-400',
+    'bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-950/20 border border-rose-500/30 focus-visible:ring-rose-400',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -56,7 +56,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonPr
     ref
   ) => {
     const baseClasses =
-      'inline-flex items-center justify-center font-medium transition-all duration-150 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed';
+      'inline-flex items-center justify-center font-medium transition-all duration-150 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed';
 
     const combinedClasses = `${baseClasses} ${variantStyles[variant]} ${sizeStyles[size]} ${
       fullWidth ? 'w-full' : ''

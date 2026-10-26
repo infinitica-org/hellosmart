@@ -18,7 +18,7 @@ export const Breadcrumbs = forwardRef<HTMLElement, BreadcrumbsProps>(
   ({ items, separator, children, className = '', ...props }, ref) => {
     const defaultSeparator = (
       <svg
-        className="w-4 h-4 text-slate-600 flex-shrink-0"
+        className="w-4 h-4 text-neutral-300 flex-shrink-0"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -37,7 +37,7 @@ export const Breadcrumbs = forwardRef<HTMLElement, BreadcrumbsProps>(
       <nav
         ref={ref}
         aria-label="Breadcrumb"
-        className={`flex items-center text-sm font-medium text-slate-400 ${className}`}
+        className={`flex items-center text-sm font-medium text-neutral-500 ${className}`}
         {...props}
       >
         <ol className="flex items-center space-x-2">
@@ -49,7 +49,7 @@ export const Breadcrumbs = forwardRef<HTMLElement, BreadcrumbsProps>(
                     {idx > 0 && <span aria-hidden="true">{sep}</span>}
                     {isLast || !item.href ? (
                       <span
-                        className="flex items-center gap-1.5 text-slate-100 font-semibold truncate max-w-xs"
+                        className="flex items-center gap-1.5 text-neutral-900 font-semibold truncate max-w-xs"
                         aria-current={isLast ? 'page' : undefined}
                       >
                         {item.icon}
@@ -58,7 +58,7 @@ export const Breadcrumbs = forwardRef<HTMLElement, BreadcrumbsProps>(
                     ) : (
                       <a
                         href={item.href}
-                        className="flex items-center gap-1.5 text-slate-400 hover:text-indigo-400 transition-colors"
+                        className="flex items-center gap-1.5 text-neutral-500 hover:text-primary transition-colors"
                       >
                         {item.icon}
                         {item.label}
@@ -98,7 +98,7 @@ export const BreadcrumbLink = forwardRef<HTMLAnchorElement, BreadcrumbLinkProps>
     <a
       ref={ref}
       href={href}
-      className={`text-slate-400 hover:text-indigo-400 transition-colors ${className}`}
+      className={`text-neutral-500 hover:text-primary transition-colors ${className}`}
       {...props}
     >
       {children}
@@ -116,7 +116,7 @@ export const BreadcrumbPage = forwardRef<HTMLSpanElement, BreadcrumbPageProps>(
     <span
       ref={ref}
       aria-current="page"
-      className={`text-slate-100 font-semibold ${className}`}
+      className={`text-neutral-900 font-semibold ${className}`}
       {...props}
     >
       {children}
@@ -134,12 +134,12 @@ export const BreadcrumbSeparator = forwardRef<HTMLSpanElement, BreadcrumbSeparat
     <span
       ref={ref}
       aria-hidden="true"
-      className={`text-slate-600 select-none ${className}`}
+      className={`text-neutral-300 select-none ${className}`}
       {...props}
     >
       {children ?? (
         <svg
-          className="w-4 h-4 inline"
+          className="w-4 h-4 inline text-neutral-300"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -179,12 +179,12 @@ export function CommandMenu({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 p-4" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
-      <div className="relative z-10 w-full max-w-lg rounded-xl border border-slate-800 bg-[#0c1222] shadow-2xl p-4">
+      <div className="fixed inset-0 bg-neutral-950/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div className="relative z-10 w-full max-w-lg rounded-xl border border-neutral-200 bg-white shadow-2xl p-4">
         <input
           type="text"
           placeholder={placeholder}
-          className="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full bg-neutral-50 border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
           autoFocus
         />
         {children && <div className="mt-3">{children}</div>}

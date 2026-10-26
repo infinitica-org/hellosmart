@@ -7,7 +7,9 @@ import {
   Sidebar as UiSidebar,
   type SidebarProps as UiSidebarProps,
   type SidebarItem,
+  DEFAULT_ADMIN_NAV_ITEMS,
   DEFAULT_COMPANY_NAV_ITEMS,
+  DEFAULT_CANDIDATE_NAV_ITEMS,
 } from '@hs/ui';
 
 export type SidebarNavItem = SidebarItem;
@@ -32,4 +34,9 @@ export function Sidebar(props: SidebarProps): React.JSX.Element {
   );
 }
 
-export { DEFAULT_COMPANY_NAV_ITEMS, type SidebarItem };
+export {
+  DEFAULT_ADMIN_NAV_ITEMS,
+  DEFAULT_COMPANY_NAV_ITEMS,
+  DEFAULT_CANDIDATE_NAV_ITEMS,
+  type SidebarItem,
+};

@@ -35,14 +35,14 @@ export default function CandidateDashboardPage() {
           {assignments.map((task) => (
             <div
               key={task.id}
-              className="glass-card rounded-2xl border border-slate-800/80 p-6 sm:p-8 space-y-5"
+              className="bg-white rounded-2xl border border-neutral-200/80 p-6 sm:p-8 space-y-5 shadow-xs"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-slate-800/80">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-neutral-100">
                 <div>
                   <div className="flex items-center gap-3">
-                    <h2 className="text-lg font-semibold text-white">{task.title}</h2>
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <h2 className="text-base font-medium text-neutral-900">{task.title}</h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-normal bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       {task.status === 'ready'
                         ? 'Ready to Start'
                         : task.status === 'in_progress'
@@ -50,8 +50,8 @@ export default function CandidateDashboardPage() {
                           : 'Submitted'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Issued by <span className="text-slate-200 font-medium">{task.companyName}</span> &bull; {task.durationMinutes} minutes duration
+                  <p className="text-xs text-neutral-500 mt-1 font-light">
+                    Issued by <span className="text-neutral-800 font-medium">{task.companyName}</span> &bull; {task.durationMinutes} minutes duration
                   </p>
                 </div>
 
@@ -59,34 +59,34 @@ export default function CandidateDashboardPage() {
                   type="button"
                   variant="primary"
                   data-testid="start-assessment-button"
-                  className="flex-shrink-0"
+                  className="flex-shrink-0 bg-primary hover:bg-primary-hover text-white border-transparent font-medium"
                 >
                   Start Assessment →
                 </Button>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                  <span className="text-slate-400 block mb-0.5">Environment</span>
-                  <span className="text-slate-200 font-medium">{task.mode}</span>
+                <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/80">
+                  <span className="text-neutral-500 block mb-0.5 font-light">Environment</span>
+                  <span className="text-neutral-800 font-medium">{task.mode}</span>
                 </div>
-                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                  <span className="text-slate-400 block mb-0.5">Duration</span>
-                  <span className="text-slate-200 font-medium">{task.durationMinutes} Minutes</span>
+                <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/80">
+                  <span className="text-neutral-500 block mb-0.5 font-light">Duration</span>
+                  <span className="text-neutral-800 font-medium">{task.durationMinutes} Minutes</span>
                 </div>
-                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                  <span className="text-slate-400 block mb-0.5">AI Assistance</span>
-                  <span className="text-slate-200 font-medium">Governed AI Proxy</span>
+                <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/80">
+                  <span className="text-neutral-500 block mb-0.5 font-light">AI Assistance</span>
+                  <span className="text-neutral-800 font-medium">Governed AI Proxy</span>
                 </div>
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="glass-card rounded-2xl border border-slate-800/80 p-6 sm:p-8">
+        <div className="bg-white rounded-2xl border border-neutral-200/80 p-6 sm:p-8 shadow-xs">
           <div className="mb-6">
-            <h2 className="text-base font-semibold text-slate-100">Assigned Tasks</h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <h2 className="text-base font-medium text-neutral-900">Assigned Tasks</h2>
+            <p className="text-xs text-neutral-500 font-normal mt-0.5">
               Active invitations from hiring companies.
             </p>
           </div>

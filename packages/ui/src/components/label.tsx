@@ -11,17 +11,17 @@ export const Label = forwardRef<HTMLLabelElement, LabelProps>(
     return (
       <label
         ref={ref}
-        className={`flex items-center gap-1.5 text-xs font-semibold text-slate-300 select-none ${className}`}
+        className={`flex items-center gap-1.5 text-xs font-semibold text-neutral-800 select-none ${className}`}
         {...props}
       >
         <span>{children}</span>
         {required && (
-          <span className="text-rose-400 font-bold" aria-hidden="true">
+          <span className="text-primary font-bold" aria-hidden="true">
             *
           </span>
         )}
         {optional && (
-          <span className="text-[11px] font-normal text-slate-500 ml-1">
+          <span className="text-[11px] font-normal text-neutral-500 ml-1">
             (optional)
           </span>
         )}

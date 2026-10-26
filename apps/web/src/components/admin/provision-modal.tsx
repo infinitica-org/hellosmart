@@ -13,7 +13,7 @@ import {
   SelectField,
   useToast,
 } from '@hs/ui';
-import { CreateOrganizationInput } from '../../lib/types/organization';
+import { CreateOrganizationInput } from '@/types/organization';
 
 export interface ProvisionModalProps {
   open: boolean;

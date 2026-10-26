@@ -11,6 +11,8 @@
     "test": "turbo run test",
     "test:tenancy": "turbo run test:tenancy",
     "test:e2e": "pnpm --filter @hs/e2e test",
+    "storybook": "pnpm --filter @hs/ui storybook",
+    "build-storybook": "pnpm --filter @hs/ui build-storybook",
     "mock": "pnpm --filter @hs/contracts mock",
     "contracts:check": "pnpm --filter @hs/contracts check",
     "db:migrate": "pnpm --filter @hs/api db:migrate",

@@ -18,9 +18,9 @@ const sizeClasses: Record<SpinnerSize, string> = {
 };
 
 const colorClasses: Record<SpinnerColor, string> = {
-  primary: 'text-indigo-500',
+  primary: 'text-primary',
   white: 'text-white',
-  slate: 'text-slate-400',
+  slate: 'text-neutral-400',
 };
 
 export const Spinner = forwardRef<HTMLDivElement, SpinnerProps>(

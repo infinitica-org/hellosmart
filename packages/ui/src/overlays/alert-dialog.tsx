@@ -62,9 +62,9 @@ export function AlertDialog({
   if (!open || !mounted) return null;
 
   const iconColors = {
-    danger: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
-    warning: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-    primary: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30',
+    danger: 'bg-rose-50 text-rose-600 border-rose-200',
+    warning: 'bg-amber-50 text-amber-600 border-amber-200',
+    primary: 'bg-primary/10 text-primary border-primary/30',
   };
 
   const buttonVariants = {
@@ -80,7 +80,7 @@ export function AlertDialog({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-neutral-950/60 backdrop-blur-xs transition-opacity"
         onClick={() => {
           if (!loading) onClose();
         }}
@@ -94,11 +94,11 @@ export function AlertDialog({
         aria-labelledby={titleId}
         aria-describedby={descId}
         data-testid={testId}
-        className={`relative z-10 w-full max-w-md rounded-xl border border-slate-800 bg-[#0c1222] p-6 shadow-2xl shadow-black/80 focus:outline-none transition-all ${className}`}
+        className={`relative z-10 w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl focus:outline-none transition-all ${className}`}
       >
         <div className="flex items-start gap-4">
           <div
-            className={`flex-shrink-0 w-10 h-10 rounded-lg border flex items-center justify-center ${iconColors[variant]}`}
+            className={`flex-shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center ${iconColors[variant]}`}
           >
             {variant === 'danger' ? (
               <svg
@@ -132,10 +132,10 @@ export function AlertDialog({
           </div>
 
           <div className="flex-1 space-y-1.5">
-            <h2 id={titleId} className="text-base font-semibold text-slate-100">
+            <h2 id={titleId} className="text-base font-semibold text-neutral-900">
               {title}
             </h2>
-            <div id={descId} className="text-sm text-slate-400">
+            <div id={descId} className="text-sm text-neutral-600">
               {description}
             </div>
           </div>

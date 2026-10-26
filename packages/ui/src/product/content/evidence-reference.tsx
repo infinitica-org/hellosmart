@@ -8,12 +8,12 @@ export interface EvidenceReferenceProps extends HTMLAttributes<HTMLSpanElement> 
 }
 
 const typeConfig: Record<EvidenceType, { label: string; bg: string; text: string; border: string }> = {
-  term: { label: 'Terminal', bg: 'bg-emerald-950/60', text: 'text-emerald-300', border: 'border-emerald-800/60' },
-  diff: { label: 'Git Diff', bg: 'bg-indigo-950/60', text: 'text-indigo-300', border: 'border-indigo-800/60' },
-  ai: { label: 'AI Prompt', bg: 'bg-violet-950/60', text: 'text-violet-300', border: 'border-violet-800/60' },
-  file: { label: 'File', bg: 'bg-amber-950/60', text: 'text-amber-300', border: 'border-amber-800/60' },
-  event: { label: 'Activity', bg: 'bg-cyan-950/60', text: 'text-cyan-300', border: 'border-cyan-800/60' },
-  test: { label: 'Test Result', bg: 'bg-rose-950/60', text: 'text-rose-300', border: 'border-rose-800/60' },
+  term: { label: 'Terminal', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  diff: { label: 'Git Diff', bg: 'bg-primary/10', text: 'text-primary', border: 'border-primary/30' },
+  ai: { label: 'AI Prompt', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+  file: { label: 'File', bg: 'bg-neutral-100', text: 'text-neutral-800', border: 'border-neutral-200' },
+  event: { label: 'Activity', bg: 'bg-neutral-100', text: 'text-neutral-700', border: 'border-neutral-300' },
+  test: { label: 'Test Result', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
 };
 
 export const EvidenceReference = forwardRef<HTMLSpanElement, EvidenceReferenceProps>(

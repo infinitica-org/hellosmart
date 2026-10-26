@@ -1,4 +1,4 @@
-import { Organization, CreateOrganizationInput, AdminMetrics, OrganizationStatus } from './types/organization';
+import { Organization, CreateOrganizationInput, AdminMetrics, OrganizationStatus } from '@/types/organization';
 
 // In-memory data store for platform administration
 // Starts empty so Platform Admins see clean zero-state until companies are provisioned (BR-04)

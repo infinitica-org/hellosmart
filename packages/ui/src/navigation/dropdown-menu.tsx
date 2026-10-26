@@ -183,7 +183,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
         }}
         role="menu"
         aria-orientation="vertical"
-        className={`absolute z-50 mt-2 min-w-[12rem] rounded-xl border border-slate-800 bg-[#0c1222] p-1.5 shadow-2xl shadow-black/60 focus:outline-none ${alignClasses} ${className}`}
+        className={`absolute z-50 mt-2 min-w-[12rem] rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl shadow-black/10 focus:outline-none ${alignClasses} ${className}`}
         {...props}
       >
         {children}
@@ -211,8 +211,8 @@ export const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemPr
 
     const variantStyles =
       variant === 'danger'
-        ? 'text-rose-400 hover:bg-rose-500/10 focus:bg-rose-500/10'
-        : 'text-slate-300 hover:text-slate-100 hover:bg-slate-800/60 focus:bg-slate-800/60 focus:text-slate-100';
+        ? 'text-rose-600 hover:bg-rose-50 focus:bg-rose-50'
+        : 'text-neutral-700 hover:text-neutral-900 hover:bg-primary/10 focus:bg-primary/10 focus:text-neutral-900';
 
     return (
       <button
@@ -224,7 +224,7 @@ export const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemPr
         className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none focus:outline-none ${variantStyles} ${className}`}
         {...props}
       >
-        {icon && <span className="flex-shrink-0 text-slate-400">{icon}</span>}
+        {icon && <span className="flex-shrink-0 text-neutral-500">{icon}</span>}
         <span className="flex-1 text-left">{children}</span>
       </button>
     );
@@ -240,7 +240,7 @@ export const DropdownMenuLabel = forwardRef<HTMLDivElement, DropdownMenuLabelPro
   ({ className = '', children, ...props }, ref) => (
     <div
       ref={ref}
-      className={`px-2.5 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider ${className}`}
+      className={`px-2.5 py-1.5 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider ${className}`}
       {...props}
     >
       {children}
@@ -254,7 +254,7 @@ export const DropdownMenuSeparator = forwardRef<HTMLDivElement, HTMLAttributes<H
     <div
       ref={ref}
       role="separator"
-      className={`-mx-1.5 my-1.5 h-px bg-slate-800/80 ${className}`}
+      className={`-mx-1.5 my-1.5 h-px bg-neutral-200 ${className}`}
       {...props}
     />
   )
@@ -298,7 +298,7 @@ export const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>(
               menuRef.current = node;
             }}
             style={{ position: 'fixed', left: `${pos.x}px`, top: `${pos.y}px` }}
-            className="z-50 min-w-[10rem] rounded-xl border border-slate-800 bg-[#0c1222] p-1.5 shadow-2xl shadow-black/70"
+            className="z-50 min-w-[10rem] rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl shadow-black/10"
           >
             {content}
           </div>
@@ -338,17 +338,17 @@ export const SidebarNavItem = forwardRef<HTMLAnchorElement, SidebarNavItemProps>
       href={href}
       className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition-all ${
         active
-          ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
-          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+          ? 'bg-primary/10 text-primary border border-primary/30 font-semibold'
+          : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
       } ${className}`}
       {...props}
     >
       <div className="flex items-center gap-3">
-        {icon && <span className={active ? 'text-indigo-400' : 'text-slate-500'}>{icon}</span>}
+        {icon && <span className={active ? 'text-primary' : 'text-neutral-500'}>{icon}</span>}
         <span>{label}</span>
       </div>
       {badge && (
-        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-300">
+        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-primary/10 text-primary">
           {badge}
         </span>
       )}

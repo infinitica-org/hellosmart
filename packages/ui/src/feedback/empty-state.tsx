@@ -8,7 +8,7 @@ export interface EmptyStateProps {
     | {
         label: string;
         onClick?: (() => void) | undefined;
-        href?: string | undefined;
+        href?: string | undefined; 
       }
     | undefined;
   className?: string | undefined;
@@ -23,9 +23,9 @@ export function EmptyState({
 }: EmptyStateProps): React.JSX.Element {
   return (
     <div
-      className={`flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 ${className}`}
+      className={`flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/60 ${className}`}
     >
-      <div className="w-14 h-14 rounded-2xl bg-indigo-950/40 border border-indigo-800/40 flex items-center justify-center text-indigo-400 mb-4 shadow-inner">
+      <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center text-primary mb-4 shadow-xs">
         {icon || (
           <svg
             className="w-7 h-7"
@@ -43,8 +43,8 @@ export function EmptyState({
         )}
       </div>
 
-      <h3 className="text-base font-semibold text-slate-200 mb-1">{title}</h3>
-      <p className="text-sm text-slate-400 max-w-sm mb-6 leading-relaxed">
+      <h3 className="text-base font-medium text-neutral-900 mb-1">{title}</h3>
+      <p className="text-sm text-neutral-500 max-w-sm mb-6 leading-relaxed font-normal">
         {description}
       </p>
 
@@ -53,7 +53,7 @@ export function EmptyState({
           {action.href ? (
             <a
               href={action.href}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-500 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-white bg-primary rounded-full hover:bg-primary-hover transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {action.label}
             </a>
@@ -61,7 +61,7 @@ export function EmptyState({
             <button
               type="button"
               onClick={action.onClick}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-500 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-white bg-primary rounded-full hover:bg-primary-hover transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {action.label}
             </button>

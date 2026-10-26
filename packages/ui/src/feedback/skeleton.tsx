@@ -16,7 +16,7 @@ export const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(
       <div
         ref={ref}
         aria-hidden="true"
-        className={`animate-pulse bg-slate-800/80 ${variantStyles[variant]} ${className}`}
+        className={`animate-pulse bg-neutral-200/80 ${variantStyles[variant]} ${className}`}
         {...props}
       />
     );

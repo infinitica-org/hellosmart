@@ -17,9 +17,9 @@ export const ReviewDisagreementAlert = forwardRef<HTMLDivElement, ReviewDisagree
         className={className}
         {...props}
       >
-        <p className="mt-1 text-slate-300">
+        <p className="mt-1 text-neutral-700">
           The aggregation engine detected significant disagreement on{' '}
-          <strong className="text-amber-200">{disagreementItem}</strong> ({agentVariance}). Human inspection is strongly advised before finalizing (BR-18, BR-20).
+          <strong className="text-amber-800">{disagreementItem}</strong> ({agentVariance}). Human inspection is strongly advised before finalizing (BR-18, BR-20).
         </p>
 
         {onReview && (
@@ -27,7 +27,7 @@ export const ReviewDisagreementAlert = forwardRef<HTMLDivElement, ReviewDisagree
             <button
               type="button"
               onClick={onReview}
-              className="text-xs font-semibold text-amber-300 hover:text-white underline underline-offset-2"
+              className="text-xs font-semibold text-amber-700 hover:text-amber-900 underline underline-offset-2"
             >
               Inspect Agent Rationales & Evidence →
             </button>

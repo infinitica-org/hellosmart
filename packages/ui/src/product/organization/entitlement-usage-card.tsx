@@ -36,13 +36,13 @@ export const EntitlementUsageCard = forwardRef<HTMLDivElement, EntitlementUsageC
       : null;
 
     return (
-      <Card ref={ref} variant="glass" className={`p-6 space-y-5 ${className}`} {...props}>
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+      <Card ref={ref} variant="solid" className={`p-6 space-y-5 ${className}`} {...props}>
+        <div className="flex items-center justify-between pb-3 border-b border-neutral-200">
           <div>
-            <h3 className="text-sm font-semibold text-slate-100">
+            <h3 className="text-sm font-semibold text-neutral-900">
               Organization Entitlements (BR-05)
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-neutral-500 mt-0.5">
               Enforced server-side quotas for your organization.
             </p>
           </div>
@@ -50,8 +50,8 @@ export const EntitlementUsageCard = forwardRef<HTMLDivElement, EntitlementUsageC
             <span
               className={`text-xs font-mono px-2.5 py-1 rounded-full border ${
                 daysRemaining <= 3
-                  ? 'bg-rose-950/60 text-rose-300 border-rose-800/60'
-                  : 'bg-indigo-950/60 text-indigo-300 border-indigo-800/60'
+                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                  : 'bg-primary/10 text-primary border-primary/30'
               }`}
             >
               {daysRemaining} days left
@@ -61,9 +61,9 @@ export const EntitlementUsageCard = forwardRef<HTMLDivElement, EntitlementUsageC
 
         <div className="space-y-4 text-xs">
           <div>
-            <div className="flex justify-between items-center mb-1 text-slate-300 font-medium">
+            <div className="flex justify-between items-center mb-1 text-neutral-800 font-medium">
               <span>Candidate Quota (BR-06: counts at 1st launch)</span>
-              <span className="font-mono text-slate-400">
+              <span className="font-mono text-neutral-500">
                 {candidatesUsed} / {candidatesMax}
               </span>
             </div>
@@ -76,9 +76,9 @@ export const EntitlementUsageCard = forwardRef<HTMLDivElement, EntitlementUsageC
           </div>
 
           <div>
-            <div className="flex justify-between items-center mb-1 text-slate-300 font-medium">
+            <div className="flex justify-between items-center mb-1 text-neutral-800 font-medium">
               <span>Private Templates Quota</span>
-              <span className="font-mono text-slate-400">
+              <span className="font-mono text-neutral-500">
                 {templatesUsed} / {templatesMax}
               </span>
             </div>

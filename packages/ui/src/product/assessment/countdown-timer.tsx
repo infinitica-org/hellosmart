@@ -53,12 +53,12 @@ export const CountdownTimer = forwardRef<HTMLDivElement, CountdownTimerProps>(
     const isExpired = totalSeconds === 0;
 
     const colorClasses = isExpired
-      ? 'bg-rose-950/80 text-rose-300 border-rose-800'
+      ? 'bg-rose-100 text-rose-900 border-rose-300'
       : isCritical
-      ? 'bg-rose-950/60 text-rose-300 border-rose-800 animate-pulse'
+      ? 'bg-rose-50 text-rose-800 border-rose-300 animate-pulse'
       : isWarning
-      ? 'bg-amber-950/60 text-amber-300 border-amber-800'
-      : 'bg-slate-900/80 text-slate-100 border-slate-800';
+      ? 'bg-amber-50 text-amber-800 border-amber-200'
+      : 'bg-white text-neutral-900 border-neutral-200 shadow-xs';
 
     return (
       <div
@@ -66,7 +66,7 @@ export const CountdownTimer = forwardRef<HTMLDivElement, CountdownTimerProps>(
         className={`inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border font-mono select-none shadow-sm ${colorClasses} ${className}`}
         {...props}
       >
-        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-4 h-4 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -81,13 +81,13 @@ export const CountdownTimer = forwardRef<HTMLDivElement, CountdownTimerProps>(
         </span>
 
         {isCritical && !isExpired && (
-          <span className="text-[10px] font-sans font-semibold uppercase bg-rose-900/80 text-rose-200 px-1.5 py-0.5 rounded">
+          <span className="text-[10px] font-sans font-semibold uppercase bg-rose-600 text-white px-1.5 py-0.5 rounded">
             Low
           </span>
         )}
 
         {isExpired && (
-          <span className="text-[10px] font-sans font-semibold uppercase bg-rose-900 text-white px-1.5 py-0.5 rounded">
+          <span className="text-[10px] font-sans font-semibold uppercase bg-rose-700 text-white px-1.5 py-0.5 rounded">
             Ended
           </span>
         )}

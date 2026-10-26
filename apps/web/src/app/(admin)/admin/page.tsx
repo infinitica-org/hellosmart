@@ -10,7 +10,7 @@ import {
 } from '@hs/ui';
 import { TenantTable } from '../../../components/admin/tenant-table';
 import { ProvisionModal } from '../../../components/admin/provision-modal';
-import { Organization, AdminMetrics, OrganizationStatus } from '../../../lib/types/organization';
+import { Organization, AdminMetrics, OrganizationStatus } from '@/types/organization';
 
 function AdminDashboardContent() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);

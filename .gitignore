@@ -31,6 +31,7 @@ crash.log
 override.tf
 override.tf.json
 # packer
+
 packer_cache/
 # os / editor
 .DS_Store
@@ -39,6 +40,14 @@ Thumbs.db
 *.swp
 # agent worktrees
 .worktrees/
+
+# storybook
+storybook-static/
+.cache/
+
+# playwright
+test-results/
+playwright-report/
 
 # personal Claude Code settings
 .claude/settings.local.json

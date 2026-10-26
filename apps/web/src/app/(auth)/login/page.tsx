@@ -160,9 +160,9 @@ function LoginForm() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 bg-[#090d16] text-slate-100 relative overflow-hidden">
+    <main className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 bg-canvas text-neutral-900 font-sans relative overflow-hidden">
       {/* Background glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[350px] bg-indigo-600/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[350px] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="w-full max-w-md z-10 space-y-6">
         {/* Brand header */}
@@ -170,17 +170,17 @@ function LoginForm() {
           <Link href="/" className="inline-block mb-3">
             <BrandMark size="lg" />
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-white mt-2">Master Sign In</h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <h1 className="text-2xl font-medium tracking-tight text-neutral-900 mt-2">Master Sign In</h1>
+          <p className="text-sm text-neutral-500 font-normal mt-1">
             Access your company portal, candidate workspace, or admin console.
           </p>
         </div>
 
         {/* Redirect Notice */}
         {from && (
-          <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-800/60 text-xs text-amber-300 flex items-center gap-2.5">
+          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center gap-2.5 font-normal">
             <svg
-              className="w-4 h-4 text-amber-400 flex-shrink-0"
+              className="w-4 h-4 text-amber-600 flex-shrink-0"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -193,7 +193,7 @@ function LoginForm() {
               />
             </svg>
             <span>
-              Authentication required to view <code className="font-mono text-amber-200">{from}</code>. Please sign in below.
+              Authentication required to view <code className="font-mono text-amber-900">{from}</code>. Please sign in below.
             </span>
           </div>
         )}
@@ -203,10 +203,10 @@ function LoginForm() {
           <div
             role="alert"
             data-testid="login-error-alert"
-            className="p-3.5 rounded-xl bg-rose-950/50 border border-rose-800/70 text-xs text-rose-300 flex items-start gap-2.5 animate-fadeIn"
+            className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2.5 font-normal animate-fadeIn"
           >
             <svg
-              className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5"
+              className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -227,10 +227,10 @@ function LoginForm() {
           <div
             role="status"
             data-testid="sso-notice"
-            className="p-3.5 rounded-xl bg-sky-950/40 border border-sky-800/60 text-xs text-sky-300 flex items-start gap-2.5 animate-fadeIn"
+            className="p-3.5 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-800 flex items-start gap-2.5 font-normal animate-fadeIn"
           >
             <svg
-              className="w-4 h-4 text-sky-400 flex-shrink-0 mt-0.5"
+              className="w-4 h-4 text-sky-600 flex-shrink-0 mt-0.5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -247,7 +247,64 @@ function LoginForm() {
         )}
 
         {/* Login Card */}
-        <div className="glass-card rounded-2xl p-6 sm:p-8 border border-slate-800 space-y-5">
+        <div className="bg-white rounded-2xl p-6 sm:p-8 border border-neutral-200/80 shadow-lg shadow-neutral-900/5 space-y-5">
+          {/* Demo Quick-Select Bar */}
+          <div className="p-3 rounded-xl bg-neutral-50 border border-neutral-200/80">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-500">
+                Demo Quick Fill
+              </span>
+              <span className="text-[10px] text-neutral-400">1-click select</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('admin@hellosmart.ai');
+                  setPassword('AdminPassword123!');
+                  setErrorMessage(null);
+                }}
+                className={`px-2 py-1.5 rounded-lg border text-xs font-medium transition text-center ${
+                  email === 'admin@hellosmart.ai'
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50'
+                }`}
+              >
+                Platform Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('company@example.com');
+                  setPassword('CompanyPassword123!');
+                  setErrorMessage(null);
+                }}
+                className={`px-2 py-1.5 rounded-lg border text-xs font-medium transition text-center ${
+                  email === 'company@example.com'
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50'
+                }`}
+              >
+                Company
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('candidate@example.com');
+                  setPassword('CandidatePassword123!');
+                  setErrorMessage(null);
+                }}
+                className={`px-2 py-1.5 rounded-lg border text-xs font-medium transition text-center ${
+                  email === 'candidate@example.com'
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50'
+                }`}
+              >
+                Candidate
+              </button>
+            </div>
+          </div>
+
           <form onSubmit={handleLogin} className="space-y-4">
             <TextField
               id="email"
@@ -280,6 +337,7 @@ function LoginForm() {
               fullWidth
               isLoading={isLoading}
               data-testid="login-submit-button"
+              className="bg-primary hover:bg-primary-hover text-white border-transparent font-medium"
             >
               Sign In →
             </Button>
@@ -287,11 +345,11 @@ function LoginForm() {
 
           {/* SSO Separator */}
           <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-slate-800" />
-            <span className="flex-shrink mx-3 text-[11px] uppercase tracking-wider text-slate-500">
+            <div className="flex-grow border-t border-neutral-200" />
+            <span className="flex-shrink mx-3 text-[11px] uppercase tracking-wider text-neutral-400 font-light">
               or continue with SSO
             </span>
-            <div className="flex-grow border-t border-slate-800" />
+            <div className="flex-grow border-t border-neutral-200" />
           </div>
 
           {/* SSO Buttons */}
@@ -355,11 +413,12 @@ function LoginForm() {
         onClose={() => {
           if (!mfaLoading) setIsMfaOpen(false);
         }}
+        className="!bg-white !border-neutral-200 !text-neutral-900 shadow-xl"
         data-testid="mfa-dialog"
       >
         <form onSubmit={handleMfaSubmit}>
           <DialogHeader>
-            <div className="w-10 h-10 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mb-2 text-indigo-400">
+            <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center mb-2 text-primary">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   strokeLinecap="round"
@@ -369,8 +428,8 @@ function LoginForm() {
                 />
               </svg>
             </div>
-            <DialogTitle>Two-Factor Authentication</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="!text-neutral-900 font-medium">Two-Factor Authentication</DialogTitle>
+            <DialogDescription className="text-neutral-500 font-light">
               Enter the 6-digit TOTP code from your authenticator app to complete sign in.
             </DialogDescription>
           </DialogHeader>
@@ -379,10 +438,10 @@ function LoginForm() {
             {mfaError && (
               <div
                 role="alert"
-                className="p-3 mb-4 rounded-xl bg-rose-950/50 border border-rose-800/70 text-xs text-rose-300 flex items-start gap-2"
+                className="p-3 mb-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2"
               >
                 <svg
-                  className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5"
+                  className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -398,13 +457,23 @@ function LoginForm() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <label
-                htmlFor="mfa-code-input"
-                className="block text-xs font-medium text-slate-300"
-              >
-                6-Digit Security Code
-              </label>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="mfa-code-input"
+                  className="block text-xs font-medium text-neutral-700"
+                >
+                  6-Digit Security Code
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setMfaCode('123456')}
+                  className="text-[11px] text-primary hover:underline font-medium"
+                >
+                  Autofill demo code (123456)
+                </button>
+              </div>
+
               <input
                 id="mfa-code-input"
                 type="text"
@@ -417,10 +486,10 @@ function LoginForm() {
                 disabled={mfaLoading}
                 autoFocus
                 data-testid="mfa-totp-input"
-                className="w-full text-center tracking-[0.5em] font-mono text-xl py-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 transition-all placeholder:text-slate-600 placeholder:tracking-widest"
+                className="w-full text-center tracking-[0.5em] font-mono text-xl py-3 rounded-xl bg-neutral-50 border border-neutral-300 text-neutral-900 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-neutral-400 placeholder:tracking-widest"
               />
-              <p className="text-[11px] text-slate-400 text-center">
-                Check Google Authenticator, Microsoft Authenticator, or 1Password.
+              <p className="text-[11px] text-neutral-500 text-center font-light">
+                For dev testing, any 6-digit code (e.g. 123456) is accepted.
               </p>
             </div>
           </DialogContent>
@@ -440,6 +509,7 @@ function LoginForm() {
               disabled={mfaLoading || mfaCode.trim().length !== 6}
               isLoading={mfaLoading}
               data-testid="mfa-submit-button"
+              className="bg-primary hover:bg-primary-hover text-white border-transparent font-medium"
             >
               Verify Code →
             </Button>
@@ -452,7 +522,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#090d16]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-canvas" />}>
       <LoginForm />
     </Suspense>
   );

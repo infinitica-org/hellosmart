@@ -13,7 +13,7 @@ import {
   AlertDialog,
   useToast,
 } from '@hs/ui';
-import { Organization, OrganizationStatus } from '../../lib/types/organization';
+import { Organization, OrganizationStatus } from '@/types/organization';
 
 export interface TenantTableProps {
   organizations: Organization[];
@@ -133,22 +133,22 @@ export function TenantTable({
 
   return (
     <div className="w-full space-y-4">
-      <div className="rounded-xl border border-slate-800 bg-[#0c1222] overflow-hidden shadow-xl shadow-black/40">
+      <div className="rounded-2xl border border-neutral-200 bg-white overflow-hidden shadow-xs">
         <Table data-testid={testId}>
           <TableHeader>
-            <TableRow className="border-b border-slate-800/80 bg-slate-900/60">
-              <TableHead className="font-semibold text-slate-200">Company Name</TableHead>
-              <TableHead className="font-semibold text-slate-200">Slug</TableHead>
-              <TableHead className="font-semibold text-slate-200">Status</TableHead>
-              <TableHead className="font-semibold text-slate-200 text-center">Candidates</TableHead>
-              <TableHead className="font-semibold text-slate-200">Created Date</TableHead>
-              <TableHead className="font-semibold text-slate-200 text-right">Actions</TableHead>
+            <TableRow className="border-b border-neutral-200 bg-neutral-50/70">
+              <TableHead className="font-semibold text-neutral-800">Company Name</TableHead>
+              <TableHead className="font-semibold text-neutral-800">Slug</TableHead>
+              <TableHead className="font-semibold text-neutral-800">Status</TableHead>
+              <TableHead className="font-semibold text-neutral-800 text-center">Candidates</TableHead>
+              <TableHead className="font-semibold text-neutral-800">Created Date</TableHead>
+              <TableHead className="font-semibold text-neutral-800 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {organizations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-slate-400 text-sm">
+                <TableCell colSpan={6} className="text-center py-12 text-neutral-500 text-sm">
                   {isLoading ? 'Loading organizations...' : 'No customer companies found.'}
                 </TableCell>
               </TableRow>
@@ -159,25 +159,25 @@ export function TenantTable({
                 return (
                   <TableRow
                     key={org.id}
-                    className="border-b border-slate-800/60 hover:bg-slate-850/40 transition-colors"
+                    className="border-b border-neutral-200 hover:bg-neutral-50/60 transition-colors"
                     data-testid={`tenant-row-${org.slug}`}
                   >
                     {/* Name */}
                     <TableCell className="py-4">
-                      <div className="font-medium text-slate-100 flex items-center gap-2">
+                      <div className="font-medium text-neutral-900 flex items-center gap-2">
                         <span>{org.name}</span>
-                        <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
+                        <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200">
                           {org.plan}
                         </span>
                       </div>
-                      <div className="text-xs text-slate-400 mt-0.5 font-mono">
+                      <div className="text-xs text-neutral-500 mt-0.5 font-mono">
                         {org.adminEmail}
                       </div>
                     </TableCell>
 
                     {/* Slug */}
                     <TableCell className="py-4">
-                      <span className="font-mono text-xs text-indigo-300 bg-indigo-950/60 border border-indigo-800/40 px-2 py-1 rounded-md">
+                      <span className="font-mono text-xs text-neutral-700 bg-neutral-100 border border-neutral-200 px-2 py-1 rounded-md">
                         {org.slug}
                       </span>
                     </TableCell>
@@ -188,15 +188,15 @@ export function TenantTable({
                     </TableCell>
 
                     {/* Candidates */}
-                    <TableCell className="py-4 text-center font-mono text-slate-300">
-                      <span className="font-semibold text-white">{org.candidatesCount}</span>
+                    <TableCell className="py-4 text-center font-mono text-neutral-700">
+                      <span className="font-semibold text-neutral-900">{org.candidatesCount}</span>
                       {org.maxCandidates && (
-                        <span className="text-slate-500 text-xs"> / {org.maxCandidates}</span>
+                        <span className="text-neutral-500 text-xs"> / {org.maxCandidates}</span>
                       )}
                     </TableCell>
 
                     {/* Created Date */}
-                    <TableCell className="py-4 text-slate-400 font-mono text-xs" suppressHydrationWarning>
+                    <TableCell className="py-4 text-neutral-500 font-mono text-xs" suppressHydrationWarning>
                       {formatDate(org.createdAt)}
                     </TableCell>
 
@@ -206,7 +206,7 @@ export function TenantTable({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-emerald-400 hover:text-emerald-300 border-emerald-800/60 hover:bg-emerald-950/40"
+                          className="text-emerald-700 hover:text-emerald-800 border-emerald-300 hover:bg-emerald-50"
                           onClick={() => handleOpenConfirm(org, 'active')}
                           data-testid={`reinstate-btn-${org.slug}`}
                         >
@@ -216,7 +216,7 @@ export function TenantTable({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/30"
+                          className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                           onClick={() => handleOpenConfirm(org, 'suspended')}
                           data-testid={`suspend-btn-${org.slug}`}
                         >
