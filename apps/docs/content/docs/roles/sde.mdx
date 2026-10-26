@@ -5,15 +5,15 @@ description: "Core technical workflow, architecture boundaries, container worksp
 
 <RoleBadge role="sde" />
 
-Welcome to the HelloSmart engineering core. As a Software Development Engineer on HelloSmart, you build and maintain the high-scale foundation of the platform: the **modular monolith API**, the **candidate cloud VM orchestrator**, the **real-time streaming gateway**, and our **Next.js web portal**.
+This playbook is the hands-on engineering manual for Software Development Engineers (SDEs) on HelloSmart.
 
-This guide lays out everything you need to know: architecture boundaries, how to run locally, container runtime gotchas, database migrations, and our mandatory documentation definition of done.
+As an SDE, you build and maintain the core platform foundation: the **modular monolith backend API**, the **Sysbox container workspace orchestrator**, the **real-time terminal streaming gateway**, and the **Next.js web portals**.
 
 ---
 
-## 1. Architecture at a Glance
+## 1. System Architecture and Component Boundaries
 
-HelloSmart is structured as a **modular monolith** with event-driven background workers and sandboxed runtime agents:
+HelloSmart is designed as a **modular monolith** backed by PostgreSQL 16, Redis 7 (BullMQ), and isolated Linux worker nodes. This architecture delivers low operational complexity during MMP while maintaining strict domain separation:
 
 ```mermaid
 flowchart TD
@@ -21,114 +21,136 @@ flowchart TD
     Admin["Company & Platform Portals (Next.js 15)"]
     
     API["Core API (@hs/api - NestJS + Fastify)"]
-    WS["WebSocket Gateway (Telemetry & Terminal)"]
-    DB[("PostgreSQL 16 + citext + pgcrypto")]
+    WS["WebSocket Gateway (PTY Terminal Streaming)"]
+    DB[("PostgreSQL 16 + Citext + Row-Level Security")]
     Redis[("Redis 7 (BullMQ & Cache)")]
     
-    Sysbox["Sysbox Container Host (EC2 / Ubuntu)"]
+    Sysbox["Sysbox Container Host (Ubuntu EC2)"]
     Workspaces["Candidate Isolated Workspaces (Docker-in-Docker)"]
-    AIProxy["AI Egress Proxy (Token Quotas & Model Firewalls)"]
+    AIProxy["AI Egress Proxy (Token Metering & Spend Caps)"]
 
-    Client -->|HTTP / REST| API
-    Client -->|WSS Terminal & Video| WS
-    Admin -->|HTTP / REST| API
+    Client -->|REST API Requests| API
+    Client -->|WSS Terminal & Telemetry| WS
+    Admin -->|REST API Requests| API
     
     API --> DB
     API --> Redis
-    API -->|Provision & Snapshot| Sysbox
+    API -->|Provision & Snapshot Jobs| Sysbox
     Sysbox --> Workspaces
     Workspaces -->|Short-lived Token Only| AIProxy
 ```
 
-### Core Monorepo Packages
+### Monorepo Directory Map
 
-| Path | Name | Responsibility | Tech Stack |
+| Path | Package Name | Responsibility | Tech Stack |
 |---|---|---|---|
-| `apps/api` | `@hs/api` | Tenancy, RBAC, assessments, timing engine, commercial | NestJS 10, Fastify, Drizzle ORM |
-| `apps/web` | `@hs/web` | Master login, Company portal, Candidate portal, Admin console | Next.js 15, React 19, Tailwind CSS |
-| `apps/docs` | `@hs/docs` | Role-protected engineering & product documentation | Next.js 16, Fumadocs, Mermaid |
-| `apps/worker` | `@hs/worker` | Auto-submit scheduler, snapshot persistence, cleanup | BullMQ, Node.js 24 |
-| `services/ws-gateway` | `@hs/ws-gateway` | Candidate terminal PTY streaming and full-screen telemetry | Fastify WebSocket, node-pty |
-| `services/ai-proxy` | `@hs/ai-proxy` | Egress control, token metering, spend enforcement | Fastify, undici, Vault KMS |
-| `packages/contracts` | `@hs/contracts` | OpenAPI 3.1 schemas, database migrations, event schemas | Zod, TypeScript, SQL |
+| `apps/api` | `@hs/api` | Tenancy, authentication, assessment orchestration, timing engine, and billing | NestJS 10, Fastify, Drizzle ORM |
+| `apps/web` | `@hs/web` | Master login, Company portal, Candidate portal, and Platform Admin console | Next.js 15 (App Router), React 19, Tailwind CSS |
+| `apps/docs` | `@hs/docs` | Internal developer documentation, architecture specs, and BRD index | Next.js 16, Fumadocs, Mermaid |
+| `apps/worker` | `@hs/worker` | Auto-submit scheduler, snapshot persistence, and container cleanup jobs | BullMQ, Node.js 24 |
+| `services/ws-gateway` | `@hs/ws-gateway` | Candidate terminal PTY streaming and full-screen telemetry events | Fastify WebSocket, node-pty |
+| `services/ai-proxy` | `@hs/ai-proxy` | Egress control, model allowlists, and per-candidate token metering | Fastify, undici, AWS Secrets Manager |
+| `packages/contracts` | `@hs/contracts` | Shared OpenAPI 3.1 contracts, Zod validation schemas, and database migrations | Zod, TypeScript, Drizzle migrations |
 
 ---
 
 ## 2. Daily Development Workflow
 
-### Starting the Local Environment
+### Prerequisites
+- Node.js 24 LTS
+- pnpm 9.x (`corepack enable pnpm`)
+- Docker Desktop or a local Linux Docker daemon
 
-Ensure Docker Desktop or a local Docker daemon is running:
+### Step-by-Step Local Setup
 
 ```bash
-# 1. Bring up PostgreSQL 16 and Redis 7
+# 1. Clone the repository and install workspace dependencies
+pnpm install
+
+# 2. Start local infrastructure dependencies (PostgreSQL 16, Redis 7, LocalStack)
 pnpm infra:up
 
-# 2. Run database migrations and test fixtures seed
+# 3. Apply database migrations and seed sample tenants and fixtures
 pnpm db:migrate
 pnpm db:seed
 
-# 3. Start development servers across the monorepo in parallel
+# 4. Start all applications in parallel development mode
 pnpm dev
 ```
 
-### Core Verification Commands
+The services run on the following default local ports:
+- **Web Portal**: `http://localhost:3000` (Company, Candidate, and Admin portals)
+- **API Server**: `http://localhost:4000` (Swagger docs at `/docs`)
+- **Docs Portal**: `http://localhost:3001` (Internal engineering documentation)
+- **Prism Mock Server**: `http://localhost:4010` (Contract-driven mock API)
 
-Before creating a branch or opening a pull request, run:
+### Essential Pre-Commit Verification Commands
+
+Before pushing any code or opening a pull request, run these validation suites:
 
 ```bash
-# Type checking across all workspace packages
+# Type check all monorepo packages
 pnpm typecheck
 
-# Unit and integration test suite
+# Run unit and integration test suites
 pnpm test
 
-# Automated cross-tenant isolation tests (BR-01 verification)
+# Run multi-tenant Row-Level Security verification (BR-01)
 pnpm test:tenancy
 
-# AIDLC Documentation drift check
+# Verify zero documentation drift (AIDLC rule)
 pnpm docs:sync-check
 ```
 
 ---
 
-## 3. Critical Invariants Every SDE Must Uphold
+## 3. Core Architectural Patterns and Rules
 
-Every pull request must strictly enforce the HelloSmart Business Rules (defined in [AGENTS.md](/docs/knowledge-base/00-start-here)):
-
-### BR-01: Multi-Tenancy & Row-Level Security
-- Every database query must be scoped by `org_id`.
-- Tenant context is set per transaction:
+### BR-01: Multi-Tenancy and Row-Level Security (RLS)
+HelloSmart enforces strict tenant isolation at the database layer using PostgreSQL Row-Level Security:
+- Every tenant-owned table includes an `org_id` column.
+- Database connections run inside transactions where tenant context is set before queries execute:
   ```sql
   SELECT set_config('app.org_id', $1, true);
   ```
-- **Cross-tenant reads must return HTTP 404, never 403**, preventing existence leakage.
-- Every new API endpoint must include a dedicated cross-tenant isolation test in `tests/tenancy/`.
+- **Cross-tenant requests must return HTTP 404 Not Found, never HTTP 403 Forbidden**. Returning a 403 leaks whether an ID exists in another tenant's account.
+- Every new API endpoint must have a corresponding test in `tests/tenancy/` asserting that querying another organization's ID returns 404.
 
-### BR-13: Workspace Token Security
-- **Never inject real LLM provider API keys or cloud credentials into candidate containers.**
-- Workspaces receive only a short-lived, cryptographically signed session token scoped strictly to that candidate's assignment.
-- All AI API calls must be directed to `services/ai-proxy`, which fetches real credentials from AWS Secrets Manager, validates token limits, and logs prompts.
+### BR-13: Short-Lived Workspace Tokens
+- **Never inject production cloud credentials or LLM provider API keys into candidate containers.**
+- When a candidate launches a workspace, the orchestrator generates a short-lived, cryptographically signed session token scoped to that specific workspace.
+- The candidate container directs all AI requests to `services/ai-proxy`, which verifies the session token, validates spend caps, fetches the real API key from AWS Secrets Manager, and streams the response back.
 
-### BR-10 & BR-11: Full Screen & Zero Work Loss
-- Candidate workspaces must continuously snapshot work (terminal history, git commits, uncommitted file diffs, chat transcripts) with an **RPO &le; 30 seconds**.
-- If a candidate exits full screen, the session is immediately **disconnected (not destroyed)**, logs a `fullscreen_exit` activity event, and displays a resume overlay.
+### BR-10 and BR-11: Fullscreen Discipline and Zero Work Loss
+- The Candidate Cloud VM workspace operates in browser fullscreen.
+- Exiting fullscreen disconnects the WebSocket stream, logs a `fullscreen_exit` telemetry event, and presents a resume dialog. It does **not** destroy the container.
+- Candidate files, terminal buffers, and git state are saved continuously with an **RPO &le; 30 seconds**. When the candidate resumes, their workspace is restored without loss.
+
+### Database Migrations (Expand-and-Contract)
+Because HelloSmart targets zero-downtime releases:
+1. **Never rename or drop a column in a single migration.**
+2. Follow the expand-and-contract pattern:
+   - **Phase 1 (Expand)**: Add the new column as nullable. Deploy API code that writes to both columns and reads from the old column.
+   - **Phase 2 (Migrate)**: Run a backfill script to populate historical rows.
+   - **Phase 3 (Contract)**: Deploy code reading from the new column. In the following release, drop the old column.
 
 ---
 
-## 4. Sysbox Container Workspaces
+## 4. Sysbox Container Workspace Runtime
 
-Candidate workspaces use **Sysbox** (`sysbox-runc`), an open-source container runtime that enables unprivileged containers to act like traditional virtual machines:
+HelloSmart uses **Sysbox** (`sysbox-runc`) on unprivileged Ubuntu worker instances to power candidate cloud VMs:
 
-1. **Why not privileged Docker?** Privileged Docker (`--privileged`) exposes the host kernel and `/dev` devices, allowing trivial container breakouts. Sysbox provides isolated user namespaces and separate Docker daemons (`Docker-in-Docker`) with complete host isolation.
-2. **Warm Pool Orchestration**: To ensure candidate connect times stay under 15 seconds, the workspace orchestrator maintains a pre-warmed pool of generic Ubuntu images with standard toolchains (Node, Python, Go, Rust, Git).
-3. **Egress Firewall**: Outbound internet traffic from candidate containers is routed through an egress proxy with strict domain whitelisting. Access to unauthorized AI domains or credential metadata endpoints is blocked at the network level.
+1. **Why Sysbox instead of privileged Docker?** Running Docker inside unprivileged containers normally requires `--privileged`, which exposes host devices and kernel capabilities. Sysbox virtualizes system resources (procfs, sysfs) inside isolated user namespaces, providing true virtualization security without VM overhead.
+2. **Warm Container Pool**: Cold starting a container workspace with full toolchains can take 40+ seconds. The orchestrator maintains a pool of pre-warmed, generic Ubuntu containers with Node, Python, Go, and Git pre-installed, reducing candidate launch times to under 15 seconds.
+3. **Egress Firewalling**: Containers are connected to a software bridge with an egress proxy that whitelists required package registries (npm, PyPI) while blocking AWS metadata endpoints (`169.254.169.254`) and unauthorized AI APIs.
 
 ---
 
-## 5. AIDLC Documentation Sync Rule
+## 5. Software Engineer Definition of Done (DoD)
 
-> [!IMPORTANT]
-> Whenever you modify a database migration (`packages/contracts/db/`), update an API schema (`packages/contracts/openapi/`), or alter a service architecture, you **must update the documentation in `apps/docs/content/docs/` in the same pull request**.
->
-> Run `pnpm docs:sync-check` to verify your changes before submitting.
+A pull request is ready for review and merge only when:
+1. All TypeScript compiler checks pass across all workspace packages (`pnpm typecheck`).
+2. Unit and integration tests pass with 100% success rate (`pnpm test`).
+3. Multi-tenant isolation is verified with a dedicated cross-tenant test (`pnpm test:tenancy`).
+4. Any schema, API, or architecture changes are documented in `apps/docs/content/docs/`.
+5. `pnpm docs:sync-check` passes with zero documentation drift.
