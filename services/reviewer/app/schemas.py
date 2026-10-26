@@ -11,8 +11,14 @@ from pydantic import BaseModel, Field, field_validator
 # section split at a heading boundary, an aggregated metric across every source file, a named
 # excerpt of one function body) -- `repo:` keeps that provenance unambiguous rather than overloading
 # `file:` for both "this candidate deliverable file" and "this derived chunk of the repo".
+#
+# `git` added (live-session evidence plan): a point in a candidate's SESSION git timeline --
+# one of the incremental shadow-commit snapshots services/ws-agent records every 15s, read via
+# SessionReader.snapshot_timeline(). Distinct from `repo:`, which is the session's single FINAL
+# state, and from `diff:`, which was already reserved for a deliverable-file diff -- `git:`
+# specifically names a point in the recorded sequence (e.g. `git:0007`), not a snapshot's content.
 EvidenceRef = Annotated[
-    str, Field(pattern=r"^(term|diff|ai|file|event|test|repo):[\w./#:\-]{1,200}$")
+    str, Field(pattern=r"^(term|diff|ai|file|event|test|repo|git):[\w./#:\-]{1,200}$")
 ]
 
 

@@ -85,6 +85,27 @@ def test_materialize_upto_an_earlier_seq_gives_the_earlier_state(tmp_path: Path)
     assert (worktree / "app.py").read_text(encoding="utf-8") == "x = 1\n"
 
 
+def test_snapshot_timeline_reports_both_commits_in_order_with_lines_changed(tmp_path: Path) -> None:
+    session_dir = tmp_path / "session"
+    _make_synthetic_session(session_dir, tmp_path / "scratch")
+
+    reader = SessionReader(session_dir)
+    timeline = reader.snapshot_timeline()
+
+    assert [s["seq"] for s in timeline] == [0, 1]
+    # snap0 adds app.py with one line ("x = 1"); snap1 changes that one line ("x = 2").
+    assert timeline[0]["lines_changed"] == 1
+    assert timeline[1]["lines_changed"] == 2  # one line removed, one line added
+    assert timeline[0]["ts"] <= timeline[1]["ts"]
+
+
+def test_snapshot_timeline_with_no_bundles_returns_empty_list(tmp_path: Path) -> None:
+    session_dir = tmp_path / "session"
+    session_dir.mkdir()
+    reader = SessionReader(session_dir)
+    assert reader.snapshot_timeline() == []
+
+
 def test_materialize_with_no_bundles_returns_none(tmp_path: Path) -> None:
     session_dir = tmp_path / "session"
     session_dir.mkdir()

@@ -40,6 +40,13 @@ class SessionEvent(TypedDict):
     detail: dict[str, object]
 
 
+class SnapshotInfo(TypedDict):
+    seq: int
+    commit_sha: str
+    ts: float
+    lines_changed: int
+
+
 def _git(args: list[str], cwd: Path) -> str:
     result = subprocess.run(  # noqa: S603 -- fixed argv, cwd is a caller-owned scratch dir
         ["git", *args], cwd=str(cwd), check=True, capture_output=True, text=True  # noqa: S607
@@ -62,12 +69,9 @@ class SessionReader:
             return []
         return sorted(bundles_dir.glob("*.bundle"))
 
-    def materialize(self, upto_seq: int | None = None) -> Path | None:
+    def _build_bare_repo(self, upto_seq: int | None = None) -> tuple[Path, Path] | None:
         """Applies bundles (optionally only up to `upto_seq`, inclusive) into a fresh bare
-        repo, checks out the result into a scratch working directory, and returns its path.
-        Returns None if there are no bundles at all (nothing to materialize) -- the caller
-        should treat that as "no session code available", the same way RepoReader treats a
-        missing clone."""
+        repo. Returns (scratch_dir, bare_repo_dir), or None if there are no bundles at all."""
         bundles = self.bundle_files()
         if upto_seq is not None:
             bundles = [b for b in bundles if _seq_of(b) <= upto_seq]
@@ -90,12 +94,68 @@ class SessionReader:
             except subprocess.CalledProcessError:
                 self.skipped.append(f"{bundle.name}: failed to apply")
                 continue
+        return scratch, bare
+
+    def materialize(self, upto_seq: int | None = None) -> Path | None:
+        """Checks out the final (or `upto_seq`) snapshot into a scratch working directory and
+        returns its path. Returns None if there are no bundles at all (nothing to materialize)
+        -- the caller should treat that as "no session code available", the same way
+        RepoReader treats a missing clone."""
+        built = self._build_bare_repo(upto_seq)
+        if built is None:
+            return None
+        scratch, bare = built
 
         head = _git(["rev-parse", "refs/hs-snapshots/main"], bare)
         worktree = scratch / "worktree"
         _git(["clone", "-q", str(bare), str(worktree)], scratch)
         _git(["checkout", "-q", head], worktree)
         return worktree
+
+    def snapshot_timeline(self) -> list[SnapshotInfo]:
+        """One entry per snapshot commit, oldest first, with its timestamp and total lines
+        changed (`--numstat` summed across all files in that commit) -- the raw sequence
+        `checks/session_timeline.py` turns into facts like session count and "wrote it all at
+        once" detection. Returns [] if there are no bundles at all."""
+        built = self._build_bare_repo()
+        if built is None:
+            return []
+        _scratch, bare = built
+
+        log_output = _git(
+            ["log", "--format=%H|%ct", "--numstat", "--reverse", "refs/hs-snapshots/main"], bare
+        )
+        snapshots: list[SnapshotInfo] = []
+        current_sha: str | None = None
+        current_ts = 0.0
+        current_lines = 0
+        seq = 0
+
+        def _flush() -> None:
+            nonlocal seq
+            if current_sha is not None:
+                snapshots.append(
+                    {
+                        "seq": seq, "commit_sha": current_sha, "ts": current_ts,
+                        "lines_changed": current_lines,
+                    }
+                )
+                seq += 1
+
+        for line in log_output.splitlines():
+            if "|" in line and line.count("|") == 1 and "\t" not in line:
+                _flush()
+                sha, ts_raw = line.split("|", 1)
+                current_sha, current_ts, current_lines = sha, float(ts_raw), 0
+            elif line.strip():
+                parts = line.split("\t")
+                if len(parts) == 3:
+                    added, removed, _path = parts
+                    current_lines += (int(added) if added.isdigit() else 0) + (
+                        int(removed) if removed.isdigit() else 0
+                    )
+        _flush()
+        return snapshots
 
     # -- terminal / events (sealed JSONL segments) -------------------------------------
 
