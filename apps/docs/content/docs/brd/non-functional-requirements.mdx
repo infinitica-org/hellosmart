@@ -1,0 +1,76 @@
+---
+title: "BRD: Non-Functional Requirements (NF-001 – NF-018)"
+description: "Security, multi-tenant isolation, data privacy, SLA reliability, cost control, observability, email deliverability, and extensibility."
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+# Non-Functional Requirements (NF-001 – NF-018)
+
+Security, privacy, reliability, cost control and extensibility that apply across every persona and runtime component in HelloSmart.
+
+Total Non-Functional Requirements: **18** (Must: 13, Should: 5, Could: 0 | MMP: 15, Phase 2: 1, Phase 3: 2).
+
+---
+
+Security, privacy, reliability, cost control and extensibility that apply across every persona.
+
+### 11.1 Security
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **NF-001** | Strict tenant isolation | Every query and file is org-scoped; automated tests prove no cross-org reads; templates and submissions never leak. | Must | MMP |  |
+| **NF-002** | Secrets and API keys in a vault | Encrypted at rest, never returned in full, never present in workspaces; short-lived session tokens only. | Must | MMP |  |
+| **NF-003** | Encryption in transit and at rest | TLS everywhere; encrypted storage and backups. | Must | MMP |  |
+| **NF-004** | Workspace sandboxing and egress control | Workspaces isolated; outbound traffic restricted (e.g. AI domains blocked when AI is OFF); no real cloud credentials for candidates (use mock/LocalStack). | Must | MMP |  |
+| **NF-005** | AI proxy as the single path for AI calls | All candidate AI calls are logged, capped, and policy-checked; candidates never see real provider keys. | Must | MMP |  |
+| **NF-006** | Rate limiting, abuse protection, secure session management | Login and API throttling; CSRF/XSS protections; secure cookies. | Must | MMP |  |
+
+### 11.2 Privacy and compliance
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **NF-007** | Consent, notice and retention | Consent captured before any recording; default 90-day retention, configurable per org; erasure on request. | Must | MMP | GDPR, India DPDP Act. |
+| **NF-008** | Human-in-the-loop for AI scoring | AI scores are evidence for a human reviewer; overrides retained; decisions explainable by cited evidence. | Must | MMP | EU AI Act treats hiring AI as high-risk; NYC LL144 bias audit may apply. Confirm with counsel. |
+| **NF-009** | Fairness monitoring | Track score distributions and adverse-impact indicators where data is lawfully available. | Should | Phase 3 |  |
+| **NF-010** | SOC 2 / ISO 27001 readiness | Controls, logging and policies aligned to start an audit when enterprise demand appears. | Should | Phase 3 |  |
+
+### 11.3 Reliability
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **NF-011** | Workspace launch time | p95 launch &lt; 60 seconds from Connect (warm pool or snapshot clone). | Should | MMP |  |
+| **NF-012** | Availability | 99.5% monthly for candidate and company portals at MMP. | Should | MMP |  |
+| **NF-013** | No work loss | Autosave RPO &le; 30 s; resume restores state after browser crash or disconnect. | Must | MMP |  |
+
+### 11.4 Cost control
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **NF-014** | Automatic VM cleanup and spend limits | Idle, expired and orphaned VMs destroyed automatically; hard per-session and per-org spend limits. | Must | MMP |  |
+
+### 11.5 Observability
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **NF-015** | Logging, metrics and alerts | Central logs, error tracking, workspace and agent dashboards, on-call alerts. | Must | MMP |  |
+
+### 11.6 Usability
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **NF-016** | Accessibility and browser support | WCAG 2.2 AA target; latest Chrome, Edge, Safari, Firefox (full-screen API support required for Cloud mode). | Should | Phase 2 |  |
+
+### 11.7 Email
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **NF-017** | Deliverability | SPF, DKIM, DMARC configured; bounce handling; branded sender on white label. | Must | MMP |  |
+
+### 11.8 Extensibility
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **NF-018** | Template manifest as a versioned schema | New roles can be added by authoring a manifest and rubric without platform code changes. | Must | MMP | Core to the 'all niche roles' strategy. |
+
+---

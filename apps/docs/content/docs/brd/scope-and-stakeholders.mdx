@@ -1,0 +1,73 @@
+---
+title: "BRD: Scope & Stakeholder Personas"
+description: "Release phases (MMP, Phase 2, Phase 3), deferred scope boundaries, and detailed user personas & stakeholder matrix."
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+# Release Scope & Stakeholder Personas
+
+Requirements are strictly tagged by release phase. **The MMP is what is built and sold first**; Phase 2 and Phase 3 items are identified so the MMP architecture cleanly accommodates them.
+
+---
+
+## 3. Release Scope
+
+Requirements are tagged by release phase. **The MMP is what is built and sold first**; Phase 2 and Phase 3 items are identified so the MMP is designed to accommodate them.
+
+| Area | Total | MMP | Phase 2 | Phase 3 |
+|---|---|---|---|---|
+| Company | 58 | 50 | 7 | 1 |
+| Candidate | 23 | 18 | 5 | 0 |
+| Platform Admin | 29 | 25 | 4 | 0 |
+| Sales, Provisioning and Payments | 22 | 18 | 3 | 1 |
+| Non-Functional | 18 | 15 | 1 | 2 |
+| **Total** | **150** | **126** | **20** | **4** |
+
+### Deferred to Phase 2
+
+- **CO-007** Company team members and roles (Should)
+- **CO-027** Clone, close and archive assessments (Should)
+- **CO-036** Use HelloSmart AI credits instead of own key (Should)
+- **CO-040** Choose agent mode (Should)
+- **CO-049** Compare candidates and shortlist (Should)
+- **CO-050** Export report (Should)
+- **CO-057** Organization audit log (Should)
+- **CA-014** Runnable locally (Should)
+- **CA-016** Browser workspace (Should)
+- **CA-021** Profile and data rights (Should)
+- **CA-022** Accessible UI and accommodation requests (Should)
+- **CA-023** Integrity events logged (Should)
+- **AD-005** Impersonate/support-view a company (read-only) (Should)
+- **AD-016** Re-run or force a review (Should)
+- **AD-020** Capacity and warm pool management (Should)
+- **AD-024** Manage HelloSmart-managed AI credits (Should)
+- **SP-019** Stripe gateway for international customers (Should)
+- **SP-020** Refunds and credit notes (Should)
+- **SP-021** Revenue and payment reporting for admin (Should)
+- **NF-016** Accessibility and browser support (Should)
+
+### Deferred to Phase 3
+
+- **CO-058** ATS integration and API/webhooks (Could)
+- **SP-022** Dedicated instance / VPC deployment (Could)
+- **NF-009** Fairness monitoring (Should)
+- **NF-010** SOC 2 / ISO 27001 readiness (Should)
+
+---
+
+---
+
+## 4. Users and Stakeholders
+
+| Persona | Description | Primary goals | How they get access | Created by |
+|---|---|---|---|---|
+| Prospect / Visitor | Sales lead on the public landing page | Understand the product, book a meeting | Public landing page, cal.com booking | n/a |
+| Company Admin | Customer-side owner who configures the org, tasks, rubrics and candidates | Launch assessments, review results, control spend and branding | Email + password, Google SSO or Microsoft SSO | Platform Admin |
+| Company Reviewer (Hiring Manager) | Customer-side user who reviews submissions and scores (Phase 2 sub-role) | Review evidence, add scores and notes | Same login as Company Admin, role-restricted | Company Admin |
+| Candidate | Person being assessed | Connect to workspace, do the task, submit, optionally see results | Emailed link then forced password reset; or same master login (RBAC routes to candidate portal) | Company Admin (single or bulk upload) |
+| Platform Admin (HelloSmart) | Internal super admin / operations | Provision orgs, manage pricing, templates, agents, workspaces and payments | Master login with MFA | Seeded / other Platform Admin |
+| Internal Sales / Support (Phase 2) | Restricted internal roles | Track deals, send quotes, support customers | Master login, role-restricted | Platform Admin |
+| Reviewer Agents (system actor) | Independent AI agents that monitor and review the work | Produce rubric scores with cited evidence | System-run, no login | Platform Admin (library) / Company (rubric config) |
+
+---

@@ -1,0 +1,106 @@
+---
+title: "BRD: Exceptions, Decisions & Traceability"
+description: "Edge-case handling matrix (EX-01 to EX-17), 12 resolved product decisions, 3 key assumptions, and requirements traceability matrix."
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+# Exceptions, Decisions & Requirements Traceability
+
+This document consolidates how the platform recovers when the happy path breaks (17 exception flows), the 12 formally accepted product decisions, key assumptions under legal/counsel review, and the complete traceability matrix.
+
+---
+
+## 12. Exception and Edge Flows
+
+What happens when things break or unexpected actor behavior occurs:
+
+What happens when the happy path breaks.
+
+| ID | Scenario | Trigger | System response | Actor action | Resulting status | Requirements |
+|---|---|---|---|---|---|---|
+| EX-01 | Trial candidate cap reached | Company adds or launches beyond Y candidates (or pending invites exceed 2x). | Blocks the action; keeps existing data readable; shows Contact us / Pay CTA. | Company pays or asks Platform Admin to raise the cap. | Blocked until entitlement changes | CO-009 |
+| EX-02 | Trial expired | Z days elapse. | Blocks new assessments, candidates and workspace launches; running sessions finish; data stays readable. | Company pays; Admin can extend trial. | Trial expired | CO-009, AD-026, CO-010 |
+| EX-03 | AI key invalid, revoked or provider outage | Provider rejects calls during a session. | AI assistant shows a degraded message; session continues; event logged; company and admin notified. | Company rotates the key in Settings. | AI degraded | CO-032, NF-005 |
+| EX-04 | AI cap reached for a candidate | Token or currency cap hit. | Warns first, then blocks AI; candidate sees a clear message; work continues without AI. | Company may raise the cap for that candidate. | AI blocked, session active | CO-035, CA-017 |
+| EX-05 | Full-screen exit (Cloud) | Candidate leaves full screen. | Disconnects workspace, logs the event, shows resume overlay; timer keeps running (default). | Candidate resumes. | Disconnected (resumable) | CA-009, CA-011 |
+| EX-06 | Browser crash or network drop | Connection lost. | State already autosaved; resume restores files, terminal, chat and drafts. | Candidate reconnects before time or window ends. | Disconnected (resumable) | CA-010, CA-011 |
+| EX-07 | Candidate tries to start outside the window | Clicks Connect before start or after end. | Connect disabled; message states the window; enforced server-side. | Candidate waits or asks company for an extension. | Window not open / Expired | CA-012, CO-031 |
+| EX-08 | Time runs out mid-work | Duration or window ends. | Auto-submits the current state, destroys the workspace, queues review. | None. | Submitted (auto) | CO-028, CA-018 |
+| EX-09 | Workspace provisioning fails | VM or services do not start. | Retries; if still failing shows a support route and adds compensating time automatically; alerts Admin. | Candidate contacts support; Admin re-provisions. | Re-provisioned | CA-019, AD-018 |
+| EX-10 | Company destroys an active workspace | Company Admin clicks Destroy. | Snapshots state first, notifies the candidate, logs the action, marks the session. | Company may extend time or reopen. | Workspace destroyed | CO-044 |
+| EX-11 | Bulk upload has errors | Invalid emails, duplicates or over the cap. | Valid rows import; invalid rows are skipped and returned in a downloadable error report. | Company fixes and re-uploads. | Partial import | CO-012 |
+| EX-12 | Invite link expired or lost | Candidate opens an expired link. | Shows a clear message and a request-new-link action; does not reveal account details. | Company resends the invite. | Invite resent | CO-013, CO-017 |
+| EX-13 | Recurring payment fails | Gateway declines the renewal. | Retries (dunning), emails the company, grace period, then downgrade or suspend. | Company updates payment method in Billing. | Past due / Suspended | SP-013, SP-016 |
+| EX-14 | Paid add-on not purchased | Company tries to use own domain or white label without entitlement. | Feature stays locked with a request-quote prompt. | Company contacts sales; Admin quotes. | Locked | SP-007, SP-008 |
+| EX-15 | Suspected prompt injection or gaming | Submission tries to manipulate the grader. | Inputs sanitized; submission flagged; scores marked low-confidence for human review. | Reviewer decides. | Flagged for review | AD-017, CO-045 |
+| EX-16 | Reviewer agent fails | Agent errors or times out. | Auto-retry, then alert Admin; report shows the missing dimension; human review still possible. | Admin re-runs the agent. | Partial agent report | AD-015, AD-016 |
+| EX-17 | Candidate deletion or erasure request | Company or candidate requests deletion. | Destroys workspaces, deletes personal data and recordings per policy, logs the request. | Company Admin or Platform Admin confirms. | Candidate erased | CO-016, CA-021, AD-028 |
+
+---
+
+---
+
+## 13. Decisions and Resolved Questions
+
+Every question raised during product definition and requirements gathering has been formally resolved:
+
+Every question raised during requirements gathering has been resolved and is reflected in the requirements above.
+
+| # | Question | Decision | Status | Affected requirements |
+|---|---|---|---|---|
+| 1 | Does the candidate cap count at invite or at workspace launch? | Candidate counts once against the cap at first workspace launch. Pending (not yet launched) invites are capped separately at 2x the cap; the 2x multiplier is my assumption and is configurable by Platform Admin. | Accepted | CO-009, CO-011 |
+| 2 | Does the timer keep running while a candidate is disconnected after exiting full screen? | Timer keeps running while disconnected. An assessment-level 'Pause timer on disconnect' setting exists and is OFF by default. The consent screen warns the candidate before connecting. | Accepted | CA-009, CA-011, CA-007 |
+| 3 | Does 'routing' mean the company's own domain, or AI-model routing? | Routing = company's own domain and portal routing, sold as a paid add-on. Separate instance/VPC stays an Enterprise quote in Phase 3. | Accepted | SP-007, AD-021, SP-022 |
+| 4 | What does 'custom code' mean in payments? | Custom code = custom quote/coupon code that applies an agreed price or discount; single- or limited-use with expiry. | Accepted | SP-015 |
+| 5 | Which payment gateway(s) for MMP? | Razorpay in the MMP (cards, UPI, netbanking, subscriptions, GST invoices). Stripe added in Phase 2 behind the same payment abstraction. | Accepted | SP-018, SP-019 |
+| 6 | Can Company Reviewers exist in MMP or only Company Admins? | MMP has Company Admin users only (created by Platform Admin). The Reviewer role arrives in Phase 2. | Accepted | CO-007 |
+| 7 | Who pays for AI usage in a trial: company key or HelloSmart credits? | Companies, including trial users, bring their own key in the MMP. RESOLUTION OF A CONFLICT: the Chat workspace needs a key, and your original brief said chat uses HelloSmart credits. So Platform Admin can manually allocate a platform key with a cap to an org as a quoted add-on (interim). Self-serve managed credits are Phase 2. | Accepted | CO-032, CO-036, AD-023, CA-015 |
+| 8 | Can a company edit scores after finalizing, and is that audit-logged? | Yes. Every edit after finalization creates a new version; original agent scores, prior versions, editor and timestamp are retained. | Accepted | CO-047, CO-045 |
+| 9 | What are default retention periods for recordings and transcripts? | Default 90 days after the assessment closes, configurable per org within limits set by Platform Admin. Counsel to confirm the period per market. | Accepted | AD-028, NF-007, CO-016 |
+| 10 | Which workspace modes are in the MMP build? | MMP = Cloud VM and Chat. Local and Browser appear as locked 'coming soon' options and ship in Phase 2. | Accepted | CO-022, CA-015, CA-014, CA-016 |
+| 11 | Is the master login one URL for all roles? | One master login URL for all roles with RBAC redirect. White-label customers get a branded login route on their custom domain (add-on). | Accepted | CO-004, CA-002 |
+| 12 | Assumption: companies are created by Platform Admin after the sales call; no public self-signup. | Platform Admin creates every org. Self-serve is revisited after the first 10-15 paying customers. | Accepted | CO-005 |
+
+---
+
+---
+
+## 14. Assumptions and Items to Confirm
+
+Collected from the notes column of the requirements workbook. These represent operational assumptions or areas pending outside legal counsel review:
+
+Collected from the notes column of the requirement sheets. These are the points where the business has made an assumption or needs outside confirmation (for example legal counsel).
+
+| Requirement | Note |
+|---|---|
+| **CO-009** Trial limits enforced with clear messaging | Decision accepted (Open Q1). The 2x pending-invite multiplier is an assumption. |
+| **AD-028** Data retention and deletion policy controls | Decision accepted (Open Q9). Counsel to confirm the period per market. |
+| **NF-008** Human-in-the-loop for AI scoring | EU AI Act treats hiring AI as high-risk; NYC LL144 bias audit may apply. Confirm with counsel. |
+
+---
+
+---
+
+## 15. Requirements Summary & Traceability
+
+### Requirements Distribution Matrix
+
+| Area | Total | Must | Should | Could | MMP | Phase 2 | Phase 3 |
+|---|---|---|---|---|---|---|---|
+| Company | 58 | 45 | 12 | 1 | 50 | 7 | 1 |
+| Candidate | 23 | 17 | 6 | 0 | 18 | 5 | 0 |
+| Platform Admin | 29 | 21 | 8 | 0 | 25 | 4 | 0 |
+| Sales, Provisioning and Payments | 22 | 15 | 6 | 1 | 18 | 3 | 1 |
+| Non-Functional | 18 | 13 | 5 | 0 | 15 | 1 | 2 |
+| **Total** | **150** | **111** | **37** | **2** | **126** | **20** | **4** |
+
+**Traceability.** Every step in the end-to-end flow (section 5) and every exception (section 12) lists the requirement IDs that cover it. Every decision (section 13) lists the requirements it changed. Requirement status values used in the workbook: Draft, Approved, In progress, Done, Deferred.
+
+| Status | Count |
+|---|---|
+| Draft | 132 |
+| Approved | 18 |
+| In progress | 0 |
+| Done | 0 |
+| Deferred | 0 |

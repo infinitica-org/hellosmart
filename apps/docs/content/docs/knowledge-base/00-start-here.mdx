@@ -5,60 +5,80 @@ description: "HelloSmart MMP Knowledge Base — Chapter Intro: Start here"
 
 <RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
 
+# HelloSmart.ai Knowledge Base
+
 **HelloSmart.ai is an AI-native hiring platform.** Companies assess candidates by having them do real work, with AI tools, inside a controlled workspace. Independent AI reviewer agents watch the work and score it against the company's own rubric. People make the final decision.
 
-This knowledge base is the single place to learn what the product is, who uses it, how every part works, and how it is sold and operated. Read it in order and you will understand the whole product.
+This knowledge base is the central manual to learn what the product is, who uses it, how every part works, and how it is sold and operated. Read it in order and you will understand the complete product lifecycle.
 
-> **Version:** 0.2, MMP scope, 22 October 2026. Everything here comes from the product's business requirements workbook. Items that are not part of the first release are clearly marked **Phase 2** or **Phase 3**.
+> **Version:** 0.2, MMP scope, 22 October 2026. Everything here comes from the product's business requirements workbook (`HelloSmart_Business_Requirements.xlsx`). Items that are not part of the first release are clearly marked **Phase 2** or **Phase 3**.
 
-### The product in 60 seconds
+---
+
+## ⚡ The Product in 60 Seconds
 
 | Question | Answer |
 |---|---|
-| What is it? | A platform where candidates do the real job, with AI, and get scored with evidence. |
-| Category | AI-native work simulation for hiring ("Hire by doing"). |
-| Who buys it? | Companies hiring for technical and non-technical niche roles. |
-| Who uses it? | Company admins, candidates, and HelloSmart's own platform admins. |
-| How is it sold? | Sales-assisted: book a meeting, get quoted, get provisioned. No public self-signup in the first release. |
-| What makes it different? | It works for any role, tasks are private to each company, rubrics run as independent AI agents, and humans stay in control. |
-
-### Reading paths
-
-| If you are... | Read these chapters |
-|---|---|
-| New to HelloSmart | 1, 2, 3, then 19 (FAQ) |
-| In sales or customer success | 1, 4, 5, 6, 13, 18, 19 |
-| A product manager | Everything, in order |
-| An engineer | 2, 3, 7, 8, 9, 10, 14, 15, 16, 17, then Appendix A |
-| In support | 5, 6, 10, 15, 19 |
-
-### How to read the diagrams
-
-All diagrams are written in Mermaid, so they render on this site and can be edited as text. Flowcharts show steps and decisions, sequence diagrams show who talks to whom over time, and state diagrams show how an object moves through its life.
-
-### Contents
-
-- [1. The product](/docs/the-product#1-the-product)
-- [2. Core concepts](/docs/core-concepts#2-core-concepts)
-- [3. Who uses the platform](/docs/who-uses-the-platform#3-who-uses-the-platform)
-- [4. How a customer goes live](/docs/how-a-customer-goes-live#4-how-a-customer-goes-live)
-- [5. The company journey](/docs/the-company-journey#5-the-company-journey)
-- [6. The candidate journey](/docs/the-candidate-journey#6-the-candidate-journey)
-- [7. Workspaces](/docs/workspaces#7-workspaces)
-- [8. AI controls](/docs/ai-controls#8-ai-controls)
-- [9. Reviewer agents and scoring](/docs/reviewer-agents-and-scoring#9-reviewer-agents-and-scoring)
-- [10. Timing and windows](/docs/timing-and-windows#10-timing-and-windows)
-- [11. Entitlements, plans and add-ons](/docs/entitlements-plans-and-add-ons#11-entitlements-plans-and-add-ons)
-- [12. The Platform Admin journey](/docs/the-platform-admin-journey#12-the-platform-admin-journey)
-- [13. Quotes, payments and billing](/docs/quotes-payments-and-billing#13-quotes-payments-and-billing)
-- [14. Lifecycles at a glance](/docs/lifecycles-at-a-glance#14-lifecycles-at-a-glance)
-- [15. When things go wrong](/docs/when-things-go-wrong#15-when-things-go-wrong)
-- [16. Security, privacy and compliance](/docs/security-privacy-and-compliance#16-security-privacy-and-compliance)
-- [17. Platform architecture (conceptual)](/docs/platform-architecture-conceptual#17-platform-architecture-conceptual)
-- [18. Roadmap: what ships first and what follows](/docs/roadmap-what-ships-first-and-what-follows#18-roadmap-what-ships-first-and-what-follows)
-- [19. Frequently asked questions](/docs/frequently-asked-questions#19-frequently-asked-questions)
-- [20. Glossary](/docs/glossary#20-glossary)
-- [Appendix A: Decisions and resolved questions](/docs/appendix-a#appendix-a-decisions-and-resolved-questions)
-- [Appendix B: Requirements index](/docs/appendix-b#appendix-b-requirements-index)
+| **What is it?** | An assessment platform where candidates do the real job with AI tools in sandboxed workspaces, evaluated with cited evidence. |
+| **Category** | AI-native work simulation for hiring (*"Hire by doing"*). |
+| **Who buys it?** | Companies hiring for technical and non-technical niche roles: startups, staffing agencies, enterprises. |
+| **Who uses it?** | Company Admins, Candidates, and HelloSmart Platform Admins. |
+| **How is it sold?** | Sales-assisted: prospect books via cal.com, receives a quote, pays, and is provisioned on the multi-tenant route. No public self-signup in MMP. |
+| **What makes it different?** | Works for any role, templates are strictly private to each company, rubrics run as independent AI agents, and humans stay in control. |
 
 ---
+
+## 🧭 Targeted Reading Paths
+
+Whether you are a new developer joining the team or a senior tech lead, follow the tailored reading path below:
+
+| Persona | Recommended Documentation Path |
+|---|---|
+| **New to HelloSmart (All Roles)** | 1. [The product](/docs/knowledge-base/01-the-product)<br/>2. [Core concepts](/docs/knowledge-base/02-core-concepts)<br/>3. [Who uses the platform](/docs/knowledge-base/03-who-uses-the-platform)<br/>4. [Frequently Asked Questions](/docs/knowledge-base/19-frequently-asked-questions) |
+| **Software Engineers (SDE)** | 1. [SDE Team Playbook](/docs/roles/sde)<br/>2. [System Architecture](/docs/architecture/system-architecture) & [Workspaces](/docs/knowledge-base/07-workspaces)<br/>3. [Database Visualization & RLS](/docs/database/db-visualization)<br/>4. [API Contracts & Mock Server](/docs/api/overview)<br/>5. [Lifecycles at a glance](/docs/knowledge-base/14-lifecycles-at-a-glance) & [BRD State Models](/docs/brd/lifecycle-models) |
+| **AI Engineers** | 1. [AI Team Playbook](/docs/roles/ai)<br/>2. [AI controls](/docs/knowledge-base/08-ai-controls)<br/>3. [Reviewer agents and scoring](/docs/knowledge-base/09-reviewer-agents-and-scoring)<br/>4. [Platform Admin Reviewer Agents](/docs/brd/platform-admin-requirements#96-agents) |
+| **QA & Test Engineers** | 1. [QA Team Playbook](/docs/roles/qa)<br/>2. [When things go wrong](/docs/knowledge-base/15-when-things-go-wrong)<br/>3. [Exceptions & Edge Flows](/docs/brd/exceptions-and-decisions#12-exception-and-edge-flows)<br/>4. [Security & Isolation](/docs/security/workspace-isolation) |
+| **Product Managers & Leads** | 1. [Managing Team Playbook](/docs/roles/managing)<br/>2. [Official Business Requirements (BRD)](/docs/brd/overview)<br/>3. [The 33 Business Rules (BR-01 to BR-33)](/docs/roles/managing#4-the-33-inviolable-business-rules)<br/>4. [Sprint Delivery Roadmap](/docs/planning/delivery-plan) |
+| **Sales & Operations** | 1. [How a customer goes live](/docs/knowledge-base/04-how-a-customer-goes-live)<br/>2. [The company journey](/docs/knowledge-base/05-the-company-journey)<br/>3. [Quotes, payments and billing](/docs/knowledge-base/13-quotes-payments-and-billing)<br/>4. [Roadmap: what ships first](/docs/knowledge-base/18-roadmap-what-ships-first-and-what-follows) |
+
+---
+
+## 📚 Complete Knowledge Base Chapters
+
+| Chapter | Topic | Description |
+|---|---|---|
+| **01** | [The product](/docs/knowledge-base/01-the-product) | Core problem, 4-part solution, loop, differentiators, vision and mission. |
+| **02** | [Core concepts](/docs/knowledge-base/02-core-concepts) | The 8 foundation concepts: Templates, Assessments, Assignments, Workspaces, AI Proxy, etc. |
+| **03** | [Who uses the platform](/docs/knowledge-base/03-who-uses-the-platform) | Personas: Prospect, Company Admin, Reviewer, Candidate, Platform Admin. |
+| **04** | [How a customer goes live](/docs/knowledge-base/04-how-a-customer-goes-live) | From first landing on hellosmart.ai to the discovery call and initial tenant provisioning. |
+| **05** | [The company journey](/docs/knowledge-base/05-the-company-journey) | Step-by-step company journey: setup, task configuration, rubrics, candidates, and scoring. |
+| **06** | [The candidate journey](/docs/knowledge-base/06-the-candidate-journey) | Candidate login, consent, full-screen cloud VM, AI assistance, auto-saving, and submission. |
+| **07** | [Workspaces](/docs/knowledge-base/07-workspaces) | Sysbox Cloud VM vs Chat workspace, warm pool provisioning, telemetry, and snapshot persistence. |
+| **08** | [AI controls](/docs/knowledge-base/08-ai-controls) | AI proxy gateway, provider keys, token quotas, spend caps, and model allowlists. |
+| **09** | [Reviewer agents and scoring](/docs/knowledge-base/09-reviewer-agents-and-scoring) | Multi-agent evaluation pipeline, cited evidence, rubrics, and human override workflow. |
+| **10** | [Timing and windows](/docs/knowledge-base/10-timing-and-windows) | Duration, fixed windows, countdown timer, disconnect rules, and auto-submit at expiry. |
+| **11** | [Entitlements, plans and add-ons](/docs/knowledge-base/11-entitlements-plans-and-add-ons) | Per-org limits (X templates, Y candidates, Z days), white label, and custom domains. |
+| **12** | [The Platform Admin journey](/docs/knowledge-base/12-the-platform-admin-journey) | Internal operations: provisioning companies, pricing, template building, and global oversight. |
+| **13** | [Quotes, payments and billing](/docs/knowledge-base/13-quotes-payments-and-billing) | Quote generator, Razorpay webhook checkout, GST invoices, and coupon codes. |
+| **14** | [Lifecycles at a glance](/docs/knowledge-base/14-lifecycles-at-a-glance) | State machines for organizations, assessments, assignments, containers, and reviews. |
+| **15** | [When things go wrong](/docs/knowledge-base/15-when-things-go-wrong) | Failure recovery: fullscreen exits, network drops, VM provisioning retries, and AI caps. |
+| **16** | [Security, privacy and compliance](/docs/knowledge-base/16-security-privacy-and-compliance) | Tenant isolation (`BR-01`), secrets vault, candidate privacy, and 90-day retention. |
+| **17** | [Platform architecture (conceptual)](/docs/knowledge-base/17-platform-architecture-conceptual) | High-level component interactions, background workers, and proxy egress flow. |
+| **18** | [Roadmap: what ships first](/docs/knowledge-base/18-roadmap-what-ships-first-and-what-follows) | MMP scope boundaries vs Phase 2 (Local/Browser modes) and Phase 3 (ATS/VPC). |
+| **19** | [Frequently asked questions](/docs/knowledge-base/19-frequently-asked-questions) | 12 key operational questions answered simply. |
+| **20** | [Glossary](/docs/knowledge-base/20-glossary) | Standardized domain terms used across engineering and business. |
+| **A** | [Appendix A: Decisions](/docs/knowledge-base/21-appendix-a) | The 12 formally accepted product and architecture decisions. |
+| **B** | [Appendix B: Requirements index](/docs/knowledge-base/22-appendix-b) | Compact index of all requirements mapped to the formal BRD. |
+
+---
+
+## 📋 Formal Business Requirements Document (BRD)
+
+For the official, contractual **150-requirement specification** with individual acceptance criteria, priority, phase tags, implementation notes, and edge-flow matrices, refer to the dedicated **[Business Requirements Document (BRD)](/docs/brd/overview)**:
+
+- 🏢 **[Company Requirements (CO-001 – CO-058)](/docs/brd/company-requirements)**
+- 👤 **[Candidate Requirements (CA-001 – CA-023)](/docs/brd/candidate-requirements)**
+- 🛡️ **[Platform Admin Requirements (AD-001 – AD-029)](/docs/brd/platform-admin-requirements)**
+- 💳 **[Sales, Provisioning & Billing (SP-001 – SP-022)](/docs/brd/sales-and-billing-requirements)**
+- 🔒 **[Non-Functional Requirements (NF-001 – NF-018)](/docs/brd/non-functional-requirements)**
+- ⚠️ **[Exceptions, Decisions & Traceability (EX-01 – EX-17)](/docs/brd/exceptions-and-decisions)**

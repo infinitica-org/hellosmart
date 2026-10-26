@@ -1,0 +1,9 @@
+apis:
+  main:
+    root: openapi/openapi.yaml
+rules:
+  no-server-example.com: off
+  info-license: off
+  tag-description: off
+  operation-summary: error
+  operation-4xx-response: off

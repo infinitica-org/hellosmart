@@ -1,0 +1,166 @@
+---
+title: "BRD: Company Requirements (CO-001 – CO-058)"
+description: "Complete business requirements for Company Admins and Reviewers across 18 functional modules with acceptance criteria and notes."
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+# Business Requirements: Company (CO-001 – CO-058)
+
+Requirements for company users (Company Admin in the MMP; Reviewer role in Phase 2). Companies are provisioned by HelloSmart after the discovery sales call and configure everything behind their own secure login.
+
+Total Company Requirements: **58** (Must: 45, Should: 12, Could: 1 | MMP: 50, Phase 2: 7, Phase 3: 1).
+
+---
+
+Requirements for company users (Company Admin in the MMP; Reviewer role in Phase 2). Companies are provisioned by HelloSmart after the sales call and configure everything behind their own login.
+
+### 7.1 Authentication
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-001** | Sign in with email and password | Passwords hashed (argon2/bcrypt); forgot-password via emailed expiring link; lockout or throttling after repeated failures; session expiry configurable. | Must | MMP |  |
+| **CO-002** | Sign in with Google SSO | Company user can authenticate with Google; account is matched on verified email; no new org is created by SSO. | Must | MMP | SSO only works for users already created by Platform Admin / Company Admin. |
+| **CO-003** | Sign in with Microsoft SSO | Company user can authenticate with Microsoft (Entra ID / personal); matched on verified email. | Must | MMP |  |
+| **CO-004** | Master login with role-based routing | After login the user lands in the correct portal (company dashboard) based on role; candidates and admins use the same login page. One login URL for all roles; white-label customers get a branded login route on their custom domain (add-on). | Must | MMP | Decision accepted (Open Q11). |
+
+### 7.2 Account
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-005** | Company account is provisioned by HelloSmart after sales call | Org, first Company Admin and trial are created by Platform Admin; Company Admin receives invite email and sets a password or uses SSO. | Must | MMP | Decision accepted (Open Q12): no public self-signup in MMP; revisit after 10-15 paying customers. |
+| **CO-006** | Manage organization name and profile | Company Admin can edit org name; change is reflected on candidate portal, emails and reports; change is audit-logged. | Must | MMP |  |
+| **CO-007** | Company team members and roles | Company Admin can invite Reviewer / Admin users; Reviewers cannot change settings, keys or billing. | Should | Phase 2 | Decision accepted (Open Q6): MMP has Company Admin users only; Reviewer role arrives in Phase 2. |
+
+### 7.3 Trial
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-008** | Trial period with X templates, Y candidate cap, Z days | Entitlements are set by Platform Admin per org; enforced server-side; banner shows usage and days left (e.g. 2 of 3 templates, 4 of 10 candidates, 9 days left). | Must | MMP | Suggested defaults: 3 templates, 10 candidates, 14 days. |
+| **CO-009** | Trial limits enforced with clear messaging | At cap or expiry, new assessments, candidates or workspace launches are blocked with a message and 'Contact us / Pay' CTA; existing data stays readable. A candidate counts once against the cap at first workspace launch; pending (not yet launched) invites are capped at 2x the cap, configurable by Platform Admin. | Must | MMP | Decision accepted (Open Q1). The 2x pending-invite multiplier is an assumption. |
+| **CO-010** | Trial upgrade to paid plan | On payment success, entitlements switch to the purchased plan with no data loss. | Must | MMP | Links to Sales_Payments module. |
+
+### 7.4 Candidates
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-011** | Add a single candidate (Create) | Name and email required; email format and uniqueness within the org validated; counts against candidate cap rules. | Must | MMP |  |
+| **CO-012** | Bulk upload candidates | CSV/XLSX with name and email; downloadable template; per-row validation; duplicates skipped and reported; downloadable error report; row limit stated (e.g. 500). | Must | MMP |  |
+| **CO-013** | Automatic account-created email with link | On creation, candidate receives email with secure link; first login forces password reset; link expires and can be resent. | Must | MMP | Email must come from HelloSmart domain; branded sender is a white-label add-on. |
+| **CO-014** | View, search and filter candidates (Read) | List with name, email, assigned assessments, status; search by name/email; filter by assessment and status; pagination. | Must | MMP |  |
+| **CO-015** | Edit candidate (Update) | Name editable; email editable until activation, after which change triggers re-verification. | Must | MMP |  |
+| **CO-016** | Delete candidate (Delete) | Soft delete with confirmation; active workspaces destroyed; submissions retained or erased according to the retention setting; audit-logged. | Must | MMP | Supports erasure requests under GDPR / DPDP. |
+| **CO-017** | Resend invite / reset candidate access | One-click resend of invite; reset password link; action audit-logged. | Should | MMP |  |
+
+### 7.5 Tasks and templates
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-018** | Browse templates available to my company only | Template catalog shows only templates provisioned for this org; no public or cross-company templates. | Must | MMP | Templates are built behind the curtain by HelloSmart. |
+| **CO-019** | Preview a template | Shows scenario, deliverables, tech stack tags, workspace mode, estimated duration, default AI policy and default reviewer agents. | Must | MMP |  |
+| **CO-020** | Create an assessment from a template with a task name | Company names the assessment; it pins the template version; edits never alter the master template. | Must | MMP | Three levels: Template > Assessment > Session. |
+| **CO-021** | Edit candidate-facing brief and deliverables | Company can adjust title, description, instructions and deliverables within the template's editable fields. | Should | MMP |  |
+| **CO-022** | Choose workspace mode | MMP options: Cloud VM and Chat. Local and Browser are shown as locked 'coming soon' options and unlock in Phase 2 subject to the org's entitlements; selection drives consent and provisioning. | Must | MMP | Decision accepted (Open Q10). |
+| **CO-023** | Configure environment variables and secrets | Required slots declared by the template; company fills values; values encrypted, masked in UI and injected only into the session. | Must | MMP |  |
+| **CO-024** | Dry-run preview as candidate before publishing | Company launches a test session of the assessment; publish is blocked until a dry-run has passed. | Should | MMP | Prevents broken tasks from reaching candidates. |
+| **CO-025** | Publish and deploy to candidates | Company selects candidates; publishing provisions access and sends assignment email; lifecycle Draft > Published > Closed > Archived. | Must | MMP |  |
+| **CO-026** | Assign candidates to an assessment in bulk | Multi-select or filter by list; assignments respect caps; each candidate sees only their assigned tasks. | Must | MMP |  |
+| **CO-027** | Clone, close and archive assessments | Clone copies configuration; closing stops new starts; archive hides from the default list. | Should | Phase 2 |  |
+
+### 7.6 Timing
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-028** | Time-bound assessment | Duration in minutes/hours starts at the candidate's first connect; countdown visible; auto-submit at expiry. | Must | MMP |  |
+| **CO-029** | Window-bound assessment | Company sets start and end date-time with timezone; workspace is not accessible outside the window. | Must | MMP |  |
+| **CO-030** | Combined window plus duration | e.g. start any time within 7 days, then 4 hours; both rules enforced server-side. | Must | MMP |  |
+| **CO-031** | Extend time or window for a candidate; revoke access | Company can grant an extension or revoke; both are audit-logged and shown to the candidate. | Should | MMP |  |
+
+### 7.7 AI providers
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-032** | Add AI provider API keys in settings | Providers such as Anthropic and OpenAI; keys stored encrypted in a vault, shown masked (last 4); test-connection; rotate and delete; set a default key. | Must | MMP | Decision accepted (Open Q7): own key in MMP, including trial. Keys are never exposed to candidates or workspaces. |
+
+### 7.8 AI controls
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-033** | AI assistant ON/OFF per assessment | Toggle at assessment level; when OFF the assistant is removed and AI domains are blocked in cloud workspaces. | Must | MMP | AI-off cannot be fully enforced in local mode; label this in consent and report. |
+| **CO-034** | Select provider/key and allowed models per assessment | Company picks key source (own key) and a model allowlist; all AI calls pass through the HelloSmart AI proxy. | Must | MMP |  |
+| **CO-035** | Usage caps per candidate and per assessment | Caps in tokens or currency plus requests-per-minute; behaviour at cap configurable (warn then block); candidate sees remaining budget. | Must | MMP |  |
+| **CO-036** | Use HelloSmart AI credits instead of own key | Company can select managed credits where purchased; usage metered and shown. | Should | Phase 2 | Decision accepted (Open Q7): MMP uses the company's own key; self-serve managed credits are Phase 2. Pricing and markup set by Platform Admin. |
+| **CO-037** | AI usage and cost visibility | Per-assessment and org-wide tokens/cost by candidate and model. | Should | MMP |  |
+
+### 7.9 Rubrics / Reviewer agents
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-038** | Define a custom rubric as reviewer agents | Each rubric item has name, goal, signals watched, scale with level anchors, weight, red flags; weights total 100%. | Must | MMP | Rubrics run as independent monitoring and review agents. |
+| **CO-039** | Start from default rubric of the template or the agent library | Company can accept, edit, add or remove items; changes are versioned per assessment. | Must | MMP |  |
+| **CO-040** | Choose agent mode | Post-session review (default) or live monitoring (observe and flag, never interrupt the candidate). | Should | Phase 2 |  |
+
+### 7.10 Submissions and progress
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-041** | See all submissions and progress | Table per assessment: candidate, status (Invited, Ready, Connected, In progress, Submitted, Expired), time used, last activity, score. | Must | MMP |  |
+| **CO-042** | Submission detail view | Shows deliverables/artifacts, activity timeline, AI conversation transcript, final snapshot and per-agent reports with cited evidence. | Must | MMP |  |
+
+### 7.11 Workspaces
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-043** | See active workspaces | List with candidate, assessment, mode, status, started time, time left; auto-refresh. | Must | MMP |  |
+| **CO-044** | Destroy a workspace at any time | Confirmation dialog; workspace state is snapshotted first; candidate is notified; action audit-logged; session marked accordingly. | Must | MMP |  |
+
+### 7.12 Review and results
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-045** | Provide scores per rubric item and overall | Reviewer enters score per dimension and overall; can accept or override agent scores; overrides keep the original and are audit-logged. | Must | MMP | Human-in-the-loop is required for AI-assisted hiring decisions. |
+| **CO-046** | Add custom notes | Free-text note at dimension level and overall; visible to company users, optionally shared with candidate. | Must | MMP |  |
+| **CO-047** | Edit scores after finalization with versioned history | Authorized company users can edit finalized results; each edit creates a new version keeping previous scores, notes, editor and timestamp; original agent scores are never overwritten; released results update only if already released. | Must | MMP | Decision accepted (Open Q8). |
+| **CO-048** | Release results to candidates | Per-assessment or per-candidate toggle; when ON the candidate sees scores and shared notes. | Must | MMP | Default OFF. |
+| **CO-049** | Compare candidates and shortlist | Side-by-side score comparison; mark Shortlisted/Rejected. | Should | Phase 2 |  |
+| **CO-050** | Export report | PDF per candidate and CSV per assessment. | Should | Phase 2 |  |
+
+### 7.13 Analytics
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-051** | Analytics per assessment | Invited, started, completed, expired; completion rate and drop-off; avg time; score distribution; per-rubric averages; AI usage; agent agreement. | Must | MMP |  |
+| **CO-052** | Overall analytics across assessments | Org-level rollups with date filter; usage against plan entitlements. | Must | MMP |  |
+
+### 7.14 Settings
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-053** | Central settings page | Sections: Organization, Branding, AI providers, Team, Notifications, Billing, Data retention. | Must | MMP |  |
+
+### 7.15 Branding
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-054** | Upload logo for candidate portal, emails and reports | PNG/SVG with size limits; shown in a default location on the candidate portal and reports. | Must | MMP |  |
+| **CO-055** | Default 'Powered by hellosmart.ai' mark in a corner | Shown on candidate portal and reports by default; can only be removed or replaced when white-label entitlement is active. | Must | MMP | White label is a paid add-on. |
+
+### 7.16 Billing
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-056** | View quotes, invoices and pay in-app | Company Admin sees pending quotes and invoices, can pay online, download receipts and manage a recurring subscription. | Must | MMP | See Sales_Payments sheet. |
+
+### 7.17 Governance
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-057** | Organization audit log | Records config changes, key changes, overrides, destroys, result releases with user and timestamp. | Should | Phase 2 |  |
+
+### 7.18 Integrations
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CO-058** | ATS integration and API/webhooks | Greenhouse, Lever, Workday or generic webhook for candidate create and result push. | Could | Phase 3 |  |
+
+---

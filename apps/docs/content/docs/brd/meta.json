@@ -1,0 +1,16 @@
+{
+  "title": "Business Requirements (BRD)",
+  "description": "Official HelloSmart.ai Business Requirements Document (BRD) — 150 Inviolable Requirements, User Flows, and Acceptance Criteria",
+  "pages": [
+    "overview",
+    "scope-and-stakeholders",
+    "end-to-end-user-flow",
+    "lifecycle-models",
+    "company-requirements",
+    "candidate-requirements",
+    "platform-admin-requirements",
+    "sales-and-billing-requirements",
+    "non-functional-requirements",
+    "exceptions-and-decisions"
+  ]
+}
