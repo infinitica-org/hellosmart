@@ -1,18 +1,23 @@
 """Evidence builder for the skills-depth agent (AD-014b).
 
-Full-depth port of ProjAgentScan's src/agents/skills_depth/evidence.py: declared
-(requirements.txt/pyproject.toml) vs genuinely-used dependencies, carrying over the one
-security-relevant fix from that port's history (docs/memory/pitfalls.md #26): a Python file
-whose entire body is import statements and nothing else does not count as "using" what it
-imports -- that exact shape is the gaming vector a dummy file importing every declared package
-would otherwise exploit. Stub-function detection (pass-only / NotImplementedError bodies) and
-now technology-domain breadth classification (_TECH_DOMAINS) are also ported -- the fact this
-agent's own rubric cites directly ("breadth across domains", not just "many used dependencies").
+Full-depth port of ProjAgentScan's src/agents/skills_depth/evidence.py: declared (every
+requirements*.txt plus pyproject.toml's PEP 621 *and* Poetry dependency tables) vs genuinely-used
+dependencies, carrying over the one security-relevant fix from that port's history
+(docs/memory/pitfalls.md #26): a Python file whose entire body is import statements and nothing
+else does not count as "using" what it imports -- that exact shape is the gaming vector a dummy
+file importing every declared package would otherwise exploit. Also ported: the
+distribution-name-to-import-name alias table (_PACKAGE_TO_MODULE_ALIASES, e.g. `scikit-learn`
+declared but `sklearn` imported must still count as used -- without this, pure string matching
+on the canonicalized name wrongly reports it unused), stub-function detection (pass-only /
+NotImplementedError bodies), and technology-domain breadth classification (_TECH_DOMAINS) --
+the fact this agent's own rubric cites directly ("breadth across domains", not just "many used
+dependencies").
 """
 
 from __future__ import annotations
 
 import ast
+import os
 import re
 import tomllib
 
@@ -22,6 +27,20 @@ from app.sanitizer import normalise, suspicious
 from .repo_io import RepoReader, safe_parse_python
 
 _REQ_LINE = re.compile(r"^\s*([A-Za-z0-9_.\-]+)")
+_TEST_DIR_PARTS = frozenset({"tests", "test", "__tests__"})
+
+# Distribution-package name -> the module name(s) actually imported for it. Checked both
+# forward (declared as the distribution name) and reverse (declared as the import name).
+_PACKAGE_TO_MODULE_ALIASES: dict[str, tuple[str, ...]] = {
+    "scikit_learn": ("sklearn",),
+    "pyyaml": ("yaml",),
+    "beautifulsoup4": ("bs4",),
+    "pillow": ("pil",),
+    "psycopg2_binary": ("psycopg2",),
+    "python_dotenv": ("dotenv",),
+    "python_dateutil": ("dateutil",),
+    "opencv_python": ("cv2",),
+}
 
 # Standard library modules (argparse, unittest) are excluded from domain counts.
 _TECH_DOMAINS: dict[str, set[str]] = {
@@ -63,27 +82,61 @@ def _canonical(name: str) -> str:
     return name.strip().lower().replace("-", "_").replace(".", "_")
 
 
+def _is_test_path(rel_path: str) -> bool:
+    norm = rel_path.replace("\\", "/")
+    parts = norm.split("/")
+    if any(p.lower() in _TEST_DIR_PARTS for p in parts):
+        return True
+    base = os.path.basename(norm).lower()
+    return base.startswith(("test-", "test_")) or base.endswith(("-dev.txt", "_dev.txt"))
+
+
 def _declared_dependencies(reader: RepoReader) -> set[str]:
     declared: set[str] = set()
-    req = reader.read_text("requirements.txt")
-    if req:
-        for line in req.splitlines():
-            line = line.split("#", 1)[0].strip()
-            m = _REQ_LINE.match(line)
-            if m:
-                declared.add(_canonical(m.group(1)))
+    all_files = reader.iter_files("any")
 
-    pyproject = reader.read_text("pyproject.toml")
-    if pyproject:
+    for rel in all_files:
+        if _is_test_path(rel):
+            continue
+        base = os.path.basename(rel)
+        if base.startswith("requirements") and base.endswith(".txt"):
+            text = reader.read_text(rel)
+            if not text:
+                continue
+            for line in text.splitlines():
+                line = line.split("#", 1)[0].strip()
+                if not line or line.startswith("-"):
+                    continue
+                m = _REQ_LINE.match(line)
+                if m:
+                    declared.add(_canonical(m.group(1)))
+
+    for rel in all_files:
+        if _is_test_path(rel) or os.path.basename(rel) != "pyproject.toml":
+            continue
+        pyproject = reader.read_text(rel)
+        if not pyproject:
+            continue
         try:
             data = tomllib.loads(pyproject)
         except tomllib.TOMLDecodeError:
             data = {}
+
         deps = data.get("project", {}).get("dependencies", [])
         for dep in deps:
             m = _REQ_LINE.match(dep)
-            if m:
+            if m and m.group(1).lower() != "python":
                 declared.add(_canonical(m.group(1)))
+
+        poetry_deps = data.get("tool", {}).get("poetry", {}).get("dependencies", {})
+        if isinstance(poetry_deps, dict):
+            for raw_pkg, spec in poetry_deps.items():
+                if str(raw_pkg).lower() == "python":
+                    continue
+                if isinstance(spec, dict) and spec.get("optional") is True:
+                    continue
+                declared.add(_canonical(str(raw_pkg)))
+
     return declared
 
 
@@ -150,6 +203,20 @@ def _stub_count(reader: RepoReader) -> int:
     return count
 
 
+def _is_package_used(pkg_name: str, imported_modules: dict[str, int]) -> bool:
+    """True if `pkg_name` (or a known import-name alias of it, in either direction) appears
+    among the modules actually imported."""
+    if pkg_name in imported_modules:
+        return True
+    for alias in _PACKAGE_TO_MODULE_ALIASES.get(pkg_name, ()):
+        if _canonical(alias) in imported_modules:
+            return True
+    for dist_pkg, aliases in _PACKAGE_TO_MODULE_ALIASES.items():
+        if pkg_name in {_canonical(a) for a in aliases} and dist_pkg in imported_modules:
+            return True
+    return False
+
+
 def _classify_domains(used: list[str]) -> dict[str, list[str]]:
     by_domain: dict[str, list[str]] = {}
     for domain, modules in _TECH_DOMAINS.items():
@@ -167,8 +234,8 @@ def build_evidence(
 
     declared = _declared_dependencies(reader)
     imported = _imported_modules(reader)
-    used = sorted(d for d in declared if d in imported)
-    unused = sorted(d for d in declared if d not in imported)
+    used = sorted(d for d in declared if _is_package_used(d, imported))
+    unused = sorted(d for d in declared if not _is_package_used(d, imported))
 
     ref = "repo:fact.skills.summary"
     content = (

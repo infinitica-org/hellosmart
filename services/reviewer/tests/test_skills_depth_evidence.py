@@ -54,6 +54,71 @@ def test_same_import_in_a_real_file_still_counts(tmp_path: Path) -> None:
     assert "used_count=1" in content.content
 
 
+def test_distribution_name_alias_is_recognized_as_used(tmp_path: Path) -> None:
+    """A repo declaring `scikit-learn` but importing `sklearn` must count it as used -- pure
+    string-canonicalization matching on the distribution name alone would wrongly flag it
+    unused, since the import name differs from the package name."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("requirements.txt").write_text("scikit-learn\n", encoding="utf-8")
+    root.joinpath("model.py").write_text(
+        "import sklearn\n\n\ndef train():\n    return sklearn.__version__\n", encoding="utf-8"
+    )
+
+    pack = build_evidence("sub-1", str(root))
+    content = pack.resolve("repo:fact.skills.summary")
+    assert content is not None
+    assert "used_count=1" in content.content
+
+
+def test_poetry_dependencies_are_declared(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("pyproject.toml").write_text(
+        "[tool.poetry.dependencies]\npython = \"^3.12\"\nflask = \"^3.0\"\n", encoding="utf-8"
+    )
+    root.joinpath("app.py").write_text(
+        "from flask import Flask\n\napp = Flask(__name__)\n\n\n"
+        "@app.route('/')\ndef index():\n    return 'ok'\n",
+        encoding="utf-8",
+    )
+
+    pack = build_evidence("sub-1", str(root))
+    content = pack.resolve("repo:fact.skills.summary")
+    assert content is not None
+    assert "used_count=1" in content.content
+    assert "'flask'" in content.content
+
+
+def test_optional_poetry_dependency_is_excluded(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("pyproject.toml").write_text(
+        '[tool.poetry.dependencies]\npython = "^3.12"\n'
+        'torch = {version = "^2.0", optional = true}\n',
+        encoding="utf-8",
+    )
+    root.joinpath("app.py").write_text("x = 1\n", encoding="utf-8")
+
+    pack = build_evidence("sub-1", str(root))
+    content = pack.resolve("repo:fact.skills.summary")
+    assert content is not None
+    assert "declared_count=0" in content.content
+
+
+def test_dev_requirements_file_is_excluded_from_declared(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    root.joinpath("requirements.txt").write_text("flask\n", encoding="utf-8")
+    root.joinpath("requirements-dev.txt").write_text("pytest\n", encoding="utf-8")
+    root.joinpath("app.py").write_text("import flask\nflask.Flask(__name__)\n", encoding="utf-8")
+
+    pack = build_evidence("sub-1", str(root))
+    content = pack.resolve("repo:fact.skills.summary")
+    assert content is not None
+    assert "declared_count=1" in content.content
+
+
 def test_domain_breadth_classifies_used_dependencies_by_domain(tmp_path: Path) -> None:
     """The narrower first pass had no fact distinguishing "ten web-framework deps" from "a web
     framework, a database driver, and a testing library" -- this agent's own rubric cites
