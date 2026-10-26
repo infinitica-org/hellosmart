@@ -11,6 +11,19 @@ import { getCandidates } from './fixtures/candidates.ts';
 
 import type { SeedConfig } from './config.ts';
 
+// Test fixtures and tenant context helpers for integration tests
+export interface TenantContext {
+  orgId: string;
+  sessionToken: string;
+}
+
+export async function createTenantContext(slug: string): Promise<TenantContext> {
+  return {
+    orgId: `org_${slug}`,
+    sessionToken: `token_${slug}`,
+  };
+}
+
 export async function runSeed(
   customConfig?: Partial<SeedConfig>,
 ): Promise<{ reporter: RunReporter }> {

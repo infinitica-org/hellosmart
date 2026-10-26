@@ -1,0 +1,77 @@
+---
+title: "Lifecycles at a glance"
+description: "HelloSmart MMP Knowledge Base — Chapter 14: Lifecycles at a glance"
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+### 14.1 Status models
+
+| Object | Statuses (in order) | Notes |
+|---|---|---|
+| Org / trial | Provisioned > Trial active > Trial expired / Paid active > Suspended | Entitlements (X templates, Y candidates, Z days) set by Platform Admin. |
+| Assessment | Draft > Dry-run passed > Published > Closed > Archived | Publish blocked until dry run passes. |
+| Candidate assignment | Invited > Window not open > Ready > Connected > In progress > Disconnected (resumable) > Submitted / Expired / Revoked | Disconnected is reached when the candidate exits full screen. |
+| Workspace | Queued > Provisioning > Not connected > Connected > Disconnected > Ended > Destroyed | Destroy can be triggered by company, admin, expiry or cleanup job. |
+| Review | Pending > Agents running > Agent report ready > Human review > Finalized > Released to candidate | Release is optional and off by default. |
+| Quote / payment | Draft > Sent > Viewed > Accepted > Paid / Expired / Failed > Refunded | Recurring subscriptions add Active, Past due, Cancelled. |
+| Deal | Lead > Meeting booked > Meeting held > Quoted > Paid > Provisioned | Tracked in Platform Admin. |
+
+### 14.2 Organization and trial
+
+```mermaid
+stateDiagram-v2
+  [*] --> Provisioned
+  Provisioned --> TrialActive
+  TrialActive --> TrialExpired: Z days end
+  TrialActive --> PaidActive: payment
+  TrialExpired --> PaidActive: payment
+  PaidActive --> Suspended: payment failure after grace
+  Suspended --> PaidActive: payment received
+```
+
+### 14.3 Assessment
+
+```mermaid
+stateDiagram-v2
+  [*] --> Draft
+  Draft --> DryRunPassed: dry run succeeds
+  DryRunPassed --> Published: publish
+  Published --> Closed: stop new starts
+  Closed --> Archived: hide from default list
+```
+
+### 14.4 Candidate assignment
+
+```mermaid
+stateDiagram-v2
+  [*] --> Invited
+  Invited --> WindowNotOpen: window has not started
+  Invited --> Ready: inside the window
+  WindowNotOpen --> Ready: window opens
+  Ready --> InProgress: consent and connect
+  InProgress --> Disconnected: full screen exit or connection drop
+  Disconnected --> InProgress: resume
+  InProgress --> Submitted: submit
+  InProgress --> Submitted: auto-submit at expiry
+  Disconnected --> Submitted: auto-submit at expiry
+  Ready --> Expired: window closed before start
+  Invited --> Revoked: company revokes
+  Ready --> Revoked: company revokes
+```
+
+### 14.5 Quote
+
+```mermaid
+stateDiagram-v2
+  [*] --> Draft
+  Draft --> Sent
+  Sent --> Viewed
+  Viewed --> Accepted
+  Accepted --> Paid
+  Sent --> Expired
+  Accepted --> Failed: payment fails
+  Paid --> Refunded: Phase 2
+```
+
+---

@@ -1,0 +1,100 @@
+---
+title: "System Architecture Blueprint"
+description: "High-level component topology, Sysbox container orchestration, AI Proxy egress firewalls, and asynchronous queue workers."
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+# System Architecture Blueprint
+
+HelloSmart is designed for **deterministic multi-tenancy, rapid workspace provisioning (under 15 seconds), and strict AI egress isolation**.
+
+---
+
+## 1. High-Level Component Topology
+
+```mermaid
+flowchart TB
+    subgraph ClientLayer["Edge & Client Applications"]
+        Browser["Candidate & Company Browser (Next.js 15 App Router)"]
+        Landing["Marketing & Booking (cal.com Embed)"]
+    end
+
+    subgraph IngressGateway["Ingress & Edge Routing"]
+        Cloudflare["Cloudflare CDN & DDoS Protection"]
+        ALB["AWS Application Load Balancer"]
+    end
+
+    subgraph ComputeServices["Core Services Cluster (AWS ECS Fargate / EC2)"]
+        API["@hs/api (NestJS Fastify Modular Monolith)"]
+        WSGateway["@hs/ws-gateway (Terminal PTY & Telemetry Streamer)"]
+        Worker["@hs/worker (BullMQ Background Jobs & Auto-Submit)"]
+        Reviewer["@hs/reviewer (Multi-Agent Evaluation Engine)"]
+    end
+
+    subgraph WorkspaceHost["Sysbox Workspace Sandbox Nodes (EC2 Bare Metal / Ubuntu)"]
+        WarmPool["Pre-warmed Container Pool (sysbox-runc)"]
+        ActiveWS["Active Candidate Workspace (Docker-in-Docker)"]
+        EgressProxy["Egress Network Firewall (Allowed Domains Only)"]
+    end
+
+    subgraph AIProxyTier["AI Proxy Gateway"]
+        AIProxy["@hs/ai-proxy (Token Quotas, Model Allowlist, Logging)"]
+        Vault["AWS Secrets Manager / KMS (Tenant & Platform Keys)"]
+    end
+
+    subgraph DataStorage["State & Storage Tier"]
+        Postgres[("PostgreSQL 16 + citext + pgcrypto\n(Row-Level Security Enabled)")]
+        RedisCluster[("Redis 7 (Session Store & BullMQ Queues)")]
+        S3Storage[("AWS S3 (Snapshots, Terminal Logs, Audio/Video)")]
+    end
+
+    Browser --> Cloudflare --> ALB
+    Landing --> Cloudflare
+    ALB --> API
+    ALB --> WSGateway
+
+    API --> Postgres
+    API --> RedisCluster
+    API --> Worker
+    
+    API -->|Provision / Snapshot| WarmPool
+    WarmPool --> ActiveWS
+    ActiveWS -->|Terminal & Events| WSGateway
+    WSGateway --> S3Storage
+
+    ActiveWS -->|Short-lived Token Only| EgressProxy
+    EgressProxy --> AIProxy
+    AIProxy --> Vault
+    AIProxy -->|Metered & Filtered| ExternalLLM["External LLM Providers (OpenAI, Anthropic)"]
+
+    Worker --> Reviewer
+    Reviewer --> S3Storage
+    Reviewer --> Postgres
+```
+
+---
+
+## 2. Key Subsystem Responsibilities
+
+### Core Monolith (`apps/api`)
+Handles authentication, multi-tenant RBAC, assessment configuration, rubric management, candidate invites, and commercial payment webhooks. Sets PostgreSQL context per transaction (`set_config('app.org_id')`) to enforce database RLS.
+
+### Sysbox Workspace Orchestrator
+Maintains pre-warmed Linux containers running `sysbox-runc`. When a candidate clicks "Connect":
+1. Clones a pre-warmed snapshot in under 5 seconds.
+2. Injects the assessment template repository commit and seed files.
+3. Injects a short-lived workspace session token (never real API keys).
+4. Connects the container's virtual TTY to `@hs/ws-gateway` for web terminal streaming.
+
+### AI Proxy (`services/ai-proxy`)
+Acts as the single gatekeeper between candidate workspaces and external AI providers (BR-13):
+- **Egress Firewall**: Blocks network calls to unknown endpoints and blocks AI provider domains when AI is configured OFF (BR-14).
+- **Token Quota Enforcer**: Enforces per-candidate and per-assessment token/dollar limits (BR-15).
+- **Audit Logging**: Saves complete prompt and completion transcripts to S3 and Postgres for reviewer agents to evaluate.
+
+### Background Job Workers (`apps/worker`)
+Powered by BullMQ and Redis:
+- **Auto-Submit Scheduler**: Schedules precise auto-submission tasks when assignment timers expire (BR-08).
+- **Workspace Garbage Collector**: Destroys abandoned or timed-out workspaces after persisting a final state snapshot (BR-22, BR-23).
+- **Retention Deletion**: Purges candidate PII and recording artifacts after the organization's retention window (default 90 days).
