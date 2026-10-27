@@ -148,6 +148,9 @@ export class InvitationsService {
     try {
       await client.query('BEGIN');
 
+      // Pre-login transaction requires platform elevation to update invitations and users across tenants under RLS
+      await client.query("SELECT set_config('app.is_platform', 'true', true)");
+
       // 2. Concurrency-safe atomic consumption:
       // UPDATE ... WHERE used_at IS NULL AND expires_at > now() ensures only 1 concurrent attempt succeeds.
       const inviteResult = await client.query(
