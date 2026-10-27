@@ -21,6 +21,7 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
   before(async () => {
     try {
       client = new pg.Client({ connectionString: TEST_DB_URL });
+      client.on('error', () => {});
       await client.connect();
       dbAvailable = true;
 

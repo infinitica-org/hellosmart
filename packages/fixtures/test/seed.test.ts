@@ -85,6 +85,7 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
   before(async () => {
     try {
       client = new pg.Client({ connectionString: TEST_DB_URL });
+      client.on('error', () => {});
       await client.connect();
       dbAvailable = true;
 
@@ -537,15 +538,26 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
   });
 
   describe('Secret Masking on Output', () => {
-    it('ensures captured console output from seed contains no raw secrets or passwords', async () => {
+    it('ensures captured console output from seed contains no raw secrets or passwords', async (t) => {
+      if (!dbAvailable || !client) {
+        return t.skip('Postgres test database not available');
+      }
+
       const capturedLogs: string[] = [];
 
-      await runCliSeed({
-        databaseUrl: TEST_DB_URL,
-        nodeEnv: 'test',
-        exitProcess: false,
-        logger: (msg) => capturedLogs.push(msg),
-      });
+      try {
+        await runCliSeed({
+          databaseUrl: TEST_DB_URL,
+          nodeEnv: 'test',
+          exitProcess: false,
+          logger: (msg) => capturedLogs.push(msg),
+        });
+      } catch (err: any) {
+        if (err?.code === 'ECONNREFUSED' || err?.message?.includes('ECONNREFUSED')) {
+          return t.skip(`Postgres not reachable at TEST_DB_URL (${err.message})`);
+        }
+        throw err;
+      }
 
       const combinedOutput = capturedLogs.join('\n');
 

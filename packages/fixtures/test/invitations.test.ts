@@ -32,6 +32,7 @@ describe('Candidate Invitation Tokens & First-Login Password Reset Fixtures ([6.
   before(async () => {
     try {
       client = new pg.Client({ connectionString: TEST_DB_URL });
+      client.on('error', () => {});
       await client.connect();
       dbAvailable = true;
 
