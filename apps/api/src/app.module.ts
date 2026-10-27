@@ -1,12 +1,46 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ProblemDetailsFilter } from './common/filters/problem-details.filter.js';
+import { OrgScopeGuard } from './common/guards/org-scope.guard.js';
+import { RolesGuard } from './common/guards/roles.guard.js';
+import { SessionGuard } from './common/guards/session.guard.js';
+import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor.js';
+import { AppConfigModule } from './config/config.module.js';
+import { AdaptersModule } from './modules/adapters/adapters.module.js';
+import { DevTestController } from './modules/dev/dev-test.controller.js';
+import { HealthModule } from './modules/health/health.module.js';
+import { RedisModule } from './modules/redis/redis.module.js';
+import { SessionModule } from './modules/session/session.module.js';
 
-// Module map (owner: Core Backend unless noted). Each folder in ./modules is one bounded context.
-// auth · rbac · tenancy · orgs · entitlements · audit            (S1)
-// templates · assessments · candidates · assignments · ai-keys   (S2)
-// workspaces · consent · timing                                  (S3, with Candidate & Workspace)
-// submissions · reviews                                          (S4, with AI Engineering)
-// billing · quotes · leads · analytics · retention · webhooks    (S5)
+const devControllers =
+  process.env.NODE_ENV === 'production' ? [] : [DevTestController];
+
 @Module({
-  imports: [],
+  imports: [
+    AppConfigModule,
+    ThrottlerModule.forRoot([
+      { name: 'default', ttl: 60_000, limit: 120 },
+      { name: 'login', ttl: 60_000, limit: 5 },
+    ]),
+    RedisModule,
+    SessionModule,
+    AdaptersModule,
+    HealthModule,
+  ],
+  controllers: [...devControllers],
+  providers: [
+    ProblemDetailsFilter,
+    SessionGuard,
+    RolesGuard,
+    OrgScopeGuard,
+    IdempotencyInterceptor,
+    { provide: APP_FILTER, useExisting: ProblemDetailsFilter },
+    { provide: APP_GUARD, useExisting: SessionGuard },
+    { provide: APP_GUARD, useExisting: RolesGuard },
+    { provide: APP_GUARD, useExisting: OrgScopeGuard },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useExisting: IdempotencyInterceptor },
+  ],
 })
 export class AppModule {}

@@ -34,6 +34,7 @@ tags:
 paths:
   /auth/login:
     post:
+      summary: Sign in with email and password or SSO
       tags: [auth]
       summary: Authenticate user with email and password
       operationId: authLogin
@@ -173,6 +174,7 @@ paths:
 
   /me:
     get:
+      summary: Get current authenticated user profile and routing
       tags: [auth]
       summary: Get current authenticated user profile and portal route
       operationId: getMe
@@ -290,8 +292,8 @@ paths:
 
   /candidates:
     get:
-      tags: [candidates]
       summary: List candidates in the caller's organization
+      tags: [candidates]
       operationId: listCandidates
       x-requirement: [CO-014]
       x-roles: [company_admin]
@@ -313,10 +315,9 @@ paths:
                   nextCursor: { type: [string, 'null'] }
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
-
     post:
-      tags: [candidates]
       summary: Create and invite a candidate to an assessment
+      tags: [candidates]
       operationId: createCandidate
       x-requirement: [CO-011, CO-013]
       x-roles: [company_admin]
@@ -344,8 +345,8 @@ paths:
 
   /candidate/assignments/{id}/connect:
     post:
-      tags: [candidate-portal]
       summary: Connect to candidate workspace session
+      tags: [candidate-portal]
       operationId: connectWorkspace
       x-requirement: [CA-008, CA-012, BR-06, BR-08, BR-12]
       x-roles: [candidate]
