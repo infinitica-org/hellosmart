@@ -39,10 +39,10 @@ export interface RequestMeta {
 export class AuthService {
   constructor(
     @Inject(PG_POOL) private readonly pool: Pool,
-    private readonly sessions: SessionService,
-    private readonly lockout: LoginLockoutService,
-    private readonly preAuth: PreAuthService,
-    private readonly mfa: MfaService,
+    @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(LoginLockoutService) private readonly lockout: LoginLockoutService,
+    @Inject(PreAuthService) private readonly preAuth: PreAuthService,
+    @Inject(MfaService) private readonly mfa: MfaService,
   ) {}
 
   async login(

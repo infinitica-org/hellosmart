@@ -147,6 +147,8 @@ ALTER TABLE app.assessments FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON app.assessments
   USING (org_id = app.current_org_id() OR app.is_platform())
   WITH CHECK (org_id = app.current_org_id() OR app.is_platform());
+
+`app.is_platform()` treats an empty session GUC as false (migration `0002_fix_is_platform_boolean`) so RLS policies do not error on `''::boolean`.
 ```
 
 ### Context Injection on Every Transaction

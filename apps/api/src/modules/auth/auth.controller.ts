@@ -2,12 +2,13 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Inject,
   Post,
   Req,
   Res,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import {
   LoginDtoSchema,
   LogoutResponseDtoSchema,
@@ -16,6 +17,7 @@ import {
 } from '@hs/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Public } from '../../common/decorators/public.decorator.js';
+import { Roles } from '../../common/decorators/roles.decorator.js';
 import { problem } from '../../common/errors/app-http.exception.js';
 import { flattenZodErrors } from '../../common/validation/zod-errors.js';
 import {
@@ -28,14 +30,17 @@ import { SessionService } from '../session/session.service.js';
 import { clearSessionCookie, setSessionCookie } from './auth.cookies.js';
 import { AuthService } from './auth.service.js';
 
+@SkipThrottle()
+@Roles('platform_admin', 'company_admin', 'candidate')
 @Controller()
 export class AuthController {
   constructor(
-    private readonly auth: AuthService,
+    @Inject(AuthService) private readonly auth: AuthService,
     @Inject(APP_CONFIG) private readonly config: Config,
   ) {}
 
   @Public()
+  @HttpCode(200)
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('auth/login')
   async login(
@@ -64,6 +69,7 @@ export class AuthController {
   }
 
   @Public()
+  @HttpCode(200)
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('auth/mfa/verify')
   async mfaVerify(
@@ -87,6 +93,7 @@ export class AuthController {
     return MeDtoSchema.parse(session.me);
   }
 
+  @HttpCode(200)
   @Post('auth/logout')
   async logout(
     @Req() request: FastifyRequest,

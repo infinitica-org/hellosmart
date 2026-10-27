@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   HttpCode,
+  Inject,
   Param,
   Patch,
   Post,
@@ -27,7 +28,9 @@ import { AdminOrganizationsService } from './admin-organizations.service.js';
 @Controller('admin/organizations')
 @Roles('platform_admin')
 export class AdminOrganizationsController {
-  constructor(private readonly orgs: AdminOrganizationsService) {}
+  constructor(
+    @Inject(AdminOrganizationsService) private readonly orgs: AdminOrganizationsService,
+  ) {}
 
   @Post()
   @HttpCode(201)

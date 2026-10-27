@@ -21,7 +21,7 @@ export class AdminOrganizationsService {
   constructor(
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(EMAIL_SENDER_PORT) private readonly email: EmailSenderPort,
-    private readonly sessions: SessionService,
+    @Inject(SessionService) private readonly sessions: SessionService,
   ) {}
 
   async provision(
