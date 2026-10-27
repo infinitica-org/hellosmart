@@ -6,6 +6,7 @@ import pg from '../apps/api/node_modules/pg/lib/index.js';
 
 const PG_BIN = 'C:\\Program Files\\PostgreSQL\\18\\bin';
 const PG_DATA = 'C:\\Users\\inf-dev-02\\.gemini\\antigravity\\brain\\f801cd9c-29ed-4c21-8554-dcea6d8c6103\\scratch\\pg_data';
+const MAILPIT_BIN = 'C:\\Users\\inf-dev-02\\.gemini\\antigravity\\brain\\f801cd9c-29ed-4c21-8554-dcea6d8c6103\\scratch\\mailpit.exe';
 const PG_PORT = 5432;
 const PG_HOST = '127.0.0.1';
 
@@ -20,8 +21,29 @@ async function sleep(ms) {
 }
 
 let pgProcess = null;
+let mailpitProcess = null;
 let apiProcess = null;
 let webProcess = null;
+
+async function startMailpitProcess() {
+  if (fs.existsSync(MAILPIT_BIN)) {
+    try {
+      const res = await fetch('http://127.0.0.1:8025/api/v1/info', { signal: AbortSignal.timeout(500) });
+      if (res.ok) {
+        log('MAIL', 'Mailpit is active on http://127.0.0.1:8025');
+        return;
+      }
+    } catch {}
+
+    log('MAIL', 'Starting Mailpit on http://127.0.0.1:8025 (SMTP: 1025)...');
+    mailpitProcess = spawn(MAILPIT_BIN, ['-l', '127.0.0.1:8025', '-s', '127.0.0.1:1025'], {
+      stdio: 'ignore',
+    });
+    mailpitProcess.on('exit', (code) => {
+      log('MAIL', `Mailpit exited with code ${code}`);
+    });
+  }
+}
 
 async function startPostgresProcess() {
   log('DB', `Starting PostgreSQL 18 engine on ${PG_HOST}:${PG_PORT}...`);
@@ -222,6 +244,7 @@ function cleanup() {
   log('SYSTEM', 'Shutting down servers...');
   if (webProcess) webProcess.kill();
   if (apiProcess) apiProcess.kill();
+  if (mailpitProcess) mailpitProcess.kill();
   if (pgProcess) {
     const pgCtl = path.join(PG_BIN, 'pg_ctl.exe');
     try {
@@ -237,6 +260,7 @@ process.on('SIGTERM', () => { cleanup(); process.exit(0); });
 async function main() {
   try {
     await startPostgresProcess();
+    await startMailpitProcess();
     await initDatabaseAndSeed();
     startApiServer();
     await sleep(2000);
@@ -248,6 +272,7 @@ async function main() {
     console.log('================================================================');
     console.log('Frontend Portal : http://localhost:3000');
     console.log('Backend API     : http://localhost:4000/api/v1');
+    console.log('Mailpit Webmail : http://localhost:8025');
     console.log('\nDirect URLs for Stream 8 / PHS-I38 Review:');
     console.log(`👉 1. Accept Invitation Page (PHS-I49 & PHS-I48):`);
     console.log(`   http://localhost:3000/accept-invite?token=${SAMPLE_TOKEN}`);
@@ -255,7 +280,9 @@ async function main() {
     console.log(`   http://localhost:3000/login`);
     console.log(`   • Company Admin : admin@acme.com / AdminPassword123! (Routes to /company)`);
     console.log(`   • Candidate     : jane.doe@example.com (Routes to /candidate)`);
-    console.log(`👉 3. API Validate Invitation Token:`);
+    console.log(`👉 3. Mailpit Web Inbox:`);
+    console.log(`   http://localhost:8025`);
+    console.log(`👉 4. API Validate Invitation Token:`);
     console.log(`   http://localhost:4000/api/v1/auth/invitations/${SAMPLE_TOKEN}`);
     console.log('================================================================\n');
   } catch (err) {

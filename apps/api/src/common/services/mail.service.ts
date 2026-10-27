@@ -84,6 +84,43 @@ export class MailService implements EmailSender {
       // configured provider is fake/stub adapter for local manual testing.
       if (this.config.NODE_ENV === 'development') {
         this.logger.log(`[DEV INVITE LINK] ${inviteUrl}`);
+
+        // Forward to local Mailpit inbox on 127.0.0.1:8025 if reachable
+        try {
+          fetch('http://127.0.0.1:8025/api/v1/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              From: { Email: 'no-reply@hellosmart.ai', Name: 'HelloSmart.ai Notification' },
+              To: [{ Email: input.to }],
+              Subject: `You have been invited to join ${input.orgName} on HelloSmart.ai`,
+              HTML: `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; padding: 36px 20px;">
+                  <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0;">
+                    <div style="margin-bottom: 20px;">
+                      <span style="font-size: 20px; font-weight: 900; color: #0f172a;">HelloSmart<span style="color: #4f46e5;">.ai</span></span>
+                    </div>
+                    <h1 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 0;">You're Invited to ${input.orgName}</h1>
+                    <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+                      You have been invited to join <strong>${input.orgName}</strong> on HelloSmart.ai as a <strong>${input.role}</strong>.
+                    </p>
+                    <div style="margin: 28px 0;">
+                      <a href="${inviteUrl}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 8px;">
+                        Activate Account &amp; Set Password &rarr;
+                      </a>
+                    </div>
+                    <p style="font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                      This link is single-use and expires in 72 hours.
+                    </p>
+                  </div>
+                </div>
+              `,
+              Text: `Welcome to ${input.orgName}! Activate your account: ${inviteUrl}`,
+            }),
+          }).catch(() => {});
+        } catch {
+          // Non-blocking if Mailpit is not running
+        }
       }
 
       return {

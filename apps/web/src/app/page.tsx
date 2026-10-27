@@ -21,13 +21,13 @@ export default function HomePage(): React.JSX.Element {
         <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
           Stream 8 Navigation Hub
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-3">
           <a
             href="/login"
             className="flex flex-col items-center justify-center p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 transition text-slate-900 font-medium"
           >
             <span className="text-base font-semibold">Sign In</span>
-            <span className="text-xs text-slate-500 mt-1">Master portal login for all roles</span>
+            <span className="text-xs text-slate-500 mt-1">Master portal login</span>
           </a>
 
           <a
@@ -35,7 +35,17 @@ export default function HomePage(): React.JSX.Element {
             className="flex flex-col items-center justify-center p-4 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-300 transition text-indigo-950 font-medium"
           >
             <span className="text-base font-semibold text-indigo-600">Accept Invitation</span>
-            <span className="text-xs text-indigo-500 mt-1">Candidate onboarding &amp; setup</span>
+            <span className="text-xs text-indigo-500 mt-1">Candidate onboarding</span>
+          </a>
+
+          <a
+            href="http://localhost:8025"
+            target="_blank"
+            rel="noreferrer"
+            className="flex flex-col items-center justify-center p-4 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 hover:border-amber-300 transition text-amber-950 font-medium"
+          >
+            <span className="text-base font-semibold text-amber-700">Mailpit Inbox</span>
+            <span className="text-xs text-amber-600 mt-1">View email on :8025</span>
           </a>
         </div>
 
