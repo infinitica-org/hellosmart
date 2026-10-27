@@ -24,6 +24,10 @@ import tempfile
 from pathlib import Path
 from typing import TypedDict
 
+from pydantic import ValidationError
+
+from app.session_schemas import CommandLogLine, SessionEventLine
+
 MAX_JSONL_BYTES = 20 * 1024 * 1024  # per segment file; mirrors RepoReader's own size-cap spirit
 
 
@@ -159,11 +163,14 @@ class SessionReader:
 
     # -- terminal / events (sealed JSONL segments) -------------------------------------
 
-    def _read_segments(self, stream: str) -> list[dict[str, object]]:
+    def _read_segments(self, stream: str) -> list[tuple[str, str, dict[str, object]]]:
+        """[(stream, segment_filename, parsed_json_row), ...] -- the filename travels with
+        each row so a schema-validation failure in terminal_log()/events() can name exactly
+        which segment it came from, not just the stream."""
         stream_dir = self.session_dir / stream
         if not stream_dir.exists():
             return []
-        rows: list[dict[str, object]] = []
+        rows: list[tuple[str, str, dict[str, object]]] = []
         for segment in sorted(stream_dir.glob("*.jsonl")):
             try:
                 size = segment.stat().st_size
@@ -183,39 +190,44 @@ class SessionReader:
                 if not line:
                     continue
                 try:
-                    rows.append(json.loads(line))
+                    rows.append((stream, segment.name, json.loads(line)))
                 except json.JSONDecodeError:
                     self.skipped.append(f"{stream}/{segment.name}: malformed line")
         return rows
 
     def terminal_log(self) -> list[CommandRecord]:
+        """Every line is validated against `app.session_schemas.CommandLogLine` -- the formal
+        contract, not ad-hoc field-by-field narrowing. A line that fails validation (wrong
+        type, unknown shape) is skipped and recorded, same discipline as a malformed-JSON
+        line, never guessed at."""
         records: list[CommandRecord] = []
-        for r in self._read_segments("terminal_log"):
-            cwd = r.get("cwd")
-            exit_code = r.get("exit_code")
-            duration_ms = r.get("duration_ms")
+        for stream, segment_name, r in self._read_segments("terminal_log"):
+            try:
+                line = CommandLogLine.model_validate(r)
+            except ValidationError:
+                self.skipped.append(f"{stream}/{segment_name}: failed schema validation")
+                continue
             records.append(
                 {
-                    "command": str(r.get("command", "")),
-                    "cwd": cwd if isinstance(cwd, str) else None,
-                    "exit_code": exit_code if isinstance(exit_code, int) else None,
-                    "duration_ms": duration_ms if isinstance(duration_ms, int) else 0,
+                    "command": line.command, "cwd": line.cwd,
+                    "exit_code": line.exit_code, "duration_ms": line.duration_ms,
                 }
             )
         return records
 
     def events(self) -> list[SessionEvent]:
+        """Every line is validated against `app.session_schemas.SessionEventLine` -- an
+        unrecognized `kind` is a schema violation, not silently accepted as a free-form
+        string, since every consumer (checks/integrity_signals.py included) matches on a
+        fixed, known set of kinds."""
         parsed: list[SessionEvent] = []
-        for r in self._read_segments("events"):
-            ts = r.get("ts")
-            detail = r.get("detail")
-            parsed.append(
-                {
-                    "ts": float(ts) if isinstance(ts, int | float) else 0.0,
-                    "kind": str(r.get("kind", "")),
-                    "detail": detail if isinstance(detail, dict) else {},
-                }
-            )
+        for stream, segment_name, r in self._read_segments("events"):
+            try:
+                line = SessionEventLine.model_validate(r)
+            except ValidationError:
+                self.skipped.append(f"{stream}/{segment_name}: failed schema validation")
+                continue
+            parsed.append({"ts": line.ts, "kind": line.kind, "detail": line.detail})
         return parsed
 
 

@@ -1,0 +1,129 @@
+{
+  "command_log_line": {
+    "description": "One line of terminal_log/*.jsonl -- one completed terminal command.",
+    "properties": {
+      "command": {
+        "description": "The literal command text as typed, redacted at source",
+        "title": "Command",
+        "type": "string"
+      },
+      "cwd": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Working directory the command ran in",
+        "title": "Cwd"
+      },
+      "duration_ms": {
+        "description": "Wall-clock duration of the command",
+        "minimum": 0,
+        "title": "Duration Ms",
+        "type": "integer"
+      },
+      "exit_code": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "None if the command never completed (e.g. slot destroyed mid-run)",
+        "title": "Exit Code"
+      }
+    },
+    "required": [
+      "command",
+      "duration_ms"
+    ],
+    "title": "CommandLogLine",
+    "type": "object"
+  },
+  "session_event_line": {
+    "description": "One line of events/*.jsonl -- one file-activity or integrity-relevant event.",
+    "properties": {
+      "detail": {
+        "title": "Detail",
+        "type": "object"
+      },
+      "kind": {
+        "enum": [
+          "file_change",
+          "large_paste",
+          "focus_loss",
+          "focus_regain",
+          "idle"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "ts": {
+        "description": "Unix timestamp, seconds",
+        "title": "Ts",
+        "type": "number"
+      }
+    },
+    "required": [
+      "ts",
+      "kind"
+    ],
+    "title": "SessionEventLine",
+    "type": "object"
+  },
+  "session_meta": {
+    "description": "session_meta.json -- written once, at session end.",
+    "properties": {
+      "candidate_id": {
+        "description": "Pseudonymized, e.g. contributor_xxxx -- never a real name",
+        "title": "Candidate Id",
+        "type": "string"
+      },
+      "ended_at": {
+        "title": "Ended At",
+        "type": "number"
+      },
+      "final_snapshot_seq": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "None if no git activity was recorded at all",
+        "title": "Final Snapshot Seq"
+      },
+      "session_id": {
+        "title": "Session Id",
+        "type": "string"
+      },
+      "started_at": {
+        "title": "Started At",
+        "type": "number"
+      },
+      "template_id": {
+        "title": "Template Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "session_id",
+      "candidate_id",
+      "template_id",
+      "started_at",
+      "ended_at"
+    ],
+    "title": "SessionMeta",
+    "type": "object"
+  }
+}

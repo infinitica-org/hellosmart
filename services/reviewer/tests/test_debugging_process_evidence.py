@@ -63,6 +63,24 @@ def test_a_session_with_commands_and_a_snapshot_produces_both_fact_channels(tmp_
     assert not pack.missing_required
 
 
+def test_each_snapshot_is_its_own_citable_item_with_a_real_commit_sha(tmp_path: Path) -> None:
+    """Architecture review requirement: every score must cite concrete evidence -- an exact
+    commit hash, not just an aggregate stat like session_count."""
+    session_dir = tmp_path / "session"
+    _make_session_with_one_snapshot(session_dir, tmp_path / "scratch")
+    row = {"command": "ls", "cwd": "/workspace", "exit_code": 0, "duration_ms": 10}
+    _write_terminal_log(session_dir, [row])
+
+    pack = build_evidence("sub-1", str(session_dir))
+
+    snapshot_refs = [r for r in pack.refs if r.startswith("git:ev.snapshot.")]
+    assert len(snapshot_refs) == 1
+    item = pack.resolve(snapshot_refs[0])
+    assert item is not None
+    assert "commit=" in item.content
+    assert len(item.content.split("commit=")[1].split(";")[0]) == 40  # a real git sha
+
+
 def test_a_failed_command_is_reported_as_its_own_evidence_item(tmp_path: Path) -> None:
     session_dir = tmp_path / "session"
     _make_session_with_one_snapshot(session_dir, tmp_path / "scratch")

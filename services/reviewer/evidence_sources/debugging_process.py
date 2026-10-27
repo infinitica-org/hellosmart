@@ -20,6 +20,7 @@ from app.sanitizer import normalise, suspicious
 
 from .checks.session_timeline import analyze_session_timeline
 from .checks.terminal_log import analyze_terminal_log
+from .session_citations import add_snapshot_citations
 from .session_reader import SessionReader
 
 MAX_FAILED_COMMANDS_SHOWN = 10
@@ -87,6 +88,7 @@ def _add_session_timeline_facts(pack: EvidencePack, reader: SessionReader) -> bo
             untrusted=False, sanitized=False,
         )
     )
+    add_snapshot_citations(pack, snapshots)
     return True
 
 

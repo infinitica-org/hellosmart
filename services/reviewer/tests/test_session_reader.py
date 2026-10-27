@@ -150,3 +150,22 @@ def test_malformed_jsonl_line_is_skipped_not_raised(tmp_path: Path) -> None:
 
     assert records == []
     assert any("malformed" in s for s in reader.skipped)
+
+
+def test_a_line_that_is_valid_json_but_fails_schema_validation_is_skipped(tmp_path: Path) -> None:
+    """Valid JSON, wrong shape -- an unknown event `kind` is a schema violation, not a parse
+    error, and must be distinguished from the malformed-JSON case above."""
+    session_dir = tmp_path / "session"
+    session_dir.mkdir()
+    events_dir = session_dir / "events"
+    events_dir.mkdir()
+    (events_dir / "000000.jsonl").write_text(
+        json.dumps({"ts": 1.0, "kind": "not_a_real_kind", "detail": {}}) + "\n",
+        encoding="utf-8",
+    )
+
+    reader = SessionReader(session_dir)
+    events = reader.events()
+
+    assert events == []
+    assert any("schema validation" in s for s in reader.skipped)

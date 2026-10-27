@@ -10,6 +10,7 @@ from app.evidence import EvidenceCoverage, EvidenceItem, EvidencePack
 
 from .checks.exploration_signals import analyze_exploration
 from .checks.session_timeline import analyze_session_timeline
+from .session_citations import add_snapshot_citations
 from .session_reader import SessionReader
 
 
@@ -35,7 +36,8 @@ def _add_exploration_facts(pack: EvidencePack, reader: SessionReader) -> bool:
 
 
 def _add_session_timeline_facts(pack: EvidencePack, reader: SessionReader) -> bool:
-    result = analyze_session_timeline(reader.snapshot_timeline())
+    snapshots = reader.snapshot_timeline()
+    result = analyze_session_timeline(snapshots)
     if result is None:
         pack.coverage.append(
             EvidenceCoverage(
@@ -52,6 +54,7 @@ def _add_session_timeline_facts(pack: EvidencePack, reader: SessionReader) -> bo
             untrusted=False, sanitized=False,
         )
     )
+    add_snapshot_citations(pack, snapshots)
     return True
 
 
