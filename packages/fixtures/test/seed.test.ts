@@ -102,6 +102,7 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
 
     try {
       client = new pg.Client({ connectionString: TEST_DB_URL });
+      client.on('error', () => {});
       await client.connect();
       dbAvailable = true;
 
@@ -583,15 +584,26 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
   });
 
   describe('Secret Masking on Output', () => {
-    it('ensures captured console output from seed contains no raw secrets or passwords', async () => {
+    it('ensures captured console output from seed contains no raw secrets or passwords', async (t) => {
+      if (!dbAvailable || !client) {
+        return t.skip('Postgres test database not available');
+      }
+
       const capturedLogs: string[] = [];
 
-      await runCliSeed({
-        databaseUrl: TEST_DB_URL,
-        nodeEnv: 'test',
-        exitProcess: false,
-        logger: (msg) => capturedLogs.push(msg),
-      });
+      try {
+        await runCliSeed({
+          databaseUrl: TEST_DB_URL,
+          nodeEnv: 'test',
+          exitProcess: false,
+          logger: (msg) => capturedLogs.push(msg),
+        });
+      } catch (err: any) {
+        if (err?.code === 'ECONNREFUSED' || err?.message?.includes('ECONNREFUSED')) {
+          return t.skip(`Postgres not reachable at TEST_DB_URL (${err.message})`);
+        }
+        throw err;
+      }
 
       const combinedOutput = capturedLogs.join('\n');
 
@@ -757,45 +769,78 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
       assert.strictEqual(crestRes.rows[0].org_status, 'suspended');
     });
 
-    it('aborts with clear non-secret error when SEED_DEFAULT_PASSWORD is empty or missing', async () => {
-      await assert.rejects(
-        () =>
-          runCliSeed({
-            databaseUrl: TEST_DB_URL,
-            nodeEnv: 'test',
-            seedPassword: '',
-            exitProcess: false,
-            quiet: true,
-          }),
-        /SEED_DEFAULT_PASSWORD/,
-      );
+    it('aborts with clear non-secret error when SEED_DEFAULT_PASSWORD is empty or missing', async (t) => {
+      if (!dbAvailable || !client) {
+        return t.skip('Postgres test database not available');
+      }
+
+      try {
+        await assert.rejects(
+          () =>
+            runCliSeed({
+              databaseUrl: TEST_DB_URL,
+              nodeEnv: 'test',
+              seedPassword: '',
+              exitProcess: false,
+              quiet: true,
+            }),
+          /SEED_DEFAULT_PASSWORD/,
+        );
+      } catch (err: any) {
+        if (err?.code === 'ECONNREFUSED' || err?.message?.includes('ECONNREFUSED')) {
+          return t.skip(`Postgres not reachable at TEST_DB_URL (${err.message})`);
+        }
+        throw err;
+      }
     });
 
-    it('aborts with clear error when SEED_PLATFORM_ADMIN_TOTP_SECRET has invalid Base32 format', async () => {
-      await assert.rejects(
-        () =>
-          runCliSeed({
-            databaseUrl: TEST_DB_URL,
-            nodeEnv: 'test',
-            totpSecret: 'invalid-not-base32-189!',
-            exitProcess: false,
-            quiet: true,
-          }),
-        /Base32/,
-      );
+    it('aborts with clear error when SEED_PLATFORM_ADMIN_TOTP_SECRET has invalid Base32 format', async (t) => {
+      if (!dbAvailable || !client) {
+        return t.skip('Postgres test database not available');
+      }
+
+      try {
+        await assert.rejects(
+          () =>
+            runCliSeed({
+              databaseUrl: TEST_DB_URL,
+              nodeEnv: 'test',
+              totpSecret: 'invalid-not-base32-189!',
+              exitProcess: false,
+              quiet: true,
+            }),
+          /Base32/,
+        );
+      } catch (err: any) {
+        if (err?.code === 'ECONNREFUSED' || err?.message?.includes('ECONNREFUSED')) {
+          return t.skip(`Postgres not reachable at TEST_DB_URL (${err.message})`);
+        }
+        throw err;
+      }
     });
   });
 
   describe('CLI Flag --show-tokens & CI Safety Enforcement ([13.2])', () => {
-    it('without --show-tokens, captured console output contains no raw tokens or hashes', async () => {
+    it('without --show-tokens, captured console output contains no raw tokens or hashes', async (t) => {
+      if (!dbAvailable || !client) {
+        return t.skip('Postgres test database not available');
+      }
+
       const capturedLogs: string[] = [];
-      await runCliSeed({
-        databaseUrl: TEST_DB_URL,
-        nodeEnv: 'test',
-        showTokens: false,
-        exitProcess: false,
-        logger: (m) => capturedLogs.push(m),
-      });
+      try {
+        await runCliSeed({
+          databaseUrl: TEST_DB_URL,
+          nodeEnv: 'test',
+          showTokens: false,
+          exitProcess: false,
+          logger: (m) => capturedLogs.push(m),
+        });
+      } catch (err: any) {
+        if (err?.code === 'ECONNREFUSED' || err?.message?.includes('ECONNREFUSED')) {
+          return t.skip(`Postgres not reachable at TEST_DB_URL (${err.message})`);
+        }
+        throw err;
+      }
 
       const combined = capturedLogs.join('\n');
       const rawValid = getInviteToken('valid');
@@ -809,7 +854,11 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
       assert.doesNotMatch(combined, /accept-invite\?token=/);
     });
 
-    it('with showTokens: true and CI unset, prints raw tokens and /accept-invite links', async () => {
+    it('with showTokens: true and CI unset, prints raw tokens and /accept-invite links', async (t) => {
+      if (!dbAvailable || !client) {
+        return t.skip('Postgres test database not available');
+      }
+
       const originalCi = process.env.CI;
       const originalGh = process.env.GITHUB_ACTIONS;
       delete process.env.CI;
@@ -817,13 +866,20 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
 
       try {
         const capturedLogs: string[] = [];
-        await runCliSeed({
-          databaseUrl: TEST_DB_URL,
-          nodeEnv: 'test',
-          showTokens: true,
-          exitProcess: false,
-          logger: (m) => capturedLogs.push(m),
-        });
+        try {
+          await runCliSeed({
+            databaseUrl: TEST_DB_URL,
+            nodeEnv: 'test',
+            showTokens: true,
+            exitProcess: false,
+            logger: (m) => capturedLogs.push(m),
+          });
+        } catch (err: any) {
+          if (err?.code === 'ECONNREFUSED' || err?.message?.includes('ECONNREFUSED')) {
+            return t.skip(`Postgres not reachable at TEST_DB_URL (${err.message})`);
+          }
+          throw err;
+        }
 
         const combined = capturedLogs.join('\n');
         const rawValid = getInviteToken('valid');
@@ -877,7 +933,11 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
       assert.doesNotMatch(output, /token=/);
     });
 
-    it('child process CLI prints tokens and links when --show-tokens is passed outside CI', () => {
+    it('child process CLI prints tokens and links when --show-tokens is passed outside CI', (t) => {
+      if (!dbAvailable) {
+        return t.skip('Postgres test database not available');
+      }
+
       const envWithoutCi = { ...process.env };
       delete envWithoutCi.CI;
       delete envWithoutCi.GITHUB_ACTIONS;
