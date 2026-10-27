@@ -20,14 +20,15 @@ async function main(): Promise<void> {
   try {
     await withPlatform(client, async (tx) => {
       await tx.query(
-        `INSERT INTO app.users (id, org_id, email, email_verified_at, name, role, password_hash, status)
-         VALUES ($1, NULL, $2, now(), $3, 'platform_admin', $4, 'active')
-         ON CONFLICT (id) DO NOTHING`,
+        `INSERT INTO app.users (id, org_id, email, email_verified_at, name, role, password_hash, mfa_secret_ref, status)
+         VALUES ($1, NULL, $2, now(), $3, 'platform_admin', $4, $5, 'active')
+         ON CONFLICT (id) DO UPDATE SET mfa_secret_ref = EXCLUDED.mfa_secret_ref`,
         [
           FIXTURE.platformAdmin.id,
           FIXTURE.platformAdmin.email,
           FIXTURE.platformAdmin.name,
           devPasswordHash,
+          'env:PLATFORM_ADMIN_MFA_SECRET',
         ],
       );
 

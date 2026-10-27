@@ -15,6 +15,8 @@ const ConfigSchema = z
     PAYMENT_GATEWAY: z.enum(['fake', 'razorpay']).default('fake'),
     EMAIL_PROVIDER: z.enum(['fake', 'ses']).default('fake'),
     WORKSPACE_RUNTIME: z.enum(['fake', 'sysbox']).default('fake'),
+    /** Base32 TOTP secret for platform admin MFA (dev/test). Production uses vault via mfa_secret_ref. */
+    PLATFORM_ADMIN_MFA_SECRET: z.string().min(16).optional(),
   })
   .transform((raw) => {
     const corsList = raw.CORS_ORIGINS

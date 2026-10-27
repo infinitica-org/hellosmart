@@ -4,7 +4,8 @@ import { SESSION_STORE } from './session.tokens.js';
 import type { SessionRecord, SessionStore } from './session.types.js';
 
 const SESSION_COOKIE = 'hs_session';
-const SESSION_TTL_SECONDS = 30 * 60;
+/** Rolling session TTL (S0-T03-4). */
+export const SESSION_TTL_SECONDS = 12 * 60 * 60;
 
 @Injectable()
 export class SessionService {
@@ -24,7 +25,16 @@ export class SessionService {
       lastSeenAt: now,
     };
     await this.store.set(sessionId, record, SESSION_TTL_SECONDS);
+    await this.store.registerUserSession(user.userId, sessionId, SESSION_TTL_SECONDS);
     return { sessionId, record };
+  }
+
+  async destroySession(sessionId: string): Promise<void> {
+    await this.store.delete(sessionId);
+  }
+
+  async revokeAllSessionsForUser(userId: string): Promise<void> {
+    await this.store.revokeAllForUser(userId);
   }
 
   async resolveSession(sessionId: string | undefined): Promise<SessionRecord | null> {

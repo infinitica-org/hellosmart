@@ -9,6 +9,8 @@ import { IdempotencyInterceptor } from './common/interceptors/idempotency.interc
 import { AppConfigModule } from './config/config.module.js';
 import { AdaptersModule } from './modules/adapters/adapters.module.js';
 import { DevTestController } from './modules/dev/dev-test.controller.js';
+import { AdminModule } from './modules/admin/admin.module.js';
+import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { RedisModule } from './modules/redis/redis.module.js';
 import { SessionModule } from './modules/session/session.module.js';
@@ -19,13 +21,19 @@ const devControllers =
 @Module({
   imports: [
     AppConfigModule,
-    ThrottlerModule.forRoot([
-      { name: 'default', ttl: 60_000, limit: 120 },
-      { name: 'login', ttl: 60_000, limit: 5 },
-    ]),
+    ThrottlerModule.forRoot(
+      process.env.NODE_ENV === 'test'
+        ? [{ name: 'default', ttl: 60_000, limit: 1_000_000 }]
+        : [
+            { name: 'default', ttl: 60_000, limit: 120 },
+            { name: 'login', ttl: 60_000, limit: 5 },
+          ],
+    ),
     RedisModule,
     SessionModule,
     AdaptersModule,
+    AuthModule,
+    AdminModule,
     HealthModule,
   ],
   controllers: [...devControllers],

@@ -2,6 +2,7 @@ import type { RedisLike } from '../redis/redis.tokens.js';
 import type { IdempotencyRecord, IdempotencyStore, SessionRecord, SessionStore } from './session.types.js';
 
 const SESSION_PREFIX = 'hs:session:';
+const USER_SESSIONS_PREFIX = 'hs:user-sessions:';
 const IDEM_PREFIX = 'hs:idem:';
 
 export class RedisSessionStore implements SessionStore {
@@ -21,6 +22,24 @@ export class RedisSessionStore implements SessionStore {
 
   async delete(sessionId: string): Promise<void> {
     await this.redis.del(SESSION_PREFIX + sessionId);
+  }
+
+  async registerUserSession(userId: string, sessionId: string, ttlSeconds: number): Promise<void> {
+    const key = USER_SESSIONS_PREFIX + userId;
+    await this.redis.sAdd(key, sessionId);
+    await this.redis.expire(key, ttlSeconds);
+  }
+
+  async revokeAllForUser(userId: string): Promise<void> {
+    const key = USER_SESSIONS_PREFIX + userId;
+    const sessionIds = await this.redis.sMembers(key);
+    if (sessionIds.length === 0) {
+      return;
+    }
+    for (const sessionId of sessionIds) {
+      await this.redis.del(SESSION_PREFIX + sessionId);
+    }
+    await this.redis.del(key);
   }
 }
 
