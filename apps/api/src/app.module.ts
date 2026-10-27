@@ -21,10 +21,14 @@ const devControllers =
 @Module({
   imports: [
     AppConfigModule,
-    ThrottlerModule.forRoot([
-      { name: 'default', ttl: 60_000, limit: 120 },
-      { name: 'login', ttl: 60_000, limit: 5 },
-    ]),
+    ThrottlerModule.forRoot(
+      process.env.NODE_ENV === 'test'
+        ? [{ name: 'default', ttl: 60_000, limit: 1_000_000 }]
+        : [
+            { name: 'default', ttl: 60_000, limit: 120 },
+            { name: 'login', ttl: 60_000, limit: 5 },
+          ],
+    ),
     RedisModule,
     SessionModule,
     AdaptersModule,

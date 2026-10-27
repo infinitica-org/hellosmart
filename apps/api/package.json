@@ -10,6 +10,7 @@
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:stack": "vitest run test/stack-e2e.test.ts",
     "test:tenancy": "vitest run --project tenancy",
     "db:migrate": "nest build && node --env-file=../../.env dist/db/migrate.js"
   },

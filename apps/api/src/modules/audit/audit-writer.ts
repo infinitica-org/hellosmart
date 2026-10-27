@@ -2,6 +2,20 @@ import crypto from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { AuditRecordInput } from './audit.types.js';
 
+function asInet(ip: string | null | undefined): string | null {
+  if (!ip) {
+    return null;
+  }
+  const trimmed = ip.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(trimmed) || trimmed.includes(':')) {
+    return trimmed;
+  }
+  return null;
+}
+
 function canonicalPayload(input: AuditRecordInput): string {
   return JSON.stringify({
     actorId: input.actorId,
@@ -44,7 +58,7 @@ export async function appendAuditEvent(
       input.entityId ?? null,
       input.before === undefined ? null : JSON.stringify(input.before),
       input.after === undefined ? null : JSON.stringify(input.after),
-      input.ip ?? null,
+      asInet(input.ip),
       input.userAgent ?? null,
       input.requestId ?? null,
       prevHash.length > 0 ? prevHash : null,
