@@ -72,6 +72,22 @@ describe('@hs/api foundation', () => {
     expect(body.code).toBe('TENANT_NOT_FOUND');
   });
 
+  it('test(BR-04): company admin cannot call platform admin org provisioning', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/admin/organizations',
+      headers: { authorization: sessionAuth },
+      payload: {
+        name: 'Evil Corp',
+        adminEmail: 'evil@example.test',
+        adminName: 'Evil Admin',
+      },
+    });
+    expect(res.statusCode).toBe(403);
+    const body = res.json() as { code: string };
+    expect(body.code).toBe('FORBIDDEN');
+  });
+
   it('OrgScopeGuard allows matching org', async () => {
     const res = await app.inject({
       method: 'GET',

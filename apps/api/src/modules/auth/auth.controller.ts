@@ -17,6 +17,7 @@ import {
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { problem } from '../../common/errors/app-http.exception.js';
+import { flattenZodErrors } from '../../common/validation/zod-errors.js';
 import {
   AuthenticatedRequest,
   REQUEST_USER_KEY,
@@ -122,16 +123,6 @@ function requestMeta(request: FastifyRequest): {
     meta.requestId = request.id;
   }
   return meta;
-}
-
-function flattenZodErrors(error: import('zod').ZodError): { field?: string; message: string }[] {
-  return error.issues.map((issue) => {
-    const row: { field?: string; message: string } = { message: issue.message };
-    if (issue.path.length > 0) {
-      row.field = issue.path.join('.');
-    }
-    return row;
-  });
 }
 
 function extractSessionId(request: FastifyRequest): string | undefined {
