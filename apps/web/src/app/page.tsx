@@ -39,8 +39,20 @@ export default function HomePage(): React.JSX.Element {
           </a>
         </div>
 
-        <div className="pt-2 text-xs text-slate-400">
-          Demo Token: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-600 font-mono">0123...cdef</code> (Acme Corporation)
+        <div className="pt-2 text-xs text-slate-500 space-y-1.5 text-left bg-slate-50 p-3 rounded-lg border border-slate-200">
+          <div className="font-semibold text-slate-700">Quick Test Credentials:</div>
+          <div>
+            <span className="font-medium text-slate-600">Company Admin:</span>{' '}
+            <code className="bg-white px-1 py-0.5 rounded border text-slate-800">admin@acme.com</code> /{' '}
+            <code className="bg-white px-1 py-0.5 rounded border text-slate-800">AdminPassword123!</code>
+          </div>
+          <div>
+            <span className="font-medium text-slate-600">Candidate:</span>{' '}
+            <code className="bg-white px-1 py-0.5 rounded border text-slate-800">jane.doe@example.com</code> (or setup via Accept Invitation)
+          </div>
+          <div className="text-slate-400 text-[11px] pt-0.5">
+            Demo Token: <code className="bg-white px-1 py-0.5 rounded text-slate-600 font-mono">0123...cdef</code> (Acme Corporation)
+          </div>
         </div>
       </div>
     </div>

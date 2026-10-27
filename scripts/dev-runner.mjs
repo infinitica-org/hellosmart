@@ -148,6 +148,14 @@ async function initDatabaseAndSeed() {
       ON CONFLICT (id) DO UPDATE SET status = 'invited', must_reset_password = true
     `, [candidateId, orgId]);
 
+    // Upsert company admin user (admin@acme.com / AdminPassword123!)
+    const adminPasswordHash = '$argon2id$v=19$m=19456,t=2,p=1$ONnuAs8l5G1/+/++vkPQjw$0LH5W9btOA3F3OPUF9V6UsYTogg0D4Uj65UZ3Gw955k';
+    await client.query(`
+      INSERT INTO app.users (id, org_id, email, name, role, status, password_hash, must_reset_password, email_verified_at)
+      VALUES ($1, $2, 'admin@acme.com', 'Acme Admin', 'company_admin', 'active', $3, false, now())
+      ON CONFLICT (id) DO UPDATE SET password_hash = $3, must_reset_password = false, status = 'active'
+    `, [adminId, orgId, adminPasswordHash]);
+
     // Upsert invitation token
     const tokenHash = crypto.createHash('sha256').update(SAMPLE_TOKEN.trim()).digest();
 
@@ -243,8 +251,10 @@ async function main() {
     console.log('\nDirect URLs for Stream 8 / PHS-I38 Review:');
     console.log(`👉 1. Accept Invitation Page (PHS-I49 & PHS-I48):`);
     console.log(`   http://localhost:3000/accept-invite?token=${SAMPLE_TOKEN}`);
-    console.log(`👉 2. Login Page (Forced Password Reset check):`);
+    console.log(`👉 2. Master Login Page:`);
     console.log(`   http://localhost:3000/login`);
+    console.log(`   • Company Admin : admin@acme.com / AdminPassword123! (Routes to /company)`);
+    console.log(`   • Candidate     : jane.doe@example.com (Routes to /candidate)`);
     console.log(`👉 3. API Validate Invitation Token:`);
     console.log(`   http://localhost:4000/api/v1/auth/invitations/${SAMPLE_TOKEN}`);
     console.log('================================================================\n');
