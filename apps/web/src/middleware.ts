@@ -9,12 +9,13 @@ const PORTAL_PREFIX: Record<string, string> = {
 
 export function middleware(req: NextRequest): NextResponse {
   const nonce = btoa(crypto.randomUUID());
+  const apiOrigin = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
-    "connect-src 'self'",
+    `connect-src 'self' ${apiOrigin} http://localhost:4000 http://127.0.0.1:4000`,
     'frame-src https://cal.com https://api.razorpay.com',
     "frame-ancestors 'none'",
     "base-uri 'self'",

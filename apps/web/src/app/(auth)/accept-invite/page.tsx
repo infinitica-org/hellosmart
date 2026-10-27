@@ -18,6 +18,11 @@ function AcceptInviteContent(): React.JSX.Element {
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
 
   useEffect(() => {
+    // If token is already stored in memory or validation finished, do not re-run on URL strip
+    if (token || invitation || isInvalid) {
+      return;
+    }
+
     // Step 2: Read token from query parameter and immediately strip from address bar
     const rawToken = searchParams.get('token');
 

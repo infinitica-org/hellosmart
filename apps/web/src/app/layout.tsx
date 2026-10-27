@@ -1,4 +1,5 @@
 import React from 'react';
+import './globals.css';
 import { BrandMark } from '@hs/ui';
 
 export const metadata = {
