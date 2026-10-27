@@ -11,6 +11,9 @@ export interface SessionStore {
   get(sessionId: string): Promise<SessionRecord | null>;
   set(sessionId: string, record: SessionRecord, ttlSeconds: number): Promise<void>;
   delete(sessionId: string): Promise<void>;
+  /** Track session id for revoke-all (e.g. password change, org suspend). */
+  registerUserSession(userId: string, sessionId: string, ttlSeconds: number): Promise<void>;
+  revokeAllForUser(userId: string): Promise<void>;
 }
 
 export interface IdempotencyRecord {

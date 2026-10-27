@@ -9,6 +9,7 @@ import { IdempotencyInterceptor } from './common/interceptors/idempotency.interc
 import { AppConfigModule } from './config/config.module.js';
 import { AdaptersModule } from './modules/adapters/adapters.module.js';
 import { DevTestController } from './modules/dev/dev-test.controller.js';
+import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { RedisModule } from './modules/redis/redis.module.js';
 import { SessionModule } from './modules/session/session.module.js';
@@ -26,6 +27,7 @@ const devControllers =
     RedisModule,
     SessionModule,
     AdaptersModule,
+    AuthModule,
     HealthModule,
   ],
   controllers: [...devControllers],

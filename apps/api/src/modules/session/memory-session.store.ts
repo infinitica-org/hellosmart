@@ -11,6 +11,7 @@ function purgeExpired<T extends { expiresAt: number }>(map: Map<string, T>): voi
 
 export class MemorySessionStore implements SessionStore {
   private sessions = new Map<string, SessionRecord & { expiresAt: number }>();
+  private userSessions = new Map<string, Set<string>>();
 
   async get(sessionId: string): Promise<SessionRecord | null> {
     purgeExpired(this.sessions);
@@ -31,6 +32,28 @@ export class MemorySessionStore implements SessionStore {
 
   async delete(sessionId: string): Promise<void> {
     this.sessions.delete(sessionId);
+    for (const [userId, ids] of this.userSessions) {
+      if (ids.delete(sessionId) && ids.size === 0) {
+        this.userSessions.delete(userId);
+      }
+    }
+  }
+
+  async registerUserSession(userId: string, sessionId: string, _ttlSeconds: number): Promise<void> {
+    const set = this.userSessions.get(userId) ?? new Set<string>();
+    set.add(sessionId);
+    this.userSessions.set(userId, set);
+  }
+
+  async revokeAllForUser(userId: string): Promise<void> {
+    const ids = this.userSessions.get(userId);
+    if (!ids) {
+      return;
+    }
+    for (const sessionId of ids) {
+      this.sessions.delete(sessionId);
+    }
+    this.userSessions.delete(userId);
   }
 }
 
