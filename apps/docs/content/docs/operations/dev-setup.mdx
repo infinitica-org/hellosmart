@@ -1,0 +1,122 @@
+---
+title: "Local Development Setup"
+description: "Docker Compose stack (PostgreSQL 16, Redis 7), environment variables, and migration workflow"
+---
+
+<RoleBadge roles={["sde", "qa"]} />
+
+# Local Development Setup & Infrastructure
+
+> **Audience:** Developers, QA engineers, and AI coding agents building HelloSmart.ai.  
+> **Relevant Ticket:** `[12.1] Docker Compose (Postgres 16, Redis) & .env.example`.  
+> **Security Rules:** Local development uses containerized mock services and non-production credentials. Real cloud credentials or production secrets must never be committed (BR-13, BR-16, BR-33).
+
+---
+
+## 1. Overview
+
+The HelloSmart local development stack provides isolated, reproducible containerized services that mirror production architecture without requiring external cloud accounts or paid third-party access:
+
+| Service | Container Image | Port | Purpose |
+|---|---|---|---|
+| **PostgreSQL** | `postgres:16-alpine` | `5432` / `5433` | Primary multi-tenant relational database with Row Level Security (RLS) and persistent volume storage (`hellosmart_pgdata`). |
+| **Redis** | `redis:7-alpine` | `6379` | In-memory key-value store for session tokens (`session:{token}`) and caching (`hellosmart_redis_data`). |
+| **LocalStack** | `localstack/localstack:3.8` | `4566` | Local AWS emulation (S3 object storage, SQS job queues, KMS secrets). |
+| **Mailpit** | `axllent/mailpit:v1.20` | `8025` (UI) / `1025` (SMTP) | Local email inbox to inspect candidate invites, MFA codes, and notifications. |
+| **Mock API** | `stoplight/prism:5.12.0` | `4010` | OpenAPI specification mock server based on `@hs/contracts`. |
+
+---
+
+## 2. Prerequisites
+
+- **Node.js**: `>= 22.11.0` (LTS recommended)
+- **pnpm**: `>= 9.12.0` (`corepack enable` or `npm install -g pnpm`)
+- **Docker**: Docker Desktop (Windows/macOS) or Docker Engine + Docker Compose v2 (Linux)
+
+---
+
+## 3. Environment Configuration (`.env`)
+
+1. Clone or navigate to your repository workspace:
+   ```bash
+   cd hellosmart
+   ```
+
+2. Create your local `.env` file from `.env.example`:
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Key variables defined in `.env`:
+   - `DATABASE_URL`: Connection string for the runtime application (`hs_app`), strictly subject to PostgreSQL Row Level Security (`NOBYPASSRLS`).
+   - `DATABASE_MIGRATOR_URL`: Connection string for running DDL schema migrations (`hs_migrator`).
+   - `DATABASE_OWNER_URL`: Connection string for the top-level database owner (`hs_owner`).
+   - `REDIS_URL`: Authenticated connection string for Redis 7 session storage (`redis://:hs_redis_local@localhost:6379`).
+   - `NEXT_PUBLIC_API_URL`: Base URL used by the Next.js frontend to reach the NestJS API (`http://localhost:4000`).
+   - `COOKIE_SECRET` / `COOKIE_NAME`: Secret and cookie name (`hs_session`) used by session guards.
+
+---
+
+## 4. Starting and Managing Services
+
+We provide top-level npm scripts in the root `package.json` to manage container lifecycle:
+
+### Start Services (`dev:up`)
+Starts all containerized dependencies in the background and runs health checks:
+```bash
+pnpm dev:up
+```
+
+### Check Service Status & Health
+```bash
+docker compose ps
+```
+Both `postgres` and `redis` report `healthy` once their respective health checks pass (`pg_isready` and `redis-cli ping`).
+
+### Inspect Logs
+```bash
+# Follow logs for all services
+docker compose logs -f
+
+# Follow logs for postgres and redis specifically
+docker compose logs -f postgres redis
+```
+
+### Stop Services (`dev:down`)
+Stops all containers without deleting your persistent database and cache data:
+```bash
+pnpm dev:down
+```
+
+---
+
+## 5. Running Database Migrations
+
+Once the database container is healthy:
+
+1. **Run Database Migrations:**
+   ```bash
+   pnpm db:migrate
+   ```
+   This executes all SQL migrations from `packages/contracts/db/migrations/` under the `hs_migrator` role, setting up tenant schemas, tables (`app.organizations`, `app.users`, `app.entitlements`), and tamper-evident audit tables (`audit.events`).
+
+2. **Seed Fixture Data (Optional for testing):**
+   ```bash
+   pnpm db:seed
+   ```
+
+---
+
+## 6. Running the Applications
+
+With dependencies running and migrations applied, start the development applications:
+
+```bash
+# Run full development environment in parallel (API + Web + Docs)
+pnpm dev
+
+# Or run specific applications individually:
+pnpm --filter @hs/api dev     # NestJS API on http://localhost:4000
+pnpm --filter @hs/web dev     # Next.js Web on http://localhost:3000
+pnpm storybook               # UI Component Storybook on http://localhost:6006
+```
