@@ -6,12 +6,14 @@ import type { InvitationDetailsResponse } from '@hs/contracts';
 import { RateLimitedError, validateInvitation } from '@/lib/api-client';
 import { SetPasswordForm } from '@/components/auth/set-password-form';
 
+// In-memory token storage (never written to localStorage or sessionStorage)
+let inMemoryToken: string | null = null;
+
 function AcceptInviteContent(): React.JSX.Element {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // In-memory token storage (never written to localStorage or sessionStorage)
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(() => inMemoryToken);
   const [invitation, setInvitation] = useState<InvitationDetailsResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isInvalid, setIsInvalid] = useState<boolean>(false);
@@ -19,13 +21,17 @@ function AcceptInviteContent(): React.JSX.Element {
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
 
   useEffect(() => {
-    // If token is already stored in memory or validation finished, do not re-run on URL strip
-    if (token || invitation || isInvalid || isRateLimited) {
+    // If validation finished, do not re-run
+    if (invitation || isInvalid || isRateLimited) {
       return;
     }
 
-    // Step 2: Read token from query parameter and immediately strip from address bar
-    const rawToken = searchParams.get('token');
+    // Step 2: Read token from query parameter or in-memory fallback
+    const queryToken = searchParams.get('token');
+    if (queryToken) {
+      inMemoryToken = queryToken;
+    }
+    const rawToken = queryToken || inMemoryToken || token;
 
     if (!rawToken) {
       setIsInvalid(true);
@@ -35,18 +41,20 @@ function AcceptInviteContent(): React.JSX.Element {
 
     setToken(rawToken);
 
-    // Strip token from address bar via history.replaceState (Step 2 & Step 5)
-    if (typeof window !== 'undefined' && window.history?.replaceState) {
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-
     // Fetch invitation details from backend API
     validateInvitation(rawToken)
       .then((data) => {
         setInvitation(data);
         setIsLoading(false);
+
+        // Strip token from address bar via history.replaceState (Step 2 & Step 5)
+        // after successful validation so token is safely preserved in memory
+        if (typeof window !== 'undefined' && window.history?.replaceState) {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
       })
       .catch((err: unknown) => {
+        console.error('[AcceptInvite] Invitation validation failed:', err);
         if (err instanceof RateLimitedError) {
           setIsRateLimited(true);
         } else {
@@ -54,9 +62,10 @@ function AcceptInviteContent(): React.JSX.Element {
         }
         setIsLoading(false);
       });
-  }, [searchParams, token, invitation, isInvalid, isRateLimited]);
+  }, [searchParams, invitation, isInvalid, isRateLimited, token]);
 
   const handleSuccess = () => {
+    inMemoryToken = null;
     setIsSuccess(true);
     // On successful acceptance, redirect to /login with banner parameter
     router.push('/login?message=password_set');

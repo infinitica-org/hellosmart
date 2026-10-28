@@ -104,7 +104,7 @@ export class MailService implements EmailSender {
                       You have been invited to join <strong>${input.orgName}</strong> on HelloSmart.ai as a <strong>${input.role}</strong>.
                     </p>
                     <div style="margin: 28px 0;">
-                      <a href="${inviteUrl}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 8px;">
+                      <a href="${inviteUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #4f46e5; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 8px;">
                         Activate Account &amp; Set Password &rarr;
                       </a>
                     </div>
