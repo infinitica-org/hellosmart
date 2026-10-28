@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useId, useMemo } from 'react';
+import React, { useId, useState, useEffect, useMemo } from 'react';
 import { Check, AlertCircle, ShieldCheck } from '../icons/lucide';
 
 export type PasswordStrengthLevel = 0 | 1 | 2 | 3 | 4;
@@ -66,15 +66,36 @@ const COMMON_PASSWORDS = new Set([
   'changeme',
 ]);
 
+type ZxcvbnFunction = typeof import('zxcvbn');
+
+let cachedZxcvbn: ZxcvbnFunction | null = null;
+let zxcvbnLoadingPromise: Promise<ZxcvbnFunction> | null = null;
+
+/**
+ * Lazy loads zxcvbn on demand to keep initial bundle size lean.
+ */
+export async function loadZxcvbn(): Promise<ZxcvbnFunction> {
+  if (cachedZxcvbn) return cachedZxcvbn;
+  if (!zxcvbnLoadingPromise) {
+    zxcvbnLoadingPromise = import('zxcvbn').then((mod) => {
+      cachedZxcvbn = (mod.default || mod) as ZxcvbnFunction;
+      return cachedZxcvbn;
+    });
+  }
+  return zxcvbnLoadingPromise;
+}
+
 /**
  * Evaluates password strength and requirements consistently between UI and API.
  * S0-T17-1 shared password evaluation algorithm.
  * 
+ * Supports synchronous evaluation and optional zxcvbn enhanced estimation.
  * Note: Never logs or emits passwords. Evaluation is pure and advisory.
  */
 export function evaluatePassword(
   password: string,
-  userInputs: string[] = []
+  userInputs: string[] = [],
+  zxcvbnInstance?: ZxcvbnFunction | null
 ): PasswordEvaluationResult {
   if (!password || password.length === 0) {
     return {
@@ -100,7 +121,6 @@ export function evaluatePassword(
   if (COMMON_PASSWORDS.has(pwdLower)) {
     isNotCommon = false;
   } else {
-    // Check if contains very common root
     for (const common of COMMON_PASSWORDS) {
       if (common.length >= 6 && pwdLower.includes(common)) {
         isNotCommon = false;
@@ -115,12 +135,10 @@ export function evaluatePassword(
     if (!input || typeof input !== 'string') continue;
     const cleanInput = input.toLowerCase().trim();
     if (cleanInput.length >= 3) {
-      // Direct substring match
       if (pwdLower.includes(cleanInput)) {
         isNotRelated = false;
         break;
       }
-      // If email, also check username part before @
       if (cleanInput.includes('@')) {
         const username = cleanInput.split('@')[0];
         if (username && username.length >= 3 && pwdLower.includes(username)) {
@@ -131,7 +149,7 @@ export function evaluatePassword(
     }
   }
 
-  // 4. Calculate 4-level strength score
+  // 4. Calculate 4-level strength score using zxcvbn if available, or heuristic fallback
   let score: PasswordStrengthLevel = 1;
   let tip = 'Add another word or mix numbers and symbols.';
 
@@ -144,8 +162,33 @@ export function evaluatePassword(
   } else if (!isNotRelated) {
     score = 1;
     tip = 'Avoid personal details or company names in your password.';
+  } else if (zxcvbnInstance) {
+    // Enhanced zxcvbn evaluation
+    try {
+      const zResult = zxcvbnInstance(password, userInputs);
+      // zxcvbn score: 0 to 4
+      const calculatedScore = Math.max(1, Math.min(4, zResult.score)) as PasswordStrengthLevel;
+      score = calculatedScore;
+
+      if (zResult.feedback?.warning) {
+        tip = zResult.feedback.warning;
+      } else if (zResult.feedback?.suggestions?.length && zResult.feedback.suggestions[0]) {
+        tip = zResult.feedback.suggestions[0];
+      } else if (score === 4) {
+        tip = 'Excellent password! Highly resilient to brute-force attacks.';
+      } else if (score === 3) {
+        tip = 'Strong password. Good combination of length and characters.';
+      } else if (score === 2) {
+        tip = 'Make it longer or add variety to strengthen your password.';
+      } else {
+        tip = 'Add another word or mix characters.';
+      }
+    } catch {
+      // fallback to heuristic if zxcvbn execution fails
+      score = 2;
+    }
   } else {
-    // Variety and entropy estimation
+    // Fast heuristic entropy estimation
     const hasUpper = /[A-Z]/.test(password);
     const hasLower = /[a-z]/.test(password);
     const hasDigit = /[0-9]/.test(password);
@@ -215,13 +258,33 @@ export function PasswordStrengthMeter({
   onEvaluationChange,
 }: PasswordStrengthMeterProps): React.JSX.Element {
   const meterId = useId();
+  const [zxcvbnFn, setZxcvbnFn] = useState<ZxcvbnFunction | null>(() => cachedZxcvbn);
+
+  // Lazy-load zxcvbn on mount or as soon as candidate begins entering password
+  useEffect(() => {
+    let isMounted = true;
+    if (!zxcvbnFn) {
+      loadZxcvbn()
+        .then((fn) => {
+          if (isMounted) {
+            setZxcvbnFn(() => fn);
+          }
+        })
+        .catch(() => {
+          // Graceful fallback to built-in evaluation
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [zxcvbnFn]);
 
   // Pure advisory evaluation
   const evaluation = useMemo(() => {
-    const res = evaluatePassword(password, userInputs);
+    const res = evaluatePassword(password, userInputs, zxcvbnFn);
     onEvaluationChange?.(res);
     return res;
-  }, [password, userInputs, onEvaluationChange]);
+  }, [password, userInputs, zxcvbnFn, onEvaluationChange]);
 
   const { score, label, tip, requirements } = evaluation;
 
@@ -399,4 +462,3 @@ export function PasswordStrengthMeter({
     </div>
   );
 }
-

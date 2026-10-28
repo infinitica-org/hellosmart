@@ -108,9 +108,15 @@ describe('Password Component Suite: S0-T17-2', () => {
       expect(PasswordField).toBeDefined();
     });
 
-    it('exports PasswordStrengthMeter with evaluatePassword', () => {
+    it('exports PasswordStrengthMeter with evaluatePassword and loadZxcvbn', async () => {
       expect(PasswordStrengthMeter).toBeDefined();
       expect(evaluatePassword).toBeDefined();
+      const { loadZxcvbn } = await import('@hs/ui');
+      expect(loadZxcvbn).toBeDefined();
+      const zxcvbn = await loadZxcvbn();
+      expect(typeof zxcvbn).toBe('function');
+      const evaluatedWithZxcvbn = evaluatePassword('Correct-Horse-Battery-Staple-2026!', [], zxcvbn);
+      expect(evaluatedWithZxcvbn.score).toBeGreaterThanOrEqual(3);
     });
 
     it('exports SetPasswordForm for onboarding and password change flows', () => {
