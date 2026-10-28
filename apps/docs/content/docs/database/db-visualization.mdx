@@ -178,7 +178,17 @@ When `app.current_org_id()` is evaluated by PostgreSQL, any rows belonging to ot
 
 ## 3. Tamper-Evident Audit Ledger (`audit.events`)
 
-For SOC 2 Type II compliance and BR-31 invariants, the audit log uses a **cryptographic SHA-256 hash chain**:
+For SOC 2 Type II compliance and BR-31 invariants, the audit log uses a **cryptographic SHA-256 hash chain** and enforces **Row-Level Security** (migration `0004_rls_access_paths`):
+
+```sql
+ALTER TABLE audit.events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit.events FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation ON audit.events
+  FOR ALL
+  USING (org_id = app.current_org_id() OR app.is_platform())
+  WITH CHECK (org_id = app.current_org_id() OR app.is_platform());
+```
 
 | Column | Type | Description |
 |---|---|---|
@@ -190,17 +200,27 @@ For SOC 2 Type II compliance and BR-31 invariants, the audit log uses a **crypto
 | `prev_hash` | `bytea` | SHA-256 digest of previous audit row |
 | `hash` | `bytea` | `SHA256(prev_hash || row_payload)` |
 
-Because each row's hash includes the previous row's hash, **no row can be modified, deleted, or back-dated without invalidating the entire subsequent audit chain**.
+Because each row's hash includes the previous row's hash, **no row can be modified, deleted, or back-dated without invalidating the entire subsequent audit chain**. `hs_app` only has `INSERT` and `SELECT` privileges; `UPDATE` and `DELETE` are blocked both by permission grants and by the `audit.trg_events_immutable` trigger.
 
 ---
 
 ## 4. Pre-Login Stored Functions & Safe Elevation
 
-Pre-login operations (login lookup and invitation acceptance) cannot supply a verified `org_id` context because the user is not yet authenticated. Instead of elevating permissions in Node.js application code, HelloSmart uses pinned, audited `SECURITY DEFINER` routines:
+Pre-login operations (login lookup and invitation acceptance) cannot supply a verified `org_id` context because the user is not yet authenticated. Instead of elevating permissions in Node.js application code via `withPlatform`, HelloSmart uses pinned, audited `SECURITY DEFINER` routines (migration `0004_rls_access_paths`):
 
-1. **`app.lookup_user_for_login(p_email)`**:
-   Returns authentication credentials (`user_id`, `org_id`, `password_hash`, `role`, `status`, `must_reset_password`) without exposing sensitive user table columns to unauthenticated RLS context. Pinned to `search_path = pg_catalog, app`.
-2. **`app.lookup_invitation(p_token_hash)`**:
-   Returns public invitation metadata (email, role, organization name and slug) for the invite acceptance UI, without granting access to the underlying `app.invitations` table.
-3. **`app.accept_invitation(p_token_hash, p_password_hash, p_ip, p_user_agent, p_request_id)`**:
+1. **`app.find_user_for_login(p_email)`**:
+   Returns authentication credentials (`id`, `org_id`, `email`, `name`, `role`, `password_hash`, `must_reset_password`, `mfa_secret_ref`, `status`, `failed_logins`, `locked_until`, `org_name`, `org_status`, `logo_key`) without exposing sensitive user table columns to unauthenticated RLS context. Pinned to `search_path = pg_catalog, app, public`. Excludes soft-deleted accounts (`deleted_at IS NULL`).
+2. **`app.find_user_by_id(p_user_id)`**:
+   Securely resolves a user record by primary key across tenant boundaries after authentication, pinned to `search_path = pg_catalog, app, public`.
+3. **`app.find_invitation_by_token_hash(p_token_hash)`** (alias `app.lookup_invitation`):
+   Returns public invitation metadata (email, role, organization name) for the invite acceptance UI, without granting access to the underlying `app.invitations` table. Requires an unexpired, unconsumed invitation with exact 32-byte SHA-256 token hash.
+4. **`app.accept_invitation(p_token_hash, p_password_hash, p_ip, p_user_agent, p_request_id)`**:
    Atomically burns the invitation token, marks the user status as `active`, sets the password hash, and records an immutable audit log entry in `audit.events` inside a single database transaction. Eliminates any need for the API to execute `set_config('app.is_platform', 'true')` in client code.
+
+### Principle of Least Privilege
+All `SECURITY DEFINER` routines revoke `EXECUTE` privileges from `PUBLIC` and grant execute permissions exclusively to the non-owner application role `hs_app`:
+
+```sql
+REVOKE EXECUTE ON FUNCTION app.find_user_for_login(citext) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.find_user_for_login(citext) TO hs_app;
+```

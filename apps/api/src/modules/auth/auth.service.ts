@@ -272,45 +272,27 @@ export class AuthService {
   }
 
   private async findUserByEmail(email: string): Promise<DbUserRow | null> {
-    const client = await this.pool.connect();
-    try {
-      return await withPlatform(client, async (tx) => {
-        const result = await tx.query<DbUserRow>(
-          `SELECT u.id, u.org_id, u.email::text AS email, u.name, u.role, u.password_hash,
-                  u.status, u.must_reset_password, u.mfa_secret_ref,
-                  o.status AS org_status, o.name AS org_name, o.logo_key
-           FROM app.users u
-           LEFT JOIN app.organizations o ON o.id = u.org_id
-           WHERE lower(u.email::text) = $1 AND u.deleted_at IS NULL
-           LIMIT 1`,
-          [email],
-        );
-        return result.rows[0] ?? null;
-      });
-    } finally {
-      client.release();
-    }
+    const result = await this.pool.query<DbUserRow>(
+      `SELECT id, org_id, email::text AS email, name, role, password_hash,
+              status, must_reset_password, mfa_secret_ref,
+              org_status, org_name, logo_key
+       FROM app.find_user_for_login($1)
+       LIMIT 1`,
+      [email],
+    );
+    return result.rows[0] ?? null;
   }
 
   private async findUserById(userId: string): Promise<DbUserRow | null> {
-    const client = await this.pool.connect();
-    try {
-      return await withPlatform(client, async (tx) => {
-        const result = await tx.query<DbUserRow>(
-          `SELECT u.id, u.org_id, u.email::text AS email, u.name, u.role, u.password_hash,
-                  u.status, u.must_reset_password, u.mfa_secret_ref,
-                  o.status AS org_status, o.name AS org_name, o.logo_key
-           FROM app.users u
-           LEFT JOIN app.organizations o ON o.id = u.org_id
-           WHERE u.id = $1 AND u.deleted_at IS NULL
-           LIMIT 1`,
-          [userId],
-        );
-        return result.rows[0] ?? null;
-      });
-    } finally {
-      client.release();
-    }
+    const result = await this.pool.query<DbUserRow>(
+      `SELECT id, org_id, email::text AS email, name, role, password_hash,
+              status, must_reset_password, mfa_secret_ref,
+              org_status, org_name, logo_key
+       FROM app.find_user_by_id($1)
+       LIMIT 1`,
+      [userId],
+    );
+    return result.rows[0] ?? null;
   }
 }
 
