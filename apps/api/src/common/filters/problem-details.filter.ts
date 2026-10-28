@@ -51,7 +51,14 @@ export class ProblemDetailsFilter implements ExceptionFilter {
           title: HttpStatus[status] ?? 'Error',
           status,
           detail,
-          code: status === 401 ? 'UNAUTHORIZED' : status === 403 ? 'FORBIDDEN' : 'HTTP_ERROR',
+          code:
+            status === 401
+              ? 'UNAUTHORIZED'
+              : status === 403
+                ? 'FORBIDDEN'
+                : status === 429
+                  ? 'RATE_LIMITED'
+                  : 'HTTP_ERROR',
           requestId,
         };
       }

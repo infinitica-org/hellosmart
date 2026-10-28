@@ -137,6 +137,17 @@ pnpm dev                      # web :3000 · api :4000
 Python: `cd services/ai-proxy && uv sync && uv run pytest`.
 All external providers default to **fakes**, so you need no cloud credentials to build anything.
 
+### Inspect invitation emails locally (Mailpit)
+
+Mailpit is included in `docker-compose.yml` and captures development invitation emails without sending them to real recipients.
+
+1. Start the local infrastructure with `pnpm infra:up` (or `docker compose up -d mailpit`).
+2. Open the Mailpit inbox at **http://localhost:8025**.
+3. Create/send an invitation from the app. In development, the invitation email should appear in the inbox addressed to the invited student, with an **Activate Account & Set Password** link.
+4. Open the message in Mailpit and use its link to test the invitation flow. Invitation links are single-use and expire after 72 hours.
+
+Mailpit's SMTP port is `1025`; its web inbox is bound to `127.0.0.1:8025` by the local Compose configuration. If an email does not appear, check that the Mailpit container is running and review the API logs for a `[Mailpit]` warning.
+
 ---
 
 ## 6. Environments
