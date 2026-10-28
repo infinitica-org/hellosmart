@@ -24,6 +24,8 @@ interface FastifyRequestLike {
   ip?: string;
 }
 
+const INVITATION_THROTTLE_LIMIT = process.env.NODE_ENV === 'production' ? 10 : 1000;
+
 @Public()
 @Controller('auth/invitations')
 export class InvitationsController {
@@ -37,7 +39,7 @@ export class InvitationsController {
    */
   @Public()
   @Get(':token')
-  @Throttle({ default: { limit: 10, ttl: 3600000 } }) // 10 attempts per hour
+  @Throttle({ default: { limit: INVITATION_THROTTLE_LIMIT, ttl: 3600000 } }) // 10 attempts per hour in prod, 1000 in dev
   async validateToken(
     @Param('token') token: string,
     @Req() req: FastifyRequestLike,
@@ -54,7 +56,7 @@ export class InvitationsController {
   @Public()
   @Post('accept')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 10, ttl: 3600000 } }) // 10 attempts per hour per IP
+  @Throttle({ default: { limit: INVITATION_THROTTLE_LIMIT, ttl: 3600000 } }) // 10 attempts per hour per IP in prod, 1000 in dev
   async acceptInvitation(
     @Body() body: AcceptInvitationRequest,
     @Req() req: FastifyRequestLike,

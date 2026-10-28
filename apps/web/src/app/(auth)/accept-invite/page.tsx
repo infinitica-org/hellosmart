@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { InvitationDetailsResponse } from '@hs/contracts';
-import { validateInvitation } from '@/lib/api-client';
+import { RateLimitedError, validateInvitation } from '@/lib/api-client';
 import { SetPasswordForm } from '@/components/auth/set-password-form';
 
 function AcceptInviteContent(): React.JSX.Element {
@@ -15,11 +15,12 @@ function AcceptInviteContent(): React.JSX.Element {
   const [invitation, setInvitation] = useState<InvitationDetailsResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isInvalid, setIsInvalid] = useState<boolean>(false);
+  const [isRateLimited, setIsRateLimited] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
 
   useEffect(() => {
     // If token is already stored in memory or validation finished, do not re-run on URL strip
-    if (token || invitation || isInvalid) {
+    if (token || invitation || isInvalid || isRateLimited) {
       return;
     }
 
@@ -45,12 +46,15 @@ function AcceptInviteContent(): React.JSX.Element {
         setInvitation(data);
         setIsLoading(false);
       })
-      .catch(() => {
-        // Unknown, expired, or already-used token
-        setIsInvalid(true);
+      .catch((err: unknown) => {
+        if (err instanceof RateLimitedError) {
+          setIsRateLimited(true);
+        } else {
+          setIsInvalid(true);
+        }
         setIsLoading(false);
       });
-  }, [searchParams, token, invitation, isInvalid]);
+  }, [searchParams, token, invitation, isInvalid, isRateLimited]);
 
   const handleSuccess = () => {
     setIsSuccess(true);
@@ -89,7 +93,7 @@ function AcceptInviteContent(): React.JSX.Element {
           )}
 
           {/* State 2: Invalid, expired, or used invitation */}
-          {!isLoading && isInvalid && (
+          {!isLoading && isInvalid && !isRateLimited && (
             <div className="text-center py-6 space-y-5" role="alert">
               <div
                 className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xl font-bold"
@@ -117,8 +121,37 @@ function AcceptInviteContent(): React.JSX.Element {
             </div>
           )}
 
+          {/* State 2b: Rate limited */}
+          {!isLoading && isRateLimited && (
+            <div className="text-center py-6 space-y-5" role="alert">
+              <div
+                className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xl font-bold"
+                aria-hidden="true"
+              >
+                !
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-lg font-semibold text-slate-900">
+                  Too Many Attempts
+                </h1>
+                <p className="text-sm text-slate-600">
+                  Too many attempts have been made. Please wait a moment and try again.
+                </p>
+              </div>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="inline-flex justify-center items-center px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                >
+                  Retry &rarr;
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* State 3: Valid invitation -> Display context & Set Password form */}
-          {!isLoading && !isInvalid && invitation && token && !isSuccess && (
+          {!isLoading && !isInvalid && !isRateLimited && invitation && token && !isSuccess && (
             <div className="space-y-6">
               <div className="text-center space-y-2">
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900">

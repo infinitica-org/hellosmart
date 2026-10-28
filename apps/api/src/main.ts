@@ -27,7 +27,7 @@ async function bootstrap(): Promise<void> {
     contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
     hsts: { maxAge: 63_072_000, includeSubDomains: true, preload: true },
     referrerPolicy: { policy: 'no-referrer' },
-    crossOriginResourcePolicy: { policy: 'same-site' },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   });
   await app.register(cookie, { secret: config.SESSION_SECRET });
 
