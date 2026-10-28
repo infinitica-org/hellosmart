@@ -5,8 +5,8 @@ export default defineWorkspace([
     test: {
       name: 'unit',
       environment: 'node',
-      include: ['test/**/*.test.ts'],
-      exclude: ['test/cross-tenant.test.ts', 'test/stack-e2e.test.ts'],
+      include: ['test/**/*.{test,spec}.ts', 'src/**/*.{test,spec}.ts'],
+      exclude: ['test/cross-tenant.test.ts', 'test/stack-e2e.test.ts', 'test/**/*.e2e-spec.ts'],
       setupFiles: ['test/setup.ts'],
       testTimeout: 60_000,
       hookTimeout: 60_000,
@@ -26,7 +26,7 @@ export default defineWorkspace([
     test: {
       name: 'e2e',
       environment: 'node',
-      include: ['test/stack-e2e.test.ts'],
+      include: ['test/stack-e2e.test.ts', 'test/**/*.e2e-spec.ts'],
       setupFiles: ['test/setup.ts'],
       testTimeout: 60_000,
       hookTimeout: 60_000,

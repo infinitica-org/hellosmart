@@ -59,6 +59,14 @@ const DEV_ACCOUNTS: Record<string, DevUser> = {
     requiresMfa: false,
     status: 'active',
   },
+  'complete@seed.example.test': {
+    email: 'complete@seed.example.test',
+    role: 'candidate',
+    portal: 'candidate',
+    name: 'Complete Candidate',
+    requiresMfa: false,
+    status: 'active',
+  },
   'alex.turner@seed.example.test': {
     email: 'alex.turner@seed.example.test',
     role: 'candidate',
@@ -83,19 +91,17 @@ const DEV_ACCOUNTS: Record<string, DevUser> = {
   },
 };
 
-// DEVELOPMENT / TEST FIXTURE IN-MEMORY RATE LIMITING
-// Note: In production, rate limiting is strictly enforced at the API gateway / Redis layer.
-// This in-memory store and the test string 'ratelimit' exist solely as test fixtures for local development and unit tests.
+// Track failed attempts in memory for rate-limiting simulation
 const failedAttempts: Record<string, number> = {};
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // Gate development fallback behind an explicit opt-in.
   // INVARIANT: production is unconditionally excluded — no flag can override this.
-  // For local dev: set NODE_ENV=development and ENABLE_DEV_ACCOUNTS=true.
-  // Never set ENABLE_DEV_ACCOUNTS in staging or production.
+  // For local dev: set NODE_ENV=development and ENABLE_DEV_ACCOUNTS=true or ALLOW_DEV_LOGIN_BFF=true.
+  // Never set ENABLE_DEV_ACCOUNTS or ALLOW_DEV_LOGIN_BFF in staging or production.
   const devFallbackEnabled =
-    process.env.NODE_ENV === 'development' &&
-    process.env.ENABLE_DEV_ACCOUNTS === 'true';
+    (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') &&
+    (process.env.ENABLE_DEV_ACCOUNTS === 'true' || process.env.ALLOW_DEV_LOGIN_BFF === 'true');
 
   try {
     const body = await req.json();
@@ -109,14 +115,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           status: 400,
           detail: 'Email and password are required',
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const normalizedEmail = email.trim().toLowerCase();
 
     // Rate limiting check (429 simulation for > 4 failed attempts or explicit rate-limit testing fixture)
-    if (normalizedEmail.includes('ratelimit') || (failedAttempts[normalizedEmail] && failedAttempts[normalizedEmail] >= 5)) {
+    if (
+      normalizedEmail.includes('ratelimit') ||
+      (failedAttempts[normalizedEmail] && failedAttempts[normalizedEmail] >= 5)
+    ) {
       return NextResponse.json(
         {
           type: 'about:blank',
@@ -124,15 +133,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           status: 429,
           detail: 'Too many failed attempts. Please wait 15 minutes.',
         },
-        { status: 429 }
+        { status: 429 },
       );
     }
 
-    const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:4000';
+    const rawApiUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+    const apiBaseUrl = rawApiUrl.replace(/\/$/, '');
 
-    // 1. Attempt real backend authentication first
+    // 1. Attempt real backend call first
     try {
-      const apiRes = await fetch(`${apiBaseUrl}/auth/login`, {
+      const loginUrl = apiBaseUrl.endsWith('/api/v1')
+        ? `${apiBaseUrl}/auth/login`
+        : `${apiBaseUrl}/api/v1/auth/login`;
+
+      const apiRes = await fetch(loginUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +175,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           status: apiRes.status,
           detail: 'Invalid credentials or authentication error.',
         },
-        { status: apiRes.status }
+        { status: apiRes.status },
       );
     } catch {
       // Backend offline / unreachable
@@ -173,9 +187,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             type: 'about:blank',
             title: 'Authentication Service Unavailable',
             status: 503,
-            detail: 'The authentication service is currently unavailable. Please try again later.',
+            detail: 'The authentication service is currently unavailable. Please verify API server connectivity.',
           },
-          { status: 503 }
+          { status: 503 },
         );
       }
     }
@@ -192,7 +206,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           status: 401,
           detail: 'Invalid email or password, or account not found.',
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -205,7 +219,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           status: 403,
           detail: 'Your account or company is suspended. Please contact support.',
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -219,7 +233,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           status: 401,
           detail: 'Invalid email or password, or account not found.',
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -234,7 +248,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           email: user.email,
           message: 'Two-factor authentication code required.',
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
 
@@ -250,7 +264,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             status: 401,
             detail: 'Invalid 6-digit authentication code. Please try again.',
           },
-          { status: 401 }
+          { status: 401 },
         );
       }
     }
@@ -303,7 +317,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         status: 500,
         detail: 'An unexpected error occurred during login.',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
