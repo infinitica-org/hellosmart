@@ -1,6 +1,8 @@
 apis:
   main:
     root: openapi/openapi.yaml
+    x-openapi-ts:
+      output: src/generated/api.ts
 rules:
   no-server-example.com: off
   info-license: off

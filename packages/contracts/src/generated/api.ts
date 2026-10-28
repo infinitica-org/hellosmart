@@ -21,6 +21,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/sso/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify third-party SSO token (Google or Microsoft) */
+        post: operations["authSsoVerify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/mfa/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify TOTP multi-factor authentication code */
+        post: operations["authMfaVerify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invalidate user session and clear authentication cookies */
+        post: operations["authLogout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/invitations/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Validate an invitation token and fetch details */
+        get: operations["validateInvitation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/invitations/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept an invitation and set user password */
+        post: operations["acceptInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me": {
         parameters: {
             query?: never;
@@ -28,7 +113,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get current authenticated user profile and routing */
+        /** Get current authenticated user profile and portal route */
         get: operations["getMe"];
         put?: never;
         post?: never;
@@ -36,6 +121,40 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/admin/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Provision a new customer tenant organization (Platform Admin only) */
+        post: operations["provisionOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/organizations/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update organization status (activate or suspend) */
+        patch: operations["updateOrganizationStatus"];
         trace?: never;
     };
     "/candidates": {
@@ -48,7 +167,7 @@ export interface paths {
         /** List candidates in the caller's organization */
         get: operations["listCandidates"];
         put?: never;
-        /** Create candidate and queue invitation email */
+        /** Create and invite a candidate to an assessment */
         post: operations["createCandidate"];
         delete?: never;
         options?: never;
@@ -65,7 +184,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Connect to candidate assessment workspace */
+        /** Connect to candidate workspace session */
         post: operations["connectWorkspace"];
         delete?: never;
         options?: never;
@@ -88,6 +207,21 @@ export interface components {
         };
         /** @enum {string} */
         Role: "platform_admin" | "company_admin" | "candidate";
+        InvitationDetails: {
+            /** Format: email */
+            email: string;
+            role: components["schemas"]["Role"];
+            orgName: string;
+        };
+        AcceptInvitationRequest: {
+            token: string;
+            password: string;
+        };
+        AcceptInvitationResponse: {
+            /** @enum {boolean} */
+            success: true;
+            message: string;
+        };
         Me: {
             /** Format: uuid */
             id: string;
@@ -104,6 +238,37 @@ export interface components {
                 name?: string;
                 logoUrl?: string | null;
             } | null;
+        };
+        Organization: {
+            /**
+             * Format: uuid
+             * @example aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
+             */
+            id: string;
+            /** @example Aster Ridge Inc. */
+            name: string;
+            /** @example aster-ridge */
+            slug: string;
+            /**
+             * @example paid_active
+             * @enum {string}
+             */
+            status: "provisioned" | "trial_active" | "paid_active" | "suspended";
+            /** @example plan_growth */
+            planId?: string | null;
+            /** @example https://cdn.hellosmart.ai/aster.png */
+            logoUrl?: string | null;
+            /** @example false */
+            whiteLabel: boolean;
+            /** @example assess.asterridge.com */
+            customDomain?: string | null;
+            /** @example 90 */
+            retentionDays: number;
+            /**
+             * Format: date-time
+             * @example 2026-10-01T00:00:00Z
+             */
+            createdAt: string;
         };
         /** @enum {string} */
         CandidateStatus: "invited" | "active" | "deleted";
@@ -174,7 +339,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Logged in; session cookie set (HttpOnly, Secure, SameSite=Lax). */
+            /** @description Logged in successfully; session cookie set (HttpOnly, Secure, SameSite=Lax). */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -184,6 +349,141 @@ export interface operations {
                 };
             };
             401: components["responses"]["Problem"];
+            429: components["responses"]["Problem"];
+        };
+    };
+    authSsoVerify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    provider: "google" | "microsoft";
+                    idToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description SSO token verified; session cookie set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
+    };
+    authMfaVerify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    preAuthToken: string;
+                    totpCode: string;
+                };
+            };
+        };
+        responses: {
+            /** @description MFA verification successful; full session cookie issued. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            401: components["responses"]["Problem"];
+        };
+    };
+    authLogout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logged out successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example true */
+                        success: boolean;
+                        /** @example Logged out successfully */
+                        message?: string;
+                    };
+                };
+            };
+        };
+    };
+    validateInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Raw 32-byte invitation token */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Valid, unexpired, unused invitation details. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationDetails"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            429: components["responses"]["Problem"];
+        };
+    };
+    acceptInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Invitation accepted, user activated, password set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptInvitationResponse"];
+                };
+            };
+            404: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
             429: components["responses"]["Problem"];
         };
     };
@@ -206,6 +506,92 @@ export interface operations {
                 };
             };
             401: components["responses"]["Problem"];
+        };
+    };
+    provisionOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example Brindle & Co */
+                    name: string;
+                    /** @example brindle-co */
+                    slug?: string;
+                    /** @example plan_trial */
+                    planId?: string;
+                    /** @default 90 */
+                    retentionDays?: number;
+                    /** @default false */
+                    whiteLabel?: boolean;
+                    /** @example assess.brindle.co */
+                    customDomain?: string;
+                    /**
+                     * Format: email
+                     * @example admin@brindle.co
+                     */
+                    adminEmail: string;
+                    /** @example Jane Doe */
+                    adminName: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Organization created and initial admin user invited. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Organization"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            403: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
+    };
+    updateOrganizationStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @example suspended
+                     * @enum {string}
+                     */
+                    status: "provisioned" | "trial_active" | "paid_active" | "suspended";
+                    /** @example Payment overdue */
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Organization status updated successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Organization"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
         };
     };
     listCandidates: {
@@ -235,6 +621,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Problem"];
+            403: components["responses"]["Problem"];
         };
     };
     createCandidate: {
@@ -265,6 +652,7 @@ export interface operations {
                     "application/json": components["schemas"]["Candidate"];
                 };
             };
+            401: components["responses"]["Problem"];
             409: components["responses"]["Problem"];
             422: components["responses"]["Problem"];
         };
@@ -289,6 +677,7 @@ export interface operations {
                     "application/json": components["schemas"]["WorkspaceConnection"];
                 };
             };
+            401: components["responses"]["Problem"];
             404: components["responses"]["Problem"];
             409: components["responses"]["Problem"];
             423: components["responses"]["Problem"];

@@ -37,3 +37,22 @@ export const MeDtoSchema = z.object({
     .optional(),
 });
 export type MeDto = z.infer<typeof MeDtoSchema>;
+
+export const CandidateStatusEnum = z.enum(['invited', 'active', 'deleted']);
+export type CandidateStatus = z.infer<typeof CandidateStatusEnum>;
+
+export const CreateCandidateDtoSchema = z.object({
+  name: z.string().min(1).max(120),
+  email: z.string().email().max(254),
+});
+export type CreateCandidateDto = z.infer<typeof CreateCandidateDtoSchema>;
+
+export const CandidateDtoSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).max(120),
+  email: z.string().email().max(254),
+  status: CandidateStatusEnum,
+  countedAgainstCapAt: z.string().datetime().nullable().optional(),
+  createdAt: z.string().datetime(),
+});
+export type CandidateDto = z.infer<typeof CandidateDtoSchema>;
