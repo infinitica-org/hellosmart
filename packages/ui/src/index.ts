@@ -17,6 +17,8 @@ export * from './components/button';
 export * from './components/texture-button';
 export * from './components/icon-button';
 export * from './components/input';
+export * from './components/password-field';
+export * from './components/password-strength-meter';
 export * from './components/textarea';
 export * from './components/select';
 export * from './components/checkbox';

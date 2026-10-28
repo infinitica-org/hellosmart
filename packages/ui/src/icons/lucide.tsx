@@ -32,6 +32,8 @@ export {
   LogOut,
   Check,
   AlertCircle,
+  AlertTriangle,
+  Info,
   HelpCircle,
   ExternalLink,
   Lock,

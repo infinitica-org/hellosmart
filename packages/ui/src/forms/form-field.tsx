@@ -153,40 +153,8 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
 );
 TextField.displayName = 'TextField';
 
-export interface PasswordFieldProps extends Omit<TextFieldProps, 'type' | 'rightIcon'> {}
-
-export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
-  ({ ...props }, ref) => {
-    const [showPassword, setShowPassword] = useState(false);
-
-    const toggleButton = (
-      <button
-        type="button"
-        tabIndex={-1}
-        onClick={() => setShowPassword(!showPassword)}
-        className="text-neutral-400 hover:text-neutral-700 transition-colors focus:outline-none p-1 cursor-pointer"
-        aria-label={showPassword ? 'Hide password' : 'Show password'}
-        data-testid="password-toggle-button"
-      >
-        {showPassword ? (
-          <EyeOff className="w-4 h-4 text-neutral-500 hover:text-neutral-700" />
-        ) : (
-          <Eye className="w-4 h-4 text-neutral-400 hover:text-neutral-700" />
-        )}
-      </button>
-    );
-
-    return (
-      <TextField
-        ref={ref}
-        type={showPassword ? 'text' : 'password'}
-        rightIcon={toggleButton}
-        {...props}
-      />
-    );
-  }
-);
-PasswordField.displayName = 'PasswordField';
+export { PasswordField } from '../components/password-field';
+export type { PasswordFieldProps } from '../components/password-field';
 
 export interface TextAreaFieldProps extends Omit<TextareaProps, 'id'> {
   id?: string | undefined;
