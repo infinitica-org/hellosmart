@@ -81,9 +81,10 @@ export class MailService implements EmailSender {
       if (this.config.NODE_ENV === 'development') {
         this.logger.log(`[DEV INVITE LINK] ${inviteUrl}`);
 
-        // Forward to local Mailpit inbox on 127.0.0.1:8025 if reachable
+        // Forward to local Mailpit inbox on 127.0.0.1:8025 if reachable.
+        // Await delivery so the invitation is visible in Mailpit before this method returns.
         try {
-          fetch('http://127.0.0.1:8025/api/v1/send', {
+          const response = await fetch('http://127.0.0.1:8025/api/v1/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -113,9 +114,14 @@ export class MailService implements EmailSender {
               `,
               Text: `Welcome to ${input.orgName}! Activate your account: ${inviteUrl}`,
             }),
-          }).catch(() => {});
+            signal: AbortSignal.timeout(3_000),
+          });
+          if (!response.ok) {
+            this.logger.warn(`[Mailpit] Invitation email was not captured (HTTP ${response.status}); ensure Mailpit is running at http://127.0.0.1:8025`);
+          }
         } catch {
-          // Non-blocking if Mailpit is not running
+          // Keep local invitation creation usable when Mailpit is not running.
+          this.logger.warn('[Mailpit] Could not capture invitation email; start the Mailpit service and retry to inspect the email at http://127.0.0.1:8025');
         }
       }
 
