@@ -8,7 +8,7 @@ import type { RequestMeta } from '../auth/auth.service.js';
 import { problem } from '../../common/errors/app-http.exception.js';
 import type { UserContext } from '../../common/types/user-context.js';
 import { appendAuditEvent } from '../audit/audit-writer.js';
-import { PG_POOL } from '../database/database.tokens.js';
+import { PG_PLATFORM_POOL } from '../database/database.tokens.js';
 import { EMAIL_SENDER_PORT, type EmailSenderPort } from '../adapters/adapters.tokens.js';
 import { SessionService } from '../session/session.service.js';
 import { withPlatform } from '../tenancy/with-org.js';
@@ -21,7 +21,7 @@ const DEFAULT_MAX_CANDIDATES = 10;
 @Injectable()
 export class AdminOrganizationsService {
   constructor(
-    @Inject(PG_POOL) private readonly pool: Pool,
+    @Inject(PG_PLATFORM_POOL) private readonly pool: Pool,
     @Inject(EMAIL_SENDER_PORT) private readonly email: EmailSenderPort,
     @Inject(SessionService) private readonly sessions: SessionService,
     @Optional() @Inject(MailService) private readonly mailService?: MailService,

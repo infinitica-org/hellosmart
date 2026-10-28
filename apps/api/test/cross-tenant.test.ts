@@ -5,6 +5,9 @@ import { appendAuditEvent } from '../src/modules/audit/audit-writer.js';
 
 const DATABASE_URL =
   process.env.DATABASE_URL ?? 'postgres://hs_app:hs_app_local@127.0.0.1:5432/hellosmart';
+const DATABASE_PLATFORM_URL =
+  process.env.DATABASE_PLATFORM_URL ??
+  'postgres://hs_platform:hs_platform_local@127.0.0.1:5432/hellosmart';
 const DATABASE_ADMIN_URL =
   process.env.DATABASE_ADMIN_URL ??
   'postgres://hs_owner:hs_owner_local@127.0.0.1:5432/hellosmart';
@@ -25,6 +28,7 @@ interface TestContext {
 }
 
 let appPool: pg.Pool;
+let platformPool: pg.Pool;
 let adminPool: pg.Pool;
 let ctx: TestContext;
 let isDbAvailable = false;
@@ -47,6 +51,7 @@ isDbAvailable = await checkDbConnection();
 describe.runIf(isDbAvailable).sequential('Stream 10: PostgreSQL RLS Access Paths & Cross-Tenant Security', () => {
   beforeAll(async () => {
     appPool = new pg.Pool({ connectionString: DATABASE_URL });
+    platformPool = new pg.Pool({ connectionString: DATABASE_PLATFORM_URL });
     adminPool = new pg.Pool({ connectionString: DATABASE_ADMIN_URL });
 
     const nonce = crypto.randomBytes(4).toString('hex');
@@ -195,6 +200,7 @@ describe.runIf(isDbAvailable).sequential('Stream 10: PostgreSQL RLS Access Paths
       }
     }
     await appPool?.end();
+    await platformPool?.end();
     await adminPool?.end();
   });
 
@@ -476,12 +482,85 @@ describe.runIf(isDbAvailable).sequential('Stream 10: PostgreSQL RLS Access Paths
     }
   });
 
-  // 10. Platform Admin Context Access (S0-T10-2)
-  it('10. Platform admin context (app.is_platform = true) can query across all tenants', async () => {
+  // 10a. Attack Test: hs_app setting app.is_platform = true CANNOT forge platform access (S0-T10-2)
+  it('10a. Attack Test: hs_app setting app.is_platform = true evaluates app.is_platform() to false and yields 0 rows', async () => {
     const client = await appPool.connect();
     try {
       await client.query('BEGIN');
       await client.query("SELECT set_config('app.is_platform', 'true', true)");
+
+      // Critical assertion: app.is_platform() MUST be false because SESSION_USER is hs_app!
+      const check = await client.query('SELECT app.is_platform() AS is_plat');
+      expect(check.rows[0].is_plat).toBe(false);
+
+      // All cross-tenant reads return 0 rows under forged GUC
+      const users = await client.query('SELECT * FROM app.users WHERE id IN ($1, $2)', [ctx.userAlphaId, ctx.userBetaId]);
+      expect(users.rows).toHaveLength(0);
+
+      const orgs = await client.query('SELECT * FROM app.organizations WHERE id IN ($1, $2)', [ctx.orgAlphaId, ctx.orgBetaId]);
+      expect(orgs.rows).toHaveLength(0);
+
+      const audit = await client.query('SELECT * FROM audit.events WHERE org_id IN ($1, $2)', [ctx.orgAlphaId, ctx.orgBetaId]);
+      expect(audit.rows).toHaveLength(0);
+
+      await client.query('ROLLBACK');
+    } finally {
+      client.release();
+    }
+  });
+
+  // 10b. Attack Test: hs_app cannot insert cross-tenant records under forged platform context
+  it('10b. Attack Test: hs_app setting app.is_platform = true CANNOT insert cross-tenant records', async () => {
+    const client = await appPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query("SELECT set_config('app.is_platform', 'true', true)");
+
+      await expect(
+        client.query(`
+          INSERT INTO app.invitations (id, org_id, user_id, email, role, token_hash, expires_at)
+          VALUES (gen_random_uuid(), $1, $2, 'forged@beta.test', 'candidate', decode('5555555555555555555555555555555555555555555555555555555555555555', 'hex'), now() + interval '24 hours')
+        `, [ctx.orgBetaId, ctx.userBetaId]),
+      ).rejects.toThrow();
+
+      await client.query('ROLLBACK');
+    } finally {
+      client.release();
+    }
+  });
+
+  // 10c. Attack Test: hs_app cannot execute SET ROLE hs_platform (denied at database kernel)
+  it('10c. Attack Test: hs_app cannot execute SET ROLE hs_platform (denied at database kernel)', async () => {
+    const client = await appPool.connect();
+    try {
+      await expect(client.query('SET ROLE hs_platform')).rejects.toThrow(
+        expect.objectContaining({ code: '42501' }),
+      );
+    } finally {
+      client.release();
+    }
+  });
+
+  // 10d. Legitimate Platform Admin without GUC cannot read cross-tenant records (prevents accidental leak)
+  it('10d. Legitimate hs_platform connection without app.is_platform GUC returns 0 rows', async () => {
+    const client = await platformPool.connect();
+    try {
+      const users = await client.query('SELECT * FROM app.users WHERE id IN ($1, $2)', [ctx.userAlphaId, ctx.userBetaId]);
+      expect(users.rows).toHaveLength(0);
+    } finally {
+      client.release();
+    }
+  });
+
+  // 10e. Legitimate Platform Admin WITH app.is_platform = true can query across all tenants (S0-T10-2)
+  it('10e. Legitimate hs_platform connection with app.is_platform = true can query across all tenants', async () => {
+    const client = await platformPool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query("SELECT set_config('app.is_platform', 'true', true)");
+
+      const isPlat = await client.query('SELECT app.is_platform() AS is_plat');
+      expect(isPlat.rows[0].is_plat).toBe(true);
 
       // Can see both Org A and Org B users
       const users = await client.query(
@@ -512,7 +591,7 @@ describe.runIf(isDbAvailable).sequential('Stream 10: PostgreSQL RLS Access Paths
 
   // 11. Audit Immutability (BR-31)
   it('11. Direct UPDATE or DELETE on audit.events is strictly rejected', async () => {
-    const client = await appPool.connect();
+    const client = await platformPool.connect();
     try {
       await client.query('BEGIN');
       await client.query("SELECT set_config('app.is_platform', 'true', true)");
@@ -532,13 +611,14 @@ describe.runIf(isDbAvailable).sequential('Stream 10: PostgreSQL RLS Access Paths
   });
 
   // 12. Least Privilege Function Permissions Check (S0-T10-1)
-  it('12. Routine execution privileges are granted exclusively to hs_app and revoked from PUBLIC', async () => {
+  it('12. Routine execution privileges are granted to hs_app & hs_platform, and revoked from PUBLIC', async () => {
     const client = await appPool.connect();
     try {
       const res = await client.query(`
         SELECT
           p.proname,
           has_function_privilege('hs_app', p.oid, 'EXECUTE') AS hs_app_can_exec,
+          has_function_privilege('hs_platform', p.oid, 'EXECUTE') AS hs_platform_can_exec,
           has_function_privilege('public', p.oid, 'EXECUTE') AS public_can_exec
         FROM pg_proc p
         JOIN pg_namespace n ON n.oid = p.pronamespace
@@ -550,6 +630,7 @@ describe.runIf(isDbAvailable).sequential('Stream 10: PostgreSQL RLS Access Paths
       expect(res.rows.length).toBeGreaterThanOrEqual(5);
       for (const row of res.rows) {
         expect(row.hs_app_can_exec, `${row.proname} must be executable by hs_app`).toBe(true);
+        expect(row.hs_platform_can_exec, `${row.proname} must be executable by hs_platform`).toBe(true);
         expect(row.public_can_exec, `${row.proname} must NOT be executable by PUBLIC`).toBe(false);
       }
     } finally {

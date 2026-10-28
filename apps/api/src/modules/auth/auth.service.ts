@@ -7,7 +7,6 @@ import { appendAuditEvent } from '../audit/audit-writer.js';
 import type { AuditRecordInput } from '../audit/audit.types.js';
 import { PG_POOL } from '../database/database.tokens.js';
 import { SessionService, SESSION_TTL_SECONDS } from '../session/session.service.js';
-import { withPlatform } from '../tenancy/with-org.js';
 import { toMeDto } from './auth.mapper.js';
 import { LoginLockoutService } from './login-lockout.service.js';
 import { MfaService } from './mfa.service.js';
@@ -182,18 +181,8 @@ export class AuthService {
   }
 
   private async completeLogin(user: DbUserRow, meta: RequestMeta): Promise<MeDto> {
-    const client = await this.pool.connect();
-    try {
-      await withPlatform(client, async (tx) => {
-        await tx.query(
-          `UPDATE app.users SET last_login_at = now(), failed_logins = 0, locked_until = NULL WHERE id = $1`,
-          [user.id],
-        );
-        await this.auditLogin(user.id, user.role, user.org_id, true, meta, tx);
-      });
-    } finally {
-      client.release();
-    }
+    await this.pool.query('SELECT app.record_login_success($1)', [user.id]);
+    await this.auditLogin(user.id, user.role, user.org_id, true, meta);
     return this.toMeFromRow(user);
   }
 
@@ -225,9 +214,7 @@ export class AuthService {
     }
     const pooled = await this.pool.connect();
     try {
-      await withPlatform(pooled, async (tx) => {
-        await appendAuditEvent(tx, input);
-      });
+      await appendAuditEvent(pooled, input);
     } finally {
       pooled.release();
     }

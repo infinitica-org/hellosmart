@@ -60,7 +60,7 @@ async function ensureAppSchemas(migratorUrl: string): Promise<void> {
     await adminClient.query(`
       CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION hs_migrator;
       CREATE SCHEMA IF NOT EXISTS audit AUTHORIZATION hs_migrator;
-      GRANT USAGE ON SCHEMA app, audit TO hs_app, hs_readonly;
+      GRANT USAGE ON SCHEMA app, audit TO hs_app, hs_readonly, hs_platform;
     `);
   } finally {
     adminClient.release();
@@ -76,7 +76,7 @@ async function ensureExtensions(adminUrl: string): Promise<void> {
     await adminClient.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
     await adminClient.query('CREATE EXTENSION IF NOT EXISTS citext');
     await adminClient.query(
-      'GRANT USAGE ON SCHEMA public TO hs_migrator, hs_app, hs_readonly',
+      'GRANT USAGE ON SCHEMA public TO hs_migrator, hs_app, hs_readonly, hs_platform',
     );
   } finally {
     adminClient.release();

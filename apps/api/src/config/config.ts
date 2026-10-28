@@ -8,6 +8,7 @@ const ConfigSchema = z
     PORT: z.coerce.number().int().default(4000),
     DATABASE_URL: z.string().url(),
     DATABASE_MIGRATOR_URL: z.string().url().optional(),
+    DATABASE_PLATFORM_URL: z.string().url().optional(),
     /** Required in staging/production. Unit tests omit Redis and use in-memory stores. */
     REDIS_URL: z.string().url().optional(),
     SESSION_SECRET: z.string().min(32),
@@ -43,6 +44,9 @@ const ConfigSchema = z
       CORS_ORIGINS: corsList,
       DATABASE_MIGRATOR_URL:
         raw.DATABASE_MIGRATOR_URL ?? raw.DATABASE_URL.replace('hs_app:', 'hs_migrator:'),
+      DATABASE_PLATFORM_URL:
+        raw.DATABASE_PLATFORM_URL ??
+        raw.DATABASE_URL.replace('hs_app:hs_app_local', 'hs_platform:hs_platform_local').replace('hs_app:', 'hs_platform:'),
     };
   });
 

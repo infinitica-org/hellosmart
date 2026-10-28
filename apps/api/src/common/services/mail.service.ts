@@ -16,6 +16,7 @@ export const DEFAULT_MAIL_CONFIG: Config = {
   PORT: 4000,
   DATABASE_URL: 'postgres://localhost:5432/hellosmart_test',
   DATABASE_MIGRATOR_URL: 'postgres://localhost:5432/hellosmart_test',
+  DATABASE_PLATFORM_URL: 'postgres://localhost:5432/hellosmart_test',
   SESSION_SECRET: 'test_session_secret_at_least_32_characters_long_hello',
   CORS_ORIGINS: ['http://localhost:3000'],
   PAYMENT_GATEWAY: 'fake',

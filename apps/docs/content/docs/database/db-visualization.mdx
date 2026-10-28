@@ -161,9 +161,9 @@ ALTER TABLE app.assessments FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON app.assessments
   USING (org_id = app.current_org_id() OR app.is_platform())
   WITH CHECK (org_id = app.current_org_id() OR app.is_platform());
-
-`app.is_platform()` treats an empty session GUC as false (migration `0002_fix_is_platform_boolean`) so RLS policies do not error on `''::boolean`.
 ```
+
+`app.is_platform()` enforces dual-factor authorization (migration `0005_platform_role`): it requires both `current_setting('app.is_platform', true) = 'true'` AND authenticated database session role `SESSION_USER IN ('hs_platform', 'hs_migrator')`. Connections authenticated as `hs_app` evaluate to `false` even if an attacker attempts to set `app.is_platform = true`, neutralizing forged-context escalation attacks at the database kernel level.
 
 ### Context Injection on Every Transaction
 Before running any application query, the NestJS Fastify API sets the current organization context in the PostgreSQL transaction:
