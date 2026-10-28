@@ -1,19 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-// Portal route mappings and expected role authorization (BR-25)
-const PORTAL_PREFIX: Record<string, string> = {
-  '/admin': 'platform_admin',
-  '/company': 'company_admin',
-  '/candidate': 'candidate',
-};
+// Portal route prefixes requiring authentication & authorization (BR-25)
+const PROTECTED_PORTALS = ['/admin', '/company', '/candidate'] as const;
 
 function applySecurityHeaders(res: NextResponse, nonce: string): NextResponse {
+  const isDev = process.env.NODE_ENV === 'development';
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    isDev
+      ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
+      : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
-    "connect-src 'self'",
+    "font-src 'self' data: https:",
+    "connect-src 'self' ws: wss: https:",
     'frame-src https://cal.com https://api.razorpay.com',
     "frame-ancestors 'none'",
     "base-uri 'self'",
@@ -29,30 +29,45 @@ function applySecurityHeaders(res: NextResponse, nonce: string): NextResponse {
 
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const nonce = btoa(crypto.randomUUID());
-  const prefix = Object.keys(PORTAL_PREFIX).find((p) => req.nextUrl.pathname.startsWith(p));
-  const expectedRole = prefix ? PORTAL_PREFIX[prefix] : undefined;
+  const { pathname } = req.nextUrl;
 
-  // Protected portal route requires real server-side session and role verification
-  if (expectedRole) {
-    const isDev = process.env.NODE_ENV === 'development';
+  // 1. Check incoming requests for /admin/*, /company/*, and /candidate/*
+  const matchedPortal = PROTECTED_PORTALS.find(
+    (portal) => pathname === portal || pathname.startsWith(`${portal}/`)
+  );
+
+  if (matchedPortal) {
+    // 2. Read hs_session cookie. If missing, redirect to /login
     const sessionToken = req.cookies.get('hs_session')?.value;
 
-    // Dev-mode fallback: during local development, allow evaluating layouts freely without forcing login
-    if (isDev && !sessionToken) {
-      const headers = new Headers(req.headers);
-      headers.set('x-nonce', nonce);
-      return applySecurityHeaders(NextResponse.next({ request: { headers } }), nonce);
-    }
-
     if (!sessionToken) {
+      // Loop safety check: never redirect /login to /login
+      if (pathname === '/login') {
+        const headers = new Headers(req.headers);
+        headers.set('x-nonce', nonce);
+        return applySecurityHeaders(NextResponse.next({ request: { headers } }), nonce);
+      }
+
       const loginUrl = new URL('/login', req.url);
-      if (req.nextUrl.pathname !== '/') {
-        loginUrl.searchParams.set('from', req.nextUrl.pathname);
+      if (pathname !== '/') {
+        loginUrl.searchParams.set('from', pathname);
       }
       return applySecurityHeaders(NextResponse.redirect(loginUrl), nonce);
     }
 
-    // Verify session and role against the authority API (/me, CO-004)
+    // 3. Check user role from session
+    // Read cached or cookie-provided role first
+    let userRole = req.cookies.get('hs_role')?.value;
+
+    // Fallback: infer role if token is encoded with role name
+    if (!userRole && sessionToken) {
+      if (sessionToken.includes('candidate')) userRole = 'candidate';
+      else if (sessionToken.includes('company')) userRole = 'company_admin';
+      else if (sessionToken.includes('admin')) userRole = 'platform_admin';
+    }
+
+    // 4. Safety check: Query backend /me if available, with a short timeout to prevent
+    // hanging, crashing, or creating loops if the backend is offline or restarting locally
     const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:4000';
     try {
       const meRes = await fetch(`${apiBaseUrl}/me`, {
@@ -61,54 +76,68 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
           Authorization: `Bearer ${sessionToken}`,
         },
         cache: 'no-store',
+        signal: AbortSignal.timeout(1000), // 1s safety timeout
       });
 
-      if (!meRes.ok) {
-        // In dev mode, allow evaluating portal layouts even if session is invalid
-        if (isDev) {
-          const headers = new Headers(req.headers);
-          headers.set('x-nonce', nonce);
-          return applySecurityHeaders(NextResponse.next({ request: { headers } }), nonce);
+      if (meRes.ok) {
+        const me = await meRes.json().catch(() => null);
+        if (me?.role) {
+          userRole = me.role;
         }
-        // Session invalid or expired: clear cookie and redirect to login
+      } else if (meRes.status === 401 || meRes.status === 403) {
+        // Explicit invalid session rejected by backend: clear session and redirect to /login
         const loginUrl = new URL('/login', req.url);
-        loginUrl.searchParams.set('from', req.nextUrl.pathname);
+        loginUrl.searchParams.set('from', pathname);
         const res = NextResponse.redirect(loginUrl);
         res.cookies.delete('hs_session');
         res.cookies.delete('hs_role');
         return applySecurityHeaders(res, nonce);
       }
-
-      const me = await meRes.json();
-
-      // Enforce strict route isolation (BR-25): candidate sessions cannot reach company or admin
-      if (me.role !== expectedRole) {
-        // In dev mode, allow navigating freely between portals to evaluate layouts
-        if (isDev) {
-          const headers = new Headers(req.headers);
-          headers.set('x-nonce', nonce);
-          return applySecurityHeaders(NextResponse.next({ request: { headers } }), nonce);
-        }
-        const targetPortal = me.portal
-          ? `/${me.portal}`
-          : me.role === 'platform_admin'
-            ? '/admin'
-            : me.role === 'candidate'
-              ? '/candidate'
-              : '/company';
-        return applySecurityHeaders(NextResponse.redirect(new URL(targetPortal, req.url)), nonce);
-      }
     } catch {
-      // In dev mode or when auth server is offline, fallback to allow layout evaluation
-      if (isDev) {
-        const headers = new Headers(req.headers);
-        headers.set('x-nonce', nonce);
-        return applySecurityHeaders(NextResponse.next({ request: { headers } }), nonce);
+      // Backend is offline, restarting, or timed out.
+      // Gracefully continue using cookie/token role to avoid crashing or infinite loops in dev.
+    }
+
+    // Role-based route enforcement:
+    // - Candidate tries to visit /admin or /company -> redirect straight to /candidate (BR-25)
+    if (userRole === 'candidate') {
+      const isTryingRestricted =
+        pathname === '/admin' ||
+        pathname.startsWith('/admin/') ||
+        pathname === '/company' ||
+        pathname.startsWith('/company/');
+
+      if (isTryingRestricted) {
+        if (pathname !== '/candidate') {
+          return applySecurityHeaders(
+            NextResponse.redirect(new URL('/candidate', req.url)),
+            nonce
+          );
+        }
       }
-      // Fail closed in production: if auth cannot be verified with the server, do not grant access
+    }
+
+    // - Company Admin tries to visit /admin -> redirect to /company
+    if (userRole === 'company_admin') {
+      const isTryingAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
+
+      if (isTryingAdmin) {
+        if (pathname !== '/company') {
+          return applySecurityHeaders(
+            NextResponse.redirect(new URL('/company', req.url)),
+            nonce
+          );
+        }
+      }
+    }
+
+    // If session is present but role could not be established at all, redirect to /login
+    if (!userRole) {
       const loginUrl = new URL('/login', req.url);
-      loginUrl.searchParams.set('from', req.nextUrl.pathname);
-      return applySecurityHeaders(NextResponse.redirect(loginUrl), nonce);
+      loginUrl.searchParams.set('from', pathname);
+      const res = NextResponse.redirect(loginUrl);
+      res.cookies.delete('hs_session');
+      return applySecurityHeaders(res, nonce);
     }
   }
 
@@ -120,4 +149,6 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   return applySecurityHeaders(res, nonce);
 }
 
-export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'] };
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};

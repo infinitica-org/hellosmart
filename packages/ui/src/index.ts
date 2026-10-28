@@ -58,5 +58,9 @@ export * from './feedback/toast';
 export * from './forms/form-field';
 export * from './forms/validation-message';
 
+// Icons
+export * from './icons/lucide';
+
+
 // HelloSmart Product Domain Components
 export * from './product';

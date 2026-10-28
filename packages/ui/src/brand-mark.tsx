@@ -1,3 +1,5 @@
+'use client';
+
 import React, { ReactNode } from 'react';
 import { HelloSmartLogo, HELLOSMART_LOGO_SRC } from './hellosmart/logo';
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { PageHeader, EmptyState } from '@hs/ui';
+import { PageHeader, EmptyState, StatCard, Card, Alert } from '@hs/ui';
 
 export default function CompanyDashboardPage() {
   return (
@@ -8,80 +8,70 @@ export default function CompanyDashboardPage() {
         title="Hiring Pipeline"
         description="Configure work simulation assessments, invite candidates, and review rubric evaluations."
         badge={{ text: 'MMP Active', variant: 'info' }}
-        breadcrumbs={[
-          { label: 'Company', href: '/company' },
-          { label: 'Dashboard' },
-        ]}
+        data-testid="company-page-header"
       />
 
       {/* Real Pipeline Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div className="glass-card rounded-2xl border border-slate-800/80 p-6">
-          <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-            Configured Assessments
-          </div>
-          <div className="text-3xl font-extrabold font-mono text-white mt-2">0</div>
-          <div className="text-[11px] text-slate-500 mt-2">
-            No active assessment blueprints
-          </div>
-        </div>
-
-        <div className="glass-card rounded-2xl border border-slate-800/80 p-6">
-          <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-            Invited Candidates
-          </div>
-          <div className="text-3xl font-extrabold font-mono text-white mt-2">0</div>
-          <div className="text-[11px] text-slate-500 mt-2">
-            Remaining quota: 20 candidates (BR-06)
-          </div>
-        </div>
-
-        <div className="glass-card rounded-2xl border border-slate-800/80 p-6">
-          <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-            Submissions to Review
-          </div>
-          <div className="text-3xl font-extrabold font-mono text-white mt-2">0</div>
-          <div className="text-[11px] text-slate-500 mt-2">
-            Zero pending agent evaluations
-          </div>
-        </div>
+        <StatCard
+          label="Configured Assessments"
+          value="0"
+          description="No active assessment blueprints"
+          data-testid="metric-configured-assessments"
+        />
+        <StatCard
+          label="Invited Candidates"
+          value="0"
+          description="Remaining quota: 20 candidates (BR-06)"
+          data-testid="metric-invited-candidates"
+        />
+        <StatCard
+          label="Submissions to Review"
+          value="0"
+          description="Zero pending agent evaluations"
+          data-testid="metric-submissions-to-review"
+        />
       </div>
 
       {/* Assessments Section */}
-      <div className="glass-card rounded-2xl border border-slate-800/80 p-6 sm:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <Card className="p-6 sm:p-8 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-base font-semibold text-slate-100">Live Assessments</h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <h2 className="text-base font-medium text-neutral-900">Live Assessments</h2>
+            <p className="text-xs text-neutral-500 font-normal mt-0.5">
               Assigned templates are private to your organization (BR-02).
             </p>
           </div>
         </div>
 
+        {/* Clean Empty State */}
         <EmptyState
-          title="No assessments published yet"
-          description="Create your first assessment from assigned private templates and invite candidates to start real work simulation."
+          title="No assessments created yet"
+          description="No assessments published yet. Create your first assessment from assigned private templates and invite candidates to start real work simulation."
+          data-testid="company-empty-state"
           action={{
-            label: 'Explore Templates',
+            label: 'Create Assessment',
             href: '/company',
           }}
         />
-      </div>
+      </Card>
 
       {/* Review Workflow Guideline */}
-      <div className="rounded-2xl border border-slate-800/60 bg-slate-950/40 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-slate-400">
-        <div className="space-y-1">
-          <div className="font-semibold text-slate-200">
-            AI Reviewer Evaluation Process
+      <Alert variant="info" className="text-xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
+          <div className="space-y-1">
+            <div className="font-semibold text-neutral-900">
+              AI Reviewer Evaluation Process
+            </div>
+            <p className="text-neutral-600 font-normal">
+              Submissions are scored independently by multi-dimensional agents citing direct evidence (BR-18, BR-19).
+            </p>
           </div>
-          <p>
-            Submissions are scored independently by multi-dimensional agents citing direct evidence (BR-18, BR-19).
-          </p>
+          <div className="font-mono text-primary bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/25 font-normal shrink-0">
+            Human Final Override: Enforced
+          </div>
         </div>
-        <div className="font-mono text-indigo-400 bg-indigo-950/50 px-3 py-1.5 rounded-lg border border-indigo-800/60">
-          Human Final Override: Enforced
-        </div>
-      </div>
+      </Alert>
     </div>
   );
 }
