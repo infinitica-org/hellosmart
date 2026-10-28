@@ -63,6 +63,31 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if ((nodeEnv === 'production' || nodeEnv === 'staging') && !parsed.data.REDIS_URL) {
     throw new Error('REDIS_URL is required in staging and production');
   }
+  if ((nodeEnv === 'production' || nodeEnv === 'staging') && !env.DATABASE_PLATFORM_URL) {
+    throw new Error('DATABASE_PLATFORM_URL is required in staging and production');
+  }
+  if (parsed.data.DATABASE_PLATFORM_URL) {
+    try {
+      const platformUrl = new URL(parsed.data.DATABASE_PLATFORM_URL);
+      if (platformUrl.username === 'hs_app') {
+        throw new Error('DATABASE_PLATFORM_URL cannot use hs_app runtime role');
+      }
+    } catch (e: any) {
+      if (e.message?.includes('hs_app')) throw e;
+      throw new Error('Invalid DATABASE_PLATFORM_URL');
+    }
+  }
+  if (parsed.data.DATABASE_URL) {
+    try {
+      const appUrl = new URL(parsed.data.DATABASE_URL);
+      if (appUrl.username === 'hs_platform' || appUrl.username === 'postgres' || appUrl.username === 'hs_migrator') {
+        throw new Error('DATABASE_URL must connect as restricted runtime role (hs_app)');
+      }
+    } catch (e: any) {
+      if (e.message?.includes('restricted runtime role')) throw e;
+      throw new Error('Invalid DATABASE_URL');
+    }
+  }
   if (nodeEnv === 'production') {
     const { PAYMENT_GATEWAY, EMAIL_PROVIDER, WORKSPACE_RUNTIME } = parsed.data;
     if (
