@@ -22,6 +22,7 @@ export const DEFAULT_MAIL_CONFIG: Config = {
   EMAIL_PROVIDER: 'fake',
   WORKSPACE_RUNTIME: 'fake',
   APP_BASE_URL: 'http://localhost:3000',
+  MAILPIT_URL: 'http://127.0.0.1:8025',
 };
 
 @Injectable()
@@ -83,8 +84,9 @@ export class MailService implements EmailSender {
 
         // Forward to local Mailpit inbox on 127.0.0.1:8025 if reachable.
         // Await delivery so the invitation is visible in Mailpit before this method returns.
+        const mailpitUrl = this.config.MAILPIT_URL ?? 'http://127.0.0.1:8025';
         try {
-          const response = await fetch('http://127.0.0.1:8025/api/v1/send', {
+          const response = await fetch(`${mailpitUrl}/api/v1/send`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -117,11 +119,11 @@ export class MailService implements EmailSender {
             signal: AbortSignal.timeout(3_000),
           });
           if (!response.ok) {
-            this.logger.warn(`[Mailpit] Invitation email was not captured (HTTP ${response.status}); ensure Mailpit is running at http://127.0.0.1:8025`);
+            this.logger.warn(`[Mailpit] Invitation email was not captured (HTTP ${response.status}); ensure Mailpit is running at ${mailpitUrl}`);
           }
-        } catch {
+        } catch (err) {
           // Keep local invitation creation usable when Mailpit is not running.
-          this.logger.warn('[Mailpit] Could not capture invitation email; start the Mailpit service and retry to inspect the email at http://127.0.0.1:8025');
+          this.logger.warn(`[Mailpit] Could not capture invitation email (${(err as Error).message}); ensure Mailpit is running at ${mailpitUrl}`);
         }
       }
 

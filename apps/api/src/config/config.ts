@@ -18,6 +18,8 @@ const ConfigSchema = z
     APP_BASE_URL: z.string().url().default('http://localhost:3000'),
     /** Base32 TOTP secret for platform admin MFA (dev/test). Production uses vault via mfa_secret_ref. */
     PLATFORM_ADMIN_MFA_SECRET: z.string().min(16).optional(),
+    /** Optional Mailpit URL for local email capture in development. */
+    MAILPIT_URL: z.string().url().default('http://127.0.0.1:8025'),
   })
   .transform((raw) => {
     const corsList = raw.CORS_ORIGINS
