@@ -112,16 +112,41 @@ describe('Next.js Route Protection Middleware', () => {
     expect(res.status).toBe(200);
   });
 
-  it('safety check: does not crash when backend is offline or restarting', async () => {
+  it('safety check: does not crash when backend is offline or restarting in dev', async () => {
     const req = new NextRequest('http://localhost:3000/candidate', {
       headers: {
         cookie: 'hs_session=sess_abc_candidate; hs_role=candidate',
       },
     });
 
-
-    
     const res = await middleware(req);
     expect(res.status).toBe(200);
+  });
+
+  it('fails closed in production if backend is unreachable', async () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalAllowDev = process.env.ALLOW_DEV_LOGIN;
+
+    try {
+      // @ts-expect-error override env for test
+      process.env.NODE_ENV = 'production';
+      delete process.env.ALLOW_DEV_LOGIN;
+
+      const req = new NextRequest('http://localhost:3000/admin', {
+        headers: {
+          cookie: 'hs_session=some_unverified_token; hs_role=platform_admin',
+        },
+      });
+
+      const res = await middleware(req);
+      // In production, unverified session must fail closed to /login
+      expect(res.status).toBe(307);
+      const location = res.headers.get('location');
+      expect(location).toContain('/login');
+    } finally {
+      // @ts-expect-error restore env
+      process.env.NODE_ENV = originalEnv;
+      if (originalAllowDev) process.env.ALLOW_DEV_LOGIN = originalAllowDev;
+    }
   });
 });

@@ -44,7 +44,6 @@
     "vite": "^5.4.11"
   },
   "dependencies": {
-    "lucide-react": "^1.61.0",
     "zxcvbn": "4.4.2"
   }
 }

@@ -5,9 +5,20 @@ import { Check, AlertCircle, ShieldCheck } from '../icons/lucide';
 
 export type PasswordStrengthLevel = 0 | 1 | 2 | 3 | 4;
 
+export const MIN_PASSWORD_LENGTH = 12;
+export const MAX_PASSWORD_LENGTH = 128;
+
 export interface PasswordRequirements {
-  /** True if password length is at least 8 characters. */
+  /** True if password length is at least 12 characters. */
   hasMinLength: boolean;
+  /** True if password contains at least one uppercase letter (A-Z). */
+  hasUppercase: boolean;
+  /** True if password contains at least one lowercase letter (a-z). */
+  hasLowercase: boolean;
+  /** True if password contains at least one numeric digit (0-9). */
+  hasNumber: boolean;
+  /** True if password contains at least one special symbol. */
+  hasSymbol: boolean;
   /** True if password is not in the list of common/easily guessed passwords. */
   isNotCommon: boolean;
   /** True if password does not contain the user's name, email, or company. */
@@ -101,9 +112,13 @@ export function evaluatePassword(
     return {
       score: 0,
       label: 'Empty',
-      tip: 'Enter a strong password of at least 8 characters.',
+      tip: 'Enter a strong password of at least 12 characters.',
       requirements: {
         hasMinLength: false,
+        hasUppercase: false,
+        hasLowercase: false,
+        hasNumber: false,
+        hasSymbol: false,
         isNotCommon: false,
         isNotRelated: true,
       },
@@ -113,8 +128,13 @@ export function evaluatePassword(
 
   const pwdLower = password.toLowerCase();
 
-  // 1. Length check (min 8)
-  const hasMinLength = password.length >= 8;
+  // 1. Policy criteria matching PasswordPolicySchema
+  const hasMinLength = password.length >= MIN_PASSWORD_LENGTH && password.length <= MAX_PASSWORD_LENGTH;
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasLowercase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSymbol = /[^A-Za-z0-9]/.test(password);
+  const hasAllComplexity = hasUppercase && hasLowercase && hasNumber && hasSymbol;
 
   // 2. Common password check
   let isNotCommon = true;
@@ -155,13 +175,25 @@ export function evaluatePassword(
 
   if (!hasMinLength) {
     score = 1;
-    tip = 'Make your password at least 8 characters long.';
+    tip = 'Make your password at least 12 characters long.';
   } else if (!isNotCommon) {
     score = 1;
     tip = 'This is a very common password. Try combining unrelated words.';
   } else if (!isNotRelated) {
     score = 1;
     tip = 'Avoid personal details or company names in your password.';
+  } else if (!hasUppercase) {
+    score = 1;
+    tip = 'Add at least one uppercase letter (A-Z).';
+  } else if (!hasLowercase) {
+    score = 1;
+    tip = 'Add at least one lowercase letter (a-z).';
+  } else if (!hasNumber) {
+    score = 1;
+    tip = 'Add at least one number (0-9).';
+  } else if (!hasSymbol) {
+    score = 1;
+    tip = 'Add at least one special character (!@#$%...).';
   } else if (zxcvbnInstance) {
     // Enhanced zxcvbn evaluation
     try {
@@ -189,25 +221,20 @@ export function evaluatePassword(
     }
   } else {
     // Fast heuristic entropy estimation
-    const hasUpper = /[A-Z]/.test(password);
-    const hasLower = /[a-z]/.test(password);
-    const hasDigit = /[0-9]/.test(password);
-    const hasSpecial = /[^A-Za-z0-9]/.test(password);
+    const varietyCount = [hasUppercase, hasLowercase, hasNumber, hasSymbol].filter(Boolean).length;
 
-    const varietyCount = [hasUpper, hasLower, hasDigit, hasSpecial].filter(Boolean).length;
-
-    if (password.length >= 14 && varietyCount >= 3) {
+    if (password.length >= 16 && varietyCount >= 4) {
       score = 4;
       tip = 'Excellent password! Highly resilient to brute-force attacks.';
-    } else if (password.length >= 10 && varietyCount >= 3) {
+    } else if (password.length >= 14 && varietyCount >= 3) {
       score = 3;
       tip = 'Strong password. Good combination of length and characters.';
-    } else if (password.length >= 8 && varietyCount >= 2) {
+    } else if (password.length >= 12 && varietyCount >= 3) {
       score = 2;
       tip = 'Make it longer or add variety to strengthen your password.';
     } else {
       score = 1;
-      tip = 'Add another word or mix uppercase, numbers, and symbols.';
+      tip = 'Mix uppercase, lowercase, numbers, and symbols.';
     }
   }
 
@@ -219,7 +246,7 @@ export function evaluatePassword(
     4: 'Strong',
   };
 
-  const isValid = hasMinLength && isNotCommon && isNotRelated && score >= 2;
+  const isValid = hasMinLength && hasAllComplexity && isNotCommon && isNotRelated && score >= 2;
 
   return {
     score,
@@ -227,6 +254,10 @@ export function evaluatePassword(
     tip,
     requirements: {
       hasMinLength,
+      hasUppercase,
+      hasLowercase,
+      hasNumber,
+      hasSymbol,
       isNotCommon,
       isNotRelated,
     },
@@ -404,7 +435,83 @@ export function PasswordStrengthMeter({
                   •
                 </span>
               )}
-              <span>At least 8 characters</span>
+              <span>At least 12 characters</span>
+            </li>
+
+            <li
+              data-testid="req-uppercase"
+              className={`flex items-center gap-2 transition-colors ${
+                requirements.hasUppercase ? 'text-emerald-700 font-medium' : 'text-neutral-500'
+              }`}
+            >
+              {requirements.hasUppercase ? (
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+              ) : (
+                <span
+                  className="w-3.5 h-3.5 rounded-full border border-neutral-300 flex items-center justify-center text-[10px] text-neutral-400 shrink-0"
+                  aria-hidden="true"
+                >
+                  •
+                </span>
+              )}
+              <span>At least one uppercase letter (A-Z)</span>
+            </li>
+
+            <li
+              data-testid="req-lowercase"
+              className={`flex items-center gap-2 transition-colors ${
+                requirements.hasLowercase ? 'text-emerald-700 font-medium' : 'text-neutral-500'
+              }`}
+            >
+              {requirements.hasLowercase ? (
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+              ) : (
+                <span
+                  className="w-3.5 h-3.5 rounded-full border border-neutral-300 flex items-center justify-center text-[10px] text-neutral-400 shrink-0"
+                  aria-hidden="true"
+                >
+                  •
+                </span>
+              )}
+              <span>At least one lowercase letter (a-z)</span>
+            </li>
+
+            <li
+              data-testid="req-number"
+              className={`flex items-center gap-2 transition-colors ${
+                requirements.hasNumber ? 'text-emerald-700 font-medium' : 'text-neutral-500'
+              }`}
+            >
+              {requirements.hasNumber ? (
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+              ) : (
+                <span
+                  className="w-3.5 h-3.5 rounded-full border border-neutral-300 flex items-center justify-center text-[10px] text-neutral-400 shrink-0"
+                  aria-hidden="true"
+                >
+                  •
+                </span>
+              )}
+              <span>At least one number (0-9)</span>
+            </li>
+
+            <li
+              data-testid="req-symbol"
+              className={`flex items-center gap-2 transition-colors ${
+                requirements.hasSymbol ? 'text-emerald-700 font-medium' : 'text-neutral-500'
+              }`}
+            >
+              {requirements.hasSymbol ? (
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+              ) : (
+                <span
+                  className="w-3.5 h-3.5 rounded-full border border-neutral-300 flex items-center justify-center text-[10px] text-neutral-400 shrink-0"
+                  aria-hidden="true"
+                >
+                  •
+                </span>
+              )}
+              <span>At least one special character</span>
             </li>
 
             <li

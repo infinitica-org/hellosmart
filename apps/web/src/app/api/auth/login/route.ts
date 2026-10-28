@@ -82,10 +82,20 @@ const DEV_ACCOUNTS: Record<string, DevUser> = {
   },
 };
 
-// Track failed attempts in memory for 429 simulation
+// DEVELOPMENT / TEST FIXTURE IN-MEMORY RATE LIMITING
+// Note: In production, rate limiting is strictly enforced at the API gateway / Redis layer.
+// This in-memory store and the test string 'ratelimit' exist solely as test fixtures for local development and unit tests.
 const failedAttempts: Record<string, number> = {};
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  // Gate development fallback behind an explicit opt-in.
+  // INVARIANT: production is unconditionally excluded — no flag can override this.
+  // For local dev: set NODE_ENV=development and ENABLE_DEV_ACCOUNTS=true.
+  // Never set ENABLE_DEV_ACCOUNTS in staging or production.
+  const devFallbackEnabled =
+    process.env.NODE_ENV === 'development' &&
+    process.env.ENABLE_DEV_ACCOUNTS === 'true';
+
   try {
     const body = await req.json();
     const { email, password, mfaCode } = body;
@@ -104,7 +114,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Rate limiting check (429 simulation for > 4 failed attempts or explicit rate-limit testing)
+    // Rate limiting check (429 simulation for > 4 failed attempts or explicit rate-limit testing fixture)
     if (normalizedEmail.includes('ratelimit') || (failedAttempts[normalizedEmail] && failedAttempts[normalizedEmail] >= 5)) {
       return NextResponse.json(
         {
@@ -119,7 +129,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:4000';
 
-    // First attempt real backend call if available
+    // 1. Attempt real backend authentication first
     try {
       const apiRes = await fetch(`${apiBaseUrl}/auth/login`, {
         method: 'POST',
@@ -141,7 +151,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         return res;
       }
 
-      // If backend returned a specific error status, relay it
+      // If backend returned a specific error status (401, 403, 429, etc.), relay it directly.
+      // Never fall back to DEV_ACCOUNTS when the backend is reachable.
       return NextResponse.json(
         data || {
           type: 'about:blank',
@@ -152,10 +163,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         { status: apiRes.status }
       );
     } catch {
-      // Backend not running / offline: fall back to dev-mode authentication
+      // Backend offline / unreachable
+      // Never use demo credentials if the backend is unavailable
+      // unless explicitly enabled for local development. Fail closed with 503.
+      if (!devFallbackEnabled) {
+        return NextResponse.json(
+          {
+            type: 'about:blank',
+            title: 'Authentication Service Unavailable',
+            status: 503,
+            detail: 'The authentication service is currently unavailable. Please try again later.',
+          },
+          { status: 503 }
+        );
+      }
     }
 
-    // Dev-mode fallback authentication
+    // 2. Development-only mock fallback (reachable ONLY when devFallbackEnabled is true)
     const user = DEV_ACCOUNTS[normalizedEmail];
 
     if (!user) {
@@ -184,7 +208,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // In dev mode, any test password with length >= 6 is accepted, except explicit "wrongpassword"
+    // In dev mode, check basic password validity
     if (password === 'wrongpassword' || password.length < 6) {
       failedAttempts[normalizedEmail] = (failedAttempts[normalizedEmail] || 0) + 1;
       return NextResponse.json(
@@ -198,7 +222,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Check MFA requirement
+    // Step 2a: Check MFA requirement
+    // When MFA is required, DO NOT issue session cookies or tokens until verified.
     if (user.requiresMfa && !mfaCode) {
       return NextResponse.json(
         {
@@ -212,7 +237,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // If MFA was required, validate TOTP code (must be 6 digits)
+    // Step 2b: Local development mock MFA verification
+    // NOTE: This mock verification is strictly for local dev testing; production MFA is verified by backend.
     if (user.requiresMfa && mfaCode) {
       const sanitizedCode = mfaCode.trim();
       if (!/^\d{6}$/.test(sanitizedCode) || sanitizedCode === '000000') {
@@ -231,6 +257,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Successful login: reset failed attempts
     failedAttempts[normalizedEmail] = 0;
 
+    // Issue a cryptographically secure random session token for dev mode
+    const devToken = `hs_dev_${crypto.randomUUID()}`;
+
     const sessionPayload = {
       user: {
         id: `usr_${user.portal}_01`,
@@ -240,18 +269,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       },
       role: user.role,
       portal: user.portal,
-      token: `hs_sess_${Date.now()}_${user.role}`,
+      token: devToken,
     };
 
     const res = NextResponse.json(sessionPayload, { status: 200 });
 
-    // Set cookies for role and session so middleware and client work smoothly
-    res.cookies.set('hs_session', sessionPayload.token, {
+    // Session cookie: HttpOnly, SameSite=lax, Secure in production
+    res.cookies.set('hs_session', devToken, {
       path: '/',
-      httpOnly: false,
+      httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
     });
+
+    // Client role hint:
+    // INVARIANT: hs_role is non-httpOnly for UI display hints only.
+    // Server and middleware authorization NEVER trust this cookie.
     res.cookies.set('hs_role', user.role, {
       path: '/',
       httpOnly: false,

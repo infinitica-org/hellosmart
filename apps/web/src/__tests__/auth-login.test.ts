@@ -108,6 +108,76 @@ describe('Auth Login API Route & Handlers', () => {
     expect(data.portal).toBe('candidate');
   });
 
+  it('sets HttpOnly attribute on hs_session cookie', async () => {
+    const req = new NextRequest('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'candidate@example.com', password: 'CandidatePassword123!' }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const sessionCookie = res.cookies.get('hs_session');
+    expect(sessionCookie?.httpOnly).toBe(true);
+    expect(sessionCookie?.sameSite).toBe('lax');
+  });
+
+  it('fails closed in production when demo accounts are disabled and backend fails', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    const originalEnableDevAccounts = process.env.ENABLE_DEV_ACCOUNTS;
+
+    try {
+      // @ts-expect-error override env for test
+      process.env.NODE_ENV = 'production';
+      delete process.env.ENABLE_DEV_ACCOUNTS;
+
+      const req = new NextRequest('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'admin@hellosmart.ai', password: 'AdminPassword123!' }),
+      });
+
+      const res = await POST(req);
+      // In production with backend unreachable, must fail closed with 503
+      expect(res.status).toBe(503);
+      const data = await res.json();
+      expect(data.title).toBe('Authentication Service Unavailable');
+    } finally {
+      // @ts-expect-error restore env
+      process.env.NODE_ENV = originalNodeEnv;
+      if (originalEnableDevAccounts !== undefined) {
+        process.env.ENABLE_DEV_ACCOUNTS = originalEnableDevAccounts;
+      }
+    }
+  });
+
+  it('fails closed in staging even if ENABLE_DEV_ACCOUNTS=true is mistakenly set', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    const originalEnableDevAccounts = process.env.ENABLE_DEV_ACCOUNTS;
+
+    try {
+      // @ts-expect-error override env for test — simulates a staging misconfiguration
+      process.env.NODE_ENV = 'staging';
+      process.env.ENABLE_DEV_ACCOUNTS = 'true';
+
+      const req = new NextRequest('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'company@example.com', password: 'CompanyPassword123!' }),
+      });
+
+      const res = await POST(req);
+      // Must NOT authenticate via DEV_ACCOUNTS; backend offline → 503
+      expect(res.status).toBe(503);
+    } finally {
+      // @ts-expect-error restore env
+      process.env.NODE_ENV = originalNodeEnv;
+      if (originalEnableDevAccounts !== undefined) {
+        process.env.ENABLE_DEV_ACCOUNTS = originalEnableDevAccounts;
+      } else {
+        delete process.env.ENABLE_DEV_ACCOUNTS;
+      }
+    }
+  });
+
   it('logs out and clears session cookies', async () => {
     const req = new NextRequest('http://localhost:3000/api/auth/logout', {
       method: 'POST',

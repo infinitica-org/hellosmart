@@ -11,7 +11,7 @@ import {
   validateInvitation,
   WeakPasswordError,
 } from '../src/lib/api-client.js';
-import { evaluatePassword } from '../src/components/auth/password-strength-meter.js';
+import { evaluatePassword } from '@hs/ui';
 
 describe('S0-T08-2: Frontend Invitation Acceptance & Password Reset', () => {
   beforeEach(() => {
@@ -143,45 +143,44 @@ describe('S0-T08-2: Frontend Invitation Acceptance & Password Reset', () => {
   describe('3. Password Policy & Strength Evaluation (S0-T17 Coordination)', () => {
     it('evaluates strong password satisfying all 5 criteria', () => {
       const evaluation = evaluatePassword('CorrectHorseBatteryStaple1!');
-      expect(evaluation.isStrong).toBe(true);
-      expect(evaluation.score).toBe(5);
-      expect(evaluation.label).toBe('Strong');
-      expect(evaluation.rules.every((r) => r.met)).toBe(true);
+      expect(evaluation.isValid).toBe(true);
+      expect(evaluation.score).toBeGreaterThanOrEqual(3);
+      expect(['Good', 'Strong']).toContain(evaluation.label);
+      expect(evaluation.requirements.hasMinLength).toBe(true);
+      expect(evaluation.requirements.hasUppercase).toBe(true);
+      expect(evaluation.requirements.hasLowercase).toBe(true);
+      expect(evaluation.requirements.hasNumber).toBe(true);
+      expect(evaluation.requirements.hasSymbol).toBe(true);
     });
 
     it('detects missing length (< 12 characters)', () => {
       const evaluation = evaluatePassword('Short1!Aa');
-      const lengthRule = evaluation.rules.find((r) => r.id === 'length')!;
-      expect(lengthRule.met).toBe(false);
-      expect(evaluation.isStrong).toBe(false);
+      expect(evaluation.requirements.hasMinLength).toBe(false);
+      expect(evaluation.isValid).toBe(false);
     });
 
     it('detects missing uppercase letter', () => {
       const evaluation = evaluatePassword('lowercase_only_password_123!');
-      const upperRule = evaluation.rules.find((r) => r.id === 'uppercase')!;
-      expect(upperRule.met).toBe(false);
-      expect(evaluation.isStrong).toBe(false);
+      expect(evaluation.requirements.hasUppercase).toBe(false);
+      expect(evaluation.isValid).toBe(false);
     });
 
     it('detects missing lowercase letter', () => {
       const evaluation = evaluatePassword('UPPERCASE_ONLY_PASSWORD_123!');
-      const lowerRule = evaluation.rules.find((r) => r.id === 'lowercase')!;
-      expect(lowerRule.met).toBe(false);
-      expect(evaluation.isStrong).toBe(false);
+      expect(evaluation.requirements.hasLowercase).toBe(false);
+      expect(evaluation.isValid).toBe(false);
     });
 
     it('detects missing numeric digit', () => {
       const evaluation = evaluatePassword('NoDigitsHereSpecialChars!!Aa');
-      const numberRule = evaluation.rules.find((r) => r.id === 'number')!;
-      expect(numberRule.met).toBe(false);
-      expect(evaluation.isStrong).toBe(false);
+      expect(evaluation.requirements.hasNumber).toBe(false);
+      expect(evaluation.isValid).toBe(false);
     });
 
     it('detects missing special character', () => {
       const evaluation = evaluatePassword('NoSpecialChars123456789Aa');
-      const specialRule = evaluation.rules.find((r) => r.id === 'special')!;
-      expect(specialRule.met).toBe(false);
-      expect(evaluation.isStrong).toBe(false);
+      expect(evaluation.requirements.hasSymbol).toBe(false);
+      expect(evaluation.isValid).toBe(false);
     });
   });
 
