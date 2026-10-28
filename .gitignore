@@ -50,3 +50,7 @@ Thumbs.db
 
 # zoho
 zoho/
+
+# playwright
+test-results/
+playwright-report/
