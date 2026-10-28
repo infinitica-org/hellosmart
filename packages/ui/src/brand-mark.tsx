@@ -1,63 +1,126 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
+import { HelloSmartLogo, HELLOSMART_LOGO_SRC } from './hellosmart/logo';
+
+export type BrandMarkVariant = 'mixed' | 'black' | 'white';
 
 export interface BrandMarkProps {
   /** If true, hides the "Powered by hellosmart.ai" caption per BR-28 white-label entitlement */
   whiteLabel?: boolean | undefined;
+  /** Whether to show the subtitle / "Powered by" caption. When false, renders only title */
+  showSubtitle?: boolean | undefined;
+  /** Custom subtitle override */
+  subtitle?: ReactNode | undefined;
   className?: string | undefined;
   showLogo?: boolean | undefined;
-  size?: ('sm' | 'md' | 'lg') | undefined;
+  size?: ('sm' | 'md' | 'lg' | 'xl') | undefined;
+  /** Direct logo size override (xs, sm, md, lg, xl, 2xl, or numeric px) */
+  logoSize?: ('xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | number) | undefined;
+  logoSrc?: string | undefined;
+  logoVariant?: ('image' | 'vector') | undefined;
+  logoRounded?: ('none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full') | undefined;
+  /**
+   * Color variant for full brand text:
+   * - 'mixed': Black title with brand orange .ai (Default)
+   * - 'black': Solid black full text throughout
+   * - 'white': Crisp white full text for dark backgrounds
+   */
+  variant?: BrandMarkVariant | undefined;
+  /** Whether to show the text alongside the logo. Set false for logo-only */
+  fullText?: boolean | undefined;
+  /** Optional custom title override */
+  customTitle?: ReactNode | undefined;
 }
 
 export function BrandMark({
   whiteLabel = false,
+  showSubtitle,
+  subtitle,
   className = '',
   showLogo = true,
   size = 'md',
+  logoSize,
+  logoSrc = HELLOSMART_LOGO_SRC,
+  logoVariant = 'image',
+  logoRounded = 'lg',
+  variant = 'mixed',
+  fullText = true,
+  customTitle,
 }: BrandMarkProps): React.JSX.Element {
   const sizeClasses = {
     sm: 'text-xs',
     md: 'text-sm',
     lg: 'text-base',
+    xl: 'text-lg',
   };
 
-  const iconSizes = {
-    sm: 'w-4 h-4',
-    md: 'w-5 h-5',
-    lg: 'w-7 h-7',
+  const logoSizes: Record<'sm' | 'md' | 'lg' | 'xl', 'sm' | 'md' | 'lg' | 'xl'> = {
+    sm: 'sm',
+    md: 'md',
+    lg: 'lg',
+    xl: 'xl',
   };
+
+  // Subtitle is hidden if showSubtitle is false or whiteLabel is true
+  const shouldShowSubtitle = showSubtitle !== undefined ? showSubtitle : !whiteLabel;
+
+  // Color mappings per variant: mixed, black, white
+  const textStyles = {
+    mixed: {
+      title: 'text-neutral-900',
+      dotAi: 'text-primary',
+      caption: 'text-neutral-500',
+      captionAi: 'text-primary',
+    },
+    black: {
+      title: 'text-black',
+      dotAi: 'text-black',
+      caption: 'text-neutral-700',
+      captionAi: 'text-black',
+    },
+    white: {
+      title: 'text-white',
+      dotAi: 'text-white',
+      caption: 'text-neutral-300',
+      captionAi: 'text-white',
+    },
+  }[variant];
+
+  const effectiveLogoSize = logoSize ?? logoSizes[size];
 
   return (
     <div className={`inline-flex items-center gap-2.5 font-medium select-none ${className}`}>
       {showLogo && (
-        <div
-          className={`${iconSizes[size]} rounded-lg bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 p-[1px] shadow-sm flex items-center justify-center`}
-        >
-          <div className="w-full h-full bg-slate-950/80 rounded-[7px] flex items-center justify-center">
-            <svg
-              className="w-3/5 h-3/5 text-indigo-400"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </svg>
-          </div>
-        </div>
+        <HelloSmartLogo
+          size={effectiveLogoSize}
+          src={logoSrc}
+          variant={logoVariant}
+          rounded={logoRounded}
+          className="transition-transform duration-200 hover:scale-105"
+        />
       )}
 
-      <div className="flex flex-col">
-        <span className={`font-semibold tracking-tight text-slate-100 ${sizeClasses[size]}`}>
-          HelloSmart<span className="text-indigo-400">.ai</span>
-        </span>
-        {!whiteLabel && (
-          <span className="text-[10px] text-slate-400 tracking-wider font-medium -mt-0.5">
-            Powered by hellosmart.ai
-          </span>
-        )}
-      </div>
+      {fullText && (
+        <div className="flex flex-col">
+          {customTitle ? (
+            <span className={`font-semibold tracking-tight ${textStyles.title} ${sizeClasses[size]}`}>
+              {customTitle}
+            </span>
+          ) : (
+            <span className={`font-semibold tracking-tight ${textStyles.title} ${sizeClasses[size]}`}>
+              HelloSmart<span className={textStyles.dotAi}>.ai</span>
+            </span>
+          )}
+          {shouldShowSubtitle && (
+            <span className={`text-[10px] tracking-wider font-normal -mt-0.5 ${textStyles.caption}`}>
+              {subtitle || (
+                <>
+                  Powered by hellosmart<span className={textStyles.captionAi}>.ai</span>
+                </>
+              )}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

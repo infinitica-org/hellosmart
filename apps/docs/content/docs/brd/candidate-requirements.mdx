@@ -1,0 +1,111 @@
+---
+title: "BRD: Candidate Requirements (CA-001 – CA-023)"
+description: "Candidate portal, workspace modes, full-screen enforcement, autosave, AI assistant, and result viewing requirements."
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+# Business Requirements: Candidate (CA-001 – CA-023)
+
+Requirements for candidates taking assessments. Candidates arrive by emailed link or through the master login, where role-based access control (RBAC) securely routes them to the candidate portal. Candidates can never access company or platform admin routes (BR-25).
+
+Total Candidate Requirements: **23** (Must: 17, Should: 6, Could: 0 | MMP: 18, Phase 2: 5, Phase 3: 0).
+
+---
+
+Requirements for candidates taking assessments. Candidates arrive by emailed link or through the same master login, where role-based access routes them to the candidate portal.
+
+### 8.1 Access
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-001** | Access via emailed link | Link opens set-password page; password reset is forced on first login; link is single-use and expiring. | Must | MMP |  |
+| **CA-002** | Sign in from the master login with RBAC | Same login page as other roles; role Candidate lands on the candidate portal; candidates cannot reach company or admin routes. | Must | MMP |  |
+| **CA-003** | Forgot / reset password; change password | Emailed reset link; password policy enforced. | Must | MMP |  |
+
+### 8.2 Dashboard
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-004** | See assigned workspaces (tasks) | Cards/list with task name, company, mode, time rules and status. | Must | MMP | Statuses: Invited, Window not open, Ready, Not connected, Connected, In progress, Disconnected (resumable), Submitted, Expired. |
+| **CA-005** | Workspace connect state | Each workspace shows 'Connected' or 'Not connected' with a Connect/Resume button. | Must | MMP |  |
+
+### 8.3 Pre-flight
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-006** | Task brief, rules and timing before connect | Shows brief, deliverables, duration/window, AI policy (on/off, caps) and what is recorded. | Must | MMP |  |
+
+### 8.4 Consent
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-007** | Mode-based consent before connecting | Consent text depends on mode (Cloud: activity, AI transcript and screen recording as configured; Local: agent install, terminal/file/git capture; Chat; Browser: page and action logging). Connect is disabled until consent is given. | Must | MMP | Store consent version, timestamp and IP. |
+
+### 8.5 Cloud workspace
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-008** | Force full-screen when connecting in Cloud mode | Workspace requests full screen on connect; session is only active while full screen. | Must | MMP | Browsers cannot truly prevent exit; the system detects it and reacts. |
+| **CA-009** | Exit from full screen disconnects the session | On exit the workspace disconnects, an overlay asks the candidate to resume, and the event is logged for reviewers. The timer keeps running while disconnected. An assessment-level setting 'Pause timer on disconnect' exists and is OFF by default. The consent screen warns the candidate. | Must | MMP | Decision accepted (Open Q2). |
+| **CA-010** | All work is saved so the candidate can continue | Files, terminal history, editor state, chat transcript and drafts are persisted continuously (target RPO &le; 30 s) and restored on resume. | Must | MMP |  |
+| **CA-011** | Reconnect and resume | Candidate can reconnect until the timer or window ends; state is restored; each disconnect/resume is logged. | Must | MMP |  |
+
+### 8.6 Timing
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-012** | Workspace access follows time-bound or window-bound rules | Before window opens or after it closes, Connect is disabled with a clear message; time-bound sessions auto-submit at expiry. | Must | MMP | Enforced server-side, not just in the UI. |
+| **CA-013** | Countdown timer and warnings | Always visible; warnings at set thresholds (e.g. 15 and 5 minutes). | Must | MMP |  |
+
+### 8.7 Local mode
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-014** | Runnable locally | Candidate gets a one-line command or small desktop agent; pulls the task environment (devcontainer/Docker); status flips to Connected (Local) when the agent checks in; AI calls go through the HelloSmart proxy. | Should | Phase 2 | Decision accepted (Open Q10): Phase 2. Cloud-first; local is an opt-in assessment setting. |
+
+### 8.8 Non-tech modes
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-015** | Chat workspace for non-technical roles | AI chat using the company's key (or a platform key allocated by Platform Admin), with files/documents provided; full transcript captured. | Must | MMP | Decision accepted (Open Q7, Q10). |
+| **CA-016** | Browser workspace | Sandboxed remote browser with mock tools; monitor agent logs pages and actions. | Should | Phase 2 | Decision accepted (Open Q10): Phase 2. |
+
+### 8.9 AI assistant
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-017** | Use AI assistant when enabled | Assistant available only if ON for the assessment; shows remaining budget; blocks at cap with a clear message. | Must | MMP |  |
+
+### 8.10 Submission
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-018** | Submit work | Confirmation dialog; final snapshot saved; session closed; candidate cannot re-enter after submit unless the company reopens. | Must | MMP |  |
+| **CA-019** | Provisioning failure handling | If a workspace fails to start, the candidate sees a support route and is compensated with extra time automatically. | Should | MMP |  |
+
+### 8.11 Results
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-020** | View results when provisioned by the company | Only visible if the company released them; shows overall and per-dimension scores and shared notes. | Must | MMP |  |
+
+### 8.12 Profile and privacy
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-021** | Profile and data rights | Candidate can see what data is held, and request correction or deletion; request routed to company/admin. | Should | Phase 2 | GDPR / DPDP. |
+
+### 8.13 Accessibility
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-022** | Accessible UI and accommodation requests | WCAG 2.2 AA target; candidate can request extra time; company can grant it. | Should | Phase 2 |  |
+
+### 8.14 Integrity
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **CA-023** | Integrity events logged | Full-screen exit, tab visibility change and long idle recorded as timeline events for reviewers; not auto-failing. | Should | Phase 2 | Evidence, not verdict. |
+
+---

@@ -12,7 +12,7 @@
     "mock": "prism mock -p 4010 openapi/openapi.yaml",
     "lint": "redocly lint openapi/openapi.yaml",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "echo \"contracts: lint is the test\""
+    "test": "node --test test/schemas.test.ts"
   },
   "dependencies": {
     "zod": "3.23.8"

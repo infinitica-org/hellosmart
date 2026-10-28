@@ -1,5 +1,5 @@
 ---
-title: "HelloSmart Engineering & Product Docs"
+title: "HelloSmart Engineering & Product Documentation"
 description: "Internal developer documentation, system architecture, database visualization, API references, and role-oriented playbooks."
 ---
 
@@ -7,34 +7,79 @@ description: "Internal developer documentation, system architecture, database vi
 
 # HelloSmart.ai Engineering & Product Portal
 
-Welcome to the internal engineering and product documentation for **HelloSmart.ai**. HelloSmart is an AI-native work simulation platform for technical hiring—*"Hire by doing."*
+Welcome to the internal engineering and product documentation for **HelloSmart.ai**. HelloSmart is an AI-native work simulation platform for technical and niche hiring—*"Hire by doing."*
 
 Candidates solve real problems with AI co-pilots inside sandboxed Sysbox containers. Independent AI reviewer agents score candidate submissions against explicit rubrics with exact evidence citations, while human hiring managers make the final decision.
 
 ---
 
-## 🎯 Role Perspectives
+## Developer Onboarding: Quickstart Guide
 
-Choose your team perspective using the **Role Switcher** in the top navigation bar or jump directly to your group's dedicated playbook:
+Follow these steps to get up to speed with the repository and architecture:
+
+### 1. Understand the Product Loop ("Hire by Doing")
+Read **[The Product in 60 Seconds](/docs/knowledge-base/00-start-here)** and the **[Core Concepts](/docs/knowledge-base/02-core-concepts)**. HelloSmart assesses candidates by having them perform real work with AI tools in sandboxed Sysbox containers, evaluated by independent reviewer agents with human hiring managers in final control.
+
+### 2. Review the 33 Inviolable Business Rules
+Read the **[33 Business Invariants (BR-01 to BR-33)](/docs/roles/managing#4-the-33-inviolable-business-rules-br-01-to-br-33)**. Non-negotiable architectural invariants include:
+- **BR-01 Strict Multi-Tenancy**: Every database query, cache key, and file path is scoped by `org_id`. Cross-tenant reads return 404.
+- **BR-02 Private Templates**: Templates are strictly private to each customer company. No public catalog or cross-company leakage.
+- **BR-13 AI Proxy is the Only Path**: Workspaces hold only short-lived session tokens—never real provider API keys.
+- **BR-18 Human in the Loop**: AI scores are evidence citations for a human reviewer. No auto-rejections.
+
+### 3. Review System Architecture & Contracts
+- **[System Architecture](/docs/architecture/system-architecture)**: The modular monolith backend, Sysbox workspace container orchestrator, AI Proxy, and Redis BullMQ queues.
+- **[Database Visualization & Schema](/docs/database/db-visualization)**: PostgreSQL 16 schema, Citext case-insensitivity, and Row-Level Security (RLS) policies.
+- **[API Documentation](/docs/api/overview)**: OpenAPI 3.1 REST contracts and shared Zod schemas (`@hs/contracts`).
+- **[Business Requirements Document (BRD)](/docs/brd/overview)**: The complete 150 requirement specifications with individual acceptance criteria.
+
+### 4. Set Up the Local Workspace
+Start the standard development environment:
+
+```bash
+# 1. Start Docker dependencies (PostgreSQL 16, Redis 7, LocalStack)
+pnpm infra:up
+
+# 2. Run the Prism OpenAPI mock server for rapid local development
+pnpm mock
+
+# 3. Start all services in parallel (Fastify API, Next.js Web, Docs)
+pnpm dev
+
+# 4. Run tests and multi-tenancy validation
+pnpm test
+pnpm test:tenancy
+```
+
+### 5. Review Your Role Playbook
+Select your team perspective using the top navigation switcher or the links below:
+- **[Software Development Engineer (SDE) Playbook](/docs/roles/sde)**: Fastify API, Next.js portals, container runtime, and definition of done.
+- **[AI & Evaluator Engineering Playbook](/docs/roles/ai)**: Reviewer agent pipelines, rubric evaluation, token quotas, and AI Proxy firewalls.
+- **[QA & Test Automation Playbook](/docs/roles/qa)**: Multi-tenant RLS test suites, cross-tenant 404 assertions, and E2E testing.
+- **[Product & Engineering Management Playbook](/docs/roles/managing)**: Product roadmap, commercial pricing, quote builder, and team governance.
+
+---
+
+## Role Perspectives
 
 <Cards>
   <Card
-    title="💻 SDE Team Playbook"
+    title="Software Development Engineer (SDE)"
     href="/docs/roles/sde"
     description="Backend NestJS Fastify API, Next.js web portals, Sysbox workspace orchestration, Docker-in-Docker, and Drizzle ORM."
   />
   <Card
-    title="🧠 AI Team Playbook"
+    title="AI & Evaluator Engineering"
     href="/docs/roles/ai"
     description="Reviewer agent pipelines, rubric evaluation, AI Proxy egress firewalls, model allowlists, and spend cap enforcement."
   />
   <Card
-    title="🛡️ QA Team Playbook"
+    title="QA & Test Automation"
     href="/docs/roles/qa"
     description="PostgreSQL Row-Level Security verification, cross-tenant 404 tests (BR-01), Playwright E2E suites, and SOC 2 audits."
   />
   <Card
-    title="📊 Managing Team Playbook"
+    title="Product & Engineering Management"
     href="/docs/roles/managing"
     description="Product roadmap, commercial pricing, quote builder, Razorpay billing, and the 33 Inviolable Business Rules (BR-01 to BR-33)."
   />
@@ -42,44 +87,54 @@ Choose your team perspective using the **Role Switcher** in the top navigation b
 
 ---
 
-## ⚡ Core Technical Sections
+## Core Documentation Sections
 
 <Cards>
   <Card
-    title="📐 System Architecture"
+    title="Product Knowledge Base"
+    href="/docs/knowledge-base/00-start-here"
+    description="The complete 20-chapter product and business specification: user journeys, AI controls, workspaces, and lifecycles."
+  />
+  <Card
+    title="Business Requirements Document (BRD)"
+    href="/docs/brd/overview"
+    description="Official 150-requirement BRD: full acceptance criteria, 39-step user flow, state models, edge cases, and traceability."
+  />
+  <Card
+    title="System Architecture"
     href="/docs/architecture/system-architecture"
     description="Complete interactive topology: modular monolith, container orchestrator, AI proxy gateway, and Redis BullMQ queues."
   />
   <Card
-    title="📦 Frameworks & Versions"
+    title="Frameworks & Versions"
     href="/docs/architecture/frameworks-and-versions"
     description="Frozen versions matrix: Node 24, pnpm 9, Next.js, Fastify, Drizzle, PostgreSQL 16, Sysbox, and architectural rationale."
   />
   <Card
-    title="🗄️ Database Visualization"
+    title="Database Architecture & ERD"
     href="/docs/database/db-visualization"
     description="Interactive Mermaid ER diagram of all tables, foreign keys, indexes, and Row-Level Security (RLS) policies."
   />
   <Card
-    title="🔌 API Documentation"
+    title="REST API Specifications"
     href="/docs/api/overview"
     description="RESTful OpenAPI 3.1 contracts, HttpOnly session cookies, workspace tokens, RFC 7807 problem details, and webhooks."
   />
   <Card
-    title="🚀 Production Release"
+    title="Production Release Runbook"
     href="/docs/production/release-runbook"
     description="Zero-downtime expand-and-contract migrations, canary rollouts, smoke verification, and rollback runbooks."
   />
   <Card
-    title="📚 Complete Knowledge Base"
-    href="/docs/knowledge-base/00-start-here"
-    description="The complete 20-chapter product and business specification migrated from the HelloSmart knowledge base."
+    title="Security & Isolation Architecture"
+    href="/docs/security/workspace-isolation"
+    description="Sysbox container isolation, unprivileged Docker daemon, seccomp/AppArmor profiles, and egress firewall rules."
   />
 </Cards>
 
 ---
 
-## 🤖 AIDLC Automation Protocol
+## AI-DLC Documentation Governance Protocol
 
 > [!IMPORTANT]
 > HelloSmart operates under the **AI Developer Life Cycle (AIDLC) Documentation Rule**:

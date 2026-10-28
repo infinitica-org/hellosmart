@@ -1,0 +1,1297 @@
+'use client';
+
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  ReactNode,
+  forwardRef,
+} from 'react';
+import { createPortal } from 'react-dom';
+import { BrandMark } from '../brand-mark';
+import { Avatar } from '../components/avatar';
+import { Badge } from '../components/badge';
+
+// ---------------------------------------------------------------------------
+// Types & interfaces
+// ---------------------------------------------------------------------------
+
+export interface SidebarItem {
+  id?: string | undefined;
+  label: string;
+  href?: string | undefined;
+  onClick?: (() => void) | undefined;
+  icon?: ReactNode | undefined;
+  badge?: string | number | undefined;
+  badgeVariant?: ('default' | 'primary' | 'success' | 'warning' | 'danger') | undefined;
+  subItems?: SidebarItem[] | undefined;
+  target?: string | undefined;
+  rel?: string | undefined;
+  className?: string | undefined;
+  disabled?: boolean | undefined;
+  'data-testid'?: string | undefined;
+  data?: Record<string, unknown> | undefined;
+  linkProps?: (React.AnchorHTMLAttributes<HTMLAnchorElement> & Record<string, unknown>) | undefined;
+}
+
+export interface SidebarGroup {
+  id?: string | undefined;
+  title?: string | undefined;
+  items: SidebarItem[];
+}
+
+export type SidebarVariant = 'default' | 'dashboard' | 'rail' | 'carousel';
+
+export interface SidebarRenderLinkProps {
+  href: string;
+  children: ReactNode;
+  className: string;
+  onClick?: (() => void) | undefined;
+  onMouseEnter?: ((e: React.MouseEvent<HTMLElement>) => void) | undefined;
+  onMouseLeave?: (() => void) | undefined;
+  item: SidebarItem;
+  target?: string | undefined;
+  rel?: string | undefined;
+  disabled?: boolean | undefined;
+  'data-testid'?: string | undefined;
+  [key: string]: unknown;
+}
+
+export interface SidebarProps {
+  variant?: SidebarVariant | undefined;
+  brandTitle?: ReactNode | undefined;
+  brandLogo?: ReactNode | undefined;
+  showLogo?: boolean | undefined;
+  items?: SidebarItem[] | undefined;
+  /** Navigation links / items (alias for `items`) */
+  navLinks?: SidebarItem[] | undefined;
+  groups?: SidebarGroup[] | undefined;
+  userName?: string | undefined;
+  userEmail?: string | undefined;
+  userAvatar?: string | undefined;
+  currentPath?: string | undefined;
+  activeId?: string | undefined;
+  onSelect?: ((item: SidebarItem) => void) | undefined;
+  onLogout?: (() => void) | undefined;
+  logoSrc?: string | undefined;
+  whiteLabel?: boolean | undefined;
+  collapsed?: boolean | undefined;
+  collapsible?: boolean | undefined;
+  onToggleCollapse?: (() => void) | undefined;
+  showCollapseButton?: boolean | undefined;
+  /** Whether the carousel / rail sidebar is currently maximized (full width) */
+  railExpanded?: boolean | undefined;
+  /** Callback when the carousel / rail sidebar maximize/minimize is toggled */
+  onToggleRailExpand?: ((expanded: boolean) => void) | undefined;
+  activeStyle?: ('brand' | 'subtle' | 'dark' | 'light') | undefined;
+  hideHeader?: boolean | undefined;
+  portalRole?: string | undefined;
+  width?: string | undefined;
+  className?: string | undefined;
+  renderLink?: ((props: SidebarRenderLinkProps) => ReactNode) | undefined;
+  portalTitle?: ReactNode | undefined;
+  companyName?: string | undefined;
+}
+
+export interface UserProfileDropdownProps {
+  userName?: string | undefined;
+  userEmail?: string | undefined;
+  userAvatar?: string | undefined;
+  portalRole?: string | undefined;
+  onLogout?: (() => void) | undefined;
+  compact?: boolean | undefined;
+  variant?: ('card' | 'pill' | 'avatar') | undefined;
+  placement?: ('top' | 'bottom' | 'right') | undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Icons (inline SVG helpers – keeps the file self-contained)
+// ---------------------------------------------------------------------------
+
+const ICON_SIZE = 'w-5 h-5 shrink-0';
+/** Hamburger menu */
+const MenuIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <line x1="4" y1="6" x2="20" y2="6" />
+    <line x1="4" y1="12" x2="20" y2="12" />
+    <line x1="4" y1="18" x2="20" y2="18" />
+  </svg>
+);
+
+/** Close X */
+const CloseIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 6L6 18M6 6l12 12" />
+  </svg>
+);
+
+/** Three-dot vertical ellipsis */
+const EllipsisVerticalIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="12" cy="5" r="1.5" />
+    <circle cx="12" cy="12" r="1.5" />
+    <circle cx="12" cy="19" r="1.5" />
+  </svg>
+);
+
+/** User/profile icon */
+const UserIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
+
+/** Settings/cog icon */
+const SettingsIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+  </svg>
+);
+
+/** Log out icon */
+const LogoutIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
+  </svg>
+);
+
+/** Chevron down */
+const ChevronDownIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
+/** Chevron left */
+const ChevronLeftIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+);
+
+/** Chevron right (for sub-items) */
+const ChevronRightIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+
+/** Collapse (panel left) icon */
+const PanelLeftIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <line x1="9" y1="3" x2="9" y2="21" />
+  </svg>
+);
+
+/** Panel Left Expand (Maximize) icon */
+const PanelLeftOpenIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M9 3v18" />
+    <path d="M14 9l3 3-3 3" />
+  </svg>
+);
+
+/** Panel Left Collapse (Minimize) icon */
+const PanelLeftCloseIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M9 3v18" />
+    <path d="M17 15l-3-3 3-3" />
+  </svg>
+);
+
+
+// ---------------------------------------------------------------------------
+// Active style helpers
+// ---------------------------------------------------------------------------
+
+const activeStyleClasses: Record<NonNullable<SidebarProps['activeStyle']>, { active: string; inactive: string }> = {
+  light: {
+    active: 'bg-orange-50 text-orange-600 border border-orange-200/90 font-semibold shadow-2xs',
+    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-transparent',
+  },
+  brand: {
+    active: 'bg-orange-50 text-orange-600 border border-orange-200/90 font-semibold shadow-2xs',
+    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-transparent',
+  },
+  subtle: {
+    active: 'bg-neutral-100 text-neutral-900 font-semibold border border-transparent',
+    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-transparent',
+  },
+  dark: {
+    active: 'bg-neutral-900 text-white font-semibold border border-neutral-800',
+    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-transparent',
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Helper: determine if an item is active
+// ---------------------------------------------------------------------------
+
+function isItemActive(item: SidebarItem, currentPath?: string, activeId?: string): boolean {
+  if (activeId && item.id) return item.id === activeId;
+  if (currentPath && item.href) return currentPath === item.href || currentPath.startsWith(item.href + '/');
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Badge variant mapping
+// ---------------------------------------------------------------------------
+
+const badgeVariantMap: Record<NonNullable<SidebarItem['badgeVariant']>, 'default' | 'primary' | 'success' | 'warning' | 'danger'> = {
+  default: 'default',
+  primary: 'primary',
+  success: 'success',
+  warning: 'warning',
+  danger: 'danger',
+};
+
+// ---------------------------------------------------------------------------
+// UserProfileDropdown
+// ---------------------------------------------------------------------------
+
+export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdownProps>(
+  (
+    {
+      userName = 'User',
+      userEmail = '',
+      userAvatar,
+      portalRole,
+      onLogout,
+      compact = false,
+      variant = 'card',
+      placement = variant === 'card' ? 'top' : 'bottom',
+    },
+    ref
+  ) => {
+    const [open, setOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+
+    // Close on outside click or Escape
+    useEffect(() => {
+      if (!open) return;
+
+      const handleClickOutside = (e: MouseEvent) => {
+        if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+          setOpen(false);
+        }
+      };
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setOpen(false);
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }, [open]);
+
+    // Dropdown placement classes
+    const placementClasses: Record<string, string> = {
+      top: 'bottom-full mb-2 left-0',
+      bottom: 'top-full mt-2 left-0',
+      right: 'left-full ml-3 bottom-0',
+    };
+
+    const dropdownMenu = (
+      <div
+        className={`absolute z-50 w-64 rounded-2xl border border-neutral-200 bg-white p-2 shadow-2xl shadow-black/10 animate-fade-in ${placementClasses[placement] || placementClasses.top}`}
+        role="menu"
+      >
+        {/* Header: name + online badge */}
+        <div className="px-3 pt-2 pb-3 border-b border-neutral-100">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-neutral-900 truncate">{userName}</span>
+            <Badge variant="success" size="sm" dot>Online</Badge>
+          </div>
+          {userEmail && (
+            <p className="text-xs text-neutral-500 mt-0.5 truncate">{userEmail}</p>
+          )}
+          {portalRole && (
+            <p className="text-[10px] text-neutral-400 mt-0.5 uppercase tracking-wider font-medium">{portalRole}</p>
+          )}
+        </div>
+
+        {/* Menu items */}
+        <div className="py-1.5">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors focus:outline-none"
+          >
+            <span className="flex items-center gap-2.5">
+              <UserIcon />
+              Profile &amp; Account
+            </span>
+            <kbd className="hidden sm:inline-flex text-[10px] text-neutral-400 font-mono bg-neutral-100 rounded px-1.5 py-0.5">⌘P</kbd>
+          </button>
+
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors focus:outline-none"
+          >
+            <span className="flex items-center gap-2.5">
+              <SettingsIcon />
+              Preferences
+            </span>
+            <kbd className="hidden sm:inline-flex text-[10px] text-neutral-400 font-mono bg-neutral-100 rounded px-1.5 py-0.5">⌘,</kbd>
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="h-px bg-neutral-200 -mx-2 my-1" role="separator" />
+
+        {/* Sign Out */}
+        <div className="py-1">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onLogout?.();
+            }}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors focus:outline-none"
+          >
+            <LogoutIcon />
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+
+    // ---- Avatar variant (rail / carousel sidebar bottom) ----
+    if (variant === 'avatar') {
+      return (
+        <div
+          ref={(node) => {
+            containerRef.current = node;
+            if (typeof ref === 'function') ref(node);
+            else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          }}
+          className="relative flex items-center justify-center"
+        >
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-label="User account menu"
+            aria-haspopup="menu"
+            aria-expanded={open}
+            className="relative p-1 rounded-2xl hover:bg-neutral-100 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 group"
+          >
+            <div className="relative">
+              <Avatar
+                src={userAvatar}
+                name={userName}
+                size="md"
+                variant="orange"
+                shape="circle"
+              />
+              <span
+                className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white"
+                title="Online"
+              />
+            </div>
+          </button>
+
+          {open && dropdownMenu}
+        </div>
+      );
+    }
+
+    // ---- Card variant (sidebar bottom) ----
+    if (variant === 'card') {
+      return (
+        <div
+          ref={(node) => {
+            containerRef.current = node;
+            if (typeof ref === 'function') ref(node);
+            else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          }}
+          className="relative"
+        >
+          <div
+            className={`w-full flex items-center gap-2.5 rounded-xl border border-neutral-200/90 bg-neutral-50/80 px-3 py-2.5 shadow-2xs hover:bg-neutral-100/60 transition-colors ${
+              compact ? 'justify-center' : ''
+            }`}
+          >
+            <Avatar
+              src={userAvatar}
+              name={userName}
+              size="sm"
+              variant="orange"
+              shape="circle"
+            />
+
+            {!compact && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-neutral-900 truncate leading-tight">
+                  {userName}
+                </p>
+                {userEmail && (
+                  <p className="text-[11px] text-neutral-500 truncate leading-tight mt-0.5">
+                    {userEmail}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setOpen(!open)}
+              aria-label="User menu"
+              aria-haspopup="menu"
+              aria-expanded={open}
+              className="shrink-0 rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200/60 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-300"
+            >
+              <EllipsisVerticalIcon />
+            </button>
+          </div>
+
+          {open && dropdownMenu}
+        </div>
+      );
+    }
+
+    // ---- Pill variant (topbar / compact) ----
+    return (
+      <div
+        ref={(node) => {
+          containerRef.current = node;
+          if (typeof ref === 'function') ref(node);
+          else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        }}
+        className="relative"
+      >
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-label="User menu"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          className="flex items-center gap-2.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-300 shadow-xs"
+        >
+          <Avatar
+            src={userAvatar}
+            name={userName}
+            size="xs"
+            variant="orange"
+            shape="circle"
+          />
+          <span className="truncate max-w-[120px]">{userName}</span>
+          {userEmail && (
+            <span className="hidden lg:inline text-xs text-neutral-400 truncate max-w-[140px]">
+              {userEmail}
+            </span>
+          )}
+          <ChevronDownIcon className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+
+        {open && dropdownMenu}
+      </div>
+    );
+  }
+);
+UserProfileDropdown.displayName = 'UserProfileDropdown';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Extract data-*, aria-*, and custom linkProps from a SidebarItem */
+function extractDataAttributes(item: SidebarItem): Record<string, unknown> {
+  const dataAttrs: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(item)) {
+    if (key.startsWith('data-') || key.startsWith('aria-')) {
+      dataAttrs[key] = val;
+    }
+  }
+  return {
+    ...dataAttrs,
+    ...(item.linkProps || {}),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// SidebarNavItemRow – single nav row (used in expanded & grouped modes)
+// ---------------------------------------------------------------------------
+
+interface SidebarNavItemRowProps {
+  item: SidebarItem;
+  active: boolean;
+  styleConfig: { active: string; inactive: string };
+  onSelect?: ((item: SidebarItem) => void) | undefined;
+  renderLink?: SidebarProps['renderLink'] | undefined;
+  depth?: number | undefined;
+}
+
+function SidebarNavItemRow({
+  item,
+  active,
+  styleConfig,
+  onSelect,
+  renderLink,
+  depth = 0,
+}: SidebarNavItemRowProps) {
+  const [expanded, setExpanded] = useState(false);
+  const hasSubItems = item.subItems && item.subItems.length > 0;
+
+  const handleClick = () => {
+    if (item.disabled) return;
+    if (hasSubItems) {
+      setExpanded(!expanded);
+    }
+    onSelect?.(item);
+    item.onClick?.();
+  };
+
+  const classes = `flex items-center justify-between gap-2 w-full rounded-xl transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-neutral-300/50 px-3 py-2 text-sm ${
+    active ? styleConfig.active : styleConfig.inactive
+  } ${item.className || ''} ${item.disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`;
+
+  const paddingLeft = depth > 0 ? { paddingLeft: `${12 + depth * 16}px` } : undefined;
+  const dataAttrs = extractDataAttributes(item);
+
+  const content = (
+    <>
+      <span className="flex items-center gap-3 min-w-0">
+        {item.icon ? (
+          <span className={`w-5 h-5 flex items-center justify-center shrink-0 transition-colors ${active ? 'text-orange-600' : 'text-neutral-400 group-hover:text-neutral-700'}`}>
+            {item.icon}
+          </span>
+        ) : (
+          <span className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-orange-600' : 'bg-neutral-300'}`} />
+        )}
+        <span className="truncate">{item.label}</span>
+      </span>
+
+      <span className="flex items-center gap-1.5 shrink-0">
+        {item.badge !== undefined && (
+          <Badge
+            variant={badgeVariantMap[item.badgeVariant || 'default']}
+            size="sm"
+          >
+            {item.badge}
+          </Badge>
+        )}
+        {hasSubItems && (
+          <ChevronRightIcon
+            className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-200 ${
+              expanded ? 'rotate-90' : ''
+            }`}
+          />
+        )}
+      </span>
+    </>
+  );
+
+  // Use custom link renderer if provided & item has href
+  if (renderLink && item.href && !hasSubItems) {
+    return (
+      <>
+        {renderLink({
+          href: item.href,
+          className: classes,
+          onClick: handleClick,
+          children: content,
+          item,
+          target: item.target,
+          rel: item.target === '_blank' ? (item.rel || 'noopener noreferrer') : item.rel,
+          disabled: item.disabled,
+          'data-testid': item['data-testid'],
+          ...dataAttrs,
+        })}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {item.href && !hasSubItems ? (
+        <a
+          href={item.disabled ? undefined : item.href}
+          target={item.target}
+          rel={item.target === '_blank' ? (item.rel || 'noopener noreferrer') : item.rel}
+          className={classes}
+          style={paddingLeft}
+          aria-current={active ? 'page' : undefined}
+          aria-disabled={item.disabled ? true : undefined}
+          data-testid={item['data-testid']}
+          {...dataAttrs}
+          onClick={(e) => {
+            if (item.disabled) {
+              e.preventDefault();
+              return;
+            }
+            if (onSelect) {
+              e.preventDefault();
+              handleClick();
+            }
+          }}
+        >
+          {content}
+        </a>
+      ) : (
+        <button
+          type="button"
+          disabled={item.disabled}
+          className={classes}
+          style={paddingLeft}
+          aria-current={active ? 'page' : undefined}
+          data-testid={item['data-testid']}
+          {...dataAttrs}
+          onClick={handleClick}
+        >
+          {content}
+        </button>
+      )}
+
+      {/* Sub-items */}
+      {hasSubItems && expanded && (
+        <div className="mt-0.5 space-y-0.5">
+          {item.subItems!.map((sub, idx) => (
+            <SidebarNavItemRow
+              key={sub.id || idx}
+              item={sub}
+              active={false}
+              styleConfig={styleConfig}
+              onSelect={onSelect}
+              renderLink={renderLink}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sidebar
+// ---------------------------------------------------------------------------
+
+export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
+  (
+    {
+      variant = 'default',
+      brandTitle,
+      brandLogo,
+      showLogo = true,
+      items,
+      navLinks,
+      groups,
+      userName,
+      userEmail,
+      userAvatar,
+      currentPath,
+      activeId,
+      onSelect,
+      onLogout,
+      logoSrc,
+      whiteLabel = false,
+      collapsed,
+      collapsible = false,
+      onToggleCollapse,
+      showCollapseButton = false,
+      railExpanded,
+      onToggleRailExpand,
+      activeStyle = 'light',
+      hideHeader = false,
+      portalRole,
+      width = 'w-64',
+      className = '',
+      renderLink,
+    },
+    ref
+  ) => {
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+
+    const [hoveredRailItem, setHoveredRailItem] = useState<{
+      label: string;
+      badge?: ReactNode | undefined;
+      badgeVariant?: SidebarItem['badgeVariant'] | undefined;
+      top: number;
+      left: number;
+    } | null>(null);
+
+    const isRail = variant === 'rail' || variant === 'carousel';
+
+    const [internalRailExpanded, setInternalRailExpanded] = useState(false);
+    const isRailExpanded = railExpanded !== undefined ? railExpanded : internalRailExpanded;
+    const toggleRailExpand = () => {
+      const next = !isRailExpanded;
+      if (railExpanded === undefined) {
+        setInternalRailExpanded(next);
+      }
+      onToggleRailExpand?.(next);
+    };
+
+    const effectiveWidth = isRail
+      ? (isRailExpanded ? (width !== 'w-20' ? width : 'w-64') : 'w-20')
+      : width;
+    const isCollapsed = collapsed !== undefined ? collapsed : uncontrolledCollapsed;
+
+    const handleToggleCollapse = () => {
+      if (collapsed === undefined) {
+        setUncontrolledCollapsed((prev) => !prev);
+      }
+      onToggleCollapse?.();
+    };
+
+    const styleConfig = activeStyleClasses[activeStyle] || activeStyleClasses.subtle;
+
+    const navItems = navLinks ?? items;
+
+    // Resolve items – flat list or grouped
+    const resolvedGroups: SidebarGroup[] = groups
+      ? groups
+      : navItems
+        ? [{ items: navItems }]
+        : [];
+
+    // Lock body scroll when mobile drawer is open
+    useEffect(() => {
+      if (mobileOpen) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+      return () => {
+        document.body.style.overflow = '';
+      };
+    }, [mobileOpen]);
+
+    // ---- Render standard expanded nav items list ----
+    const renderNavItems = () => (
+      <nav
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-2 space-y-4 [scrollbar-width:thin] [scrollbar-color:rgba(212,212,216,0.8)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-200 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full"
+      >
+        {resolvedGroups.map((group, gIdx) => (
+          <div key={group.id || gIdx} className="space-y-1">
+            {/* Group title */}
+            {group.title && (
+              <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-neutral-400 uppercase tracking-widest select-none">
+                {group.title}
+              </p>
+            )}
+
+            {group.items.map((item, iIdx) => (
+              <SidebarNavItemRow
+                key={item.id || iIdx}
+                item={item}
+                active={isItemActive(item, currentPath, activeId)}
+                styleConfig={styleConfig}
+                onSelect={(selected) => {
+                  onSelect?.(selected);
+                  setMobileOpen(false);
+                }}
+                renderLink={renderLink}
+              />
+            ))}
+          </div>
+        ))}
+      </nav>
+    );
+
+    // ---- Render rail / carousel icon-only nav items ----
+    const renderRailNavItems = () => {
+      const allItems = resolvedGroups.flatMap((g) => g.items);
+
+      return (
+        <nav
+          onScroll={() => setHoveredRailItem(null)}
+          className={`flex-1 min-h-0 py-3 space-y-1.5 flex flex-col w-full transition-all duration-300 overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgba(212,212,216,0.8)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-200 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full ${
+            isRailExpanded ? 'px-3' : 'px-2 items-center'
+          }`}
+        >
+          {allItems.map((item, idx) => {
+            const active = isItemActive(item, currentPath, activeId);
+            const dataAttrs = extractDataAttributes(item);
+
+            const handleItemClick = () => {
+              if (item.disabled) return;
+              setHoveredRailItem(null);
+              onSelect?.(item);
+              item.onClick?.();
+              setMobileOpen(false);
+            };
+
+            const handleItemMouseEnter = (e: React.MouseEvent<HTMLElement>) => {
+              if (isRailExpanded) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              setHoveredRailItem({
+                label: item.label,
+                badge: item.badge,
+                badgeVariant: item.badgeVariant,
+                top: rect.top + rect.height / 2,
+                left: rect.right + 10,
+              });
+            };
+
+            const handleItemMouseLeave = () => {
+              setHoveredRailItem(null);
+            };
+
+            const isDark = activeStyle === 'dark';
+
+            // Light active style (soft light brand orange tint with crisp border and gentle depth)
+            const activeBgClass = isDark
+              ? 'bg-neutral-900 text-white shadow-2xs border border-neutral-800'
+              : activeStyle === 'subtle'
+                ? 'bg-neutral-100 text-neutral-900 border border-neutral-200/90 shadow-2xs'
+                : 'bg-orange-50 text-orange-600 border border-orange-200/90 shadow-2xs hover:bg-orange-100/70 hover:border-orange-300/80';
+
+            const activeIconColor = isDark
+              ? 'text-orange-500'
+              : 'text-orange-600';
+
+            const baseClasses = `group relative flex items-center transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/25 select-none ${
+              isRailExpanded
+                ? 'w-full px-3 py-2.5 gap-3 rounded-xl'
+                : 'w-12 h-12 justify-center mx-auto rounded-2xl'
+            } ${
+              active
+                ? activeBgClass
+                : 'text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100/80 border border-transparent rounded-2xl'
+            } ${item.className || ''} ${item.disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`;
+
+            const isTextBadge = typeof item.badge === 'string' && isNaN(Number(item.badge));
+
+            const itemContent = (
+              <>
+                {/* Active icon: strictly locked to 20x20 dimensions so it never grows or scales */}
+                <span
+                  className={`flex items-center justify-center shrink-0 transition-colors duration-200 ${
+                    active ? activeIconColor : 'text-neutral-400 group-hover:text-neutral-700'
+                  }`}
+                  style={{ width: 20, height: 20, minWidth: 20, maxWidth: 20, minHeight: 20, maxHeight: 20 }}
+                >
+                  {item.icon || <span className="w-2.5 h-2.5 rounded-full bg-current" />}
+                </span>
+
+                {/* Text label when maximized */}
+                {isRailExpanded && (
+                  <span className={`text-sm font-medium truncate flex-1 text-left ${active ? (isDark ? 'text-white' : 'text-neutral-900 font-semibold') : 'text-neutral-800'}`}>
+                    {item.label}
+                  </span>
+                )}
+
+                {/* Badge count / status indicator dot */}
+                {item.badge !== undefined && (
+                  isRailExpanded ? (
+                    <Badge variant={badgeVariantMap[item.badgeVariant || 'default']} size="sm">
+                      {item.badge}
+                    </Badge>
+                  ) : isTextBadge ? (
+                    <span className="absolute top-2 right-2 flex h-2.5 w-2.5 pointer-events-none">
+                      {item.badgeVariant === 'success' && (
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      )}
+                      <span
+                        className={`relative inline-flex rounded-full h-2.5 w-2.5 ring-2 ring-white shadow-2xs ${
+                          item.badgeVariant === 'success'
+                            ? 'bg-emerald-500'
+                            : item.badgeVariant === 'warning'
+                              ? 'bg-amber-500'
+                              : item.badgeVariant === 'danger'
+                                ? 'bg-rose-500'
+                                : 'bg-primary'
+                        }`}
+                      />
+                    </span>
+                  ) : (
+                    <span
+                      className={`absolute top-1 right-1 min-w-[16px] h-4 px-1 text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-2xs leading-none pointer-events-none ${
+                        item.badgeVariant === 'success'
+                          ? 'bg-emerald-500 text-white'
+                          : item.badgeVariant === 'warning'
+                            ? 'bg-amber-500 text-white'
+                            : item.badgeVariant === 'danger'
+                              ? 'bg-rose-500 text-white'
+                              : 'bg-primary text-white'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )
+                )}
+              </>
+            );
+
+            if (renderLink && item.href) {
+              return (
+                <React.Fragment key={item.id || idx}>
+                  {renderLink({
+                    href: item.href,
+                    className: baseClasses,
+                    onClick: handleItemClick,
+                    onMouseEnter: handleItemMouseEnter,
+                    onMouseLeave: handleItemMouseLeave,
+                    children: itemContent,
+                    item,
+                    target: item.target,
+                    rel: item.target === '_blank' ? (item.rel || 'noopener noreferrer') : item.rel,
+                    disabled: item.disabled,
+                    'data-testid': item['data-testid'],
+                    ...dataAttrs,
+                  })}
+                </React.Fragment>
+              );
+            }
+
+            if (item.href) {
+              return (
+                <a
+                  key={item.id || idx}
+                  href={item.disabled ? undefined : item.href}
+                  target={item.target}
+                  rel={item.target === '_blank' ? (item.rel || 'noopener noreferrer') : item.rel}
+                  aria-current={active ? 'page' : undefined}
+                  aria-disabled={item.disabled ? true : undefined}
+                  data-testid={item['data-testid']}
+                  {...dataAttrs}
+                  onMouseEnter={handleItemMouseEnter}
+                  onMouseLeave={handleItemMouseLeave}
+                  onClick={(e) => {
+                    if (item.disabled) {
+                      e.preventDefault();
+                      return;
+                    }
+                    if (onSelect) {
+                      e.preventDefault();
+                      handleItemClick();
+                    } else {
+                      item.onClick?.();
+                      setMobileOpen(false);
+                    }
+                  }}
+                  className={baseClasses}
+                  aria-label={item.label}
+                >
+                  {itemContent}
+                </a>
+              );
+            }
+
+            return (
+              <button
+                key={item.id || idx}
+                type="button"
+                disabled={item.disabled}
+                aria-current={active ? 'page' : undefined}
+                data-testid={item['data-testid']}
+                {...dataAttrs}
+                onMouseEnter={handleItemMouseEnter}
+                onMouseLeave={handleItemMouseLeave}
+                onClick={handleItemClick}
+                className={baseClasses}
+                aria-label={item.label}
+              >
+                {itemContent}
+              </button>
+            );
+          })}
+        </nav>
+      );
+    };
+
+    // ---- Header (logo + brand + optional collapse toggle) ----
+    const renderHeader = () => {
+      if (hideHeader) return null;
+
+      return (
+        <div className="flex items-center justify-between shrink-0 px-4 py-4 border-b border-neutral-200/60">
+          <BrandMark
+            showLogo={showLogo}
+            logoSrc={logoSrc}
+            whiteLabel={whiteLabel}
+            showSubtitle={false}
+            size="md"
+            customTitle={brandTitle}
+          />
+
+          {/* Collapse button (only when explicitly enabled via collapsible && showCollapseButton) */}
+          {collapsible && showCollapseButton && (
+            <button
+              type="button"
+              onClick={handleToggleCollapse}
+              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors focus:outline-none cursor-pointer"
+            >
+              <PanelLeftIcon />
+            </button>
+          )}
+        </div>
+      );
+    };
+
+    // ---- Rail / Carousel Header ----
+    const renderRailHeader = () => {
+      if (hideHeader) return null;
+
+      if (isRailExpanded) {
+        return (
+          <div className="flex items-center shrink-0 h-20 px-4 border-b border-neutral-100 w-full overflow-hidden">
+            <BrandMark
+              showLogo={showLogo}
+              logoSrc={logoSrc}
+              whiteLabel={whiteLabel}
+              showSubtitle={false}
+              size="md"
+              fullText={true}
+              customTitle={brandTitle}
+            />
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex items-center justify-center shrink-0 h-20 w-full border-b border-neutral-100">
+          <BrandMark
+            showLogo={showLogo}
+            logoSrc={logoSrc}
+            whiteLabel={whiteLabel}
+            showSubtitle={false}
+            size="xl"
+            logoSize="xl"
+            logoRounded="2xl"
+            fullText={false}
+            customTitle={brandTitle}
+          />
+        </div>
+      );
+    };
+
+    // ---- Footer (user profile with three dots) ----
+    const renderFooter = () => {
+      if (!userName && !userEmail) return null;
+
+      return (
+        <div className="shrink-0 border-t border-neutral-200/80 p-3 bg-white">
+          <UserProfileDropdown
+            userName={userName}
+            userEmail={userEmail}
+            userAvatar={userAvatar}
+            portalRole={portalRole}
+            onLogout={onLogout}
+            variant="card"
+            placement="top"
+          />
+        </div>
+      );
+    };
+
+    // ---- Rail / Carousel Footer ----
+    const renderRailFooter = () => {
+      if (!userName && !userEmail) return null;
+
+      if (isRailExpanded) {
+        return (
+          <div className="shrink-0 border-t border-neutral-100 p-3 bg-white w-full">
+            <UserProfileDropdown
+              userName={userName}
+              userEmail={userEmail}
+              userAvatar={userAvatar}
+              portalRole={portalRole}
+              onLogout={onLogout}
+              variant="card"
+              placement="top"
+            />
+          </div>
+        );
+      }
+
+      return (
+        <div className="shrink-0 p-3 border-t border-neutral-100 flex items-center justify-center w-full bg-white">
+          <UserProfileDropdown
+            userName={userName}
+            userEmail={userEmail}
+            userAvatar={userAvatar}
+            portalRole={portalRole}
+            onLogout={onLogout}
+            variant="avatar"
+            placement="right"
+          />
+        </div>
+      );
+    };
+
+    // ---- Full sidebar panel (shared between desktop & mobile drawer) ----
+    const sidebarPanel = (sidebarWidth: string) => {
+      if (isRail) {
+        return (
+          <aside
+            className={`flex flex-col bg-white ${sidebarWidth} h-full shrink-0 transition-all duration-300 ${className} ${
+              !isRailExpanded ? 'items-center' : ''
+            }`}
+          >
+            {renderRailHeader()}
+            {renderRailNavItems()}
+            {renderRailFooter()}
+          </aside>
+        );
+      }
+
+      return (
+        <aside
+          className={`flex flex-col bg-white ${sidebarWidth} h-full shrink-0 transition-all duration-300 ${className}`}
+        >
+          {renderHeader()}
+          {renderNavItems()}
+          {renderFooter()}
+        </aside>
+      );
+    };
+
+    return (
+      <>
+        {/* ── Floating expand button when collapsed with smooth animation ── */}
+        {collapsible && isCollapsed && (
+          <button
+            type="button"
+            onClick={handleToggleCollapse}
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+            className="fixed top-3 left-3 z-40 p-2 rounded-xl bg-white border border-neutral-200/90 shadow-md hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 transition-all duration-300 hover:scale-105 cursor-pointer animate-fade-in"
+          >
+            <PanelLeftIcon />
+          </button>
+        )}
+
+        {/* ── Desktop sidebar with smooth collapse & slide animation ── */}
+        <div
+          ref={ref}
+          className={`hidden md:flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out shrink-0 z-30 bg-white border-r border-neutral-200/80 ${
+            isRail ? 'overflow-visible' : ''
+          } ${
+            isCollapsed
+              ? 'w-0 opacity-0 -translate-x-full border-r-0 pointer-events-none'
+              : `${effectiveWidth} opacity-100 translate-x-0`
+          }`}
+        >
+          {/* Maximize / Minimize button positioned on the border near the logo */}
+          {isRail && (
+            <button
+              type="button"
+              onClick={toggleRailExpand}
+              aria-label={isRailExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+              title={isRailExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+              className="absolute -right-3.5 top-[66px] z-40 w-7 h-7 rounded-full bg-white border border-neutral-200/90 shadow-2xs hover:shadow-md text-neutral-500 hover:text-neutral-900 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              {isRailExpanded ? (
+                <ChevronLeftIcon className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronRightIcon className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
+
+          <div
+            className={`flex flex-col h-full ${effectiveWidth} transition-all duration-300 ease-in-out ${
+              isRail && !isRailExpanded ? 'overflow-visible' : ''
+            } ${
+              isCollapsed ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            {sidebarPanel(effectiveWidth)}
+          </div>
+        </div>
+
+        {/* ── Mobile hamburger top bar ── */}
+        <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between bg-white border-b border-neutral-200 px-4 py-3">
+          <BrandMark
+            showLogo={showLogo}
+            logoSrc={logoSrc}
+            whiteLabel={whiteLabel}
+            showSubtitle={false}
+            size="sm"
+            customTitle={brandTitle}
+          />
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+            className="rounded-lg p-2 text-neutral-700 hover:bg-neutral-100 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-300"
+          >
+            <MenuIcon />
+          </button>
+        </div>
+
+        {/* ── Mobile slide-out drawer ── */}
+        {mobileOpen && (
+          <div className="md:hidden fixed inset-0 z-50">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-neutral-950/50 backdrop-blur-xs animate-fade-in"
+              onClick={() => setMobileOpen(false)}
+              aria-hidden="true"
+            />
+
+            {/* Drawer */}
+            <div className="absolute inset-y-0 left-0 w-72 animate-slide-in-left">
+              {/* Close button */}
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close menu"
+                className="absolute top-4 right-4 z-10 rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors focus:outline-none"
+              >
+                <CloseIcon />
+              </button>
+
+              {sidebarPanel('w-72')}
+            </div>
+          </div>
+        )}
+
+        {/* ── Unclipped floating portal tooltip for rail collapsed items ── */}
+        {mounted && hoveredRailItem && typeof document !== 'undefined' && createPortal(
+          <div
+            style={{
+              top: `${hoveredRailItem.top}px`,
+              left: `${hoveredRailItem.left}px`,
+            }}
+            role="tooltip"
+            className="fixed -translate-y-1/2 z-[99999] px-3 py-1.5 bg-neutral-900 text-white text-xs font-medium rounded-xl whitespace-nowrap shadow-xl shadow-black/30 flex items-center gap-2 pointer-events-none select-none animate-in fade-in zoom-in-95 duration-100"
+          >
+            <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-neutral-900 rotate-45" />
+            <span>{hoveredRailItem.label}</span>
+            {hoveredRailItem.badge !== undefined && (
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none shadow-2xs ${
+                  hoveredRailItem.badgeVariant === 'success'
+                    ? 'bg-emerald-500 text-white'
+                    : hoveredRailItem.badgeVariant === 'warning'
+                      ? 'bg-amber-500 text-white'
+                      : hoveredRailItem.badgeVariant === 'danger'
+                        ? 'bg-rose-500 text-white'
+                        : 'bg-primary text-white'
+                }`}
+              >
+                {hoveredRailItem.badge}
+              </span>
+            )}
+          </div>,
+          document.body
+        )}
+      </>
+    );
+  }
+);
+Sidebar.displayName = 'Sidebar';
+
+export default Sidebar;
