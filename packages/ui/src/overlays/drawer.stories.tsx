@@ -94,7 +94,7 @@ export const RightDrawer: Story = {
               <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-primary-600">Agent: CodeQualityReviewer</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-medium">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-success-muted text-success-foreground font-medium">
                     Score: 4.8 / 5.0
                   </span>
                 </div>
@@ -106,7 +106,7 @@ export const RightDrawer: Story = {
               <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-primary-600">Agent: SecurityReviewer</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-medium">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-success-muted text-success-foreground font-medium">
                     Score: 5.0 / 5.0
                   </span>
                 </div>

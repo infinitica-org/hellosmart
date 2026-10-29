@@ -45,6 +45,11 @@ export const adminNavigation: PortalNavigation = [
     href: '/admin/agents',
     icon: <Bot className="w-4 h-4" strokeWidth={2} />,
   },
+  {
+    label: 'Security',
+    href: '/admin/settings/security',
+    icon: <ShieldCheck className="w-4 h-4" strokeWidth={2} />,
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────

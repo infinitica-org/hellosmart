@@ -32,7 +32,7 @@ export const RubricScoreCard = forwardRef<HTMLDivElement, RubricScoreCardProps>(
     ref
   ) => {
     const scoreColor =
-      score >= 80 ? 'text-emerald-600' : score >= 60 ? 'text-amber-600' : 'text-rose-600';
+      score >= 80 ? 'text-success' : score >= 60 ? 'text-warning' : 'text-danger';
 
     return (
       <Card ref={ref} variant="solid" className={`p-5 ${className}`} {...props}>
@@ -63,7 +63,7 @@ export const RubricScoreCard = forwardRef<HTMLDivElement, RubricScoreCardProps>(
               {flags.map((flag, idx) => (
                 <span
                   key={idx}
-                  className="px-2 py-0.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-medium"
+                  className="px-2 py-0.5 rounded-sm bg-danger-muted border border-danger-border text-danger-foreground text-[10px] font-medium"
                 >
                   🚩 {flag}
                 </span>

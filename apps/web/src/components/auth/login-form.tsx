@@ -57,6 +57,7 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
       router.push(safeDest);
     } catch (err: unknown) {
       setIsSubmitting(false);
+      console.error('[LoginForm]', err);
       if (err instanceof Error) {
         setErrorMessage(err.message);
       } else {

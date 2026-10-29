@@ -3,12 +3,17 @@ import { expect, test } from '@playwright/test';
 const adminEmail = process.env.E2E_SUPER_ADMIN_EMAIL ?? 'admin.super@seed.example.test';
 const adminPassword = process.env.E2E_SUPER_ADMIN_PASSWORD ?? 'DevPassword123!';
 
+async function continueToPassword(page: import('@playwright/test').Page) {
+  await page.getByLabel(/work email|email/i).fill(adminEmail);
+  await page.getByTestId('login-continue-button').click();
+  await page.getByTestId('password-input').fill(adminPassword);
+}
+
 test.describe('Platform Admin Pre-Auth MFA Flow (CO-001, BR-04, BR-25)', () => {
   test('password verification opens MFA modal without issuing session cookie', async ({ page, context }) => {
     await page.goto('/login');
 
-    await page.getByLabel(/email/i).fill(adminEmail);
-    await page.getByTestId('password-input').fill(adminPassword);
+    await continueToPassword(page);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
     // Verify MFA modal appears
@@ -24,8 +29,7 @@ test.describe('Platform Admin Pre-Auth MFA Flow (CO-001, BR-04, BR-25)', () => {
   test('invalid TOTP code displays error and keeps modal open', async ({ page }) => {
     await page.goto('/login');
 
-    await page.getByLabel(/email/i).fill(adminEmail);
-    await page.getByTestId('password-input').fill(adminPassword);
+    await continueToPassword(page);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
     await expect(page.getByTestId('mfa-dialog')).toBeVisible();
@@ -42,8 +46,7 @@ test.describe('Platform Admin Pre-Auth MFA Flow (CO-001, BR-04, BR-25)', () => {
   test('valid TOTP code issues session and redirects to /admin', async ({ page, context }) => {
     await page.goto('/login');
 
-    await page.getByLabel(/email/i).fill(adminEmail);
-    await page.getByTestId('password-input').fill(adminPassword);
+    await continueToPassword(page);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
     await expect(page.getByTestId('mfa-dialog')).toBeVisible();
@@ -65,8 +68,7 @@ test.describe('Platform Admin Pre-Auth MFA Flow (CO-001, BR-04, BR-25)', () => {
   test('three failed TOTP attempts locks out and clears pre-auth', async ({ page }) => {
     await page.goto('/login');
 
-    await page.getByLabel(/email/i).fill(adminEmail);
-    await page.getByTestId('password-input').fill(adminPassword);
+    await continueToPassword(page);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
     await expect(page.getByTestId('mfa-dialog')).toBeVisible();

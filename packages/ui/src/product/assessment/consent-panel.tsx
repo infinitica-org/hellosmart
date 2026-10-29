@@ -37,7 +37,7 @@ export function ConsentPanel({
     <Card variant="solid" className={`max-w-2xl mx-auto ${className}`}>
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
+          <div className="w-10 h-10 rounded-md bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
@@ -57,7 +57,7 @@ export function ConsentPanel({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="space-y-3 rounded-xl bg-neutral-50 border border-neutral-200 p-4 text-xs text-neutral-700">
+        <div className="space-y-3 rounded-md bg-neutral-50 border border-neutral-200 p-4 text-xs text-neutral-700">
           <div className="flex items-start gap-2.5">
             <span className="text-primary font-bold">•</span>
             <div>
@@ -106,7 +106,7 @@ export function ConsentPanel({
       </CardContent>
 
       <CardFooter>
-        <span className="text-[11px] text-slate-500 font-mono">Policy {textVersion}</span>
+        <span className="text-[11px] text-[#5b6775] font-mono">Policy {textVersion}</span>
         <Button
           variant="primary"
           disabled={!hasAgreed || isLoading}

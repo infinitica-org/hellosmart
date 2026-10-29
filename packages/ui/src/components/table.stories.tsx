@@ -230,11 +230,11 @@ const candidateColumns = [
     render: (row: typeof sampleCandidates[0]) => (
       <span
         className={`inline-flex items-center justify-center font-mono font-bold text-xs px-2.5 py-0.5 rounded-full ${
-          row.score >= 90
-            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+ row.score >= 90
+            ? 'bg-success-muted text-success-foreground border border-success-border'
             : row.score >= 80
-            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-            : 'bg-rose-50 text-rose-700 border border-rose-200'
+            ? 'bg-warning-muted text-warning-foreground border border-warning-border'
+            : 'bg-danger-muted text-danger-foreground border border-danger-border'
         }`}
       >
         {row.score}/100
@@ -442,7 +442,7 @@ export const TableWithSorting: Story = {
               type="button"
               onClick={() => setSortMode((m) => (m === 'single' ? 'multi' : 'single'))}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer border transition-colors ${
-                sortMode === 'multi'
+ sortMode === 'multi'
                   ? 'bg-primary text-white border-primary shadow-2xs'
                   : 'bg-white text-neutral-800 border-neutral-300 hover:bg-neutral-50'
               }`}

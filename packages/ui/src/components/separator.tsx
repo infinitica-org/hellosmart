@@ -35,8 +35,8 @@ export const Separator = forwardRef<HTMLDivElement, SeparatorProps>(
           {textAlign !== 'left' && <div className="grow border-t border-neutral-200" />}
           <div
             className={`flex flex-col shrink-0 ${
-              textAlign === 'left'
-                ? 'pr-4 text-left'
+ textAlign === 'left'
+ ? 'pr-4 text-left'
                 : textAlign === 'right'
                   ? 'pl-4 text-right'
                   : 'px-4 text-center items-center'
@@ -64,8 +64,8 @@ export const Separator = forwardRef<HTMLDivElement, SeparatorProps>(
         role={decorative ? 'none' : 'separator'}
         aria-orientation={decorative ? undefined : orientation}
         className={`bg-neutral-200 shrink-0 ${
-          isHorizontal ? 'h-[1px] w-full my-4' : 'h-full w-[1px] mx-4'
-        } ${className}`}
+ isHorizontal ? 'h-[1px] w-full my-4' : 'h-full w-[1px] mx-4'
+ } ${className}`}
         {...props}
       />
     );

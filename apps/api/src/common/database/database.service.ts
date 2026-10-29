@@ -77,23 +77,22 @@ export class DatabaseService implements OnModuleDestroy {
 
     try {
       const res = await this.pool.query(
-        `SELECT 
+        `SELECT
            u.status AS user_status,
-           o.status AS org_status
-         FROM app.users u
-         LEFT JOIN app.organizations o ON u.org_id = o.id
-         WHERE u.id = $1 AND u.deleted_at IS NULL`,
+           u.org_status
+         FROM app.find_user_by_id($1) AS u
+         LIMIT 1`,
         [userId],
       );
 
-      if (res.rowCount === 0) {
+      if (res.rowCount === 0 || !res.rows[0]?.user_status) {
         return { userStatus: null, orgStatus: null };
       }
 
       const row = res.rows[0];
       return {
         userStatus: row.user_status,
-        orgStatus: row.org_status,
+        orgStatus: row.org_status ?? null,
       };
     } catch (err: any) {
       this.logger.error(`Failed to check account status for user ${userId}: ${err.message}`);

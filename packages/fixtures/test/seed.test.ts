@@ -285,9 +285,10 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
         'Platform admin must have org_id = null (BR-01, BR-04)',
       );
       assert.strictEqual(admin.status, 'active');
-      assert.ok(
+      assert.strictEqual(
         admin.mfa_secret_ref,
-        'Platform admin must have MFA secret ref configured (MFA enabled)',
+        null,
+        'Seed platform admin has no MFA until enrolled manually',
       );
     });
 

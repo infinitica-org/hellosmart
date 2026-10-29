@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveServerApiV1Base } from './api-base-url';
 import { DEV_SESSION_STORE } from './session-store';
 
 export interface AuthSession {
@@ -42,11 +43,11 @@ export async function requirePlatformAdmin(req: NextRequest): Promise<AuthCheckR
     };
   }
 
-  const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:4000';
+  const apiV1Base = resolveServerApiV1Base();
 
   // 1. Try real backend validation first
   try {
-    const meRes = await fetch(`${apiBaseUrl}/me`, {
+    const meRes = await fetch(`${apiV1Base}/me`, {
       headers: {
         Cookie: `hs_session=${sessionToken}`,
         Authorization: `Bearer ${sessionToken}`,

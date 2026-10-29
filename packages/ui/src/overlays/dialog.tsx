@@ -109,7 +109,7 @@ export function Dialog({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-neutral-950/60 backdrop-blur-xs transition-opacity animate-fade-in"
+        className="fixed inset-0 bg-[#0b1f3a]/50 transition-opacity animate-fade-in"
         onClick={() => {
           if (closeOnBackdropClick) {
             handleOpenChange(false);
@@ -124,7 +124,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         data-testid={testId}
-        className={`relative z-10 w-full ${sizeClasses[size]} rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl focus:outline-none transition-all animate-scale-in ${className}`}
+        className={`relative z-10 w-full ${sizeClasses[size]} rounded-md border border-[#d8dee6] bg-white p-5 shadow-lg focus:outline-none transition-all animate-scale-in ${className}`}
       >
         {/* Accessible Top-Right Close Button */}
         {showCloseButton && (
@@ -132,7 +132,7 @@ export function Dialog({
             type="button"
             onClick={() => handleOpenChange(false)}
             aria-label="Close dialog"
-            className="absolute right-4 top-4 rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400 transition-colors"
+            className="absolute right-4 top-4 rounded-sm p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -258,7 +258,7 @@ export const DialogClose = forwardRef<HTMLButtonElement, DialogCloseProps>(
       ref={ref}
       type="button"
       onClick={onClick}
-      className={`rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors ${className}`}
+      className={`rounded-sm p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors ${className}`}
       {...props}
     >
       {children ?? (

@@ -232,7 +232,7 @@ export const DashboardSidebar: Story = {
         />
 
         <main className="flex-1 p-8 overflow-y-auto">
-          <div className="max-w-2xl bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-xs">
+          <div className="max-w-2xl bg-white border border-neutral-200/80 rounded-md p-6 shadow-xs">
             <h2 className="text-base font-semibold text-neutral-900">Scrollable Navigation Preview</h2>
             <p className="text-xs text-neutral-500 mt-1">
               Scroll the sidebar navigation on the left to see the smooth, custom ultra-thin scrollbar with 15+ links organized across categories.
@@ -269,7 +269,7 @@ export const CarouselRailSidebar: Story = {
         />
 
         <main className="flex-1 p-8 overflow-y-auto">
-          <div className="max-w-2xl bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-xs">
+          <div className="max-w-2xl bg-white border border-neutral-200/80 rounded-md p-6 shadow-xs">
             <h2 className="text-base font-semibold text-neutral-900">Rail Scrollable Navigation</h2>
             <p className="text-xs text-neutral-500 mt-1">
               Scroll the icon-only rail sidebar to access all 15+ icons, or click the circular chevron button to expand to the full sidebar!
@@ -313,7 +313,7 @@ export const UserProfileCardDropdown: Story = {
           <p className="text-xs text-neutral-500 mt-1">
             Click the user avatar to open the dropdown menu to the right.
           </p>
-          <div className="w-20 mt-4 flex items-center justify-center p-3 bg-white rounded-2xl border border-neutral-200 shadow-2xs">
+          <div className="w-20 mt-4 flex items-center justify-center p-3 bg-white rounded-md border border-neutral-200 shadow-2xs">
             <UserProfileDropdown
               userName="Sathesh Kumar"
               userEmail="sathesh@hellosmart.ai"

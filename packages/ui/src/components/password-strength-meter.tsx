@@ -330,24 +330,24 @@ export function PasswordStrengthMeter({
       badgeBg: 'bg-neutral-100',
     },
     1: {
-      segmentColor: 'bg-rose-500',
-      textColor: 'text-rose-700',
-      badgeBg: 'bg-rose-50 border-rose-200',
+      segmentColor: 'bg-danger',
+      textColor: 'text-danger-foreground',
+      badgeBg: 'bg-danger-muted border-danger-border',
     },
     2: {
-      segmentColor: 'bg-amber-500',
-      textColor: 'text-amber-700',
-      badgeBg: 'bg-amber-50 border-amber-200',
+      segmentColor: 'bg-warning',
+      textColor: 'text-warning-foreground',
+      badgeBg: 'bg-warning-muted border-warning-border',
     },
     3: {
-      segmentColor: 'bg-emerald-500',
-      textColor: 'text-emerald-700',
-      badgeBg: 'bg-emerald-50 border-emerald-200',
+      segmentColor: 'bg-success',
+      textColor: 'text-success-foreground',
+      badgeBg: 'bg-success-muted border-success-border',
     },
     4: {
-      segmentColor: 'bg-emerald-600',
-      textColor: 'text-emerald-800',
-      badgeBg: 'bg-emerald-100 border-emerald-300',
+      segmentColor: 'bg-success',
+      textColor: 'text-success-foreground',
+      badgeBg: 'bg-success-muted border-success-border',
     },
   };
 
@@ -388,8 +388,8 @@ export function PasswordStrengthMeter({
                   key={step}
                   data-testid={`strength-bar-step-${step}`}
                   className={`flex-1 h-full rounded-full transition-all duration-300 ${
-                    isActive ? levelStyles[score].segmentColor : 'bg-neutral-200'
-                  }`}
+ isActive ? levelStyles[score].segmentColor : 'bg-neutral-200'
+ }`}
                 />
               );
             })}
@@ -422,11 +422,11 @@ export function PasswordStrengthMeter({
             <li
               data-testid="req-length"
               className={`flex items-center gap-2 transition-colors ${
-                requirements.hasMinLength ? 'text-emerald-700 font-medium' : 'text-neutral-500'
-              }`}
+ requirements.hasMinLength ? 'text-success-foreground font-medium' : 'text-neutral-500'
+ }`}
             >
               {requirements.hasMinLength ? (
-                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+                <Check className="w-3.5 h-3.5 text-success shrink-0" aria-hidden="true" />
               ) : (
                 <span
                   className="w-3.5 h-3.5 rounded-full border border-neutral-300 flex items-center justify-center text-[10px] text-neutral-400 shrink-0"
@@ -441,11 +441,11 @@ export function PasswordStrengthMeter({
             <li
               data-testid="req-uppercase"
               className={`flex items-center gap-2 transition-colors ${
-                requirements.hasUppercase ? 'text-emerald-700 font-medium' : 'text-neutral-500'
-              }`}
+ requirements.hasUppercase ? 'text-success-foreground font-medium' : 'text-neutral-500'
+ }`}
             >
               {requirements.hasUppercase ? (
-                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+                <Check className="w-3.5 h-3.5 text-success shrink-0" aria-hidden="true" />
               ) : (
                 <span
                   className="w-3.5 h-3.5 rounded-full border border-neutral-300 flex items-center justify-center text-[10px] text-neutral-400 shrink-0"
@@ -460,11 +460,11 @@ export function PasswordStrengthMeter({
             <li
               data-testid="req-lowercase"
               className={`flex items-center gap-2 transition-colors ${
-                requirements.hasLowercase ? 'text-emerald-700 font-medium' : 'text-neutral-500'
-              }`}
+ requirements.hasLowercase ? 'text-success-foreground font-medium' : 'text-neutral-500'
+ }`}
             >
               {requirements.hasLowercase ? (
-                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+                <Check className="w-3.5 h-3.5 text-success shrink-0" aria-hidden="true" />
               ) : (
                 <span
                   className="w-3.5 h-3.5 rounded-full border border-neutral-300 flex items-center justify-center text-[10px] text-neutral-400 shrink-0"
@@ -479,11 +479,11 @@ export function PasswordStrengthMeter({
             <li
               data-testid="req-number"
               className={`flex items-center gap-2 transition-colors ${
-                requirements.hasNumber ? 'text-emerald-700 font-medium' : 'text-neutral-500'
-              }`}
+ requirements.hasNumber ? 'text-success-foreground font-medium' : 'text-neutral-500'
+ }`}
             >
               {requirements.hasNumber ? (
-                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+                <Check className="w-3.5 h-3.5 text-success shrink-0" aria-hidden="true" />
               ) : (
                 <span
                   className="w-3.5 h-3.5 rounded-full border border-neutral-300 flex items-center justify-center text-[10px] text-neutral-400 shrink-0"
@@ -498,11 +498,11 @@ export function PasswordStrengthMeter({
             <li
               data-testid="req-symbol"
               className={`flex items-center gap-2 transition-colors ${
-                requirements.hasSymbol ? 'text-emerald-700 font-medium' : 'text-neutral-500'
-              }`}
+ requirements.hasSymbol ? 'text-success-foreground font-medium' : 'text-neutral-500'
+ }`}
             >
               {requirements.hasSymbol ? (
-                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+                <Check className="w-3.5 h-3.5 text-success shrink-0" aria-hidden="true" />
               ) : (
                 <span
                   className="w-3.5 h-3.5 rounded-full border border-neutral-300 flex items-center justify-center text-[10px] text-neutral-400 shrink-0"
@@ -517,11 +517,11 @@ export function PasswordStrengthMeter({
             <li
               data-testid="req-not-common"
               className={`flex items-center gap-2 transition-colors ${
-                requirements.isNotCommon ? 'text-emerald-700 font-medium' : 'text-neutral-500'
-              }`}
+ requirements.isNotCommon ? 'text-success-foreground font-medium' : 'text-neutral-500'
+ }`}
             >
               {requirements.isNotCommon ? (
-                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+                <Check className="w-3.5 h-3.5 text-success shrink-0" aria-hidden="true" />
               ) : (
                 <span
                   className="w-3.5 h-3.5 rounded-full border border-neutral-300 flex items-center justify-center text-[10px] text-neutral-400 shrink-0"
@@ -536,11 +536,11 @@ export function PasswordStrengthMeter({
             <li
               data-testid="req-not-related"
               className={`flex items-center gap-2 transition-colors ${
-                requirements.isNotRelated ? 'text-emerald-700 font-medium' : 'text-neutral-500'
-              }`}
+ requirements.isNotRelated ? 'text-success-foreground font-medium' : 'text-neutral-500'
+ }`}
             >
               {requirements.isNotRelated ? (
-                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+                <Check className="w-3.5 h-3.5 text-success shrink-0" aria-hidden="true" />
               ) : (
                 <span
                   className="w-3.5 h-3.5 rounded-full border border-neutral-300 flex items-center justify-center text-[10px] text-neutral-400 shrink-0"
@@ -560,9 +560,9 @@ export function PasswordStrengthMeter({
         <div
           role="alert"
           data-testid="server-error-alert"
-          className="p-2.5 rounded-md bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2 mt-2"
+          className="p-2.5 rounded-md bg-danger-muted border border-danger-border text-xs text-danger-foreground flex items-start gap-2 mt-2"
         >
-          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" aria-hidden="true" />
+          <AlertCircle className="w-4 h-4 text-danger shrink-0 mt-0.5" aria-hidden="true" />
           <span className="font-medium leading-relaxed">{friendlyServerError}</span>
         </div>
       )}

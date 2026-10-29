@@ -92,13 +92,13 @@ export function HelloSmartLogo({
     none: '',
     sm: 'rounded-sm',
     md: 'rounded-md',
-    lg: 'rounded-lg',
-    xl: 'rounded-xl',
-    '2xl': 'rounded-2xl',
+    lg: 'rounded-sm',
+    xl: 'rounded-md',
+    '2xl': 'rounded-md',
     full: 'rounded-full',
   };
 
-  const roundedClass = roundedClasses[rounded] || 'rounded-lg';
+  const roundedClass = roundedClasses[rounded] || 'rounded-sm';
 
   const fallbackConfig = { sizeClass: 'w-9 h-9', px: 36 };
   const sizeConfig: { sizeClass: string; px: number } =
@@ -113,8 +113,8 @@ export function HelloSmartLogo({
 
   const bgStyles = {
     transparent: '',
-    dark: 'bg-neutral-900 p-1 rounded-xl border border-neutral-800 shadow-md',
-    glow: 'bg-neutral-900 p-1 rounded-xl border border-primary/30 shadow-lg shadow-primary/15',
+    dark: 'bg-chrome p-1 rounded-md border border-chrome-muted shadow-md',
+    glow: 'bg-chrome p-1 rounded-md border border-primary/30 shadow-lg shadow-primary/15',
   }[bgVariant];
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {

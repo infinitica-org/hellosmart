@@ -19,7 +19,7 @@ type Story = StoryObj<typeof Separator>;
 
 export const Horizontal: Story = {
   render: () => (
-    <div className="max-w-md bg-white p-6 rounded-2xl border border-neutral-200 text-sm">
+    <div className="max-w-md bg-white p-6 rounded-md border border-neutral-200 text-sm">
       <div className="font-medium text-neutral-900">Task Overview</div>
       <div className="text-xs text-neutral-500">Cloud VM Architecture Assessment</div>
       <Separator className="bg-neutral-200" />
@@ -44,7 +44,7 @@ export const Vertical: Story = {
 
 export const WithTitleAndSubtitle: Story = {
   render: () => (
-    <div className="max-w-md bg-white p-6 rounded-2xl border border-neutral-200 text-sm space-y-4">
+    <div className="max-w-md bg-white p-6 rounded-md border border-neutral-200 text-sm space-y-4">
       <div className="text-neutral-800">General Information Section</div>
       <Separator
         title="Candidate Submission"

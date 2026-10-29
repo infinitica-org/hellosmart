@@ -43,7 +43,7 @@ export const TextLine: Story = {
 
 export const CardLoadingPlaceholder: Story = {
   render: () => (
-    <div className="p-6 max-w-sm bg-white rounded-2xl border border-neutral-200/80 shadow-xs space-y-4">
+    <div className="p-6 max-w-sm bg-white rounded-md border border-neutral-200/80 shadow-xs space-y-4">
       <div className="flex items-center gap-4">
         <Skeleton variant="circular" className="h-12 w-12 bg-neutral-200" />
         <div className="space-y-2 flex-1">

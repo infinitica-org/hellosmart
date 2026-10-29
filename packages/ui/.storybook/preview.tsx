@@ -16,15 +16,15 @@ const preview: Preview = {
       values: [
         {
           name: 'light-canvas',
-          value: '#fafbfc',
+          value: '#f4f6f8',
         },
         {
           name: 'pure-white',
           value: '#ffffff',
         },
         {
-          name: 'dark',
-          value: '#090d16',
+          name: 'midnight-chrome',
+          value: '#0b1f3a',
         },
       ],
     },
@@ -51,7 +51,7 @@ const preview: Preview = {
   },
   decorators: [
     (Story) => (
-      <div className="light font-sans text-neutral-900 antialiased p-4 min-h-screen">
+      <div className="light font-sans text-foreground antialiased p-4 min-h-screen bg-canvas">
         <Story />
       </div>
     ),

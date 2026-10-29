@@ -46,7 +46,7 @@ export function HumanReviewPanel({
             </p>
           </div>
           {isFinalized && (
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-success-muted text-success-foreground border border-success-border">
               Finalized (v{currentVersion})
             </span>
           )}
@@ -64,7 +64,7 @@ export function HumanReviewPanel({
             max={100}
             value={score}
             onChange={(e) => setScore(Number(e.target.value))}
-            className="w-32 bg-white border border-neutral-300 text-neutral-900 font-mono text-base font-bold rounded-xl px-3.5 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+            className="w-32 bg-white border border-neutral-300 text-neutral-900 font-mono text-base font-bold rounded-md px-3.5 py-2 focus:border-primary focus:ring-2 focus:ring-nav-accent/20 focus:outline-none"
           />
         </div>
 
@@ -80,7 +80,7 @@ export function HumanReviewPanel({
           />
         </div>
 
-        <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-between">
+        <div className="p-3.5 rounded-md bg-neutral-50 border border-neutral-200 flex items-center justify-between">
           <div>
             <span className="text-xs font-semibold text-neutral-900">
               Release Evaluation Report to Candidate

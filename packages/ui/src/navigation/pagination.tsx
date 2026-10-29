@@ -73,7 +73,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
     const pages = getPageNumbers();
 
     const buttonBase =
-      'inline-flex items-center justify-center rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-30 disabled:pointer-events-none h-8 min-w-[2rem] px-2.5';
+      'inline-flex items-center justify-center rounded-sm text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nav-accent disabled:opacity-30 disabled:pointer-events-none h-8 min-w-[2rem] px-2.5';
 
     return (
       <nav
@@ -150,8 +150,8 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
               disabled={disabled}
               onClick={() => onPageChange(pageNum)}
               className={`${buttonBase} ${
-                isCurrent
-                  ? 'bg-primary text-white font-semibold shadow-xs'
+ isCurrent
+ ? 'bg-primary text-white font-semibold shadow-xs'
                   : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
               }`}
             >

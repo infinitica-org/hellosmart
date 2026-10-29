@@ -5,6 +5,7 @@ export const UI_VERSION = '0.1.0';
 // Utilities
 export * from './utils/cn';
 export * from './styles/theme';
+export * from './styles/ds';
 export * from './styles/fonts';
 
 // Core Branding & Layout

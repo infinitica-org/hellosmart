@@ -35,8 +35,8 @@ export const StatCard = forwardRef<HTMLDivElement, StatCardProps>(
     ref
   ) => {
     const trendColors = {
-      up: 'text-emerald-700 bg-emerald-50 border-emerald-200 font-normal',
-      down: 'text-rose-700 bg-rose-50 border-rose-200 font-normal',
+      up: 'text-success-foreground bg-success-muted border-success-border font-normal',
+      down: 'text-danger-foreground bg-danger-muted border-danger-border font-normal',
       neutral: 'text-neutral-600 bg-neutral-100 border-neutral-200 font-normal',
     };
 
@@ -49,7 +49,7 @@ export const StatCard = forwardRef<HTMLDivElement, StatCardProps>(
             {label}
           </div>
           {icon && (
-            <div className={`${isCompact ? 'w-6 h-6' : 'w-7 h-7'} rounded-lg bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-600 shrink-0`}>
+            <div className={`${isCompact ? 'w-6 h-6' : 'w-7 h-7'} rounded-sm bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-600 shrink-0`}>
               {icon}
             </div>
           )}
@@ -63,8 +63,8 @@ export const StatCard = forwardRef<HTMLDivElement, StatCardProps>(
           {trend && (
             <span
               className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${
-                trendColors[trend.direction || 'neutral']
-              }`}
+ trendColors[trend.direction || 'neutral']
+ }`}
             >
               {trend.direction === 'up' && '↑'}
               {trend.direction === 'down' && '↓'}
@@ -81,14 +81,14 @@ export const StatCard = forwardRef<HTMLDivElement, StatCardProps>(
       </>
     );
 
-    const paddingClass = isCompact ? 'p-3.5' : size === 'lg' ? 'p-6' : 'p-4 sm:p-5';
-    const baseClasses = `rounded-xl border border-neutral-200/80 bg-white ${paddingClass} shadow-xs transition-all duration-200`;
+    const paddingClass = isCompact ? 'p-3' : size === 'lg' ? 'p-5' : 'p-4';
+    const baseClasses = `rounded-md border border-[#d8dee6] bg-white ${paddingClass}`;
 
     if (href) {
       return (
         <a
           href={href}
-          className={`${baseClasses} hover:border-primary/40 hover:shadow-md hover:shadow-neutral-900/5 hover:-translate-y-0.5 block ${className}`}
+          className={`${baseClasses} hover:border-[#c3ccd6] block ${className}`}
         >
           {cardContent}
         </a>
@@ -112,7 +112,7 @@ export const FilterBar = forwardRef<HTMLDivElement, FilterBarProps>(
   ({ className = '', children, ...props }, ref) => (
     <div
       ref={ref}
-      className={`flex flex-wrap items-center gap-2 p-3 rounded-xl bg-neutral-50/80 border border-neutral-200 ${className}`}
+      className={`flex flex-wrap items-center gap-2 p-3 rounded-md bg-neutral-50/80 border border-neutral-200 ${className}`}
       {...props}
     >
       {children}
@@ -151,7 +151,7 @@ export const SearchAndSortToolbar = forwardRef<HTMLDivElement, SearchAndSortTool
           value={searchQuery}
           onChange={(e) => onSearchChange?.(e.target.value)}
           placeholder={searchPlaceholder}
-          className="w-full bg-white border border-neutral-300 rounded-xl px-4 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          className="w-full bg-white border border-neutral-300 rounded-md px-4 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-nav-accent/20 focus:border-primary"
         />
       </div>
       {children && <div className="flex items-center gap-2">{children}</div>}
@@ -172,7 +172,7 @@ export const BulkActionBar = forwardRef<HTMLDivElement, BulkActionBarProps>(
     return (
       <div
         ref={ref}
-        className={`flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-neutral-900 border border-neutral-800 text-sm text-white shadow-xl ${className}`}
+        className={`flex items-center justify-between gap-4 px-4 py-3 rounded-md bg-chrome border border-chrome-muted text-sm text-white shadow-xl ${className}`}
         {...props}
       >
         <div className="flex items-center gap-2">

@@ -18,7 +18,7 @@ export const AiUsageIndicator = forwardRef<HTMLDivElement, AiUsageIndicatorProps
     return (
       <div
         ref={ref}
-        className={`flex flex-col space-y-1.5 p-3 rounded-xl bg-white border border-neutral-200 text-xs shadow-xs ${className}`}
+        className={`flex flex-col space-y-1.5 p-3 rounded-md bg-white border border-neutral-200 text-xs shadow-xs ${className}`}
         {...props}
       >
         <div className="flex justify-between items-center">
@@ -36,13 +36,13 @@ export const AiUsageIndicator = forwardRef<HTMLDivElement, AiUsageIndicatorProps
         <Progress value={percentage} max={100} variant={progressVariant} size="sm" />
 
         {isWarning && (
-          <div className="text-[11px] text-amber-600 font-medium mt-0.5">
+          <div className="text-[11px] text-warning font-medium mt-0.5">
             ⚠️ 80% AI budget reached. AI requests will be blocked at 100%.
           </div>
         )}
 
         {isExceeded && (
-          <div className="text-[11px] text-rose-600 font-medium mt-0.5">
+          <div className="text-[11px] text-danger font-medium mt-0.5">
             ⛔ AI budget depleted. Workspace AI assistant is paused for this session.
           </div>
         )}

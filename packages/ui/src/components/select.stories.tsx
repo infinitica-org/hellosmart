@@ -86,7 +86,7 @@ export const InteractiveSelection: Story = {
 export const MultiSelectDemo: Story = {
   render: () => {
     return (
-      <div className="max-w-md space-y-4 p-4 bg-white rounded-2xl border border-neutral-200">
+      <div className="max-w-md space-y-4 p-4 bg-white rounded-md border border-neutral-200">
         <div>
           <label className="text-xs font-semibold text-neutral-700 block mb-1">
             Rubric Evaluation Agents (Multi-Select)

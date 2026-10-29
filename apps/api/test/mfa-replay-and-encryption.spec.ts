@@ -416,5 +416,15 @@ describe('MFA Hardening: AES-256-GCM Encryption & Replay Protection (S0-T14-3)',
       expect(generated.encryptedSecret).not.toBe(generated.secret);
       expect(generated.uri).toContain('otpauth://totp/');
     });
+
+    it('hashes backup codes consistently for enrollment and login (with or without dash)', () => {
+      const [code] = mfaService.generateBackupCodes(1);
+      expect(code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+      const storedHash = mfaService.hashBackupCode(code);
+      const bodyOnly = code.replace(/-/g, '');
+      expect(mfaService.hashBackupCode(bodyOnly)).toBe(storedHash);
+      expect(mfaService.hashBackupCode(code.toLowerCase())).toBe(storedHash);
+      expect(mfaService.hashBackupCode(`${bodyOnly.slice(0, 4)} ${bodyOnly.slice(4)}`)).toBe(storedHash);
+    });
   });
 });

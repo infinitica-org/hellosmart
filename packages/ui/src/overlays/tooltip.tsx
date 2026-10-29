@@ -54,7 +54,7 @@ export const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
           <div
             id={tooltipId}
             role="tooltip"
-            className={`absolute z-50 whitespace-nowrap rounded-lg bg-neutral-900 border border-neutral-800 px-2.5 py-1 text-xs font-medium text-white shadow-xl pointer-events-none animate-fade-in ${positionClasses[position]} ${className}`}
+            className={`absolute z-50 whitespace-nowrap rounded-sm bg-chrome border border-chrome-muted px-2.5 py-1 text-xs font-medium text-white shadow-xl pointer-events-none animate-fade-in ${positionClasses[position]} ${className}`}
           >
             {content}
           </div>
@@ -162,7 +162,7 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(
           <div
             role="dialog"
             aria-modal="false"
-            className={`absolute z-50 w-max min-w-[14rem] max-w-sm rounded-2xl border border-neutral-200 bg-white p-4 text-neutral-900 shadow-2xl animate-fade-in ${positionClasses[position]} ${alignClasses} ${className}`}
+            className={`absolute z-50 w-max min-w-[14rem] max-w-sm rounded-md border border-neutral-200 bg-white p-4 text-neutral-900 shadow-lg animate-fade-in ${positionClasses[position]} ${alignClasses} ${className}`}
           >
             {content}
           </div>

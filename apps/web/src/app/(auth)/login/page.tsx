@@ -6,14 +6,17 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getSafeRedirectUrl } from '@/lib/safe-redirect';
 import {
+  describeSignInStep,
+  type LoginIdentifyResult,
+  type LoginPortal,
+} from '@/lib/login-portal-meta';
+import {
   BrandMark,
-  TextField,
   PasswordField,
   Button,
   TextureButton,
   Card,
   Alert,
-  Separator,
   Input,
   Dialog,
   DialogHeader,
@@ -30,7 +33,10 @@ function LoginForm() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [step, setStep] = useState<'email' | 'password'>('email');
+  const [identify, setIdentify] = useState<LoginIdentifyResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isIdentifying, setIsIdentifying] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [ssoNotice, setSsoNotice] = useState<string | null>(null);
 
@@ -44,6 +50,69 @@ function LoginForm() {
   const executeRedirect = (role?: string, portal?: string) => {
     const dest = getSafeRedirectUrl(from, role || '', portal);
     window.location.href = dest;
+  };
+
+  const resetToEmailStep = () => {
+    setStep('email');
+    setIdentify(null);
+    setPassword('');
+    setErrorMessage(null);
+  };
+
+  const handleEmailContinue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setSsoNotice(null);
+
+    const trimmed = email.trim();
+    if (!trimmed || !trimmed.includes('@')) {
+      setErrorMessage('Enter a valid work email address.');
+      return;
+    }
+
+    setIsIdentifying(true);
+    try {
+      const response = await fetch('/api/auth/identify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-HS-CSRF': '1',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email: trimmed }),
+      });
+
+      const data = (await response.json().catch(() => null)) as LoginIdentifyResult | null;
+
+      if (response.status === 429) {
+        setErrorMessage(
+          data && typeof data === 'object' && 'detail' in data
+            ? String((data as { detail?: string }).detail)
+            : 'Too many attempts. Please wait and try again.',
+        );
+        return;
+      }
+
+      if (!response.ok && response.status !== 404) {
+        setErrorMessage(
+          data && typeof data === 'object' && 'detail' in data
+            ? String((data as { detail?: string }).detail)
+            : 'Unable to look up this email. You can still enter your password below.',
+        );
+      }
+
+      setIdentify(
+        response.ok && data && typeof data === 'object' && 'recognized' in data
+          ? data
+          : { recognized: false },
+      );
+      setStep('password');
+    } catch {
+      setIdentify({ recognized: false });
+      setStep('password');
+    } finally {
+      setIsIdentifying(false);
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -65,6 +134,7 @@ function LoginForm() {
           'Content-Type': 'application/json',
           'X-HS-CSRF': '1',
         },
+        credentials: 'same-origin',
         body: JSON.stringify({ email: email.trim(), password }),
       });
 
@@ -79,6 +149,9 @@ function LoginForm() {
         } else if (response.status === 429) {
           setErrorMessage('Too many failed attempts. Please wait 15 minutes.');
         } else {
+          if (response.status >= 500) {
+            console.error('[login] BFF error', response.status, data);
+          }
           setErrorMessage(
             data?.detail ||
               data?.title ||
@@ -100,18 +173,33 @@ function LoginForm() {
 
       // Successful login redirect based on role
       executeRedirect(data?.role, data?.portal);
-    } catch {
+    } catch (err) {
+      console.error('[login] request failed', err);
       setIsLoading(false);
       setErrorMessage('Unable to connect to the authentication server. Please try again later.');
     }
+  };
+
+  const isMfaCodeReady = (value: string): boolean => {
+    const trimmed = value.trim();
+    return (
+      /^\d{6}$/.test(trimmed) ||
+      /^[A-Z0-9]{4}-[A-Z0-9]{4}$/i.test(trimmed) ||
+      trimmed.replace(/[^A-Za-z0-9]/g, '').length === 8
+    );
   };
 
   const handleMfaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMfaError(null);
 
-    if (!mfaCode || mfaCode.trim().length !== 6) {
-      setMfaError('Please enter a valid 6-digit code.');
+    const trimmed = mfaCode.trim();
+    const isTotp = /^\d{6}$/.test(trimmed);
+    const isBackup =
+      /^[A-Z0-9]{4}-[A-Z0-9]{4}$/i.test(trimmed) ||
+      trimmed.replace(/[^A-Za-z0-9]/g, '').length === 8;
+    if (!isTotp && !isBackup) {
+      setMfaError('Enter a 6-digit authenticator code or a backup code (XXXX-XXXX).');
       return;
     }
 
@@ -124,9 +212,17 @@ function LoginForm() {
           'Content-Type': 'application/json',
           'X-HS-CSRF': '1',
         },
+        credentials: 'same-origin',
         body: JSON.stringify({
           preAuthToken,
-          totpCode: mfaCode.trim(),
+          ...(isTotp
+            ? { totpCode: trimmed }
+            : {
+                backupCode: (() => {
+                  const c = trimmed.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                  return c.length === 8 ? `${c.slice(0, 4)}-${c.slice(4)}` : trimmed.toUpperCase();
+                })(),
+              }),
         }),
       });
 
@@ -138,10 +234,23 @@ function LoginForm() {
           if (data?.code === 'PREAUTH_INVALID') {
             setIsMfaOpen(false);
             setPreAuthToken(null);
-            setErrorMessage('Pre-authentication expired or invalid. Please sign in again.');
+            setErrorMessage(
+              'Your MFA step expired or was reset (often after 3 wrong tries or an API restart). Sign in again with email and password, then enter a fresh code within 10 minutes.',
+            );
             return;
           }
-          setMfaError(data?.detail || 'Invalid 6-digit authentication code. Please try again.');
+          if (data?.code === 'MFA_INVALID') {
+            setMfaError(data?.detail || 'Invalid authenticator or backup code. Please try again.');
+            return;
+          }
+          if (data?.code === 'MFA_NO_BACKUP_CODES') {
+            setMfaError(
+              data?.detail ||
+                'No backup codes are on file. Use your authenticator app, then generate codes under Admin → Security.',
+            );
+            return;
+          }
+          setMfaError(data?.detail || 'Authentication failed. Please try again.');
         } else if (response.status === 429) {
           setIsMfaOpen(false);
           setPreAuthToken(null);
@@ -169,6 +278,14 @@ function LoginForm() {
     );
   };
 
+  const purposeCopy = describeSignInStep(identify);
+
+  const portalAccent: Record<LoginPortal, string> = {
+    admin: 'border-violet-200 bg-violet-50/80 text-violet-900',
+    company: 'border-primary/25 bg-primary/5 text-neutral-900',
+    candidate: 'border-sky-200 bg-sky-50/80 text-sky-950',
+  };
+
   return (
     <main className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 bg-canvas text-neutral-900 font-sans relative overflow-hidden">
       {/* Background glow */}
@@ -180,9 +297,11 @@ function LoginForm() {
           <Link href="/" className="inline-block mb-2 transition-transform hover:scale-105">
             <BrandMark size="lg" showSubtitle={false} />
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 mt-2">Master Sign In</h1>
-          <p className="text-sm text-neutral-500 font-normal mt-1">
-            Access your company portal, candidate workspace, or admin console.
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 mt-2">Sign in</h1>
+          <p className="text-sm text-neutral-500 font-normal mt-1 max-w-sm">
+            {step === 'email'
+              ? 'Enter your work email. We will route you to the right portal.'
+              : purposeCopy.description}
           </p>
         </div>
 
@@ -228,166 +347,172 @@ function LoginForm() {
 
         {/* Login Card */}
         <Card className="p-6 sm:p-8 space-y-5 shadow-lg shadow-neutral-900/5 bg-white border border-neutral-200/80 rounded-2xl">
-          {/* Subtle Segmented Role Selector */}
-          <div className="flex p-1 bg-neutral-100 rounded-xl border border-neutral-200/60">
-            <button
-              type="button"
-              onClick={() => {
-                setEmail('admin@hellosmart.ai');
-                setPassword('AdminPassword123!');
-                setErrorMessage(null);
-              }}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
-                email === 'admin@hellosmart.ai'
-                  ? 'bg-white text-neutral-900 shadow-2xs font-semibold'
-                  : 'text-neutral-500 hover:text-neutral-800'
-              }`}
-            >
-              Platform Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEmail('company@example.com');
-                setPassword('CompanyPassword123!');
-                setErrorMessage(null);
-              }}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
-                email === 'company@example.com'
-                  ? 'bg-white text-neutral-900 shadow-2xs font-semibold'
-                  : 'text-neutral-500 hover:text-neutral-800'
-              }`}
-            >
-              Company
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEmail('candidate@example.com');
-                setPassword('CandidatePassword123!');
-                setErrorMessage(null);
-              }}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
-                email === 'candidate@example.com'
-                  ? 'bg-white text-neutral-900 shadow-2xs font-semibold'
-                  : 'text-neutral-500 hover:text-neutral-800'
-              }`}
-            >
-              Candidate
-            </button>
-          </div>
+          {step === 'password' && (
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={resetToEmailStep}
+                className="text-xs font-medium text-neutral-500 hover:text-neutral-800 transition-colors"
+                data-testid="login-back-to-email"
+              >
+                ← Change email
+              </button>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-1">
-              <label htmlFor="email" className="block text-xs font-medium text-neutral-700">
-                Email
-              </label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                required
-                disabled={isLoading}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@company.com"
-                data-testid="work-email-input"
-                className="h-10 text-sm bg-white"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="block text-xs font-medium text-neutral-700">
-                  Password
-                </label>
-                <Link
-                  href="/change-password"
-                  className="text-xs text-primary hover:text-primary-hover font-medium transition-colors"
-                >
-                  Forgot password?
-                </Link>
+              <div
+                className={`rounded-xl border px-4 py-3 ${
+                  identify?.portal ? portalAccent[identify.portal] : 'border-neutral-200 bg-neutral-50 text-neutral-800'
+                }`}
+                data-testid="login-purpose-banner"
+              >
+                <p className="text-[11px] uppercase tracking-wider font-semibold opacity-70">
+                  {identify?.recognized ? 'Signing in to' : 'Next step'}
+                </p>
+                <p className="text-sm font-semibold mt-0.5">{purposeCopy.title}</p>
+                <p className="text-xs mt-2 font-mono text-neutral-600">{email.trim()}</p>
+                {identify?.mfaRequired && (
+                  <p className="text-[11px] mt-2 font-medium">Two-factor authentication required after password.</p>
+                )}
+                {identify?.accountStatus === 'suspended' && (
+                  <p className="text-[11px] mt-2 font-medium text-red-700">
+                    This account appears suspended. Sign-in may be blocked.
+                  </p>
+                )}
               </div>
-              <PasswordField
-                id="password"
-                name="password"
-                required
-                disabled={isLoading}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
-                data-testid="password-input"
-                className="h-10 text-sm bg-white"
-              />
             </div>
+          )}
 
-            <TextureButton
-              type="submit"
-              variant="brand"
-              size="default"
-              disabled={isLoading}
-              data-testid="login-submit-button"
-              className="w-full h-11 text-sm font-semibold shadow-md shadow-primary/25 cursor-pointer rounded-xl"
-            >
-              {isLoading ? 'Signing In...' : 'Sign In →'}
-            </TextureButton>
-          </form>
+          {step === 'email' ? (
+            <form onSubmit={handleEmailContinue} className="space-y-4">
+              <div className="space-y-1">
+                <label htmlFor="email" className="block text-xs font-medium text-neutral-700">
+                  Work email
+                </label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  autoFocus
+                  disabled={isIdentifying}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  data-testid="work-email-input"
+                  className="h-10 text-sm bg-white"
+                />
+              </div>
 
-          {/* SSO Separator */}
-          <div className="relative flex items-center justify-center my-2">
-            <div className="border-t border-neutral-200/80 w-full" />
-            <span className="bg-white px-3 text-[11px] uppercase tracking-wider text-neutral-600 font-medium shrink-0">
-              or continue with
-            </span>
-            <div className="border-t border-neutral-200/80 w-full" />
-          </div>
+              <TextureButton
+                type="submit"
+                variant="brand"
+                size="default"
+                disabled={isIdentifying}
+                data-testid="login-continue-button"
+                className="w-full h-11 text-sm font-semibold shadow-md shadow-primary/25 cursor-pointer rounded-xl"
+              >
+                {isIdentifying ? 'Checking…' : 'Continue →'}
+              </TextureButton>
+            </form>
+          ) : (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="password" className="block text-xs font-medium text-neutral-700">
+                    Password
+                  </label>
+                  <Link
+                    href="/change-password"
+                    className="text-xs text-primary hover:text-primary-hover font-medium transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <PasswordField
+                  id="password"
+                  name="password"
+                  required
+                  autoFocus
+                  disabled={isLoading}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  data-testid="password-input"
+                  className="h-10 text-sm bg-white"
+                />
+              </div>
 
-          {/* SSO Buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleSsoClick('Google')}
-              data-testid="google-sso-button"
-              className="h-10 flex items-center justify-center gap-2 px-3 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50/80 text-xs font-medium text-neutral-700 transition-all cursor-pointer shadow-2xs focus:outline-none focus:ring-2 focus:ring-neutral-200"
-            >
-              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                />
-              </svg>
-              <span>Google SSO</span>
-            </button>
+              <TextureButton
+                type="submit"
+                variant="brand"
+                size="default"
+                disabled={isLoading}
+                data-testid="login-submit-button"
+                className="w-full h-11 text-sm font-semibold shadow-md shadow-primary/25 cursor-pointer rounded-xl"
+              >
+                {isLoading ? 'Signing In...' : 'Sign In →'}
+              </TextureButton>
+            </form>
+          )}
 
-            <button
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleSsoClick('Microsoft')}
-              data-testid="microsoft-sso-button"
-              className="h-10 flex items-center justify-center gap-2 px-3 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50/80 text-xs font-medium text-neutral-700 transition-all cursor-pointer shadow-2xs focus:outline-none focus:ring-2 focus:ring-neutral-200"
-            >
-              <svg className="w-4 h-4 shrink-0" viewBox="0 0 23 23" aria-hidden="true">
-                <path fill="#f35325" d="M1 1h10v10H1z" />
-                <path fill="#81bc06" d="M12 1h10v10H12z" />
-                <path fill="#05a6f0" d="M1 12h10v10H1z" />
-                <path fill="#ffba08" d="M12 12h10v10H12z" />
-              </svg>
-              <span>Microsoft SSO</span>
-            </button>
-          </div>
+          {step === 'email' && (
+            <>
+              {/* SSO Separator */}
+              <div className="relative flex items-center justify-center my-2">
+                <div className="border-t border-neutral-200/80 w-full" />
+                <span className="bg-white px-3 text-[11px] uppercase tracking-wider text-neutral-600 font-medium shrink-0">
+                  or continue with
+                </span>
+                <div className="border-t border-neutral-200/80 w-full" />
+              </div>
+
+              {/* SSO Buttons */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  disabled={isIdentifying}
+                  onClick={() => handleSsoClick('Google')}
+                  data-testid="google-sso-button"
+                  className="h-10 flex items-center justify-center gap-2 px-3 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50/80 text-xs font-medium text-neutral-700 transition-all cursor-pointer shadow-2xs focus:outline-none focus:ring-2 focus:ring-neutral-200"
+                >
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
+                  </svg>
+                  <span>Google SSO</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isIdentifying}
+                  onClick={() => handleSsoClick('Microsoft')}
+                  data-testid="microsoft-sso-button"
+                  className="h-10 flex items-center justify-center gap-2 px-3 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50/80 text-xs font-medium text-neutral-700 transition-all cursor-pointer shadow-2xs focus:outline-none focus:ring-2 focus:ring-neutral-200"
+                >
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 23 23" aria-hidden="true">
+                    <path fill="#f35325" d="M1 1h10v10H1z" />
+                    <path fill="#81bc06" d="M12 1h10v10H12z" />
+                    <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                    <path fill="#ffba08" d="M12 12h10v10H12z" />
+                  </svg>
+                  <span>Microsoft SSO</span>
+                </button>
+              </div>
+            </>
+          )}
         </Card>
 
         
@@ -427,7 +552,7 @@ function LoginForm() {
             </div>
             <DialogTitle className="!text-neutral-900 font-medium">Two-Factor Authentication</DialogTitle>
             <DialogDescription className="text-neutral-500 font-light">
-              Enter the 6-digit TOTP code from your authenticator app to complete sign in.
+              Enter your authenticator app code or a one-time backup code (XXXX-XXXX).
             </DialogDescription>
           </DialogHeader>
 
@@ -444,26 +569,21 @@ function LoginForm() {
                   htmlFor="mfa-code-input"
                   className="block text-xs font-medium text-neutral-700"
                 >
-                  6-Digit Security Code
+                  Authenticator or backup code
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setMfaCode('123456')}
-                  className="text-[11px] text-primary hover:underline font-medium"
-                >
-                  Autofill demo code (123456)
-                </button>
               </div>
 
               <Input
                 id="mfa-code-input"
                 type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
+                inputMode="text"
+                autoComplete="one-time-code"
+                maxLength={9}
                 value={mfaCode}
-                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
+                onChange={(e) =>
+                  setMfaCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))
+                }
+                placeholder="000000 or XXXX-XXXX"
                 disabled={mfaLoading}
                 autoFocus
                 data-testid="mfa-totp-input"
@@ -493,7 +613,10 @@ function LoginForm() {
             <Button
               type="submit"
               variant="primary"
-              disabled={mfaLoading || mfaCode.trim().length !== 6}
+              disabled={
+                mfaLoading ||
+                !isMfaCodeReady(mfaCode)
+              }
               isLoading={mfaLoading}
               data-testid="mfa-submit-button"
               className="bg-primary hover:bg-primary-hover text-white border-transparent font-medium"

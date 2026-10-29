@@ -6,10 +6,10 @@ export interface ValidationMessageProps extends HTMLAttributes<HTMLParagraphElem
 }
 
 const typeStyles = {
-  error: 'text-rose-600 dark:text-rose-400',
-  warning: 'text-amber-600 dark:text-amber-400',
-  success: 'text-emerald-600 dark:text-emerald-400',
-  info: 'text-sky-600 dark:text-sky-400',
+  error: 'text-danger',
+  warning: 'text-warning',
+  success: 'text-success',
+  info: 'text-info',
 };
 
 const typeIcons = {

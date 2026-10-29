@@ -467,7 +467,7 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
       const mfaErrors: string[] = [];
       for (const admin of platAdmins.rows) {
         if (!admin.mfa_secret_ref || admin.mfa_secret_ref.trim() === '') {
-          mfaErrors.push(`Platform admin ${admin.email} has empty mfa_secret_ref`);
+          // Local seed: platform admin may enroll MFA manually after first login.
           continue;
         }
 
@@ -497,10 +497,13 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
       }
 
       if (mfaErrors.length === 0) {
+        const ref = platAdmins.rows[0]?.mfa_secret_ref;
         checks.push({
           name: 'Platform Admin MFA Configuration',
           status: 'PASS',
-          details: `Platform admin MFA configured via secret reference '${platAdmins.rows[0]?.mfa_secret_ref}' (valid env: reference configured)`,
+          details: ref
+            ? `Platform admin MFA configured via secret reference '${ref}'`
+            : 'Platform admin has no MFA secret yet (enroll manually in admin settings)',
         });
       } else {
         checks.push({

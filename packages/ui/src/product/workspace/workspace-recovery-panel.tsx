@@ -13,11 +13,11 @@ export const WorkspaceRecoveryPanel = forwardRef<HTMLDivElement, WorkspaceRecove
     return (
       <div
         ref={ref}
-        className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-white border border-neutral-200 text-xs text-neutral-700 shadow-xs ${className}`}
+        className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-md bg-white border border-neutral-200 text-xs text-neutral-700 shadow-xs ${className}`}
         {...props}
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
+          <div className="w-8 h-8 rounded-sm bg-success-muted border border-success-border flex items-center justify-center text-success shrink-0">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
             </svg>

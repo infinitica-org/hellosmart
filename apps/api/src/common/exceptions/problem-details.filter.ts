@@ -4,12 +4,15 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ProblemDetailsException } from './problem-details.exception.js';
 
 @Catch()
 export class ProblemDetailsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(ProblemDetailsFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<FastifyReply>();
@@ -58,6 +61,19 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     }
 
     // Unhandled internal server error (never leak stack trace or internal error messages)
+    const requestId =
+      typeof request.id === 'string' ? request.id : undefined;
+    if (exception instanceof Error) {
+      this.logger.error(
+        `Unhandled error on ${request.method} ${instance}${requestId ? ` [${requestId}]` : ''}: ${exception.message}`,
+        exception.stack,
+      );
+    } else {
+      this.logger.error(
+        `Unhandled error on ${request.method} ${instance}${requestId ? ` [${requestId}]` : ''}: ${String(exception)}`,
+      );
+    }
+
     response
       .status(HttpStatus.INTERNAL_SERVER_ERROR)
       .header('content-type', 'application/problem+json')

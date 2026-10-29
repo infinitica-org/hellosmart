@@ -3,7 +3,7 @@ import { problem } from '../../common/errors/app-http.exception.js';
 import { REDIS_CLIENT, type HelloRedisClient } from '../redis/redis.tokens.js';
 
 const PREAUTH_PREFIX = 'hs:preauth:';
-const PREAUTH_TTL_SECONDS = 5 * 60;
+const PREAUTH_TTL_SECONDS = 10 * 60;
 export const MAX_MFA_ATTEMPTS = 3;
 
 export interface PreAuthPayload {

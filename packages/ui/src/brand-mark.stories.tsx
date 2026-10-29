@@ -71,7 +71,7 @@ export const PureWhiteText: Story = {
     logoRounded: 'lg',
   },
   render: (args) => (
-    <div className="p-6 bg-neutral-950 rounded-2xl border border-neutral-800">
+    <div className="p-6 bg-neutral-950 rounded-md border border-neutral-800">
       <BrandMark {...args} />
     </div>
   ),
@@ -127,7 +127,7 @@ export const WhiteTextWithoutSubtitle: Story = {
     logoRounded: 'lg',
   },
   render: (args) => (
-    <div className="p-6 bg-neutral-950 rounded-2xl border border-neutral-800">
+    <div className="p-6 bg-neutral-950 rounded-md border border-neutral-800">
       <BrandMark {...args} />
     </div>
   ),

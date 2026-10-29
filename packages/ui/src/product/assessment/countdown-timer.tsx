@@ -53,17 +53,17 @@ export const CountdownTimer = forwardRef<HTMLDivElement, CountdownTimerProps>(
     const isExpired = totalSeconds === 0;
 
     const colorClasses = isExpired
-      ? 'bg-rose-100 text-rose-900 border-rose-300'
+      ? 'bg-danger-muted text-danger-foreground border-danger-border'
       : isCritical
-      ? 'bg-rose-50 text-rose-800 border-rose-300 animate-pulse'
+      ? 'bg-danger-muted text-danger-foreground border-danger-border animate-pulse'
       : isWarning
-      ? 'bg-amber-50 text-amber-800 border-amber-200'
+      ? 'bg-warning-muted text-warning-foreground border-warning-border'
       : 'bg-white text-neutral-900 border-neutral-200 shadow-xs';
 
     return (
       <div
         ref={ref}
-        className={`inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border font-mono select-none shadow-sm ${colorClasses} ${className}`}
+        className={`inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-md border font-mono select-none shadow-sm ${colorClasses} ${className}`}
         {...props}
       >
         <svg className="w-4 h-4 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -81,13 +81,13 @@ export const CountdownTimer = forwardRef<HTMLDivElement, CountdownTimerProps>(
         </span>
 
         {isCritical && !isExpired && (
-          <span className="text-[10px] font-sans font-semibold uppercase bg-rose-600 text-white px-1.5 py-0.5 rounded">
+          <span className="text-[10px] font-sans font-semibold uppercase bg-danger text-white px-1.5 py-0.5 rounded">
             Low
           </span>
         )}
 
         {isExpired && (
-          <span className="text-[10px] font-sans font-semibold uppercase bg-rose-700 text-white px-1.5 py-0.5 rounded">
+          <span className="text-[10px] font-sans font-semibold uppercase bg-danger text-white px-1.5 py-0.5 rounded">
             Ended
           </span>
         )}

@@ -14,24 +14,24 @@ export interface AlertProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'
 
 const variantStyles: Record<AlertVariant, { container: string; icon: string; title: string }> = {
   info: {
-    container: 'bg-primary/10 border-primary/25 text-neutral-800',
-    icon: 'text-primary',
-    title: 'text-primary',
+    container: 'bg-[#eaf3fb] border-[#b7d4ee] text-[#0b2f5c]',
+    icon: 'text-nav-accent',
+    title: 'text-nav',
   },
   success: {
-    container: 'bg-emerald-50 border-emerald-200 text-emerald-800',
-    icon: 'text-emerald-600',
-    title: 'text-emerald-900',
+    container: 'bg-success-muted border-success-border text-success-foreground',
+    icon: 'text-success',
+    title: 'text-success-foreground',
   },
   warning: {
-    container: 'bg-amber-50 border-amber-200 text-amber-800',
-    icon: 'text-amber-600',
-    title: 'text-amber-900',
+    container: 'bg-warning-muted border-warning-border text-warning-foreground',
+    icon: 'text-warning',
+    title: 'text-warning-foreground',
   },
   error: {
-    container: 'bg-rose-50 border-rose-200 text-rose-800',
-    icon: 'text-rose-600',
-    title: 'text-rose-900',
+    container: 'bg-danger-muted border-danger-border text-danger-foreground',
+    icon: 'text-danger',
+    title: 'text-danger-foreground',
   },
 };
 
@@ -66,7 +66,7 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(
       <div
         ref={ref}
         role="alert"
-        className={`relative flex items-start gap-3 p-4 rounded-xl border backdrop-blur-sm text-xs leading-relaxed ${cfg.container} ${className}`}
+        className={`relative flex items-start gap-3 p-3 rounded-sm border text-[13px] leading-relaxed ${cfg.container} ${className}`}
         {...props}
       >
         <span className={`shrink-0 mt-0.5 ${cfg.icon}`}>{icon || defaultIcons[variant]}</span>
@@ -81,7 +81,7 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(
             type="button"
             onClick={onClose}
             aria-label="Close alert"
-            className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+            className="p-1 rounded-sm text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
           >
             <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
               <path

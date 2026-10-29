@@ -84,6 +84,18 @@ describe('Contracts - Zod Schemas Unit Tests', () => {
       const valid = MfaVerifyDtoSchema.parse({ preAuthToken: 'preauth_xyz', totpCode: '654321' });
       assert.equal(valid.totpCode, '654321');
 
+      const backup = MfaVerifyDtoSchema.parse({
+        preAuthToken: 'preauth_xyz',
+        backupCode: 'ABCD-EFGH',
+      });
+      assert.equal(backup.backupCode, 'ABCD-EFGH');
+
+      const backupNoDash = MfaVerifyDtoSchema.parse({
+        preAuthToken: 'preauth_xyz',
+        backupCode: 'abcd efgh',
+      });
+      assert.equal(backupNoDash.backupCode, 'ABCD-EFGH');
+
       assert.throws(() => {
         MfaVerifyDtoSchema.parse({ preAuthToken: '', totpCode: 'abc' });
       });

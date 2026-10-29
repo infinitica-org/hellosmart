@@ -61,7 +61,7 @@ export const WarningVariantWithTrigger: Story = {
         confirmLabel="Finalize Scores"
         onConfirm={() => alert('Scores finalized!')}
         trigger={
-          <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50">
+          <Button variant="outline" className="border-warning-border text-warning-foreground hover:bg-warning-muted">
             Click to Open Warning Dialog
           </Button>
         }

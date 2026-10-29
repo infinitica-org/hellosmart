@@ -231,6 +231,12 @@ Pre-login operations (login lookup and invitation acceptance) cannot supply a ve
    Returns the last consumed time-step counter for verification and security audit inspection.
 7. **`app.upgrade_user_mfa_secret(p_user_id, p_encrypted_secret)`**:
    Enables opportunistic zero-downtime migration of legacy plaintext Base32 secrets or envelopes encrypted with previous keys to the active AES-256-GCM encryption key upon successful login.
+8. **`app.set_mfa_enrollment_pending` / `app.confirm_mfa_enrollment`** (migration `0008_mfa_enrollment`):
+   Stores a pending encrypted TOTP secret during platform-admin MFA setup, then promotes it to `mfa_secret_ref` after the user confirms an authenticator code.
+9. **`app.mfa_backup_codes` table** (migration `0008_mfa_enrollment`):
+   Stores SHA-256 hashes of one-time backup codes; `app.consume_mfa_backup_code` marks a code used at login when the authenticator app is unavailable.
+10. **`app.get_mfa_enrollment_pending(p_user_id)`** (migration `0009_mfa_enrollment_pending_read`):
+   Reads pending MFA setup material under `SECURITY DEFINER` so platform-admin rows remain visible when RLS would otherwise hide `org_id IS NULL` users.
 
 ### Principle of Least Privilege
 All `SECURITY DEFINER` routines revoke `EXECUTE` privileges from `PUBLIC` and grant execute permissions exclusively to the non-owner application role `hs_app`:

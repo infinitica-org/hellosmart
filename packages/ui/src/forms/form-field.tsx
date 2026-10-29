@@ -51,7 +51,7 @@ export function FormField({
       <div>{children}</div>
 
       {errorMessage && (
-        <p id={errorId} className="text-xs text-rose-600 flex items-center gap-1 mt-1 font-medium">
+        <p id={errorId} className="text-xs text-danger flex items-center gap-1 mt-1 font-medium">
           <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
             <path
               fillRule="evenodd"
@@ -99,7 +99,7 @@ export const FormError = forwardRef<HTMLParagraphElement, FormErrorProps>(
       <p
         ref={ref}
         role="alert"
-        className={`text-xs text-rose-600 flex items-center gap-1 mt-1 font-medium ${className}`}
+        className={`text-xs text-danger flex items-center gap-1 mt-1 font-medium ${className}`}
         {...props}
       >
         <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">

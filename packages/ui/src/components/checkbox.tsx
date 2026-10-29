@@ -28,7 +28,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             id={inputId}
             type="checkbox"
             disabled={disabled}
-            className="peer h-4 w-4 rounded border border-neutral-300 bg-white text-primary transition-colors focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-white checked:bg-primary checked:border-primary cursor-pointer disabled:cursor-not-allowed"
+            className="peer h-4 w-4 rounded border border-neutral-300 bg-white text-primary transition-colors focus:ring-2 focus:ring-nav-accent focus:ring-offset-2 focus:ring-offset-white checked:bg-primary checked:border-primary cursor-pointer disabled:cursor-not-allowed"
             {...props}
           />
         </div>
@@ -111,7 +111,7 @@ export const RadioGroupItem = forwardRef<HTMLInputElement, RadioGroupItemProps>(
             checked={isChecked}
             onChange={() => context?.onValueChange?.(value)}
             disabled={disabled}
-            className="peer h-4 w-4 rounded-full border border-neutral-300 bg-white text-primary transition-colors focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-white checked:bg-primary checked:border-primary cursor-pointer disabled:cursor-not-allowed"
+            className="peer h-4 w-4 rounded-full border border-neutral-300 bg-white text-primary transition-colors focus:ring-2 focus:ring-nav-accent focus:ring-offset-2 focus:ring-offset-white checked:bg-primary checked:border-primary cursor-pointer disabled:cursor-not-allowed"
             {...props}
           />
         </div>

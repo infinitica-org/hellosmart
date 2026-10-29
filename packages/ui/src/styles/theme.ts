@@ -1,32 +1,42 @@
 /**
- * HelloSmart Design System Theme & Tokens
- * Brand Theme: #fe7330 (Vibrant Brand Orange), Deep Black, and Crisp White
+ * HelloSmart Design System
+ * Operations dashboard language (Meraki-inspired chrome + HelloSmart brand).
  */
 
 export const colors = {
-  // Brand Canvas & Light Foundations
-  canvas: '#fafbfc',
-  black: '#000000',
+  canvas: '#f4f6f8',
+  black: '#0b1f3a',
   surface: '#ffffff',
-  surfaceSubtle: '#f8fafc',
+  surfaceSubtle: '#f7f9fb',
   surfaceRaised: '#ffffff',
-  surfaceOverlay: 'rgba(255, 255, 255, 0.95)',
+  surfaceOverlay: '#ffffff',
 
-  // Typography (Dark & High-Contrast Text on Light Canvas)
   white: '#ffffff',
-  textPrimary: '#0f172a',
-  textSecondary: '#334155',
-  textMuted: '#64748b',
-  textSubtle: '#94a3b8',
+  textPrimary: '#1c2430',
+  textSecondary: '#3d4754',
+  textMuted: '#5b6775',
+  textSubtle: '#8a95a3',
 
-  // Primary Brand Color: #fe7330 (HelloSmart Flame Orange)
+  chrome: {
+    DEFAULT: '#0b1f3a',
+    hover: '#0e2a4d',
+    muted: '#1a3a5c',
+    text: '#ffffff',
+    textMuted: '#b7c4d4',
+  },
+
+  nav: {
+    DEFAULT: '#0b2f5c',
+    accent: '#1b6bba',
+  },
+
   primary: {
     50: '#fff7ed',
     100: '#ffedd5',
     200: '#fed7aa',
     300: '#fdba74',
     400: '#fb923c',
-    500: '#fe7330', // Core Brand Primary
+    500: '#fe7330',
     600: '#ea580c',
     700: '#c2410c',
     800: '#9a3412',
@@ -34,54 +44,51 @@ export const colors = {
     950: '#431407',
     DEFAULT: '#fe7330',
     hover: '#ea580c',
-    glow: 'rgba(254, 115, 48, 0.25)',
-    muted: 'rgba(254, 115, 48, 0.15)',
+    glow: 'rgba(254, 115, 48, 0.12)',
+    muted: 'rgba(254, 115, 48, 0.12)',
   },
 
-  // Semantic Status Colors
   status: {
     success: {
-      DEFAULT: '#10b981',
-      bg: 'rgba(6, 78, 59, 0.4)',
-      border: 'rgba(16, 185, 129, 0.3)',
-      text: '#34d399',
+      DEFAULT: '#1aa053',
+      bg: '#e8f7ee',
+      border: '#b7e3c8',
+      text: '#0f6b38',
     },
     warning: {
-      DEFAULT: '#f59e0b',
-      bg: 'rgba(120, 53, 15, 0.4)',
-      border: 'rgba(245, 158, 11, 0.3)',
-      text: '#fbbf24',
+      DEFAULT: '#d97706',
+      bg: '#fff7e8',
+      border: '#f3d7a1',
+      text: '#9a4d05',
     },
     danger: {
-      DEFAULT: '#f43f5e',
-      bg: 'rgba(136, 19, 55, 0.4)',
-      border: 'rgba(244, 63, 94, 0.3)',
-      text: '#fb7185',
+      DEFAULT: '#d64545',
+      bg: '#fdeeee',
+      border: '#f3c4c4',
+      text: '#9b1c1c',
     },
     info: {
-      DEFAULT: '#38bdf8',
-      bg: 'rgba(14, 116, 144, 0.4)',
-      border: 'rgba(56, 189, 248, 0.3)',
-      text: '#7dd3fc',
+      DEFAULT: '#1b6bba',
+      bg: '#eaf3fb',
+      border: '#b7d4ee',
+      text: '#0b2f5c',
     },
   },
 
-  // Borders & Dividers
   border: {
-    subtle: '#1e293b',
-    default: '#334155',
-    strong: '#475569',
-    orange: 'rgba(254, 115, 48, 0.4)',
+    subtle: '#eef1f4',
+    default: '#d8dee6',
+    strong: '#c3ccd6',
+    orange: 'rgba(254, 115, 48, 0.28)',
   },
 
-  // Glassmorphism Values
   glass: {
-    panelBg: 'rgba(13, 17, 28, 0.75)',
-    panelBorder: 'rgba(51, 65, 85, 0.4)',
-    cardBg: 'linear-gradient(135deg, rgba(30, 41, 59, 0.4) 0%, rgba(13, 17, 28, 0.7) 100%)',
-    cardBorder: 'rgba(71, 85, 105, 0.3)',
-    cardHoverBorder: 'rgba(254, 115, 48, 0.5)',
-    blur: '12px',
+    panelBg: '#ffffff',
+    panelBorder: '#d8dee6',
+    cardBg: '#ffffff',
+    cardBorder: '#d8dee6',
+    cardHoverBorder: '#c3ccd6',
+    blur: '0px',
   },
 } as const;
 
@@ -91,8 +98,8 @@ export const portals = {
     role: 'platform_admin',
     shortLabel: 'Super Admin',
     accentColor: '#fe7330',
-    badgeVariant: 'bg-orange-950/80 text-[#fe7330] border-orange-800/60',
-    navActiveVariant: 'bg-[#fe7330]/20 text-[#fe7330] border-[#fe7330]/40',
+    badgeVariant: 'bg-[#eaf3fb] text-[#0b2f5c] border border-[#b7d4ee]',
+    navActiveVariant: 'bg-[rgba(11,47,92,0.06)] text-[#0b2f5c] border-l-[3px] border-l-[#fe7330]',
     pulseColor: '#fe7330',
     portalRoute: '/admin',
   },
@@ -101,8 +108,8 @@ export const portals = {
     role: 'company_admin',
     shortLabel: 'Company Admin',
     accentColor: '#fe7330',
-    badgeVariant: 'bg-orange-950/80 text-[#fe7330] border-orange-800/60',
-    navActiveVariant: 'bg-[#fe7330]/20 text-[#fe7330] border-[#fe7330]/40',
+    badgeVariant: 'bg-[#fff7ed] text-[#c2410c] border border-[#fed7aa]',
+    navActiveVariant: 'bg-[rgba(11,47,92,0.06)] text-[#0b2f5c] border-l-[3px] border-l-[#fe7330]',
     pulseColor: '#fe7330',
     portalRoute: '/company',
   },
@@ -110,10 +117,10 @@ export const portals = {
     name: 'Candidate Workspace',
     role: 'candidate',
     shortLabel: 'Candidate',
-    accentColor: '#10b981',
-    badgeVariant: 'bg-emerald-950/80 text-emerald-400 border-emerald-800/60',
-    navActiveVariant: 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40',
-    pulseColor: '#34d399',
+    accentColor: '#1aa053',
+    badgeVariant: 'bg-[#e8f7ee] text-[#0f6b38] border border-[#b7e3c8]',
+    navActiveVariant: 'bg-[rgba(26,160,83,0.08)] text-[#0f6b38] border-l-[3px] border-l-[#1aa053]',
+    pulseColor: '#1aa053',
     portalRoute: '/candidate',
   },
 } as const;
@@ -124,13 +131,13 @@ export const typography = {
     mono: "'JetBrains Mono', 'Fira Code', monospace",
   },
   fontSize: {
-    xs: '0.75rem',    // 12px
-    sm: '0.875rem',   // 14px
-    base: '1rem',      // 16px
-    lg: '1.125rem',   // 18px
-    xl: '1.25rem',    // 20px
-    '2xl': '1.5rem',  // 24px
-    '3xl': '1.875rem',// 30px
+    xs: '0.75rem',
+    sm: '0.8125rem',
+    base: '0.875rem',
+    lg: '1rem',
+    xl: '1.125rem',
+    '2xl': '1.375rem',
+    '3xl': '1.75rem',
   },
   fontWeight: {
     light: '300',
@@ -140,17 +147,17 @@ export const typography = {
 } as const;
 
 export const layout = {
-  sidebarWidth: '16rem',         // w-64 (256px)
-  headerHeight: '4rem',           // h-16 (64px)
-  mobileHeaderHeight: '3.5rem',   // h-14 (56px)
-  maxContainerWidth: '80rem',     // max-w-7xl
-  focusedContainerWidth: '64rem', // max-w-5xl
+  sidebarWidth: '15rem',
+  headerHeight: '3.5rem',
+  mobileHeaderHeight: '3.5rem',
+  maxContainerWidth: '80rem',
+  focusedContainerWidth: '64rem',
   borderRadius: {
-    sm: '0.375rem',
-    md: '0.5rem',
-    lg: '0.75rem',
-    xl: '1rem',
-    '2xl': '1.5rem',
+    sm: '0.25rem',
+    md: '0.375rem',
+    lg: '0.5rem',
+    xl: '0.625rem',
+    '2xl': '0.75rem',
     full: '9999px',
   },
 } as const;
@@ -166,18 +173,12 @@ export type Theme = typeof theme;
 export type PortalRole = keyof typeof portals;
 export type PortalThemeConfig = (typeof portals)[PortalRole];
 
-/**
- * Returns the theme configuration for a given portal role
- */
 export function getPortalTheme(role?: string): PortalThemeConfig {
   if (role === 'platform_admin') return portals.platform_admin;
   if (role === 'candidate') return portals.candidate;
   return portals.company_admin;
 }
 
-/**
- * Returns badge class string for a given portal role
- */
 export function getRoleBadgeClass(role?: string): string {
   return getPortalTheme(role).badgeVariant;
 }

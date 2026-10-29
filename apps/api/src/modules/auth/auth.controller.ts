@@ -8,7 +8,7 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import {
   ChangePasswordDtoSchema,
   ChangePasswordResponseDto,
@@ -21,6 +21,7 @@ import {
   MfaVerifyDtoSchema,
 } from '@hs/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
 import { problem } from '../../common/errors/app-http.exception.js';
 import { flattenZodErrors } from '../../common/validation/zod-errors.js';
 import { Public } from '../../common/decorators/public.decorator.js';
@@ -39,6 +40,10 @@ import {
 } from '../session/session.service.js';
 import { clearSessionCookie, setSessionCookie } from './auth.cookies.js';
 import { AuthService } from './auth.service.js';
+
+const IdentifyLoginDtoSchema = z.object({
+  email: z.string().email(),
+});
 
 @Roles('platform_admin', 'company_admin', 'candidate')
 @Controller()
@@ -68,6 +73,16 @@ export class AuthController {
     });
     setSessionCookie(reply, this.config, session.rawToken);
     return MeDtoSchema.parse(session.me);
+  }
+
+  @Public()
+  @HttpCode(200)
+  @Throttle({ login: { limit: 20, ttl: 60_000 } })
+  @Post('auth/identify')
+  async identify(
+    @Body(new ZodValidationPipe(IdentifyLoginDtoSchema)) body: z.infer<typeof IdentifyLoginDtoSchema>,
+  ) {
+    return this.auth.identifyLoginEmail(body.email);
   }
 
   @Public()
@@ -126,6 +141,7 @@ export class AuthController {
     return ChangePasswordResponseDtoSchema.parse(result);
   }
 
+  @SkipThrottle()
   @Get('me')
   async me(@Req() request: AuthenticatedRequest) {
     const user = request[REQUEST_USER_KEY];

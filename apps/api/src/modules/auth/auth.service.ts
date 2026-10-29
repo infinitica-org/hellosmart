@@ -6,6 +6,10 @@ import type {
   LogoutResponseDto,
   MeDto,
   MfaVerifyDto,
+  MfaSetupConfirmDto,
+  MfaSetupConfirmResponse,
+  MfaSetupStartResponse,
+  MfaStatusResponse,
 } from '@hs/contracts';
 import type { Pool, PoolClient } from 'pg';
 import { problem } from '../../common/errors/app-http.exception.js';
@@ -88,8 +92,34 @@ export class AuthService {
 
     await this.lockout.clearFailures(email);
 
-    if (user.role === 'platform_admin') {
+    if (user.role === 'platform_admin' && this.platformAdminRequiresMfa(user)) {
       if (dto.mfaCode) {
+        if (this.looksLikeBackupCode(dto.mfaCode)) {
+          const normalizedBackup = this.mfa.formatBackupCode(dto.mfaCode);
+          const remaining = await this.mfa.countUnusedBackupCodes(user.id);
+          if (remaining === 0) {
+            await this.auditLogin(user.id, user.role, user.org_id, false, meta);
+            throw problem({
+              title: 'Unauthorized',
+              status: 401,
+              detail:
+                'No backup codes are stored for this account. Use your authenticator app, then generate backup codes under Admin → Security.',
+              code: 'MFA_NO_BACKUP_CODES',
+            });
+          }
+          const consumed = await this.mfa.consumeBackupCode(user.id, normalizedBackup);
+          if (!consumed) {
+            await this.auditLogin(user.id, user.role, user.org_id, false, meta);
+            throw problem({
+              title: 'Unauthorized',
+              status: 401,
+              detail: 'Invalid backup code',
+              code: 'MFA_INVALID',
+            });
+          }
+          return this.completeLogin(user, meta);
+        }
+
         const secret = this.mfa.resolveSecret(user.mfa_secret_ref);
         const { valid, step } = this.mfa.verifyTotpWithStep(secret, dto.mfaCode);
         if (!valid || step === undefined) {
@@ -148,6 +178,44 @@ export class AuthService {
 
     this.assertAccountActive(user);
 
+    if (dto.backupCode) {
+      const normalizedBackup = this.mfa.formatBackupCode(dto.backupCode);
+      const remaining = await this.mfa.countUnusedBackupCodes(user.id);
+      if (remaining === 0) {
+        await this.auditLogin(user.id, user.role, user.org_id, false, meta);
+        throw problem({
+          title: 'Unauthorized',
+          status: 401,
+          detail:
+            'No backup codes are stored for this account (common with legacy env-based MFA). Sign in with your authenticator app, then open Admin → Security to generate backup codes.',
+          code: 'MFA_NO_BACKUP_CODES',
+        });
+      }
+      const consumed = await this.mfa.consumeBackupCode(user.id, normalizedBackup);
+      if (!consumed) {
+        await this.preAuth.recordFailedAttempt(dto.preAuthToken);
+        await this.auditLogin(user.id, user.role, user.org_id, false, meta);
+        throw problem({
+          title: 'Unauthorized',
+          status: 401,
+          detail: 'Invalid backup code',
+          code: 'MFA_INVALID',
+        });
+      }
+      await this.preAuth.delete(dto.preAuthToken);
+      await this.auditLogin(user.id, user.role, user.org_id, true, meta);
+      return this.completeLogin(user, meta);
+    }
+
+    if (!dto.totpCode) {
+      throw problem({
+        title: 'Bad Request',
+        status: 400,
+        detail: 'TOTP code or backup code is required',
+        code: 'VALIDATION_ERROR',
+      });
+    }
+
     const secret = this.mfa.resolveSecret(user.mfa_secret_ref);
     const { valid, step } = this.mfa.verifyTotpWithStep(secret, dto.totpCode);
     if (!valid || step === undefined) {
@@ -179,6 +247,162 @@ export class AuthService {
       void this.mfa.upgradeSecret(user.id, secret).catch(() => {});
     }
     return this.completeLogin(user, meta);
+  }
+
+  async getMfaStatus(userId: string): Promise<MfaStatusResponse> {
+    const user = await this.findUserById(userId);
+    if (!user || user.role !== 'platform_admin') {
+      throw problem({
+        title: 'Forbidden',
+        status: 403,
+        detail: 'MFA enrollment is only available for platform administrators',
+        code: 'FORBIDDEN',
+      });
+    }
+    const enrolled = Boolean(user.mfa_secret_ref?.trim());
+    const backupCodesRemaining = enrolled
+      ? await this.mfa.countUnusedBackupCodes(userId)
+      : 0;
+    return { enrolled, backupCodesRemaining };
+  }
+
+  async startMfaEnrollment(userId: string, meta: RequestMeta): Promise<MfaSetupStartResponse> {
+    const user = await this.findUserById(userId);
+    if (!user || user.role !== 'platform_admin') {
+      throw problem({
+        title: 'Forbidden',
+        status: 403,
+        detail: 'MFA enrollment is only available for platform administrators',
+        code: 'FORBIDDEN',
+      });
+    }
+    if (user.mfa_secret_ref?.trim()) {
+      throw problem({
+        title: 'Conflict',
+        status: 409,
+        detail: 'MFA is already enabled. Contact support to reset.',
+        code: 'MFA_ALREADY_ENROLLED',
+      });
+    }
+
+    const generated = this.mfa.generateMfaSecret(user.email);
+    const stored = await this.mfa.setEnrollmentPending(userId, generated.encryptedSecret);
+    if (!stored) {
+      throw problem({
+        title: 'Internal Server Error',
+        status: 500,
+        detail: 'Could not start MFA enrollment',
+        code: 'MFA_SETUP_FAILED',
+      });
+    }
+
+    await this.auditMfaEvent(user.id, user.role, user.org_id, 'auth.mfa.setup_started', meta);
+    return {
+      secret: generated.secret,
+      otpauthUri: generated.uri,
+    };
+  }
+
+  async confirmMfaEnrollment(
+    userId: string,
+    dto: MfaSetupConfirmDto,
+    meta: RequestMeta,
+  ): Promise<MfaSetupConfirmResponse> {
+    const user = await this.findUserById(userId);
+    if (!user || user.role !== 'platform_admin') {
+      throw problem({
+        title: 'Forbidden',
+        status: 403,
+        detail: 'MFA enrollment is only available for platform administrators',
+        code: 'FORBIDDEN',
+      });
+    }
+    if (user.mfa_secret_ref?.trim()) {
+      throw problem({
+        title: 'Conflict',
+        status: 409,
+        detail: 'MFA is already enabled',
+        code: 'MFA_ALREADY_ENROLLED',
+      });
+    }
+
+    const pendingRef = await this.mfa.getEnrollmentPendingRef(userId);
+    const pendingSecret = this.mfa.resolvePendingSecret(pendingRef);
+    const { valid } = this.mfa.verifyTotpWithStep(pendingSecret, dto.totpCode);
+    if (!valid) {
+      throw problem({
+        title: 'Bad Request',
+        status: 400,
+        detail: 'Authenticator code did not match. Check your device time and try again.',
+        code: 'MFA_INVALID',
+      });
+    }
+
+    const encryptedSecret = this.mfa.encryptSecret(pendingSecret);
+    const confirmed = await this.mfa.confirmEnrollment(userId, encryptedSecret);
+    if (!confirmed) {
+      throw problem({
+        title: 'Internal Server Error',
+        status: 500,
+        detail: 'Could not confirm MFA enrollment',
+        code: 'MFA_SETUP_FAILED',
+      });
+    }
+
+    const backupCodes = this.mfa.generateBackupCodes(10);
+    const hashes = backupCodes.map((code) => this.mfa.hashBackupCode(code));
+    await this.mfa.storeBackupCodeHashes(userId, hashes);
+
+    await this.auditMfaEvent(user.id, user.role, user.org_id, 'auth.mfa.enrolled', meta, {
+      backupCodesIssued: backupCodes.length,
+    });
+
+    return { backupCodes };
+  }
+
+  async regenerateBackupCodes(
+    userId: string,
+    dto: MfaSetupConfirmDto,
+    meta: RequestMeta,
+  ): Promise<MfaSetupConfirmResponse> {
+    const user = await this.findUserById(userId);
+    if (!user || user.role !== 'platform_admin') {
+      throw problem({
+        title: 'Forbidden',
+        status: 403,
+        detail: 'MFA enrollment is only available for platform administrators',
+        code: 'FORBIDDEN',
+      });
+    }
+    if (!user.mfa_secret_ref?.trim()) {
+      throw problem({
+        title: 'Bad Request',
+        status: 400,
+        detail: 'Enable MFA before generating backup codes',
+        code: 'MFA_NOT_ENROLLED',
+      });
+    }
+
+    const secret = this.mfa.resolveSecret(user.mfa_secret_ref);
+    const { valid } = this.mfa.verifyTotpWithStep(secret, dto.totpCode);
+    if (!valid) {
+      throw problem({
+        title: 'Bad Request',
+        status: 400,
+        detail: 'Authenticator code did not match. Check your device time and try again.',
+        code: 'MFA_INVALID',
+      });
+    }
+
+    const backupCodes = this.mfa.generateBackupCodes(10);
+    const hashes = backupCodes.map((code) => this.mfa.hashBackupCode(code));
+    await this.mfa.storeBackupCodeHashes(userId, hashes);
+
+    await this.auditMfaEvent(user.id, user.role, user.org_id, 'auth.mfa.backup_codes_regenerated', meta, {
+      backupCodesIssued: backupCodes.length,
+    });
+
+    return { backupCodes };
   }
 
   async getMe(userId: string): Promise<MeDto> {
@@ -270,6 +494,47 @@ export class AuthService {
     }
   }
 
+  private platformAdminRequiresMfa(user: DbUserRow): boolean {
+    const ref = user.mfa_secret_ref?.trim();
+    return Boolean(ref);
+  }
+
+  private looksLikeBackupCode(value: string): boolean {
+    const cleaned = value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (cleaned.length === 8) {
+      return true;
+    }
+    return /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(value.trim().toUpperCase());
+  }
+
+  private async auditMfaEvent(
+    actorId: string,
+    actorRole: string,
+    orgId: string | null,
+    action: string,
+    meta: RequestMeta,
+    after?: Record<string, unknown>,
+  ): Promise<void> {
+    const input: AuditRecordInput = {
+      actorId,
+      actorRole,
+      orgId,
+      action,
+      entity: 'user',
+      entityId: actorId,
+      after: after ?? null,
+      ip: meta.ip ?? null,
+      userAgent: meta.userAgent ?? null,
+      requestId: meta.requestId ?? null,
+    };
+    const pooled = await this.pool.connect();
+    try {
+      await appendAuditEvent(pooled, input);
+    } finally {
+      pooled.release();
+    }
+  }
+
   private assertAccountActive(user: DbUserRow): void {
     if (user.status === 'suspended' || user.status === 'deleted') {
       throw problem({
@@ -306,6 +571,38 @@ export class AuthService {
       mustResetPassword: user.must_reset_password,
       org,
     });
+  }
+
+  async identifyLoginEmail(email: string): Promise<{
+    recognized: boolean;
+    role?: MeDto['role'];
+    portal?: MeDto['portal'];
+    name?: string;
+    orgName?: string | null;
+    mfaRequired?: boolean;
+    accountStatus?: 'active' | 'suspended';
+  }> {
+    const normalized = email.trim().toLowerCase();
+    const user = await this.findUserByEmail(normalized);
+    if (!user) {
+      return { recognized: false };
+    }
+
+    const me = this.toMeFromRow(user);
+    const suspended =
+      user.status === 'suspended' ||
+      user.status === 'deleted' ||
+      user.org_status === 'suspended';
+
+    return {
+      recognized: true,
+      role: me.role,
+      portal: me.portal,
+      name: me.name,
+      orgName: me.org?.name ?? null,
+      mfaRequired: user.role === 'platform_admin' && this.platformAdminRequiresMfa(user),
+      accountStatus: suspended ? 'suspended' : 'active',
+    };
   }
 
   private async findUserByEmail(email: string): Promise<DbUserRow | null> {

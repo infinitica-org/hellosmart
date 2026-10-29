@@ -93,7 +93,7 @@ describe('HelloSmart Test Data Matrix Entities ([6.1])', () => {
   });
 
   describe('Users & Role Boundaries', () => {
-    it('defines superadmin platform admin with MFA enabled and org_id = null', () => {
+    it('defines superadmin platform admin without seeded MFA (enroll manually) and org_id = null', () => {
       const platformAdmins = getPlatformAdmins(refDate);
       assert.strictEqual(platformAdmins.length, 1);
       const superadmin = platformAdmins[0]!;
@@ -102,7 +102,7 @@ describe('HelloSmart Test Data Matrix Entities ([6.1])', () => {
       assert.strictEqual(superadmin.role, 'platform_admin');
       assert.strictEqual(superadmin.org_id, null, 'Platform admin must have org_id NULL');
       assert.strictEqual(superadmin.status, 'active');
-      assert.ok(superadmin.mfa_secret_ref, 'MFA must be enabled for platform admin');
+      assert.strictEqual(superadmin.mfa_secret_ref, null);
     });
 
     it('defines company admins for all three organizations', () => {

@@ -11,10 +11,10 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         ref={ref}
         disabled={disabled}
         aria-invalid={hasError ? 'true' : undefined}
-        className={`w-full bg-white border text-neutral-900 placeholder-neutral-400 text-sm rounded-xl px-3.5 py-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white shadow-xs disabled:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed ${
-          hasError
-            ? 'border-rose-500/80 focus:border-rose-500 focus:ring-rose-500/20'
-            : 'border-neutral-300 hover:border-neutral-400 focus:border-primary focus:ring-primary/20'
+        className={`w-full bg-white border text-foreground placeholder-[#8a95a3] text-[13px] rounded-sm px-3 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-white disabled:bg-canvas disabled:opacity-50 disabled:cursor-not-allowed ${
+ hasError
+ ? 'border-[#d64545] focus:border-[#d64545] focus:ring-[#d64545]/15'
+            : 'border-[#d8dee6] hover:border-[#c3ccd6] focus:border-nav-accent focus:ring-nav-accent/20'
         } ${className}`}
         {...props}
       />

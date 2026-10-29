@@ -1,4 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
+import { createHash, randomBytes } from 'node:crypto';
 import { authenticator } from 'otplib';
 import type { Pool, PoolClient } from 'pg';
 import { APP_CONFIG } from '../../config/config.tokens.js';
@@ -220,5 +221,141 @@ export class MfaService {
    */
   resetInMemorySteps(): void {
     this.inMemoryLastStep.clear();
+  }
+
+  normalizeBackupCode(raw: string): string {
+    return raw.trim().toUpperCase().replace(/\s+/g, '');
+  }
+
+  formatBackupCode(raw: string): string {
+    const normalized = this.normalizeBackupCode(raw).replace(/-/g, '');
+    if (normalized.length !== 8) {
+      return this.normalizeBackupCode(raw);
+    }
+    return `${normalized.slice(0, 4)}-${normalized.slice(4)}`;
+  }
+
+  hashBackupCode(raw: string): string {
+    const formatted = this.formatBackupCode(raw);
+    const body = formatted.replace(/-/g, '');
+    return createHash('sha256').update(body, 'utf8').digest('hex');
+  }
+
+  generateBackupCodes(count = 10): string[] {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const codes: string[] = [];
+    for (let i = 0; i < count; i += 1) {
+      let body = '';
+      const bytes = randomBytes(8);
+      for (let j = 0; j < 8; j += 1) {
+        body += alphabet[bytes[j]! % alphabet.length];
+      }
+      codes.push(`${body.slice(0, 4)}-${body.slice(4)}`);
+    }
+    return codes;
+  }
+
+  resolvePendingSecret(mfaEnrollmentPendingRef: string | null): string {
+    if (!mfaEnrollmentPendingRef || mfaEnrollmentPendingRef.trim() === '') {
+      throw problem({
+        title: 'Bad Request',
+        status: 400,
+        detail: 'No MFA setup is in progress',
+        code: 'MFA_SETUP_NOT_STARTED',
+      });
+    }
+    const trimmed = mfaEnrollmentPendingRef.trim();
+    if (this.crypto.isEncrypted(trimmed)) {
+      try {
+        return this.crypto.decrypt(trimmed);
+      } catch {
+        throw problem({
+          title: 'Bad Request',
+          status: 400,
+          detail: 'MFA setup secret is invalid',
+          code: 'MFA_SETUP_INVALID',
+        });
+      }
+    }
+    throw problem({
+      title: 'Bad Request',
+      status: 400,
+      detail: 'MFA setup secret is invalid',
+      code: 'MFA_SETUP_INVALID',
+    });
+  }
+
+  async setEnrollmentPending(userId: string, encryptedPending: string): Promise<boolean> {
+    if (!this.pool) {
+      return true;
+    }
+    const res = await this.pool.query<{ ok: boolean }>(
+      'SELECT app.set_mfa_enrollment_pending($1, $2) AS ok',
+      [userId, encryptedPending],
+    );
+    return Boolean(res.rows[0]?.ok);
+  }
+
+  async getEnrollmentPendingRef(userId: string): Promise<string | null> {
+    if (!this.pool) {
+      return null;
+    }
+    const res = await this.pool.query<{ ref: string | null }>(
+      'SELECT app.get_mfa_enrollment_pending($1) AS ref',
+      [userId],
+    );
+    const ref = res.rows[0]?.ref;
+    return ref && ref.trim() !== '' ? ref : null;
+  }
+
+  async clearEnrollmentPending(userId: string): Promise<void> {
+    if (!this.pool) {
+      return;
+    }
+    await this.pool.query('SELECT app.clear_mfa_enrollment_pending($1)', [userId]);
+  }
+
+  async confirmEnrollment(userId: string, encryptedSecret: string): Promise<boolean> {
+    if (!this.pool) {
+      return true;
+    }
+    const res = await this.pool.query<{ ok: boolean }>(
+      'SELECT app.confirm_mfa_enrollment($1, $2) AS ok',
+      [userId, encryptedSecret],
+    );
+    return Boolean(res.rows[0]?.ok);
+  }
+
+  async storeBackupCodeHashes(userId: string, hashes: string[]): Promise<void> {
+    if (!this.pool) {
+      return;
+    }
+    await this.pool.query('SELECT app.delete_mfa_backup_codes_for_user($1)', [userId]);
+    for (const hash of hashes) {
+      await this.pool.query('SELECT app.insert_mfa_backup_code_hash($1, $2)', [userId, hash]);
+    }
+  }
+
+  async consumeBackupCode(userId: string, rawBackupCode: string): Promise<boolean> {
+    const hash = this.hashBackupCode(this.formatBackupCode(rawBackupCode));
+    if (!this.pool) {
+      return false;
+    }
+    const res = await this.pool.query<{ consumed: boolean }>(
+      'SELECT app.consume_mfa_backup_code($1, $2) AS consumed',
+      [userId, hash],
+    );
+    return Boolean(res.rows[0]?.consumed);
+  }
+
+  async countUnusedBackupCodes(userId: string): Promise<number> {
+    if (!this.pool) {
+      return 0;
+    }
+    const res = await this.pool.query<{ count: number }>(
+      'SELECT app.count_unused_mfa_backup_codes($1) AS count',
+      [userId],
+    );
+    return res.rows[0]?.count ?? 0;
   }
 }

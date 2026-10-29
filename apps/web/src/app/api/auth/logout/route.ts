@@ -1,25 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { proxyAuthedApiRequest } from '@/lib/auth-bff-proxy';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const sessionToken = req.cookies.get('hs_session')?.value;
-  const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:4000';
+  const proxied = await proxyAuthedApiRequest(req, '/auth/logout', {
+    method: 'POST',
+    body: '',
+  });
 
-  if (sessionToken) {
-    try {
-      await fetch(`${apiBaseUrl}/auth/logout`, {
-        method: 'POST',
-        headers: {
-          Cookie: `hs_session=${sessionToken}`,
-          Authorization: `Bearer ${sessionToken}`,
-          'X-HS-CSRF': '1',
-        },
-      });
-    } catch {
-      // ignore network errors on logout
-    }
-  }
+  const res =
+    proxied.status === 503
+      ? NextResponse.json({ success: true, message: 'Logged out locally.' }, { status: 200 })
+      : proxied;
 
-  const res = NextResponse.json({ success: true }, { status: 200 });
   res.cookies.delete('hs_session');
   res.cookies.delete('hs_role');
   return res;

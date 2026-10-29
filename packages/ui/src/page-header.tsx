@@ -22,13 +22,13 @@ export function PageHeader({
 }: PageHeaderProps): React.JSX.Element {
   const badgeColors = {
     default: 'bg-neutral-100 text-neutral-700 border-neutral-200',
-    success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    warning: 'bg-amber-50 text-amber-700 border-amber-200',
+    success: 'bg-success-muted text-success-foreground border-success-border',
+    warning: 'bg-warning-muted text-warning-foreground border-warning-border',
     info: 'bg-primary/10 text-primary border-primary/25',
   };
 
   return (
-    <div className="mb-6 sm:mb-8 flex flex-col gap-3 pb-5 border-b border-neutral-200/80">
+    <div className="mb-5 flex flex-col gap-2 pb-4 border-b border-[#d8dee6]">
       {breadcrumbs && breadcrumbs.length > 0 && (
         <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-500 font-light">
           {breadcrumbs.map((crumb, idx) => (
@@ -52,14 +52,14 @@ export function PageHeader({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-medium tracking-tight text-neutral-900">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
               {title}
             </h1>
             {badge && (
               <span
                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-normal border shrink-0 ${
-                  badgeColors[badge.variant || 'default']
-                }`}
+ badgeColors[badge.variant || 'default']
+ }`}
               >
                 {badge.text}
               </span>

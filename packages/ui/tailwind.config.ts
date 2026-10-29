@@ -7,19 +7,28 @@ const config: Config = {
     extend: {
       colors: {
         canvas: {
-          DEFAULT: '#fafbfc',
-          alt: '#FAF7F2',
+          DEFAULT: '#f4f6f8',
+          alt: '#eef1f4',
         },
         surface: {
           DEFAULT: '#ffffff',
-          subtle: '#f8fafc',
-          muted: '#f1f5f9',
+          subtle: '#f7f9fb',
+          muted: '#eef1f4',
         },
-        background: '#fafbfc',
-        foreground: '#0f172a',
+        chrome: {
+          DEFAULT: '#0b1f3a',
+          hover: '#0e2a4d',
+          muted: '#1a3a5c',
+        },
+        nav: {
+          DEFAULT: '#0b2f5c',
+          accent: '#1b6bba',
+        },
+        background: '#f4f6f8',
+        foreground: '#1c2430',
         card: {
           DEFAULT: '#ffffff',
-          border: 'rgba(226, 232, 240, 0.9)',
+          border: '#d8dee6',
         },
         primary: {
           50: '#fff7ed',
@@ -38,11 +47,35 @@ const config: Config = {
         },
         accent: {
           orange: '#fe7330',
-          cyan: '#38bdf8',
-          emerald: '#10b981',
-          amber: '#f59e0b',
-          rose: '#f43f5e',
-          violet: '#8b5cf6',
+          cyan: '#1b6bba',
+          emerald: '#1aa053',
+          amber: '#d97706',
+          rose: '#d64545',
+          violet: '#0b2f5c',
+        },
+        success: {
+          DEFAULT: '#1aa053',
+          muted: '#e8f7ee',
+          foreground: '#0f6b38',
+          border: '#b7e3c8',
+        },
+        warning: {
+          DEFAULT: '#d97706',
+          muted: '#fff7e8',
+          foreground: '#9a4d05',
+          border: '#f3d7a1',
+        },
+        danger: {
+          DEFAULT: '#d64545',
+          muted: '#fdeeee',
+          foreground: '#9b1c1c',
+          border: '#f3c4c4',
+        },
+        info: {
+          DEFAULT: '#1b6bba',
+          muted: '#eaf3fb',
+          foreground: '#0b2f5c',
+          border: '#b7d4ee',
         },
       },
       borderRadius: {

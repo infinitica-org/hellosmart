@@ -167,6 +167,41 @@ const server = http.createServer((req, res) => {
     });
   };
 
+  // POST /auth/identify (and /api/v1/auth/identify)
+  if ((url.pathname === '/auth/identify' || url.pathname === '/api/v1/auth/identify') && req.method === 'POST') {
+    readJson((err, { email }) => {
+      if (err) {
+        res.writeHead(400, { 'Content-Type': 'application/problem+json' });
+        res.end(JSON.stringify({ type: 'about:blank', title: 'Bad Request', status: 400, detail: 'Invalid JSON payload' }));
+        return;
+      }
+
+      const normalizedEmail = (email || '').trim().toLowerCase();
+      const user = USERS.find((u) => u.email === normalizedEmail);
+
+      if (!user) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ recognized: false }));
+        return;
+      }
+
+      const suspended = user.status === 'suspended' || user.org?.status === 'suspended';
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          recognized: true,
+          role: user.role,
+          portal: user.portal,
+          name: user.name,
+          orgName: user.org?.name ?? null,
+          mfaRequired: user.role === 'platform_admin',
+          accountStatus: suspended ? 'suspended' : 'active',
+        }),
+      );
+    });
+    return;
+  }
+
   // POST /auth/login (and /api/v1/auth/login)
   if ((url.pathname === '/auth/login' || url.pathname === '/api/v1/auth/login') && req.method === 'POST') {
     readJson((err, { email, password }) => {

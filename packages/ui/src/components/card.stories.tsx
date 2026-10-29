@@ -99,7 +99,7 @@ export const AllCardVariants: Story = {
         <h4 className="font-medium text-neutral-900 mb-1">Interactive Variant</h4>
         <p className="text-xs text-neutral-500">Smooth hover transition and border glow.</p>
       </Card>
-      <Card variant="glass" className="p-6 bg-white/80 backdrop-blur border-neutral-200 text-neutral-900 shadow-sm">
+      <Card variant="glass" className="p-6">
         <h4 className="font-medium text-neutral-900 mb-1">Glass Variant</h4>
         <p className="text-xs text-neutral-500">Frosted glass backdrop-blur effect.</p>
       </Card>
