@@ -1,6 +1,7 @@
 export * from './schemas/errors.js';
 export * from './schemas/user.js';
 export * from './schemas/auth.js';
+export * from './schemas/session.js';
 export * from './schemas/org.js';
 
 export type * from './generated/api.js';

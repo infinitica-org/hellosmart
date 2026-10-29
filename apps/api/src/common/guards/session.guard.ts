@@ -4,19 +4,36 @@ import {
   ExecutionContext,
   Logger,
   Inject,
+  Optional,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
 import {
-  COOKIE_SESSION_NAME,
   IS_PUBLIC_KEY,
   AuthenticatedUser,
 } from '../constants/auth.constants.js';
-import { RedisService } from '../redis/redis.service.js';
+import {
+  COOKIE_HOST_SESSION_NAME,
+  COOKIE_SESSION_NAME,
+  SessionService,
+} from '../../modules/session/session.service.js';
 import { DatabaseService } from '../database/database.service.js';
 import { ProblemDetailsException } from '../exceptions/problem-details.exception.js';
 
 export const REQUEST_USER_KEY = 'user';
+
+function parseCookieHeader(header: string): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const part of header.split(';')) {
+    const eqIdx = part.indexOf('=');
+    if (eqIdx !== -1) {
+      const key = part.slice(0, eqIdx).trim();
+      const val = part.slice(eqIdx + 1).trim();
+      map[key] = decodeURIComponent(val);
+    }
+  }
+  return map;
+}
 
 export type AuthenticatedRequest = FastifyRequest & {
   [REQUEST_USER_KEY]: AuthenticatedUser;
@@ -30,8 +47,8 @@ export class SessionGuard implements CanActivate {
 
   constructor(
     @Inject(Reflector) private readonly reflector: Reflector,
-    private readonly redisService: RedisService,
-    private readonly databaseService: DatabaseService,
+    @Inject(SessionService) private readonly sessionService: SessionService,
+    @Optional() private readonly databaseService?: DatabaseService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -48,8 +65,14 @@ export class SessionGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<FastifyRequest>();
 
     // 2. Cookie validation (Strict security: Cookie ONLY, NO Authorization header fallback)
+    // Supports __Host-hs_session (production HTTPS) and hs_session (dev/test)
     const cookies = request.cookies || (request.raw as any)?.cookies || {};
-    const sessionToken = cookies[COOKIE_SESSION_NAME];
+    let sessionToken = cookies[COOKIE_HOST_SESSION_NAME] || cookies[COOKIE_SESSION_NAME];
+
+    if (!sessionToken && typeof request.headers.cookie === 'string') {
+      const headerCookies = parseCookieHeader(request.headers.cookie);
+      sessionToken = headerCookies[COOKIE_HOST_SESSION_NAME] || headerCookies[COOKIE_SESSION_NAME];
+    }
 
     if (!sessionToken || typeof sessionToken !== 'string' || sessionToken.trim() === '') {
       throw ProblemDetailsException.unauthorized(
@@ -58,12 +81,12 @@ export class SessionGuard implements CanActivate {
       );
     }
 
-    // 3. Load session from Redis (Fail-closed on Redis failure)
+    // 3. Load session from SessionService (Fail-closed on store failure)
     let sessionData;
     try {
-      sessionData = await this.redisService.getSession(sessionToken.trim());
+      sessionData = await this.sessionService.resolveSession(sessionToken.trim());
     } catch (err: any) {
-      this.logger.error(`Redis failure during session verification: ${err.message}`);
+      this.logger.error(`Session store failure during session verification: ${err.message}`);
       throw ProblemDetailsException.serviceUnavailable(
         'Session verification service is currently unavailable.',
         'SESSION_STORE_UNAVAILABLE',
@@ -77,49 +100,51 @@ export class SessionGuard implements CanActivate {
       );
     }
 
-    // 4. Live user and organization suspension check
-    try {
-      const { userStatus, orgStatus } = await this.databaseService.checkAccountStatus(
-        sessionData.userId,
-        sessionData.orgId,
-      );
+    // 4. Live user and organization suspension check (if DatabaseService is available)
+    if (this.databaseService) {
+      try {
+        const { userStatus, orgStatus } = await this.databaseService.checkAccountStatus(
+          sessionData.userId,
+          sessionData.orgId,
+        );
 
-      if (userStatus === null) {
-        throw ProblemDetailsException.unauthorized(
-          'User account not found or has been removed.',
-          'USER_NOT_FOUND',
+        if (userStatus === null) {
+          throw ProblemDetailsException.unauthorized(
+            'User account not found or has been removed.',
+            'USER_NOT_FOUND',
+          );
+        }
+
+        if (userStatus === 'suspended') {
+          throw ProblemDetailsException.forbidden(
+            'Your user account is suspended.',
+            'USER_SUSPENDED',
+          );
+        }
+
+        if (userStatus === 'deleted') {
+          throw ProblemDetailsException.forbidden(
+            'Your user account has been deleted.',
+            'USER_DELETED',
+          );
+        }
+
+        if (sessionData.orgId && orgStatus === 'suspended') {
+          throw ProblemDetailsException.forbidden(
+            'Your organization is currently suspended.',
+            'ORGANIZATION_SUSPENDED',
+          );
+        }
+      } catch (err: any) {
+        if (err instanceof ProblemDetailsException) {
+          throw err;
+        }
+        this.logger.error(`Database error during suspension check: ${err.message}`);
+        throw ProblemDetailsException.serviceUnavailable(
+          'Account status verification is currently unavailable.',
+          'ACCOUNT_CHECK_UNAVAILABLE',
         );
       }
-
-      if (userStatus === 'suspended') {
-        throw ProblemDetailsException.forbidden(
-          'Your user account is suspended.',
-          'USER_SUSPENDED',
-        );
-      }
-
-      if (userStatus === 'deleted') {
-        throw ProblemDetailsException.forbidden(
-          'Your user account has been deleted.',
-          'USER_DELETED',
-        );
-      }
-
-      if (sessionData.orgId && orgStatus === 'suspended') {
-        throw ProblemDetailsException.forbidden(
-          'Your organization is currently suspended.',
-          'ORGANIZATION_SUSPENDED',
-        );
-      }
-    } catch (err: any) {
-      if (err instanceof ProblemDetailsException) {
-        throw err;
-      }
-      this.logger.error(`Database error during suspension check: ${err.message}`);
-      throw ProblemDetailsException.serviceUnavailable(
-        'Account status verification is currently unavailable.',
-        'ACCOUNT_CHECK_UNAVAILABLE',
-      );
     }
 
     // 5. Attach authenticated user to request
@@ -134,8 +159,8 @@ export class SessionGuard implements CanActivate {
     (request as any)[REQUEST_USER_KEY] = user;
     (request.raw as any).user = user;
     (request.raw as any)[REQUEST_USER_KEY] = user;
+    (request as any).session = sessionData;
 
     return true;
   }
 }
-

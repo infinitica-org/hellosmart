@@ -153,14 +153,17 @@ export class AuthService {
     return this.toMeFromRow(user);
   }
 
-  async logout(sessionId: string | undefined): Promise<LogoutResponseDto> {
-    if (sessionId) {
-      await this.sessions.destroySession(sessionId);
+  async logout(rawToken: string | undefined): Promise<LogoutResponseDto> {
+    if (rawToken) {
+      await this.sessions.destroySession(rawToken);
     }
     return { success: true, message: 'Logged out successfully' };
   }
 
-  async createSessionForUserId(userId: string): Promise<{ sessionId: string; me: MeDto }> {
+  async createSessionForUserId(
+    userId: string,
+    meta?: RequestMeta,
+  ): Promise<{ rawToken: string; sessionId: string; me: MeDto }> {
     const user = await this.findUserById(userId);
     if (!user) {
       throw problem({
@@ -176,8 +179,11 @@ export class AuthService {
       role: user.role,
       orgId: user.org_id,
     };
-    const { sessionId } = await this.sessions.createSession(context);
-    return { sessionId, me: this.toMeFromRow(user) };
+    const { rawToken, sessionId } = await this.sessions.createSession(context, {
+      ip: meta?.ip,
+      userAgent: meta?.userAgent,
+    });
+    return { rawToken, sessionId, me: this.toMeFromRow(user) };
   }
 
   private async completeLogin(user: DbUserRow, meta: RequestMeta): Promise<MeDto> {
