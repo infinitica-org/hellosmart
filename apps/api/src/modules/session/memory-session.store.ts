@@ -55,6 +55,22 @@ export class MemorySessionStore implements SessionStore {
     }
     this.userSessions.delete(userId);
   }
+
+  async revokeOtherSessionsForUser(userId: string, exceptSessionId?: string): Promise<void> {
+    const ids = this.userSessions.get(userId);
+    if (!ids) {
+      return;
+    }
+    for (const sessionId of Array.from(ids)) {
+      if (sessionId !== exceptSessionId) {
+        this.sessions.delete(sessionId);
+        ids.delete(sessionId);
+      }
+    }
+    if (ids.size === 0) {
+      this.userSessions.delete(userId);
+    }
+  }
 }
 
 export class MemoryIdempotencyStore implements IdempotencyStore {

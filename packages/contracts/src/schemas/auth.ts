@@ -26,6 +26,18 @@ export const MfaVerifyDtoSchema = z.object({
 });
 export type MfaVerifyDto = z.infer<typeof MfaVerifyDtoSchema>;
 
+export const ChangePasswordDtoSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required').max(128),
+  newPassword: z.string().min(1, 'New password is required').max(128),
+});
+export type ChangePasswordDto = z.infer<typeof ChangePasswordDtoSchema>;
+
+export const ChangePasswordResponseDtoSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+export type ChangePasswordResponseDto = z.infer<typeof ChangePasswordResponseDtoSchema>;
+
 export const LogoutResponseDtoSchema = z.object({
   success: z.boolean(),
   message: z.string().optional(),

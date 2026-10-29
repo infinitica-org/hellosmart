@@ -19,6 +19,7 @@ erDiagram
     ORGANIZATIONS ||--o{ USERS : "contains"
     ORGANIZATIONS ||--o{ INVITATIONS : "issues"
     USERS ||--o{ INVITATIONS : "receives"
+    USERS ||--o{ PASSWORD_HISTORY : "retains"
     ORGANIZATIONS ||--o{ TEMPLATE_ASSIGNMENTS : "licensed_to"
     ORGANIZATIONS ||--o{ ASSESSMENTS : "creates"
     ORGANIZATIONS ||--o{ CANDIDATES : "owns"
@@ -88,6 +89,12 @@ erDiagram
         bytea token_hash UK "sha256(raw_token)"
         timestamptz expires_at "Strictly <= 72h"
         timestamptz used_at
+    }
+
+    PASSWORD_HISTORY {
+        uuid id PK
+        uuid user_id FK
+        string password_hash "argon2id"
         timestamptz created_at
     }
 

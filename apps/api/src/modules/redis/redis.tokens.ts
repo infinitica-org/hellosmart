@@ -5,6 +5,7 @@ export interface RedisLike {
   del(key: string): Promise<number>;
   incr(key: string): Promise<number>;
   sAdd(key: string, member: string): Promise<number>;
+  sRem(key: string, member: string): Promise<number>;
   sMembers(key: string): Promise<string[]>;
   expire(key: string, seconds: number): Promise<boolean>;
   ping(): Promise<string>;

@@ -1,5 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { LoginDto, LogoutResponseDto, MeDto, MfaVerifyDto } from '@hs/contracts';
+import type {
+  ChangePasswordDto,
+  ChangePasswordResponseDto,
+  LoginDto,
+  LogoutResponseDto,
+  MeDto,
+  MfaVerifyDto,
+} from '@hs/contracts';
 import type { Pool, PoolClient } from 'pg';
 import { problem } from '../../common/errors/app-http.exception.js';
 import type { UserContext, UserRole } from '../../common/types/user-context.js';
@@ -7,11 +14,13 @@ import { appendAuditEvent } from '../audit/audit-writer.js';
 import type { AuditRecordInput } from '../audit/audit.types.js';
 import { PG_POOL } from '../database/database.tokens.js';
 import { SessionService, SESSION_TTL_SECONDS } from '../session/session.service.js';
+import { withOrg, withPlatform } from '../tenancy/with-org.js';
 import { toMeDto } from './auth.mapper.js';
 import { LoginLockoutService } from './login-lockout.service.js';
 import { MfaService } from './mfa.service.js';
+import { PasswordPolicyService } from './password-policy.service.js';
 import { PreAuthService } from './pre-auth.service.js';
-import { verifyPassword, verifyWithDummyTiming } from './password.js';
+import { hashPassword, verifyPassword, verifyWithDummyTiming } from './password.js';
 
 interface DbUserRow {
   id: string;
@@ -42,6 +51,7 @@ export class AuthService {
     @Inject(LoginLockoutService) private readonly lockout: LoginLockoutService,
     @Inject(PreAuthService) private readonly preAuth: PreAuthService,
     @Inject(MfaService) private readonly mfa: MfaService,
+    @Inject(PasswordPolicyService) private readonly passwordPolicy: PasswordPolicyService,
   ) {}
 
   async login(
@@ -268,6 +278,205 @@ export class AuthService {
       [email],
     );
     return result.rows[0] ?? null;
+  }
+
+  async changePassword(
+    userContext: UserContext,
+    currentSessionId: string | undefined,
+    dto: ChangePasswordDto,
+    meta: RequestMeta,
+  ): Promise<ChangePasswordResponseDto> {
+    const client = await this.pool.connect();
+    try {
+      // 1. Fetch user data scoped to tenant or platform context
+      const user = await (userContext.orgId
+        ? withOrg(client, userContext.orgId, async (tx) => {
+            const res = await tx.query<DbUserRow>(
+              `SELECT u.id, u.org_id, u.email::text AS email, u.name, u.role, u.password_hash,
+                      u.status, u.must_reset_password, u.mfa_secret_ref,
+                      o.status AS org_status, o.name AS org_name, o.logo_key
+               FROM app.users u
+               LEFT JOIN app.organizations o ON o.id = u.org_id
+               WHERE u.id = $1 AND u.deleted_at IS NULL`,
+              [userContext.userId],
+            );
+            return res.rows[0] ?? null;
+          })
+        : withPlatform(client, async (tx) => {
+            const res = await tx.query<DbUserRow>(
+              `SELECT u.id, u.org_id, u.email::text AS email, u.name, u.role, u.password_hash,
+                      u.status, u.must_reset_password, u.mfa_secret_ref,
+                      NULL AS org_status, NULL AS org_name, NULL AS logo_key
+               FROM app.users u
+               WHERE u.id = $1 AND u.deleted_at IS NULL`,
+              [userContext.userId],
+            );
+            return res.rows[0] ?? null;
+          }));
+
+      if (!user) {
+        throw problem({
+          title: 'Not Found',
+          status: 404,
+          detail: 'User not found',
+          code: 'USER_NOT_FOUND',
+        });
+      }
+
+      this.assertAccountActive(user);
+
+      // 2. Verify current password
+      if (!user.password_hash) {
+        await verifyWithDummyTiming(dto.currentPassword);
+        throw problem({
+          title: 'Bad Request',
+          status: 400,
+          detail: 'Current password is incorrect',
+          code: 'INVALID_CREDENTIALS',
+        });
+      }
+
+      const currentPasswordValid = await verifyPassword(user.password_hash, dto.currentPassword);
+      if (!currentPasswordValid) {
+        throw problem({
+          title: 'Bad Request',
+          status: 400,
+          detail: 'Current password is incorrect',
+          code: 'INVALID_CREDENTIALS',
+        });
+      }
+
+      // 3. Local password policy check
+      const localResult = this.passwordPolicy.evaluateLocal(dto.newPassword, {
+        email: user.email,
+        name: user.name,
+        companyName: user.org_name ?? undefined,
+        role: user.role,
+      });
+
+      if (!localResult.ok) {
+        throw problem({
+          title: 'Unprocessable Entity',
+          status: 422,
+          detail: 'Password does not meet security requirements',
+          code: 'PASSWORD_POLICY_VIOLATION',
+          reasons: localResult.reasons,
+        });
+      }
+
+      // 4. Have I Been Pwned breach check
+      const breachResult = await this.passwordPolicy.checkBreached(dto.newPassword);
+      if (breachResult.breached) {
+        throw problem({
+          title: 'Unprocessable Entity',
+          status: 422,
+          detail: 'This password has appeared in a known data breach and cannot be used',
+          code: 'PASSWORD_BREACHED',
+          reasons: ['breached'],
+        });
+      }
+
+      // 5. Password history check (last 5 + current hash)
+      const historyResult = await (userContext.orgId
+        ? withOrg(client, userContext.orgId, async (tx) =>
+            this.passwordPolicy.checkHistory(user.id, dto.newPassword, tx),
+          )
+        : withPlatform(client, async (tx) =>
+            this.passwordPolicy.checkHistory(user.id, dto.newPassword, tx),
+          ));
+
+      if (historyResult.reused) {
+        throw problem({
+          title: 'Unprocessable Entity',
+          status: 422,
+          detail: 'Cannot reuse any of your last 5 passwords',
+          code: 'PASSWORD_REUSED',
+          reasons: ['reused'],
+        });
+      }
+
+      // 6. Hash new password with Argon2id
+      const newHash = await hashPassword(dto.newPassword);
+
+      // 7. Atomic DB update with row lock and audit event
+      if (userContext.orgId) {
+        await withOrg(client, userContext.orgId, async (tx) => {
+          await tx.query(
+            `UPDATE app.users
+             SET password_hash = $1,
+                 must_reset_password = false,
+                 failed_logins = 0,
+                 locked_until = NULL
+             WHERE id = $2`,
+            [newHash, user.id],
+          );
+
+          await this.passwordPolicy.recordPasswordHistory(user.id, newHash, tx);
+
+          await appendAuditEvent(tx, {
+            actorId: user.id,
+            actorRole: user.role,
+            orgId: user.org_id,
+            action: 'password.changed',
+            entity: 'user',
+            entityId: user.id,
+            before: null,
+            after: {
+              must_reset_password: false,
+              revoked_other_sessions: true,
+            },
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+            requestId: meta.requestId,
+          });
+        });
+      } else {
+        await withPlatform(client, async (tx) => {
+          await tx.query(
+            `UPDATE app.users
+             SET password_hash = $1,
+                 must_reset_password = false,
+                 failed_logins = 0,
+                 locked_until = NULL
+             WHERE id = $2`,
+            [newHash, user.id],
+          );
+
+          await this.passwordPolicy.recordPasswordHistory(user.id, newHash, tx);
+
+          await appendAuditEvent(tx, {
+            actorId: user.id,
+            actorRole: user.role,
+            orgId: null,
+            action: 'password.changed',
+            entity: 'user',
+            entityId: user.id,
+            before: null,
+            after: {
+              must_reset_password: false,
+              revoked_other_sessions: true,
+            },
+            ip: meta.ip,
+            userAgent: meta.userAgent,
+            requestId: meta.requestId,
+          });
+        });
+      }
+
+      // 8. Revoke all other sessions for this user
+      if (currentSessionId) {
+        await this.sessions.revokeOtherSessionsForUser(user.id, currentSessionId);
+      } else {
+        await this.sessions.revokeAllSessionsForUser(user.id);
+      }
+
+      return {
+        success: true,
+        message: 'Password changed successfully.',
+      };
+    } finally {
+      client.release();
+    }
   }
 
   private async findUserById(userId: string): Promise<DbUserRow | null> {

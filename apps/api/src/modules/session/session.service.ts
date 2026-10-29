@@ -37,6 +37,10 @@ export class SessionService {
     await this.store.revokeAllForUser(userId);
   }
 
+  async revokeOtherSessionsForUser(userId: string, exceptSessionId?: string): Promise<void> {
+    await this.store.revokeOtherSessionsForUser(userId, exceptSessionId);
+  }
+
   async resolveSession(sessionId: string | undefined): Promise<SessionRecord | null> {
     if (!sessionId) {
       return null;

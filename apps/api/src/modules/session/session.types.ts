@@ -14,6 +14,7 @@ export interface SessionStore {
   /** Track session id for revoke-all (e.g. password change, org suspend). */
   registerUserSession(userId: string, sessionId: string, ttlSeconds: number): Promise<void>;
   revokeAllForUser(userId: string): Promise<void>;
+  revokeOtherSessionsForUser(userId: string, exceptSessionId?: string): Promise<void>;
 }
 
 export interface IdempotencyRecord {

@@ -10,6 +10,9 @@ import {
 } from '@nestjs/common';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import {
+  ChangePasswordDtoSchema,
+  ChangePasswordResponseDto,
+  ChangePasswordResponseDtoSchema,
   LoginDtoSchema,
   LogoutResponseDtoSchema,
   MeDtoSchema,
@@ -103,6 +106,32 @@ export class AuthController {
     const result = await this.auth.logout(sessionId);
     clearSessionCookie(reply);
     return LogoutResponseDtoSchema.parse(result);
+  }
+
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('auth/password/change')
+  async changePassword(
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<ChangePasswordResponseDto> {
+    const parsed = ChangePasswordDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw problem({
+        title: 'Unprocessable Entity',
+        status: 422,
+        detail: 'Invalid password change payload',
+        code: 'VALIDATION_ERROR',
+        errors: flattenZodErrors(parsed.error),
+      });
+    }
+
+    const user = request[REQUEST_USER_KEY];
+    const sessionId = extractSessionId(request);
+    const meta = requestMeta(request);
+
+    const result = await this.auth.changePassword(user, sessionId, parsed.data, meta);
+    return ChangePasswordResponseDtoSchema.parse(result);
   }
 
   @Get('me')

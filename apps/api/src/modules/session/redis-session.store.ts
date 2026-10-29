@@ -41,6 +41,20 @@ export class RedisSessionStore implements SessionStore {
     }
     await this.redis.del(key);
   }
+
+  async revokeOtherSessionsForUser(userId: string, exceptSessionId?: string): Promise<void> {
+    const key = USER_SESSIONS_PREFIX + userId;
+    const sessionIds = await this.redis.sMembers(key);
+    if (sessionIds.length === 0) {
+      return;
+    }
+    for (const sessionId of sessionIds) {
+      if (sessionId !== exceptSessionId) {
+        await this.redis.del(SESSION_PREFIX + sessionId);
+        await this.redis.sRem(key, sessionId);
+      }
+    }
+  }
 }
 
 export class RedisIdempotencyStore implements IdempotencyStore {

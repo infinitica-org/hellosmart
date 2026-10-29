@@ -4,10 +4,10 @@ export interface AuditRecordInput {
   orgId: string | null;
   action: string;
   entity: string;
-  entityId?: string;
+  entityId?: string | undefined;
   before?: unknown;
   after?: unknown;
-  ip?: string | null;
-  userAgent?: string | null;
-  requestId?: string | null;
+  ip?: string | null | undefined;
+  userAgent?: string | null | undefined;
+  requestId?: string | null | undefined;
 }
