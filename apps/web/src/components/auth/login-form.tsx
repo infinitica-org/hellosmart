@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { login, type UserMe } from '@/lib/api-client';
+import { isSafeRedirectPath } from '@/lib/session-client';
 
 export interface LoginFormProps {
   onSuccess?: (user: UserMe) => void;
@@ -12,6 +13,8 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
   const router = useRouter();
   const searchParams = useSearchParams();
   const bannerParam = searchParams.get('message');
+  const reasonParam = searchParams.get('reason');
+  const fromParam = searchParams.get('from');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -50,15 +53,29 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
         return;
       }
 
-      // Normal portal routing based on role / portal
-      const targetPortal =
+      // Normal portal routing based on role / portal or validated ?from= redirect
+      const defaultPortal =
         user.portal ||
         (user.role === 'platform_admin'
           ? 'admin'
           : user.role === 'company_admin'
             ? 'company'
             : 'candidate');
-      router.push(`/${targetPortal}`);
+
+      let targetUrl = `/${defaultPortal}`;
+      if (fromParam && isSafeRedirectPath(fromParam)) {
+        // Enforce role boundary (BR-25): candidate cannot redirect to /admin or /company
+        if (
+          user.role === 'candidate' &&
+          (fromParam.startsWith('/admin') || fromParam.startsWith('/company'))
+        ) {
+          targetUrl = '/candidate';
+        } else {
+          targetUrl = fromParam;
+        }
+      }
+
+      router.push(targetUrl);
     } catch (err: unknown) {
       setIsSubmitting(false);
       if (err instanceof Error) {
@@ -80,6 +97,19 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
           <div className="flex items-center gap-2">
             <span aria-hidden="true" className="font-bold">✓</span>
             <span>Password set, please sign in</span>
+          </div>
+        </div>
+      )}
+
+      {/* Session Expired Banner (S0-T16-2) */}
+      {reasonParam === 'session-expired' && (
+        <div
+          role="alert"
+          className="rounded-lg bg-amber-50 p-4 text-sm text-amber-900 border border-amber-200"
+        >
+          <div className="flex items-center gap-2">
+            <span aria-hidden="true" className="font-bold">⏱</span>
+            <span className="font-medium">Your session expired. Please sign in again.</span>
           </div>
         </div>
       )}

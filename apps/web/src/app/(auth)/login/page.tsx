@@ -4,6 +4,7 @@
 import React, { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { isSafeRedirectPath } from '@/lib/session-client';
 import {
   BrandMark,
   TextField,
@@ -48,7 +49,14 @@ function LoginForm() {
   };
 
   const executeRedirect = (targetPortal: string) => {
-    const dest = from && from.startsWith(targetPortal) ? from : targetPortal;
+    let dest = targetPortal;
+    if (from && isSafeRedirectPath(from)) {
+      if (targetPortal === '/candidate' && (from.startsWith('/admin') || from.startsWith('/company'))) {
+        dest = '/candidate';
+      } else {
+        dest = from;
+      }
+    }
     window.location.href = dest;
   };
 
@@ -191,6 +199,17 @@ function LoginForm() {
             Access your company portal, candidate workspace, or admin console.
           </p>
         </div>
+
+        {/* Session Expired Notice (S0-T16-2) */}
+        {searchParams?.get('reason') === 'session-expired' && (
+          <Alert
+            variant="warning"
+            data-testid="session-expired-alert"
+            className="text-xs animate-fadeIn"
+          >
+            Your session expired. Please sign in again.
+          </Alert>
+        )}
 
         {/* Redirect Notice */}
         {from && (

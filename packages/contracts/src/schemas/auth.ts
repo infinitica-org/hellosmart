@@ -122,3 +122,24 @@ export const SimpleSuccessResponseSchema = z.object({
 });
 
 export type SimpleSuccessResponse = z.infer<typeof SimpleSuccessResponseSchema>;
+
+/**
+ * Active Session Schema (S0-T16-2)
+ */
+export const ActiveSessionSchema = z.object({
+  id: z.string(),
+  userAgent: z.string().optional(),
+  device: z.string().optional(),
+  ipAddress: z.string().optional(),
+  createdAt: z.string(),
+  lastActiveAt: z.string(),
+  isCurrent: z.boolean(),
+});
+
+export type ActiveSession = z.infer<typeof ActiveSessionSchema>;
+
+export const ActiveSessionsResponseSchema = z.object({
+  sessions: z.array(ActiveSessionSchema),
+});
+
+export type ActiveSessionsResponse = z.infer<typeof ActiveSessionsResponseSchema>;

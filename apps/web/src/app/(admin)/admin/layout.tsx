@@ -3,6 +3,8 @@
 import React from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
+import { UserMenu } from '@/components/layout/user-menu';
+import { IdleWarningModal } from '@/components/session/idle-warning-modal';
 import { adminNavigation } from '@/types/navigation';
 
 export default function AdminLayout({
@@ -26,6 +28,8 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen flex bg-canvas text-neutral-900 font-sans">
+      <IdleWarningModal />
+
       {/* Fixed Left Sidebar with integrated responsive mobile header */}
       <Sidebar
         portalTitle="Admin Console"
@@ -43,15 +47,17 @@ export default function AdminLayout({
         <Topbar
           variant="dashboard"
           showLogo={false}
-          showProfile={true}
+          showProfile={false}
           showNotifications={false}
-          userName={adminName}
-          userEmail={adminEmail}
-          userRole="Super Admin"
-          companyName="HelloSmart Platform"
-          onLogout={handleLogout}
+          actions={
+            <UserMenu
+              userName={adminName}
+              userEmail={adminEmail}
+              userRole="Super Admin"
+              companyName="HelloSmart Platform"
+            />
+          }
           className="hidden md:flex h-16 px-6 sm:px-8 bg-white border-b border-neutral-200"
-          
         />
 
         {/* Main Content Area */}
