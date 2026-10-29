@@ -2,6 +2,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
+import { DatabaseService } from '../src/common/database/database.service.js';
 import { SessionService } from '../src/modules/session/session.service.js';
 
 describe('@hs/api foundation', () => {
@@ -17,6 +18,12 @@ describe('@hs/api foundation', () => {
     app.setGlobalPrefix('api/v1');
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
+
+    const db = app.get(DatabaseService);
+    db.setStatusChecker(async () => ({
+      userStatus: 'active',
+      orgStatus: 'paid_active',
+    }));
 
     const sessions = app.get(SessionService);
     const { rawToken } = await sessions.createSession({

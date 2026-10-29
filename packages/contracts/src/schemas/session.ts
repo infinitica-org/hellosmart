@@ -26,3 +26,4 @@ export const LogoutAllResponseSchema = z.object({
   message: z.string(),
 });
 export type LogoutAllResponse = z.infer<typeof LogoutAllResponseSchema>;
+

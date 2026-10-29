@@ -14,6 +14,19 @@ function purgeExpired<T extends { expiresAt: number }>(map: Map<string, T>): voi
   }
 }
 
+function isSessionExpired(row: SessionRecord, now: number): boolean {
+  if (now >= row.absoluteExpiresAt) {
+    return true;
+  }
+  const idleTimeoutMs =
+    row.idleTimeoutMs ??
+    (row.role === 'platform_admin' ? 15 * 60 * 1000 : 30 * 60 * 1000);
+  if (now - row.lastSeenAt >= idleTimeoutMs) {
+    return true;
+  }
+  return false;
+}
+
 export class MemorySessionStore implements SessionStore {
   private sessions = new Map<string, SessionRecord & { expiresAt: number }>();
   private userSessions = new Map<string, Set<string>>();
@@ -22,7 +35,7 @@ export class MemorySessionStore implements SessionStore {
     purgeExpired(this.sessions);
     const row = this.sessions.get(tokenHash);
     const now = Date.now();
-    if (!row || row.expiresAt <= now || now >= row.absoluteExpiresAt) {
+    if (!row || row.expiresAt <= now || isSessionExpired(row, now)) {
       if (row) {
         this.sessions.delete(tokenHash);
       }
@@ -39,6 +52,7 @@ export class MemorySessionStore implements SessionStore {
       createdAt: row.createdAt,
       lastSeenAt: row.lastSeenAt,
       absoluteExpiresAt: row.absoluteExpiresAt,
+      idleTimeoutMs: row.idleTimeoutMs,
       ip: row.ip,
       userAgent: row.userAgent,
       mfaVerified: row.mfaVerified,
@@ -79,7 +93,7 @@ export class MemorySessionStore implements SessionStore {
 
     for (const hash of set) {
       const row = this.sessions.get(hash);
-      if (!row || row.expiresAt <= now || now >= row.absoluteExpiresAt) {
+      if (!row || row.expiresAt <= now || isSessionExpired(row, now)) {
         set.delete(hash);
         this.sessions.delete(hash);
       } else {
@@ -122,7 +136,7 @@ export class MemorySessionStore implements SessionStore {
 
     for (const hash of Array.from(set)) {
       const row = this.sessions.get(hash);
-      if (!row || row.expiresAt <= now || now >= row.absoluteExpiresAt) {
+      if (!row || row.expiresAt <= now || isSessionExpired(row, now)) {
         set.delete(hash);
         this.sessions.delete(hash);
       } else {

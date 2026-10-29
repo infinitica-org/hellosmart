@@ -163,6 +163,7 @@ export class AuthService {
   async createSessionForUserId(
     userId: string,
     meta?: RequestMeta,
+    options?: { mfaVerified?: boolean },
   ): Promise<{ rawToken: string; sessionId: string; me: MeDto }> {
     const user = await this.findUserById(userId);
     if (!user) {
@@ -182,6 +183,7 @@ export class AuthService {
     const { rawToken, sessionId } = await this.sessions.createSession(context, {
       ip: meta?.ip,
       userAgent: meta?.userAgent,
+      mfaVerified: options?.mfaVerified ?? false,
     });
     return { rawToken, sessionId, me: this.toMeFromRow(user) };
   }

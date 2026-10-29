@@ -4,7 +4,6 @@ import {
   ExecutionContext,
   Logger,
   Inject,
-  Optional,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
@@ -48,7 +47,7 @@ export class SessionGuard implements CanActivate {
   constructor(
     @Inject(Reflector) private readonly reflector: Reflector,
     @Inject(SessionService) private readonly sessionService: SessionService,
-    @Optional() private readonly databaseService?: DatabaseService,
+    @Inject(DatabaseService) private readonly databaseService: DatabaseService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -100,51 +99,49 @@ export class SessionGuard implements CanActivate {
       );
     }
 
-    // 4. Live user and organization suspension check (if DatabaseService is available)
-    if (this.databaseService) {
-      try {
-        const { userStatus, orgStatus } = await this.databaseService.checkAccountStatus(
-          sessionData.userId,
-          sessionData.orgId,
-        );
+    // 4. Live user and organization suspension check (Strictly required; fails closed)
+    try {
+      const { userStatus, orgStatus } = await this.databaseService.checkAccountStatus(
+        sessionData.userId,
+        sessionData.orgId,
+      );
 
-        if (userStatus === null) {
-          throw ProblemDetailsException.unauthorized(
-            'User account not found or has been removed.',
-            'USER_NOT_FOUND',
-          );
-        }
-
-        if (userStatus === 'suspended') {
-          throw ProblemDetailsException.forbidden(
-            'Your user account is suspended.',
-            'USER_SUSPENDED',
-          );
-        }
-
-        if (userStatus === 'deleted') {
-          throw ProblemDetailsException.forbidden(
-            'Your user account has been deleted.',
-            'USER_DELETED',
-          );
-        }
-
-        if (sessionData.orgId && orgStatus === 'suspended') {
-          throw ProblemDetailsException.forbidden(
-            'Your organization is currently suspended.',
-            'ORGANIZATION_SUSPENDED',
-          );
-        }
-      } catch (err: any) {
-        if (err instanceof ProblemDetailsException) {
-          throw err;
-        }
-        this.logger.error(`Database error during suspension check: ${err.message}`);
-        throw ProblemDetailsException.serviceUnavailable(
-          'Account status verification is currently unavailable.',
-          'ACCOUNT_CHECK_UNAVAILABLE',
+      if (userStatus === null) {
+        throw ProblemDetailsException.unauthorized(
+          'User account not found or has been removed.',
+          'USER_NOT_FOUND',
         );
       }
+
+      if (userStatus === 'suspended') {
+        throw ProblemDetailsException.forbidden(
+          'Your user account is suspended.',
+          'USER_SUSPENDED',
+        );
+      }
+
+      if (userStatus === 'deleted') {
+        throw ProblemDetailsException.forbidden(
+          'Your user account has been deleted.',
+          'USER_DELETED',
+        );
+      }
+
+      if (sessionData.orgId && orgStatus === 'suspended') {
+        throw ProblemDetailsException.forbidden(
+          'Your organization is currently suspended.',
+          'ORGANIZATION_SUSPENDED',
+        );
+      }
+    } catch (err: any) {
+      if (err instanceof ProblemDetailsException) {
+        throw err;
+      }
+      this.logger.error(`Database error during suspension check: ${err.message}`);
+      throw ProblemDetailsException.serviceUnavailable(
+        'Account status verification is currently unavailable.',
+        'ACCOUNT_CHECK_UNAVAILABLE',
+      );
     }
 
     // 5. Attach authenticated user to request

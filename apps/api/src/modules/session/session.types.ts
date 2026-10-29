@@ -11,6 +11,7 @@ export interface SessionRecord {
   createdAt: number; // Unix ms
   lastSeenAt: number; // Unix ms
   absoluteExpiresAt: number; // Unix ms
+  idleTimeoutMs?: number | undefined;
   ip?: string | null | undefined;
   userAgent?: string | null | undefined;
   mfaVerified?: boolean | undefined;

@@ -3,6 +3,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
+import { DatabaseService } from '../src/common/database/database.service.js';
 import { SessionService } from '../src/modules/session/session.service.js';
 
 describe('S0-T16-1: Sessions API Integration', () => {
@@ -35,6 +36,11 @@ describe('S0-T16-1: Sessions API Integration', () => {
     await app.getHttpAdapter().getInstance().ready();
 
     sessionService = app.get(SessionService);
+    const db = app.get(DatabaseService);
+    db.setStatusChecker(async () => ({
+      userStatus: 'active',
+      orgStatus: 'paid_active',
+    }));
   });
 
   afterAll(async () => {

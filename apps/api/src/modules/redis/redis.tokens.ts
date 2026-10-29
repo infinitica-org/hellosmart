@@ -12,6 +12,10 @@ export interface RedisLike {
   sMembers(key: string): Promise<string[]>;
   sRem(key: string, member: string | string[]): Promise<number>;
   expire(key: string, seconds: number): Promise<boolean>;
+  eval(
+    script: string,
+    options?: { keys?: string[]; arguments?: string[] },
+  ): Promise<unknown>;
   ping(): Promise<string>;
   isOpen: boolean;
   quit(): Promise<string>;

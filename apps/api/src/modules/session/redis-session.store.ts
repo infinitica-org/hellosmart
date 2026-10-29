@@ -8,36 +8,77 @@ import type {
 
 const SESSION_PREFIX = 'hs:session:';
 const USER_SESSIONS_PREFIX = 'hs:user-sessions:';
-const LOCK_PREFIX = 'hs:lock:session:';
 const IDEM_PREFIX = 'hs:idem:';
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+/**
+ * Demonstrably atomic Redis Lua script for concurrency cap enforcement.
+ * Performs pruning of expired sessions, oldest-session eviction, and index updates atomically.
+ */
+const REGISTER_AND_ENFORCE_CAP_LUA = `
+local userKey = KEYS[1]
+local now = tonumber(ARGV[1])
+local maxSessions = tonumber(ARGV[2])
+local newTokenHash = ARGV[3]
+local newRecordJson = ARGV[4]
+local newTtlSeconds = tonumber(ARGV[5])
+local sessionPrefix = ARGV[6]
+
+local hashes = redis.call('SMEMBERS', userKey)
+local valid = {}
+
+for _, hash in ipairs(hashes) do
+  local raw = redis.call('GET', sessionPrefix .. hash)
+  if not raw then
+    redis.call('SREM', userKey, hash)
+  else
+    local ok, rec = pcall(cjson.decode, raw)
+    if not ok or not rec then
+      redis.call('DEL', sessionPrefix .. hash)
+      redis.call('SREM', userKey, hash)
+    else
+      local idleTimeoutMs = rec.idleTimeoutMs
+      if not idleTimeoutMs then
+        if rec.role == 'platform_admin' then
+          idleTimeoutMs = 900000
+        else
+          idleTimeoutMs = 1800000
+        end
+      end
+      local absExpired = (now >= rec.absoluteExpiresAt)
+      local idleExpired = ((now - rec.lastSeenAt) >= idleTimeoutMs)
+      if absExpired or idleExpired then
+        redis.call('DEL', sessionPrefix .. hash)
+        redis.call('SREM', userKey, hash)
+      else
+        table.insert(valid, { hash = hash, createdAt = rec.createdAt, raw = raw })
+      end
+    end
+  end
+end
+
+table.sort(valid, function(a, b) return a.createdAt < b.createdAt end)
+
+local evicted = {}
+if #valid >= maxSessions then
+  local toEvictCount = #valid - maxSessions + 1
+  for i = 1, toEvictCount do
+    local item = valid[i]
+    redis.call('DEL', sessionPrefix .. item.hash)
+    redis.call('SREM', userKey, item.hash)
+    table.insert(evicted, item.raw)
+  end
+end
+
+redis.call('SET', sessionPrefix .. newTokenHash, newRecordJson, 'EX', newTtlSeconds)
+redis.call('SADD', userKey, newTokenHash)
+local setTtl = math.max(newTtlSeconds, 86400)
+redis.call('EXPIRE', userKey, setTtl)
+
+return cjson.encode(evicted)
+`;
 
 export class RedisSessionStore implements SessionStore {
   constructor(private readonly redis: RedisLike) {}
-
-  private async acquireUserLock(userId: string, timeoutMs = 2500): Promise<boolean> {
-    const key = LOCK_PREFIX + userId;
-    const start = Date.now();
-    while (Date.now() - start < timeoutMs) {
-      const acquired = await this.redis.set(key, '1', { NX: true, EX: 3 });
-      if (acquired) {
-        return true;
-      }
-      await sleep(25 + Math.floor(Math.random() * 25));
-    }
-    return false;
-  }
-
-  private async releaseUserLock(userId: string): Promise<void> {
-    try {
-      await this.redis.del(LOCK_PREFIX + userId);
-    } catch {
-      // Best-effort release, lock has short 3s TTL
-    }
-  }
 
   async get(tokenHash: string): Promise<SessionRecord | null> {
     const raw = await this.redis.get(SESSION_PREFIX + tokenHash);
@@ -79,58 +120,26 @@ export class RedisSessionStore implements SessionStore {
     maxSessions: number,
     ttlSeconds: number,
   ): Promise<{ evictedRecords: SessionRecord[] }> {
-    await this.acquireUserLock(userId);
-    try {
-      const userKey = USER_SESSIONS_PREFIX + userId;
-      const existingTokenHashes = await this.redis.sMembers(userKey);
-      const now = Date.now();
-      const validSessions: Array<{ tokenHash: string; record: SessionRecord }> = [];
+    const userKey = USER_SESSIONS_PREFIX + userId;
+    const now = Date.now();
 
-      for (const hash of existingTokenHashes) {
-        const raw = await this.redis.get(SESSION_PREFIX + hash);
-        if (!raw) {
-          await this.redis.sRem(userKey, hash);
-          continue;
-        }
-        try {
-          const existing = JSON.parse(raw) as SessionRecord;
-          if (now >= existing.absoluteExpiresAt) {
-            await this.redis.del(SESSION_PREFIX + hash);
-            await this.redis.sRem(userKey, hash);
-          } else {
-            validSessions.push({ tokenHash: hash, record: existing });
-          }
-        } catch {
-          await this.redis.del(SESSION_PREFIX + hash);
-          await this.redis.sRem(userKey, hash);
-        }
-      }
+    // Execute atomic Lua script
+    const resultJson = await this.redis.eval(REGISTER_AND_ENFORCE_CAP_LUA, {
+      keys: [userKey],
+      arguments: [
+        String(now),
+        String(maxSessions),
+        tokenHash,
+        JSON.stringify(record),
+        String(ttlSeconds),
+        SESSION_PREFIX,
+      ],
+    });
 
-      const evictedRecords: SessionRecord[] = [];
-      if (validSessions.length >= maxSessions) {
-        // Sort oldest first (by createdAt ascending)
-        validSessions.sort((a, b) => a.record.createdAt - b.record.createdAt);
-        const toEvictCount = validSessions.length - maxSessions + 1;
-        const toEvict = validSessions.slice(0, toEvictCount);
+    const evictedRawList: string[] = JSON.parse(resultJson as string);
+    const evictedRecords: SessionRecord[] = evictedRawList.map((raw) => JSON.parse(raw));
 
-        for (const item of toEvict) {
-          await this.redis.del(SESSION_PREFIX + item.tokenHash);
-          await this.redis.sRem(userKey, item.tokenHash);
-          evictedRecords.push(item.record);
-        }
-      }
-
-      // Store new session
-      await this.redis.set(SESSION_PREFIX + tokenHash, JSON.stringify(record), {
-        EX: ttlSeconds,
-      });
-      await this.redis.sAdd(userKey, tokenHash);
-      await this.redis.expire(userKey, Math.max(ttlSeconds, 24 * 3600));
-
-      return { evictedRecords };
-    } finally {
-      await this.releaseUserLock(userId);
-    }
+    return { evictedRecords };
   }
 
   async getUserSessions(
@@ -149,7 +158,13 @@ export class RedisSessionStore implements SessionStore {
       }
       try {
         const record = JSON.parse(raw) as SessionRecord;
-        if (now >= record.absoluteExpiresAt) {
+        const idleTimeoutMs =
+          record.idleTimeoutMs ??
+          (record.role === 'platform_admin' ? 15 * 60 * 1000 : 30 * 60 * 1000);
+        const absExpired = now >= record.absoluteExpiresAt;
+        const idleExpired = now - record.lastSeenAt >= idleTimeoutMs;
+
+        if (absExpired || idleExpired) {
           await this.redis.del(SESSION_PREFIX + hash);
           await this.redis.sRem(userKey, hash);
         } else {

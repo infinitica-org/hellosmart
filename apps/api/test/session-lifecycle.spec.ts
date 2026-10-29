@@ -255,5 +255,108 @@ describe('S0-T16-1: Session Lifecycle & Timeouts', () => {
       // Must strictly not exceed maxConcurrentSessions (2 for platform_admin)
       expect(activeCount).toBeLessThanOrEqual(ROLE_SESSION_LIMITS.platform_admin.maxConcurrentSessions);
     });
+
+    it('fails closed when atomic concurrency operation fails', async () => {
+      const store = new MemorySessionStore();
+      vi.spyOn(store, 'registerAndEnforceCap').mockRejectedValueOnce(
+        new Error('Redis cluster connection failure during eval'),
+      );
+      const service = new SessionService(store);
+
+      await expect(service.createSession(platformAdmin)).rejects.toThrowError(
+        'Redis cluster connection failure during eval',
+      );
+    });
+  });
+
+  describe('MFA State Tracking', () => {
+    it('correctly sets mfaVerified: true for MFA-completed sessions', async () => {
+      const store = new MemorySessionStore();
+      const service = new SessionService(store);
+
+      const { rawToken, record } = await service.createSession(platformAdmin, {
+        mfaVerified: true,
+      });
+
+      expect(record.mfaVerified).toBe(true);
+
+      const resolved = await service.resolveSession(rawToken);
+      expect(resolved?.mfaVerified).toBe(true);
+    });
+
+    it('sets mfaVerified: false for standard password-only sessions', async () => {
+      const store = new MemorySessionStore();
+      const service = new SessionService(store);
+
+      const { rawToken, record } = await service.createSession(companyAdmin, {
+        mfaVerified: false,
+      });
+
+      expect(record.mfaVerified).toBe(false);
+
+      const resolved = await service.resolveSession(rawToken);
+      expect(resolved?.mfaVerified).toBe(false);
+    });
+  });
+
+  describe('Expired Session Filtering & Index Pruning (Item 4)', () => {
+    it('filters out idle-expired sessions from active listings and prunes stale index entries', async () => {
+      const store = new MemorySessionStore();
+      const service = new SessionService(store);
+
+      const s1 = await service.createSession(companyAdmin);
+      const startTime = Date.now();
+
+      // At start: 1 active session listed
+      const activeInitial = await service.listUserSessions(companyAdmin.userId);
+      expect(activeInitial.length).toBe(1);
+      expect(activeInitial[0]?.sessionId).toBe(s1.sessionId);
+
+      // Advance time by 31 minutes (exceeds 30-minute idle timeout for company_admin)
+      vi.spyOn(Date, 'now').mockReturnValue(startTime + 31 * 60 * 1000);
+
+      // Idle-expired session must NOT be listed
+      const activeAfterIdle = await service.listUserSessions(companyAdmin.userId);
+      expect(activeAfterIdle.length).toBe(0);
+
+      // Direct lookup from store should now be null and pruned
+      const direct = await store.get(hashToken(s1.rawToken));
+      expect(direct).toBeNull();
+
+      vi.restoreAllMocks();
+    });
+
+    it('prunes idle-expired sessions during cap check so active sessions are not prematurely evicted', async () => {
+      const store = new MemorySessionStore();
+      const service = new SessionService(store);
+
+      // Create session 1 for platform_admin (cap is 2)
+      const startTime = Date.now();
+      vi.spyOn(Date, 'now').mockReturnValue(startTime);
+      const s1 = await service.createSession(platformAdmin);
+
+      // Advance 16 minutes (s1 is now idle-expired for platform_admin with 15m idle timeout)
+      vi.spyOn(Date, 'now').mockReturnValue(startTime + 16 * 60 * 1000);
+
+      // Create session 2
+      const s2 = await service.createSession(platformAdmin);
+
+      // Create session 3
+      vi.spyOn(Date, 'now').mockReturnValue(startTime + 17 * 60 * 1000);
+      const s3 = await service.createSession(platformAdmin);
+
+      // S1 was pruned due to idle expiry, so s2 and s3 are both active within the cap of 2
+      expect(await service.resolveSession(s1.rawToken)).toBeNull();
+      expect(await service.resolveSession(s2.rawToken)).not.toBeNull();
+      expect(await service.resolveSession(s3.rawToken)).not.toBeNull();
+
+      const activeList = await service.listUserSessions(platformAdmin.userId);
+      expect(activeList.length).toBe(2);
+      expect(activeList.map((s) => s.sessionId)).toEqual(
+        expect.arrayContaining([s2.sessionId, s3.sessionId]),
+      );
+
+      vi.restoreAllMocks();
+    });
   });
 });

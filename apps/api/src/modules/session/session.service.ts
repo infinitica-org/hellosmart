@@ -106,6 +106,7 @@ export class SessionService {
     const now = Date.now();
 
     const limits = ROLE_SESSION_LIMITS[user.role] ?? ROLE_SESSION_LIMITS.candidate;
+    const idleTimeoutMs = limits.idleTimeoutSeconds * 1000;
     const absoluteExpiresAt = now + limits.absoluteLifetimeSeconds * 1000;
     const initialTtlSeconds = Math.min(
       limits.idleTimeoutSeconds,
@@ -123,9 +124,10 @@ export class SessionService {
       createdAt: now,
       lastSeenAt: now,
       absoluteExpiresAt,
+      idleTimeoutMs,
       ip: meta?.ip,
       userAgent: meta?.userAgent,
-      mfaVerified: meta?.mfaVerified,
+      mfaVerified: meta?.mfaVerified ?? false,
     };
 
     const { evictedRecords } = await this.store.registerAndEnforceCap(
@@ -219,7 +221,7 @@ export class SessionService {
 
     // 2. Enforce role-based idle timeout
     const limits = ROLE_SESSION_LIMITS[record.role] ?? ROLE_SESSION_LIMITS.candidate;
-    const idleTimeoutMs = limits.idleTimeoutSeconds * 1000;
+    const idleTimeoutMs = record.idleTimeoutMs ?? limits.idleTimeoutSeconds * 1000;
     if (now - record.lastSeenAt >= idleTimeoutMs) {
       await this.store.delete(tokenHash);
       await this.safeAuditLog({

@@ -67,7 +67,10 @@ export class AuthController {
     if ('mfaRequired' in result) {
       return result;
     }
-    const session = await this.auth.createSessionForUserId(result.id, meta);
+    const mfaCompleted = result.role === 'platform_admin' && Boolean(parsed.data.mfaCode);
+    const session = await this.auth.createSessionForUserId(result.id, meta, {
+      mfaVerified: mfaCompleted,
+    });
     setSessionCookie(reply, this.config, session.rawToken);
     return MeDtoSchema.parse(session.me);
   }
@@ -93,7 +96,9 @@ export class AuthController {
     }
     const meta = requestMeta(request);
     const me = await this.auth.verifyMfa(parsed.data, meta);
-    const session = await this.auth.createSessionForUserId(me.id, meta);
+    const session = await this.auth.createSessionForUserId(me.id, meta, {
+      mfaVerified: true,
+    });
     setSessionCookie(reply, this.config, session.rawToken);
     return MeDtoSchema.parse(session.me);
   }
