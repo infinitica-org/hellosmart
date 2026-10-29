@@ -39,6 +39,10 @@ packer_cache/
 Thumbs.db
 .idea/
 *.swp
+# testing
+playwright-report/
+test-results/
+
 # agent worktrees
 .worktrees/
 

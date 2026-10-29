@@ -2,26 +2,41 @@ import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
-import { pino } from 'pino';
 import { AppModule } from './app.module.js';
-import { createPinoOptions } from './common/logger/pino-redact.js';
 import { loadConfig } from './config/config.js';
+import {
+  createLogger,
+  AppLoggerService,
+  resolveRequestId,
+  registerLoggingHooks,
+  setSharedLogger,
+} from './modules/observability/index.js';
 
 async function bootstrap(): Promise<void> {
   const config = loadConfig();
 
-  const logger = pino(createPinoOptions());
+  const logger = createLogger({ level: config.LOG_LEVEL });
+  setSharedLogger(logger);
+  const appLogger = new AppLoggerService(logger);
+
+  const adapter = new FastifyAdapter({
+    trustProxy: true, // behind ALB; client IP from X-Forwarded-For for audit + throttling
+    bodyLimit: 1_048_576, // 1 MB; bulk uploads go to S3 via presigned URLs
+    logger,
+    disableRequestLogging: true,
+    genReqId: resolveRequestId,
+    ignoreTrailingSlash: true,
+  });
+
+  registerLoggingHooks(adapter.getInstance());
 
   const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-    new FastifyAdapter({
-      trustProxy: true,
-      bodyLimit: 1_048_576,
-      genReqId: () => crypto.randomUUID(),
-      logger,
-    }),
+    AppModule.forRoot({ logger }),
+    adapter,
     { bufferLogs: true },
   );
+
+  app.useLogger(appLogger);
 
   await app.register(helmet, {
     contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
@@ -35,8 +50,9 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix('api/v1');
   app.enableShutdownHooks();
 
+  appLogger.log('Starting HelloSmart API...', 'Bootstrap');
   await app.listen(config.PORT, '0.0.0.0');
-  logger.info({ port: config.PORT }, 'API listening');
+  appLogger.log(`HelloSmart API listening on port ${config.PORT} [${config.NODE_ENV}]`, 'Bootstrap');
 }
 
 void bootstrap();

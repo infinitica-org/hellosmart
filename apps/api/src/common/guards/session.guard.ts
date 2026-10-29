@@ -3,6 +3,7 @@ import {
   CanActivate,
   ExecutionContext,
   Logger,
+  Inject,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
@@ -28,7 +29,7 @@ export class SessionGuard implements CanActivate {
   private readonly logger = new Logger(SessionGuard.name);
 
   constructor(
-    private readonly reflector: Reflector,
+    @Inject(Reflector) private readonly reflector: Reflector,
     private readonly redisService: RedisService,
     private readonly databaseService: DatabaseService,
   ) {}

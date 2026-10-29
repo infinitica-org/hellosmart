@@ -14,6 +14,7 @@ export interface SendInvitationInput {
 export const DEFAULT_MAIL_CONFIG: Config = {
   NODE_ENV: 'test',
   PORT: 4000,
+  LOG_LEVEL: 'info',
   DATABASE_URL: 'postgres://localhost:5432/hellosmart_test',
   DATABASE_MIGRATOR_URL: 'postgres://localhost:5432/hellosmart_test',
   SESSION_SECRET: 'test_session_secret_at_least_32_characters_long_hello',

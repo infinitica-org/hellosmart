@@ -1,0 +1,190 @@
+# Central Logging Framework — HelloSmart.ai
+
+## 1. Overview & Architecture
+
+HelloSmart API (`apps/api`) implements a production-ready, centralized structured logging framework built natively on **Fastify** and **Pino**.
+
+### Architectural Rationale
+- **Native Integration:** Fastify is built natively on top of Pino. `@nestjs/platform-fastify` exposes Fastify's native logger options and lifecycle hooks.
+- **Zero Redundant Dependencies:** Avoids installing `pino-http` or Express middleware adapters. Reuses the existing `pino` dependency (v9.5.0) and Fastify's built-in child logger per-request isolation.
+- **Single Completion Log:** Fastify's default `disableRequestLogging: true` is configured to suppress noisy and unformatted internal request/completion pairs. Instead, an `onResponse` hook deterministically emits exactly one structured log entry per completed HTTP transaction.
+- **Unified NestJS Logging:** `AppLoggerService` implements Nest's `LoggerService` interface, bridging NestJS internal lifecycle events and custom application logs into the same structured Pino output stream with context attribution.
+
+---
+
+## 2. Structured Log Schema
+
+Every completed HTTP request emits a JSON log record to `stdout` conforming to the following structure:
+
+```json
+{
+  "level": 30,
+  "time": 1792995301402,
+  "pid": 3856,
+  "hostname": "api-task-worker-1",
+  "name": "hellosmart-api",
+  "reqId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "method": "POST",
+  "url": "/api/v1/auth/login",
+  "statusCode": 200,
+  "responseTime": 12.45,
+  "msg": "request completed"
+}
+```
+
+### Standard Fields
+| Field | Type | Description |
+|---|---|---|
+| `time` | `number` | Unix epoch timestamp in milliseconds (`epochTime`). |
+| `level` | `number` | Numeric log level (10 = trace, 20 = debug, 30 = info, 40 = warn, 50 = error, 60 = fatal). |
+| `name` | `string` | Service identifier: always `hellosmart-api`. |
+| `reqId` | `string` | Correlated request ID (UUIDv4 or validated client correlation ID). |
+| `method` | `string` | HTTP verb (`GET`, `POST`, `PUT`, `DELETE`, etc.). |
+| `url` | `string` | Normalized route or URL path without query parameters. |
+| `statusCode` | `number` | HTTP status code returned to the client. |
+| `responseTime`| `number` | Response duration in milliseconds (`reply.elapsedTime`). |
+| `msg` | `string` | Fixed action summary: `"request completed"`. |
+| `err` | `object` | Optional error diagnostic payload when request status is $\ge 400$. |
+
+When a request encounters an error, safe diagnostic metadata is captured:
+```json
+{
+  "level": 40,
+  "time": 1792995301420,
+  "name": "hellosmart-api",
+  "reqId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "method": "POST",
+  "url": "/api/v1/assessments",
+  "statusCode": 400,
+  "responseTime": 5.12,
+  "err": {
+    "message": "Validation failed: organization ID is required",
+    "code": "BAD_REQUEST"
+  },
+  "msg": "request completed"
+}
+```
+
+---
+
+## 3. Log Level Policy
+
+| Request Outcome | Log Level | Pino Level Value | Description |
+|---|---|---|---|
+| Successful requests (2xx, 3xx) | `info` | `30` | Standard completed API operations. |
+| Client errors (4xx) | `warn` | `40` | Validation failures, unauthenticated/unauthorized attempts, resource not found. |
+| Server errors (5xx) | `error` | `50` | Unhandled exceptions, database connection drops, upstream gateway failures. |
+| Health-checks (2xx) | `debug` | `20` | Routine health and readiness probes (`/health`, `/healthz`, `/api/v1/health`) to prevent aggregation noise. |
+| Lifecycle events | `info` | `30` | Application bootstrap, port binding, and graceful shutdown. |
+
+---
+
+## 4. Request Correlation & IDs
+
+1. **Generation:** Each request is assigned a unique UUIDv4 by default via `crypto.randomUUID()`.
+2. **Client Correlation Header:** Clients or upstream gateways may supply `x-request-id` or `x-correlation-id`.
+   - Input is strictly validated using regex `^[a-zA-Z0-9_-]{1,64}$`.
+   - If missing, invalid, or containing unsafe characters, a fresh UUIDv4 is generated.
+3. **Response Header:** The resolved request ID is always returned in the `x-request-id` response header via Fastify's `onSend` hook.
+4. **Context Association:** Fastify attaches the resolved ID as `reqId` to the request's child logger (`req.log`), ensuring all logs during the request lifecycle share the identical correlation ID.
+
+---
+
+## 5. Security & Sensitive Data Redaction
+
+Adhering to HelloSmart Security Policies and BRD compliance:
+
+- **Redacted Headers:** `authorization`, `cookie`, `x-api-key`, and `session-secret` are censored as `[REDACTED]` in Pino.
+- **Redacted Properties:** Wildcards redact sensitive keys in logged objects:
+  - `password`, `*.password`
+  - `secret`, `*.secret`
+  - `token`, `*.token`
+  - `apiKey`, `*.apiKey`, `api_key`, `*.api_key`
+  - `accessToken`, `*.accessToken`, `access_token`, `*.access_token`
+  - `refreshToken`, `*.refreshToken`, `refresh_token`, `*.refresh_token`
+  - `sessionSecret`, `*.sessionSecret`, `session_secret`, `*.session_secret`
+  - `clientSecret`, `*.clientSecret`, `client_secret`, `*.client_secret`
+  - `DATABASE_URL`, `REDIS_URL`, `SESSION_SECRET`
+- **URI Credential Sanitization:** Connection strings in error messages (e.g. `postgres://user:pass@host/db`) are automatically sanitized to `postgres://[REDACTED]@host/db`.
+- **Request Bodies:** HTTP request bodies are **never** logged.
+- **Query Parameters:** Query strings are stripped from both the logged `url` and error diagnostic messages to prevent tokens, API keys, or personal information from reaching logs.
+- **Route Normalization:** Trailing slashes are normalized so health check probes (`/health`, `/health/`, `/api/v1/health`, `/api/v1/health/`) consistently receive `debug`-level dampening.
+- **Error Obfuscation:** Internal error stack traces are never exposed to API clients or placed in public response payloads.
+
+---
+
+## 6. Environment Configuration
+
+Configuration is managed via `apps/api/src/config/config.ts` validated with Zod:
+
+```ts
+LOG_LEVEL: z
+  .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+  .default('info'),
+```
+
+| Environment | Recommended `LOG_LEVEL` | Behavior |
+|---|---|---|
+| `development` | `info` or `debug` | Logs structured JSON with full diagnostics. |
+| `test` | `info` or `silent` | Test suites pass custom in-memory streams without polluting terminal test output. |
+| `staging` | `info` | Production-identical structured JSON. |
+| `production` | `info` | High-efficiency structured JSON to stdout/stderr. |
+
+---
+
+## 7. Running & Verifying Tests
+
+The automated test suite verifies all logging and redaction invariants using Vitest:
+
+```bash
+# Run API tests
+pnpm --filter @hs/api test
+
+# Run typecheck
+pnpm --filter @hs/api typecheck
+
+# Run build
+pnpm --filter @hs/api build
+```
+
+### Test Coverage
+- `test/logging.spec.ts`:
+  - Structured log generation for successful requests with duration, ID, method, and status.
+  - Client errors (4xx) logged at warning level with diagnostic info.
+  - Server errors (5xx) logged at error level with diagnostic info.
+  - Header redaction (`authorization`, `cookie`, `x-api-key`).
+  - Request body exclusion.
+  - Independent request ID assignment across concurrent requests.
+  - Correlation ID validation and sanitization.
+  - Health check debug-level noise dampening.
+  - URL query parameter stripping.
+  - No duplicate log emission.
+- `test/logger.service.spec.ts`:
+  - `AppLoggerService` NestJS integration methods (`log`, `warn`, `error`, `debug`, `verbose`, `fatal`).
+  - Pino redaction rules across nested object fields.
+  - Dependency injection into NestJS controllers and services via `ObservabilityModule`.
+  - Request ID sanitization helpers.
+
+---
+
+## 8. Log Collection, Retention, and Archival Infrastructure
+
+All logs are written to standard output (`process.stdout`), following the Twelve-Factor App specification for logs.
+
+> [!NOTE]
+> **Current Environment Status:** The current QA deployment runs on a KVM VPS using Docker Compose with local Docker log rotation (`json-file`, 50 MB, 5 files). The CloudWatch retention and S3 archival pipeline described below is provisioned as target-state Infrastructure-as-Code for the upcoming AWS ECS deployment.
+
+### Production Log Ingestion & Lifecycle Pipeline (Target State)
+
+In deployed environments (Staging and Production):
+1. **Container Log Driver:** Containers run on AWS ECS using the `awslogs` driver, streaming `stdout`/`stderr` JSON records into service-specific CloudWatch Log Groups (`/aws/ecs/hellosmart-<service>-<env>`).
+2. **Active 7-Day Retention:** CloudWatch Log Groups enforce an explicit **7-day retention period** (`retention_in_days = 7`). Logs older than 7 days expire automatically from active query storage to optimize performance and control operational costs.
+3. **Continuous Cold Archival Pipeline:** CloudWatch Subscription Filters forward all log records in real time to Amazon Data Firehose delivery streams (`hs-logs-<service>-<env>`).
+4. **Partitioned S3 Cold Archive:** Firehose passes the subscription filter's native GZIP batches uncompressed to prevent double-compression, writing batches into a dedicated, encrypted S3 bucket (`hs-logs-archive-<account_id>-<env>`) partitioned by service, year, month, day, and hour:
+   ```
+   s3://hs-logs-archive-<account_id>-<env>/services/<service>/year=YYYY/month=MM/day=DD/hour=HH/
+   ```
+5. **Separation of Concerns:** The log archive bucket is completely distinct from candidate work artifact buckets (`hs-candidate-<env>`) and database-backed business audit event tables (`app.audit_log`).
+6. **Configurable Archive Lifecycle:** Logs transition to S3 Glacier Instant Retrieval (`GLACIER_IR`) after 90 days. Expiration of cold archived logs is explicitly left unset in Terraform pending formal legal and regulatory compliance approval.
+
+For complete infrastructure specifications, Athena query examples, and operational runbooks, see [Log Retention and Archival Policy](log-retention-and-archival.md).
