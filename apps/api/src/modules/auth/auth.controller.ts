@@ -8,18 +8,19 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import {
+  type LoginDto,
   LoginDtoSchema,
   LogoutResponseDtoSchema,
   MeDtoSchema,
+  type MfaVerifyDto,
   MfaVerifyDtoSchema,
 } from '@hs/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
-import { problem } from '../../common/errors/app-http.exception.js';
-import { flattenZodErrors } from '../../common/validation/zod-errors.js';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import {
   AuthenticatedRequest,
   REQUEST_USER_KEY,
@@ -30,7 +31,6 @@ import { SessionService } from '../session/session.service.js';
 import { clearSessionCookie, setSessionCookie } from './auth.cookies.js';
 import { AuthService } from './auth.service.js';
 
-@SkipThrottle()
 @Roles('platform_admin', 'company_admin', 'candidate')
 @Controller()
 export class AuthController {
@@ -41,25 +41,15 @@ export class AuthController {
 
   @Public()
   @HttpCode(200)
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Throttle({ login: { limit: 5, ttl: 60_000 } })
   @Post('auth/login')
   async login(
-    @Body() body: unknown,
+    @Body(new ZodValidationPipe(LoginDtoSchema)) body: LoginDto,
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const parsed = LoginDtoSchema.safeParse(body);
-    if (!parsed.success) {
-      throw problem({
-        title: 'Unprocessable Entity',
-        status: 422,
-        detail: 'Invalid login payload',
-        code: 'VALIDATION_ERROR',
-        errors: flattenZodErrors(parsed.error),
-      });
-    }
     const meta = requestMeta(request);
-    const result = await this.auth.login(parsed.data, meta);
+    const result = await this.auth.login(body, meta);
     if ('mfaRequired' in result) {
       return result;
     }
@@ -70,24 +60,14 @@ export class AuthController {
 
   @Public()
   @HttpCode(200)
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Throttle({ login: { limit: 5, ttl: 60_000 } })
   @Post('auth/mfa/verify')
   async mfaVerify(
-    @Body() body: unknown,
+    @Body(new ZodValidationPipe(MfaVerifyDtoSchema)) body: MfaVerifyDto,
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const parsed = MfaVerifyDtoSchema.safeParse(body);
-    if (!parsed.success) {
-      throw problem({
-        title: 'Unprocessable Entity',
-        status: 422,
-        detail: 'Invalid MFA payload',
-        code: 'VALIDATION_ERROR',
-        errors: flattenZodErrors(parsed.error),
-      });
-    }
-    const me = await this.auth.verifyMfa(parsed.data, requestMeta(request));
+    const me = await this.auth.verifyMfa(body, requestMeta(request));
     const session = await this.auth.createSessionForUserId(me.id);
     setSessionCookie(reply, this.config, session.sessionId);
     return MeDtoSchema.parse(session.me);

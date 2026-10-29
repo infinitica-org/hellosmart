@@ -22,6 +22,12 @@ const ConfigSchema = z
     APP_BASE_URL: z.string().url().default('http://localhost:3000'),
     /** Base32 TOTP secret for platform admin MFA (dev/test). Production uses vault via mfa_secret_ref. */
     PLATFORM_ADMIN_MFA_SECRET: z.string().min(16).optional(),
+    /** 32-byte AES-256-GCM encryption key for MFA secrets at rest (hex, base64, or 32 raw bytes). Required in staging/production. */
+    MFA_ENCRYPTION_KEY: z.string().optional(),
+    /** Active MFA encryption key identifier. Defaults to 'k1'. */
+    MFA_ENCRYPTION_KEY_ID: z.string().default('k1'),
+    /** JSON or comma-separated mapping of previous MFA encryption keys for seamless key rotation. */
+    MFA_PREVIOUS_ENCRYPTION_KEYS: z.string().optional(),
     /** Optional Mailpit URL for local email capture in development. */
     MAILPIT_URL: z.string().url().default('http://127.0.0.1:8025'),
   })
@@ -35,6 +41,9 @@ const ConfigSchema = z
       throw new Error('CORS_ORIGINS is required outside development and test');
     }
     for (const origin of corsList) {
+      if (origin === '*' || origin.includes('*')) {
+        throw new Error(`Wildcard CORS origin '${origin}' is not permitted with credentialed requests`);
+      }
       try {
         // eslint-disable-next-line no-new
         new URL(origin);
@@ -55,6 +64,24 @@ const ConfigSchema = z
 
 export type Config = z.infer<typeof ConfigSchema>;
 
+export function parseCryptoKey(keyStr: string, keyId: string): Buffer {
+  const trimmed = keyStr.trim();
+  let buf: Buffer;
+  if (/^[0-9a-fA-F]{64}$/.test(trimmed)) {
+    buf = Buffer.from(trimmed, 'hex');
+  } else if (trimmed.length === 32) {
+    buf = Buffer.from(trimmed, 'utf8');
+  } else {
+    buf = Buffer.from(trimmed, 'base64');
+  }
+  if (buf.length !== 32) {
+    throw new Error(
+      `Invalid MFA encryption key '${keyId}': expected 32 bytes (256 bits), got ${buf.length} bytes`,
+    );
+  }
+  return buf;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = ConfigSchema.safeParse(env);
   if (!parsed.success) {
@@ -68,6 +95,43 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   }
   if ((nodeEnv === 'production' || nodeEnv === 'staging') && !env.DATABASE_PLATFORM_URL) {
     throw new Error('DATABASE_PLATFORM_URL is required in staging and production');
+  }
+  if ((nodeEnv === 'production' || nodeEnv === 'staging') && !parsed.data.MFA_ENCRYPTION_KEY) {
+    throw new Error('MFA_ENCRYPTION_KEY is required in staging and production');
+  }
+  if (parsed.data.MFA_ENCRYPTION_KEY) {
+    parseCryptoKey(parsed.data.MFA_ENCRYPTION_KEY, parsed.data.MFA_ENCRYPTION_KEY_ID);
+  }
+  if (parsed.data.MFA_PREVIOUS_ENCRYPTION_KEYS) {
+    const raw = parsed.data.MFA_PREVIOUS_ENCRYPTION_KEYS.trim();
+    if (raw.startsWith('{')) {
+      try {
+        const parsedKeys = JSON.parse(raw);
+        for (const [kid, kstr] of Object.entries(parsedKeys)) {
+          if (typeof kstr !== 'string') {
+            throw new Error(`Previous MFA key '${kid}' must be a string`);
+          }
+          parseCryptoKey(kstr, kid);
+        }
+      } catch (err: any) {
+        if (
+          err.message?.includes('Invalid MFA encryption key') ||
+          err.message?.includes('must be a string')
+        ) {
+          throw err;
+        }
+        throw new Error('Invalid MFA_PREVIOUS_ENCRYPTION_KEYS JSON format');
+      }
+    } else {
+      const pairs = raw.split(',').map((p) => p.trim()).filter(Boolean);
+      for (const pair of pairs) {
+        const [kid, kstr] = pair.split(':');
+        if (!kid || !kstr) {
+          throw new Error('Invalid MFA_PREVIOUS_ENCRYPTION_KEYS format. Expected keyId:keyValue,...');
+        }
+        parseCryptoKey(kstr.trim(), kid.trim());
+      }
+    }
   }
   if (parsed.data.DATABASE_PLATFORM_URL) {
     try {

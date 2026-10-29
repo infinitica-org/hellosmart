@@ -29,7 +29,7 @@ export interface AuditLogRecord extends AuditLogEntry {
  * Regex matching sensitive fields that MUST be stripped/redacted from audit records (BR-31).
  */
 export const SENSITIVE_KEY_REGEX =
-  /password|passwd|secret|token|totp|otp|credential|cvv|authorization|cookie|hs_session|((^|[_.-])(api_?key|private_?key|secret_?key|key)([_.-]|$))|^apiKey$/i;
+  /password|passwd|secret|token|totp|otp|mfa|credential|cvv|authorization|cookie|hs_session|((^|[_.-])(api_?key|private_?key|secret_?key|key|code)([_.-]|$))|^(apiKey|code|mfaCode)$/i;
 
 /**
  * Redacts sensitive fields (passwords, tokens, TOTP codes, keys, secrets) recursively.

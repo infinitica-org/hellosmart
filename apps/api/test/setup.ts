@@ -11,3 +11,7 @@ process.env.DATABASE_ADMIN_URL =
   'postgres://hs_owner:hs_owner_local@127.0.0.1:5432/hellosmart';
 process.env.CORS_ORIGINS = 'http://localhost:3000';
 process.env.PLATFORM_ADMIN_MFA_SECRET = 'JBSWY3DPEHPK3PXP';
+process.env.MFA_ENCRYPTION_KEY =
+  process.env.MFA_ENCRYPTION_KEY ??
+  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+process.env.MFA_ENCRYPTION_KEY_ID = process.env.MFA_ENCRYPTION_KEY_ID ?? 'k1';

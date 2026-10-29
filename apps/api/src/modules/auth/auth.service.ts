@@ -81,7 +81,8 @@ export class AuthService {
     if (user.role === 'platform_admin') {
       if (dto.mfaCode) {
         const secret = this.mfa.resolveSecret(user.mfa_secret_ref);
-        if (!this.mfa.verifyTotp(secret, dto.mfaCode)) {
+        const { valid, step } = this.mfa.verifyTotpWithStep(secret, dto.mfaCode);
+        if (!valid || step === undefined) {
           await this.auditLogin(user.id, user.role, user.org_id, false, meta);
           throw problem({
             title: 'Unauthorized',
@@ -89,6 +90,20 @@ export class AuthService {
             detail: 'Invalid MFA code',
             code: 'MFA_INVALID',
           });
+        }
+        // Atomic TOTP replay protection (S0-T14-3)
+        const consumed = await this.mfa.consumeStep(user.id, step);
+        if (!consumed) {
+          await this.auditLogin(user.id, user.role, user.org_id, false, meta);
+          throw problem({
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'MFA code already used. Please wait for a new code.',
+            code: 'MFA_REPLAY_DETECTED',
+          });
+        }
+        if (this.mfa.needsReencryption(user.mfa_secret_ref)) {
+          void this.mfa.upgradeSecret(user.id, secret).catch(() => {});
         }
         return this.completeLogin(user, meta);
       }
@@ -124,7 +139,8 @@ export class AuthService {
     this.assertAccountActive(user);
 
     const secret = this.mfa.resolveSecret(user.mfa_secret_ref);
-    if (!this.mfa.verifyTotp(secret, dto.totpCode)) {
+    const { valid, step } = this.mfa.verifyTotpWithStep(secret, dto.totpCode);
+    if (!valid || step === undefined) {
       await this.preAuth.recordFailedAttempt(dto.preAuthToken);
       await this.auditLogin(user.id, user.role, user.org_id, false, meta);
       throw problem({
@@ -135,7 +151,23 @@ export class AuthService {
       });
     }
 
+    // Atomic TOTP replay protection (S0-T14-3)
+    const consumed = await this.mfa.consumeStep(user.id, step);
+    if (!consumed) {
+      await this.preAuth.recordFailedAttempt(dto.preAuthToken);
+      await this.auditLogin(user.id, user.role, user.org_id, false, meta);
+      throw problem({
+        title: 'Unauthorized',
+        status: 401,
+        detail: 'MFA code already used. Please wait for a new code.',
+        code: 'MFA_REPLAY_DETECTED',
+      });
+    }
+
     await this.preAuth.delete(dto.preAuthToken);
+    if (this.mfa.needsReencryption(user.mfa_secret_ref)) {
+      void this.mfa.upgradeSecret(user.id, secret).catch(() => {});
+    }
     return this.completeLogin(user, meta);
   }
 

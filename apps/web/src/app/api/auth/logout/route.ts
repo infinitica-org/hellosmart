@@ -11,6 +11,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         headers: {
           Cookie: `hs_session=${sessionToken}`,
           Authorization: `Bearer ${sessionToken}`,
+          'X-HS-CSRF': '1',
         },
       });
     } catch {
