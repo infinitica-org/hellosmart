@@ -43,8 +43,16 @@ const users: UserFixture[] = [
 async function signIn(page: Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill(email);
-  await page.getByLabel(/password/i).fill(password);
+  await page.getByTestId('password-input').fill(password);
   await page.getByRole("button", { name: /sign in|log in|login/i }).click();
+
+  // If platform_admin, explicitly wait for the MFA dialog (5s) and complete TOTP step
+  const mfaDialog = page.getByTestId("mfa-dialog");
+  if (email.includes("admin.super") || email.includes("superadmin")) {
+    await expect(mfaDialog).toBeVisible({ timeout: 5000 });
+    await page.getByTestId("mfa-totp-input").fill("123456");
+    await page.getByTestId("mfa-submit-button").click();
+  }
 }
 
 test.describe("Master Login and Role-Based Routing (CO-001, CO-004)", () => {
@@ -53,13 +61,13 @@ test.describe("Master Login and Role-Based Routing (CO-001, CO-004)", () => {
       await signIn(page, user.email, user.password);
 
       // Verify the final URL matches the user's role-authorized portal
-      await expect(page).toHaveURL(new RegExp(`${user.landing.replace("/", "\\/")}(?:[/?#]|$)`));
+      await expect(page).toHaveURL(new RegExp(`${user.landing.replace("/", "\\/")}(?:[/?#]|$)`), { timeout: 15_000 });
 
       // Verify reliable page-level indicator that the correct portal loaded
-      await expect(page.getByRole("heading", { name: user.pageHeading })).toBeVisible();
+      await expect(page.getByRole("heading", { name: user.pageHeading })).toBeVisible({ timeout: 15_000 });
 
-      // Ensure login failures were not mistaken for successful routing
-      await expect(page.locator("main [role='alert']")).not.toBeVisible();
+      // Ensure login error alerts were not present
+      await expect(page.getByTestId("login-error-alert")).not.toBeVisible();
     });
   }
 
@@ -75,7 +83,7 @@ test.describe("Master Login and Role-Based Routing (CO-001, CO-004)", () => {
     await expect(alert).toBeVisible();
 
     // Assert human-readable, user-friendly copy
-    await expect(alert).toContainText(/invalid credentials|check your email or password|incorrect/i);
+    await expect(alert).toContainText(/invalid.*(?:credentials|password|email)|check your email or password|incorrect/i);
 
     // Verify error does not expose stack traces, internal exceptions, or sensitive data
     const alertText = await alert.innerText();

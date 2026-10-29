@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DEV_SESSION_STORE } from '@/lib/session-store';
+import { DEV_SESSION_STORE, MOCK_PREAUTH_STORE } from '@/lib/session-store';
 
 interface DevUser {
   email: string;
@@ -239,10 +239,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // Step 2a: Check MFA requirement
     // When MFA is required, DO NOT issue session cookies or tokens until verified.
-    if (user.requiresMfa && !mfaCode) {
+    if (user.requiresMfa) {
+      const preAuthToken = `preauth_dev_${crypto.randomUUID()}`;
+      MOCK_PREAUTH_STORE.set(preAuthToken, {
+        email: user.email,
+        attempts: 0,
+        expiresAt: Date.now() + 5 * 60 * 1000, // 5 min TTL
+      });
+
       return NextResponse.json(
         {
           mfaRequired: true,
+          preAuthToken,
           role: user.role,
           portal: user.portal,
           email: user.email,
@@ -250,23 +258,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         },
         { status: 200 },
       );
-    }
-
-    // Step 2b: Local development mock MFA verification
-    // NOTE: This mock verification is strictly for local dev testing; production MFA is verified by backend.
-    if (user.requiresMfa && mfaCode) {
-      const sanitizedCode = mfaCode.trim();
-      if (!/^\d{6}$/.test(sanitizedCode) || sanitizedCode === '000000') {
-        return NextResponse.json(
-          {
-            type: 'about:blank',
-            title: 'Invalid MFA Code',
-            status: 401,
-            detail: 'Invalid 6-digit authentication code. Please try again.',
-          },
-          { status: 401 },
-        );
-      }
     }
 
     // Successful login: reset failed attempts
