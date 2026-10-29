@@ -6,7 +6,7 @@ const candidatePassword = process.env.E2E_CANDIDATE_PASSWORD ?? (process.env.SEE
 async function signInAsCandidate(page: Page) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill(candidateEmail);
-  await page.getByLabel(/password/i).fill(candidatePassword);
+  await page.getByTestId('password-input').fill(candidatePassword);
   await page.getByRole("button", { name: /sign in|log in|login/i }).click();
 
   // Confirm candidate is authenticated in the candidate portal

@@ -171,6 +171,127 @@ paths:
                   success: { type: boolean, example: true }
                   message: { type: string, example: 'Logged out successfully' }
 
+ /auth/sessions:
+    get:
+      tags: [auth]
+      summary: List all active sessions for current user
+      operationId: listActiveSessions
+      x-requirement: [16.2]
+      responses:
+        '200':
+          description: Active sessions returned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessions]
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActiveSession'
+        '401':
+
+  /auth/logout-all:
+    post:
+      tags: [auth]
+      summary: Revoke all active sessions for the authenticated user
+      operationId: authLogoutAll
+      x-requirement: [S0-T16-1]
+      responses:
+        '200':
+          description: All sessions revoked and cookie cleared.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutAllResponse'
+        '401': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+
+  /auth/sessions:
+    get:
+      tags: [auth]
+      summary: List all active sessions for the authenticated user
+      operationId: listSessions
+      x-requirement: [S0-T16-1]
+      responses:
+        '200':
+          description: Active sessions list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionListResponse'
+        '401': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+
+
+  /auth/sessions/{id}:
+    delete:
+      tags: [auth]
+     summary: Revoke a specific active session
+      operationId: revokeSession
+      x-requirement: [16.2]
+      summary: Revoke a specific active session owned by the authenticated user
+      operationId: revokeSession
+      x-requirement: [S0-T16-1]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: 'Session revoked successfully' }
+        '401':
+          $ref: '#/components/responses/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+
+  /auth/sessions/logout-all:
+    post:
+      tags: [auth]
+      summary: Invalidate all active sessions for the user across all devices
+      operationId: logoutAllSessions
+      x-requirement: [16.2]
+      responses:
+        '200':
+          description: All sessions revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: 'All sessions revoked successfully' }
+        '401':
+          $ref: '#/components/responses/Problem'
+
+          description: The public session ID to revoke
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session revoked successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeSessionResponse'
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+
+
   /auth/invitations/{token}:
     get:
       summary: Validate an invitation token and fetch details
@@ -268,6 +389,106 @@ paths:
           $ref: '#/components/responses/Problem'
 
   /admin/organizations:
+    get:
+      tags: [admin]
+      summary: List organizations with pagination, status filtering, and search (Platform Admin only)
+      operationId: listOrganizations
+      x-requirement: [AD-001, S0-T11-1]
+      x-roles: [platform_admin]
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-based)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            example: 1
+        - name: pageSize
+          in: query
+          description: Page size (maximum 100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+        - name: status
+          in: query
+          description: Filter organizations by status
+          required: false
+          schema:
+            $ref: '#/components/schemas/OrgStatus'
+          example: 'trial_active'
+        - name: search
+          in: query
+          description: Search by organization name or slug
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+          example: 'Brindle'
+      responses:
+        '200':
+          description: Paginated list of organizations.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginatedOrgList' }
+              examples:
+                defaultList:
+                  summary: Default list of organizations
+                  value:
+                    items:
+                      - id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+                        name: 'Aster Ridge Inc.'
+                        slug: 'aster-ridge'
+                        status: 'paid_active'
+                        candidateCount: 18
+                        createdAt: '2026-09-15T08:00:00.000Z'
+                        trialEndsAt: null
+                      - id: '00000000-0000-4000-8000-000000000001'
+                        name: 'Brindle & Co'
+                        slug: 'brindle-co'
+                        status: 'trial_active'
+                        candidateCount: 24
+                        createdAt: '2026-10-01T10:00:00.000Z'
+                        trialEndsAt: '2026-11-01T10:00:00.000Z'
+                      - id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+                        name: 'Apex Labs'
+                        slug: 'apex-labs'
+                        status: 'suspended'
+                        candidateCount: 0
+                        createdAt: '2026-08-01T12:00:00.000Z'
+                        trialEndsAt: null
+                    page: 1
+                    pageSize: 20
+                    total: 3
+                filteredTrial:
+                  summary: Filtered by trial_active search for Brindle
+                  value:
+                    items:
+                      - id: '00000000-0000-4000-8000-000000000001'
+                        name: 'Brindle & Co'
+                        slug: 'brindle-co'
+                        status: 'trial_active'
+                        candidateCount: 24
+                        createdAt: '2026-10-01T10:00:00.000Z'
+                        trialEndsAt: '2026-11-01T10:00:00.000Z'
+                    page: 1
+                    pageSize: 20
+                    total: 1
+                emptyList:
+                  summary: Empty page result
+                  value:
+                    items: []
+                    page: 2
+                    pageSize: 20
+                    total: 3
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
     post:
       tags: [admin]
       summary: Provision a new customer tenant organization (Platform Admin only)
@@ -334,6 +555,29 @@ paths:
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
+
+  /admin/metrics:
+    get:
+      tags: [admin]
+      summary: Get platform admin overview dashboard metrics (Platform Admin only)
+      operationId: getAdminMetrics
+      x-requirement: [AD-001, S0-T11-1]
+      x-roles: [platform_admin]
+      responses:
+        '200':
+          description: Summary platform metrics for total companies, active trials, and total candidates.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminMetrics' }
+              examples:
+                defaultMetrics:
+                  summary: Platform overview metrics
+                  value:
+                    totalCompanies: 3
+                    activeTrials: 1
+                    totalCandidates: 42
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
 
   /candidates:
     get:
@@ -503,13 +747,45 @@ components:
         id: { type: string, format: uuid, example: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }
         name: { type: string, example: 'Aster Ridge Inc.' }
         slug: { type: string, example: 'aster-ridge' }
-        status: { type: string, enum: [provisioned, trial_active, paid_active, suspended], example: 'paid_active' }
+        status: { $ref: '#/components/schemas/OrgStatus', example: 'paid_active' }
         planId: { type: [string, 'null'], example: 'plan_growth' }
         logoUrl: { type: [string, 'null'], example: 'https://cdn.hellosmart.ai/aster.png' }
         whiteLabel: { type: boolean, example: false }
         customDomain: { type: [string, 'null'], example: 'assess.asterridge.com' }
         retentionDays: { type: integer, example: 90 }
         createdAt: { type: string, format: date-time, example: '2026-10-01T00:00:00Z' }
+    OrgStatus:
+      type: string
+      enum: [provisioned, trial, trial_active, trial_expired, active, paid_active, suspended]
+    OrgListItem:
+      type: object
+      required: [id, name, slug, status, candidateCount, createdAt]
+      properties:
+        id: { type: string, format: uuid, example: '00000000-0000-4000-8000-000000000001' }
+        name: { type: string, minLength: 1, maxLength: 120, example: 'Brindle & Co' }
+        slug: { type: string, minLength: 1, maxLength: 64, example: 'brindle-co' }
+        status: { $ref: '#/components/schemas/OrgStatus' }
+        candidateCount: { type: integer, minimum: 0, example: 24 }
+        createdAt: { type: string, format: date-time, example: '2026-10-01T10:00:00.000Z' }
+        trialEndsAt: { type: [string, 'null'], format: date-time, example: '2026-11-01T10:00:00.000Z' }
+    PaginatedOrgList:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrgListItem'
+        page: { type: integer, minimum: 1, example: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 100, example: 20 }
+        total: { type: integer, minimum: 0, example: 3 }
+    AdminMetrics:
+      type: object
+      required: [totalCompanies, activeTrials, totalCandidates]
+      properties:
+        totalCompanies: { type: integer, minimum: 0, example: 3 }
+        activeTrials: { type: integer, minimum: 0, example: 1 }
+        totalCandidates: { type: integer, minimum: 0, example: 42 }
     CandidateStatus: { type: string, enum: [invited, active, deleted] }
     Candidate:
       type: object
@@ -531,3 +807,46 @@ components:
         ticket: { type: string, description: 'Single-use, 60 s TTL, bound to workspace + user' }
         deadlineAt: { type: string, format: date-time }
         requireFullscreen: { type: boolean }
+ ActiveSession:
+      type: object
+      required: [id, createdAt, lastActiveAt, isCurrent]
+      properties:
+        id: { type: string, example: 'sess_01' }
+        userAgent: { type: string, example: 'Chrome on Windows' }
+        device: { type: string, example: 'Windows Desktop' }
+        ipAddress: { type: string, example: '127.0.0.1' }
+        createdAt: { type: string, format: date-time, example: '2026-10-29T10:00:00Z' }
+        lastActiveAt: { type: string, format: date-time, example: '2026-10-29T11:30:00Z' }
+        isCurrent: { type: boolean, example: true }
+
+    SessionPublic:
+      type: object
+      required: [sessionId, device, ip, createdAt, lastSeenAt, current]
+      properties:
+        sessionId: { type: string, format: uuid }
+        device: { type: string, example: 'Chrome on Windows' }
+        ip: { type: string, example: '127.0.0.xxx' }
+        createdAt: { type: string, format: date-time }
+        lastSeenAt: { type: string, format: date-time }
+        current: { type: boolean }
+    SessionListResponse:
+      type: object
+      required: [sessions]
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionPublic'
+    RevokeSessionResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean, example: true }
+        message: { type: string, example: 'Session revoked successfully' }
+    LogoutAllResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean, example: true }
+        message: { type: string, example: 'All sessions revoked successfully' }
+

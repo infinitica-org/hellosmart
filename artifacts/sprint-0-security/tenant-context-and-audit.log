@@ -1,0 +1,17 @@
+> @hs/api@0.1.0 test C:\Users\sathe\OneDrive\Desktop\hellosmart\apps\api
+> vitest run "src/common/interceptors/__tests__/tenant-context-and-audit.spec.ts"
+
+ RUN  v2.1.4 C:/Users/sathe/OneDrive/Desktop/hellosmart/apps/api
+
+ ✓ |unit| src/common/interceptors/__tests__/tenant-context-and-audit.spec.ts  (13 tests) 256ms
+
+Test Files  1 passed (1)
+     Tests  13 passed (13)
+  Duration  2.58s
+
+Verified:
+- Subtask 9.2: Tenant Context Interceptor & Shared AuditLogService
+- Shared AuditLogService & Secret Redaction (BR-31)
+- Cryptographic SHA-256 tamper-evident hash chain verification (BR-31)
+- Redaction of authorization tokens, passwords, cookies, and secret keys
+

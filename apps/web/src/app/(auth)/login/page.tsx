@@ -4,11 +4,13 @@
 import React, { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { isSafeRedirectPath } from '@/lib/session-client';
 import {
   BrandMark,
   TextField,
   PasswordField,
   Button,
+  TextureButton,
   Card,
   Alert,
   Separator,
@@ -34,6 +36,7 @@ function LoginForm() {
 
   // MFA 6-digit TOTP modal state
   const [isMfaOpen, setIsMfaOpen] = useState(false);
+  const [preAuthToken, setPreAuthToken] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState('');
   const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaError, setMfaError] = useState<string | null>(null);
@@ -46,7 +49,14 @@ function LoginForm() {
   };
 
   const executeRedirect = (targetPortal: string) => {
-    const dest = from && from.startsWith(targetPortal) ? from : targetPortal;
+    let dest = targetPortal;
+    if (from && isSafeRedirectPath(from)) {
+      if (targetPortal === '/candidate' && (from.startsWith('/admin') || from.startsWith('/company'))) {
+        dest = '/candidate';
+      } else {
+        dest = from;
+      }
+    }
     window.location.href = dest;
   };
 
@@ -94,6 +104,7 @@ function LoginForm() {
       // If MFA required: prompt for 6-digit TOTP code
       if (data?.mfaRequired) {
         setIsLoading(false);
+        setPreAuthToken(data.preAuthToken || null);
         setIsMfaOpen(true);
         setMfaCode('');
         setMfaError(null);
@@ -121,15 +132,14 @@ function LoginForm() {
     setMfaLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/mfa/verify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: email.trim(),
-          password,
-          mfaCode: mfaCode.trim(),
+          preAuthToken,
+          totpCode: mfaCode.trim(),
         }),
       });
 
@@ -138,9 +148,17 @@ function LoginForm() {
       if (!response.ok) {
         setMfaLoading(false);
         if (response.status === 401) {
-          setMfaError('Invalid 6-digit authentication code. Please try again.');
+          if (data?.code === 'PREAUTH_INVALID') {
+            setIsMfaOpen(false);
+            setPreAuthToken(null);
+            setErrorMessage('Pre-authentication expired or invalid. Please sign in again.');
+            return;
+          }
+          setMfaError(data?.detail || 'Invalid 6-digit authentication code. Please try again.');
         } else if (response.status === 429) {
-          setMfaError('Too many failed attempts. Please wait 15 minutes.');
+          setIsMfaOpen(false);
+          setPreAuthToken(null);
+          setErrorMessage('Too many failed MFA attempts. Please wait 15 minutes before signing in again.');
         } else {
           setMfaError(data?.detail || 'MFA verification failed.');
         }
@@ -148,6 +166,7 @@ function LoginForm() {
       }
 
       // Successful MFA completion
+      setPreAuthToken(null);
       setIsMfaOpen(false);
       const target = getTargetPortal(data?.role, data?.portal);
       executeRedirect(target);
@@ -180,6 +199,17 @@ function LoginForm() {
             Access your company portal, candidate workspace, or admin console.
           </p>
         </div>
+
+        {/* Session Expired Notice (S0-T16-2) */}
+        {searchParams?.get('reason') === 'session-expired' && (
+          <Alert
+            variant="warning"
+            data-testid="session-expired-alert"
+            className="text-xs animate-fadeIn"
+          >
+            Your session expired. Please sign in again.
+          </Alert>
+        )}
 
         {/* Redirect Notice */}
         {from && (
@@ -305,16 +335,16 @@ function LoginForm() {
               />
             </div>
 
-            <Button
+            <TextureButton
               type="submit"
-              variant="primary"
-              fullWidth
-              isLoading={isLoading}
+              variant="brand"
+              size="default"
+              disabled={isLoading}
               data-testid="login-submit-button"
-              className="h-10 text-sm font-medium bg-primary hover:bg-primary-hover text-white shadow-xs rounded-xl"
+              className="w-full h-11 text-sm font-semibold shadow-md shadow-primary/25 cursor-pointer rounded-xl"
             >
-              Sign In →
-            </Button>
+              {isLoading ? 'Signing In...' : 'Sign In →'}
+            </TextureButton>
           </form>
 
           {/* SSO Separator */}
@@ -387,7 +417,12 @@ function LoginForm() {
       <Dialog
         open={isMfaOpen}
         onClose={() => {
-          if (!mfaLoading) setIsMfaOpen(false);
+          if (!mfaLoading) {
+            setIsMfaOpen(false);
+            setPreAuthToken(null);
+            setMfaCode('');
+            setMfaError(null);
+          }
         }}
         className="!bg-white !border-neutral-200 !text-neutral-900 shadow-xl"
         data-testid="mfa-dialog"
@@ -460,7 +495,12 @@ function LoginForm() {
               type="button"
               variant="secondary"
               disabled={mfaLoading}
-              onClick={() => setIsMfaOpen(false)}
+              onClick={() => {
+                setIsMfaOpen(false);
+                setPreAuthToken(null);
+                setMfaCode('');
+                setMfaError(null);
+              }}
             >
               Cancel
             </Button>

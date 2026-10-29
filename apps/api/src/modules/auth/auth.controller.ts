@@ -26,7 +26,11 @@ import {
 } from '../../common/guards/session.guard.js';
 import { APP_CONFIG } from '../../config/config.tokens.js';
 import type { Config } from '../../config/config.js';
-import { SessionService } from '../session/session.service.js';
+import {
+  COOKIE_HOST_SESSION_NAME,
+  COOKIE_SESSION_NAME,
+  SessionService,
+} from '../session/session.service.js';
 import { clearSessionCookie, setSessionCookie } from './auth.cookies.js';
 import { AuthService } from './auth.service.js';
 
@@ -63,8 +67,11 @@ export class AuthController {
     if ('mfaRequired' in result) {
       return result;
     }
-    const session = await this.auth.createSessionForUserId(result.id);
-    setSessionCookie(reply, this.config, session.sessionId);
+    const mfaCompleted = result.role === 'platform_admin' && Boolean(parsed.data.mfaCode);
+    const session = await this.auth.createSessionForUserId(result.id, meta, {
+      mfaVerified: mfaCompleted,
+    });
+    setSessionCookie(reply, this.config, session.rawToken);
     return MeDtoSchema.parse(session.me);
   }
 
@@ -87,9 +94,12 @@ export class AuthController {
         errors: flattenZodErrors(parsed.error),
       });
     }
-    const me = await this.auth.verifyMfa(parsed.data, requestMeta(request));
-    const session = await this.auth.createSessionForUserId(me.id);
-    setSessionCookie(reply, this.config, session.sessionId);
+    const meta = requestMeta(request);
+    const me = await this.auth.verifyMfa(parsed.data, meta);
+    const session = await this.auth.createSessionForUserId(me.id, meta, {
+      mfaVerified: true,
+    });
+    setSessionCookie(reply, this.config, session.rawToken);
     return MeDtoSchema.parse(session.me);
   }
 
@@ -99,8 +109,8 @@ export class AuthController {
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const sessionId = extractSessionId(request);
-    const result = await this.auth.logout(sessionId);
+    const rawToken = extractSessionId(request);
+    const result = await this.auth.logout(rawToken);
     clearSessionCookie(reply);
     return LogoutResponseDtoSchema.parse(result);
   }
@@ -133,10 +143,14 @@ function requestMeta(request: FastifyRequest): {
 }
 
 function extractSessionId(request: FastifyRequest): string | undefined {
-  const cookieName = SessionService.cookieName();
-  const fromCookie = request.cookies?.[cookieName];
-  if (typeof fromCookie === 'string' && fromCookie.length > 0) {
-    return fromCookie;
+  const cookies = request.cookies || (request.raw as any)?.cookies || {};
+  const hostCookie = cookies[COOKIE_HOST_SESSION_NAME];
+  if (typeof hostCookie === 'string' && hostCookie.trim().length > 0) {
+    return hostCookie.trim();
+  }
+  const regularCookie = cookies[COOKIE_SESSION_NAME];
+  if (typeof regularCookie === 'string' && regularCookie.trim().length > 0) {
+    return regularCookie.trim();
   }
   const auth = request.headers.authorization;
   if (typeof auth === 'string' && auth.startsWith('Bearer ')) {

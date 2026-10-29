@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { InvitationDetailsResponse } from '@hs/contracts';
-import { RateLimitedError, validateInvitation } from '@/lib/api-client';
+import { RateLimitedError, validateInvitation, acceptInvitation } from '@/lib/api-client';
 import { SetPasswordForm } from '@/components/auth/set-password-form';
 
 // In-memory token storage (never written to localStorage or sessionStorage)
@@ -191,7 +191,25 @@ function AcceptInviteContent(): React.JSX.Element {
               </div>
 
               {/* The password creation form */}
-              <SetPasswordForm token={token} onSuccess={handleSuccess} />
+              <SetPasswordForm
+                token={token}
+                email={invitation.email}
+                companyName={invitation.orgName}
+                onSubmitPassword={async ({ newPassword }) => {
+                  try {
+                    await acceptInvitation({ token, password: newPassword });
+                    return { success: true };
+                  } catch (err: unknown) {
+                    const message =
+                      err instanceof Error ? err.message : 'Failed to accept invitation';
+                    return {
+                      success: false,
+                      errorMessage: message,
+                    };
+                  }
+                }}
+                onSuccess={handleSuccess}
+              />
             </div>
           )}
 

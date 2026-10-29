@@ -18,7 +18,15 @@
     "contracts:check": "pnpm --filter @hs/contracts check",
     "db:migrate": "pnpm --filter @hs/api db:migrate",
     "db:seed": "pnpm --filter @hs/fixtures seed",
+
+    "dev:up": "docker compose up -d",
+    "dev:down": "docker compose down",
+
     "db:verify-seed": "pnpm --filter @hs/fixtures verify",
+
+    "dev:up": "docker compose up -d",
+    "dev:down": "docker compose down",
+
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
     "docs:dev": "pnpm --dir apps/docs dev",
@@ -30,6 +38,7 @@
   },
   "devDependencies": {
     "@hs/config": "workspace:*",
+    "@playwright/test": "^1.51.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "prettier": "3.3.3",

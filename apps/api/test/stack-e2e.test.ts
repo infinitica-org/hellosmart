@@ -107,6 +107,57 @@ describe.runIf(stackReady).sequential('S0 stack E2E (auth + admin orgs)', () => 
     expect(bad.statusCode).toBe(401);
   });
 
+  it('test(AD-001): password-only platform admin cannot reach admin routes', async () => {
+    const first = await loginWithPassword(app, SEED.platformAdminEmail, DEV_PASSWORD);
+    expect(first.statusCode).toBe(200);
+    expect(first.body.mfaRequired).toBe(true);
+    expect(first.sessionCookie).toBeUndefined();
+
+    const adminAttempt = await app.inject({
+      method: 'POST',
+      url: '/api/v1/admin/organizations',
+      payload: {
+        name: 'No MFA',
+        slug: `no-mfa-${crypto.randomUUID().slice(0, 8)}`,
+        adminEmail: 'no-mfa@example.test',
+        adminName: 'No MFA',
+      },
+    });
+    expect(adminAttempt.statusCode).toBe(401);
+  });
+
+  it('test(AD-001): three wrong MFA codes burn preAuthToken', async () => {
+    const first = await loginWithPassword(app, SEED.platformAdminEmail, DEV_PASSWORD);
+    expect(first.statusCode).toBe(200);
+    const preAuthToken = first.body.preAuthToken as string;
+
+    for (let i = 0; i < 2; i += 1) {
+      const bad = await app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/mfa/verify',
+        payload: { preAuthToken, totpCode: '000000' },
+      });
+      expect(bad.statusCode).toBe(401);
+      expect((bad.json() as { code: string }).code).toBe('MFA_INVALID');
+    }
+
+    const third = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/mfa/verify',
+      payload: { preAuthToken, totpCode: '000000' },
+    });
+    expect(third.statusCode).toBe(401);
+    expect((third.json() as { code: string }).code).toBe('MFA_LOCKED');
+
+    const afterBurn = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/mfa/verify',
+      payload: { preAuthToken, totpCode: '000000' },
+    });
+    expect(afterBurn.statusCode).toBe(401);
+    expect((afterBurn.json() as { code: string }).code).toBe('PREAUTH_INVALID');
+  });
+
   it.sequential('test(NF-006): login lockout after repeated failures', async () => {
     const email = `lockout-${crypto.randomUUID()}@example.test`;
     for (let i = 0; i < 5; i += 1) {
