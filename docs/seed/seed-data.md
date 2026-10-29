@@ -303,5 +303,6 @@ pnpm lint
 
 ## 8. Related Documentation
 
+- [HelloSmart Integration Testing & Local Verification Guide](integration-testing.md): Comprehensive guide for local setup, environment configuration, database seeding, verification checks, seeded accounts matrix, and running integration test suites.
 - [Candidate Invitation API Dependencies & Contract Specification](invitation-api-dependencies.md): Complete specification of invitation endpoints (`GET /auth/invitations/:token`, `POST /auth/invitations/accept`), request/response contracts, PostgreSQL `SECURITY DEFINER` functions, seed dependencies, missing endpoints, and open questions.
 - [Fixture Matrix](fixture-matrix.md): Enterprise entity matrix covering Aster Ridge, Brindle & Co, and Crestview Financial.

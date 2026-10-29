@@ -236,12 +236,12 @@ export async function runCliSeed(options: CliSeedOptions = {}): Promise<SeedSumm
   loadEnvFiles();
 
   const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV ?? 'development';
-  // Check DATABASE_URL first; fall back to DATABASE_MIGRATOR_URL if DATABASE_URL is not set
+  // Connect with OWNER / MIGRATOR role: DATABASE_MIGRATOR_URL takes precedence, falling back to DATABASE_URL
   const databaseUrl =
     options.databaseUrl ??
-    (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== ''
-      ? process.env.DATABASE_URL
-      : process.env.DATABASE_MIGRATOR_URL);
+    (process.env.DATABASE_MIGRATOR_URL && process.env.DATABASE_MIGRATOR_URL.trim() !== ''
+      ? process.env.DATABASE_MIGRATOR_URL
+      : process.env.DATABASE_URL);
 
   if (!databaseUrl || databaseUrl.trim() === '') {
     const errorMsg =
