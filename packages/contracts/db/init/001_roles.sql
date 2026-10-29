@@ -13,6 +13,8 @@ GRANT CONNECT ON DATABASE hellosmart TO hs_migrator, hs_app, hs_readonly;
 CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION hs_migrator;
 CREATE SCHEMA IF NOT EXISTS audit AUTHORIZATION hs_migrator;
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
+-- Extensions (citext, pgcrypto) live in public; migrator and app need USAGE to reference types.
+GRANT USAGE ON SCHEMA public TO hs_migrator, hs_app, hs_readonly;
 
 GRANT USAGE ON SCHEMA app, audit TO hs_app, hs_readonly;
 ALTER DEFAULT PRIVILEGES FOR ROLE hs_migrator IN SCHEMA app

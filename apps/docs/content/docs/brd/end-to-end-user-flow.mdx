@@ -1,0 +1,209 @@
+---
+title: "BRD: End-to-End User Flow"
+description: "Step-by-step 39-step journey across 10 stages (A through J) with actors, system actions, status transitions, and requirement IDs."
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+# End-to-End User Flow (39 Steps across Stages A–J)
+
+The complete lifecycle runs from first visit on the landing page through discovery, quoting, provisioning, candidate assessment, AI agent grading, review finalization, and eventual data retention cleanup.
+
+Each step specifies **who acts**, **what the system does**, the **resulting status**, and the **traceable requirement IDs**.
+
+---
+
+The flow runs from first visit on the landing page to data deletion. Each step shows who acts, what the system does, the status afterwards and the requirements that cover it.
+
+
+### A. Acquire
+
+1. **Prospect / Company contact:** Lands on hellosmart.ai, reads the category pitch ('Hire by doing') and clicks Book a meeting.  
+   **System / Reviewer agents:** Captures UTM / source.
+   - *Status after step:* Visitor  
+   - *Requirements:* SP-001
+2. **Prospect / Company contact:** Picks a slot on the embedded cal.com page.  
+   **Platform Admin (HelloSmart):** Sees the new lead in the admin pipeline.  
+   **System / Reviewer agents:** cal.com sends confirmation; webhook creates the lead.
+   - *Status after step:* Lead: meeting booked  
+   - *Requirements:* SP-002, SP-003, SP-004
+3. **Prospect / Company contact:** Joins the discovery call.  
+   **Platform Admin (HelloSmart):** Runs the call: target roles, task needs, AI policy, add-ons wanted (own routing, white label, custom templates) and trial limits X / Y / Z.
+   - *Status after step:* Meeting held  
+   - *Requirements:* SP-004
+
+### B. Provision
+
+4. **Platform Admin (HelloSmart):** Creates the org on the standard HelloSmart route, sets trial entitlements (X templates, Y candidates, Z days) and feature flags.  
+   **System / Reviewer agents:** Org and trial created; usage counters start.
+   - *Status after step:* Org provisioned; trial active  
+   - *Requirements:* SP-005, AD-006, AD-007
+5. **Platform Admin (HelloSmart):** Builds or clones templates for this company only and assigns them; smoke test must pass before publish.  
+   **System / Reviewer agents:** Templates are visible to this org only; resources and golden image built.
+   - *Status after step:* Templates assigned (private)  
+   - *Requirements:* AD-010, AD-011, AD-013, SP-006
+6. **Prospect / Company contact:** Receives the invite email.  
+   **Platform Admin (HelloSmart):** Creates the Company Admin account.  
+   **System / Reviewer agents:** Sends invite from the HelloSmart domain.
+   - *Status after step:* Company Admin invited  
+   - *Requirements:* AD-002, CO-005
+
+### C. Onboard
+
+7. **Company Admin:** Signs in with email + password, Google or Microsoft SSO on the master login; lands on the company dashboard.  
+   **System / Reviewer agents:** RBAC redirect by role; trial banner shows usage and days left.
+   - *Status after step:* Logged in  
+   - *Requirements:* CO-001, CO-002, CO-003, CO-004, CO-008
+8. **Company Admin:** Sets organization name and uploads logo. 'Powered by hellosmart.ai' shows by default in a corner.  
+   **System / Reviewer agents:** Branding applied to candidate portal, emails and reports.
+   - *Status after step:* Org profile ready  
+   - *Requirements:* CO-006, CO-054, CO-055
+9. **Platform Admin (HelloSmart):** Optional: manually allocates a platform key with a cap (interim add-on).  
+   **Company Admin:** Adds AI provider API key(s) in Settings, sets default and optional org cap.  
+   **System / Reviewer agents:** Key encrypted in the vault, masked, connection tested.
+   - *Status after step:* AI provider connected  
+   - *Requirements:* CO-032, AD-023
+
+### D. Configure assessment
+
+10. **Company Admin:** Opens Tasks, browses the company's private templates and previews one.  
+   **System / Reviewer agents:** Only this org's templates are listed.
+   - *Status after step:* Template chosen  
+   - *Requirements:* CO-018, CO-019
+11. **Company Admin:** Creates an assessment: task name, brief edits, workspace mode (Cloud or Chat in MMP; Local and Browser locked).  
+   **System / Reviewer agents:** Pins the template version.
+   - *Status after step:* Assessment: Draft  
+   - *Requirements:* CO-020, CO-022
+12. **Company Admin:** Sets AI ON/OFF, provider and key, allowed models, per-candidate and per-assessment caps.  
+   **System / Reviewer agents:** Policy stored; the AI proxy enforces it at runtime.
+   - *Status after step:* AI policy set  
+   - *Requirements:* CO-033, CO-035
+13. **Company Admin:** Fills environment variables and secret slots.  
+   **System / Reviewer agents:** Values encrypted; injected only into the session.
+   - *Status after step:* Environment ready  
+   - *Requirements:* CO-023
+14. **Company Admin:** Chooses timing: time-bound, window-bound, or both, with timezone.  
+   **System / Reviewer agents:** Rules enforced server-side.
+   - *Status after step:* Timing set  
+   - *Requirements:* CO-028, CO-029, CO-030
+15. **Company Admin:** Defines the rubric as reviewer agents: items, level anchors, weights totalling 100%, red flags.  
+   **System / Reviewer agents:** Agent configuration versioned per assessment.
+   - *Status after step:* Rubric set  
+   - *Requirements:* CO-038
+16. **Company Admin:** Runs a dry run as a test candidate and fixes any issue.  
+   **System / Reviewer agents:** Provisions a test workspace and records the dry-run result.
+   - *Status after step:* Dry-run passed  
+   - *Requirements:* CO-024
+
+### E. Add candidates
+
+17. **Company Admin:** Adds candidates: single add or bulk CSV/XLSX (name + email); reviews the row error report.  
+   **System / Reviewer agents:** Validates, de-duplicates and applies cap rules (counts at first launch; pending invites up to 2x cap).
+   - *Status after step:* Candidates created  
+   - *Requirements:* CO-011, CO-012, CO-009
+18. **Candidate:** Receives the account-created email with a secure link.  
+   **System / Reviewer agents:** Sends the email automatically; link expires and can be resent.
+   - *Status after step:* Candidate invited  
+   - *Requirements:* CO-013
+19. **Company Admin:** Publishes the assessment and assigns candidates.  
+   **Candidate:** Sees the assignment.  
+   **System / Reviewer agents:** Creates assignments; per-candidate status becomes Invited, Window not open or Ready.
+   - *Status after step:* Assessment: Published  
+   - *Requirements:* CO-025, CO-026
+
+### F. Candidate session
+
+20. **Candidate:** Opens the link and sets a new password (forced reset), or signs in on the master login; RBAC routes to the candidate portal.  
+   **System / Reviewer agents:** Candidate cannot reach company or admin routes.
+   - *Status after step:* Candidate logged in  
+   - *Requirements:* CA-001, CA-002
+21. **Candidate:** Sees the dashboard of assigned workspaces with status (Connected or Not connected) and opens one.
+   - *Status after step:* Ready  
+   - *Requirements:* CA-004, CA-006
+22. **Candidate:** Reads the brief, rules, timing and AI policy, and accepts the mode-based consent.  
+   **System / Reviewer agents:** Stores consent version, timestamp and IP; enables Connect.
+   - *Status after step:* Consent given  
+   - *Requirements:* CA-007
+23. **Candidate:** Clicks Connect inside the allowed time. Cloud mode goes full screen.  
+   **System / Reviewer agents:** Checks window and time server-side; takes a VM from the warm pool or clones the snapshot; pulls the pinned repo and seed data; injects secrets; starts services, AI proxy and recorder; starts the timer.
+   - *Status after step:* Connected; in progress  
+   - *Requirements:* CA-008, CA-012, NF-011
+24. **Candidate:** Works on the task, uses the AI assistant if enabled, sees remaining budget and countdown.  
+   **System / Reviewer agents:** AI proxy checks policy and caps and logs prompts; recorder captures activity; autosave runs continuously (target &le; 30 s).
+   - *Status after step:* In progress  
+   - *Requirements:* CA-017, CA-013, CA-010, NF-005
+25. **Candidate:** If full screen is exited or the connection drops, resumes from the overlay; timer keeps running.  
+   **System / Reviewer agents:** Disconnects the workspace, logs the event, restores saved state on resume.
+   - *Status after step:* Disconnected (resumable) then In progress  
+   - *Requirements:* CA-009, CA-011
+26. **Candidate:** Submits, or time or window expiry auto-submits.  
+   **System / Reviewer agents:** Saves the final snapshot, destroys the workspace, queues the submission for review.
+   - *Status after step:* Submitted  
+   - *Requirements:* CA-018
+
+### G. Review and results
+
+27. **System / Reviewer agents:** Reviewer agents run independently on artifacts, transcript and activity; each score cites evidence; an aggregator flags disagreement; injection checks run.
+   - *Status after step:* Agent report ready  
+   - *Requirements:* AD-017, CO-042
+28. **Platform Admin (HelloSmart):** Monitors agent health (latency, failures, cost, agreement) and can re-run an agent.  
+   **System / Reviewer agents:** Raises alerts on thresholds.
+   - *Status after step:* Agents healthy  
+   - *Requirements:* AD-015, AD-016
+29. **Company Admin:** Is notified, opens Submissions and progress, and reads the detail (artifacts, timeline, AI transcript, agent reports).
+   - *Status after step:* Human review  
+   - *Requirements:* CO-041, CO-042
+30. **Company Admin:** Enters or overrides scores per dimension and overall, adds custom notes and finalizes; later edits create versions.  
+   **System / Reviewer agents:** Keeps original agent scores and every edit version with an audit log.
+   - *Status after step:* Finalized  
+   - *Requirements:* CO-045, CO-046, CO-047
+31. **Company Admin:** Optionally releases results (default OFF).  
+   **Candidate:** Sees overall and per-dimension scores and shared notes.  
+   **System / Reviewer agents:** Result visibility follows the release toggle.
+   - *Status after step:* Released  
+   - *Requirements:* CO-048, CA-020
+
+### H. Monitor and analytics
+
+32. **Company Admin:** Watches active workspaces; destroys one at any time; extends time or revokes access.  
+   **Candidate:** Is notified if a workspace is destroyed or time is extended.  
+   **System / Reviewer agents:** Snapshots state before destroy; audit-logged.
+   - *Status after step:* Workspace destroyed / extended  
+   - *Requirements:* CO-043, CO-044, CO-031
+33. **Company Admin:** Views analytics per assessment and org-wide (completion, drop-off, score distribution, AI cost).
+   - *Status after step:* Insights  
+   - *Requirements:* CO-051, CO-052
+34. **Platform Admin (HelloSmart):** Oversees all workspaces, spend and orphans across orgs; force-destroys; manages capacity.  
+   **System / Reviewer agents:** Auto-destroys idle, expired and orphaned VMs.
+   - *Status after step:* Costs controlled  
+   - *Requirements:* AD-018, AD-019, NF-014
+
+### I. Commercial
+
+35. **Prospect / Company contact:** Opens the quote.  
+   **Platform Admin (HelloSmart):** Builds the quote: plan, candidate pack, custom templates, add-ons (own routing, white label), discounts, GST, recurring or one-time; emails it or issues a custom payment code.  
+   **System / Reviewer agents:** Tracks quote status Sent, Viewed, Accepted.
+   - *Status after step:* Quoted  
+   - *Requirements:* SP-009, SP-010, SP-015
+36. **Prospect / Company contact:** Pays through the emailed link or in-app Billing (Razorpay: card, UPI, netbanking); sets up recurring if quoted.  
+   **Company Admin:** Sees quotes and invoices in Billing.  
+   **System / Reviewer agents:** Webhook confirms payment; GST invoice and receipt are issued.
+   - *Status after step:* Paid  
+   - *Requirements:* SP-011, SP-012, SP-013, SP-017, SP-018, CO-056
+37. **Platform Admin (HelloSmart):** Enables own domain and/or white label if purchased (DNS verification, SSL).  
+   **System / Reviewer agents:** Entitlements upgrade automatically: trial becomes paid plan; add-ons unlock.
+   - *Status after step:* Paid plan active; add-ons live  
+   - *Requirements:* SP-016, CO-010, AD-021, AD-022, SP-007, SP-008
+38. **System / Reviewer agents:** Renewals run; failed payments retry (dunning), then grace, then downgrade or suspend.
+   - *Status after step:* Active / Past due / Suspended  
+   - *Requirements:* SP-013, SP-016
+
+### J. Close-out
+
+39. **Platform Admin (HelloSmart):** Sets or overrides retention; handles support and erasure tools.  
+   **Candidate:** May request correction or deletion of own data.  
+   **System / Reviewer agents:** Deletes recordings, transcripts and artifacts after the retention period (default 90 days); logs everything.
+   - *Status after step:* Data deleted per policy  
+   - *Requirements:* AD-028, NF-007, CA-021, CO-016
+
+---

@@ -1,0 +1,114 @@
+---
+title: "BRD: Lifecycle & Status Models"
+description: "Status models and state transitions for Org/Trial, Assessment, Candidate Assignment, Workspace, Review, Quote/Payment, and Deal."
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+# Lifecycle and Status Models
+
+Every core domain entity in HelloSmart moves through a strictly defined state machine. Enforced server-side.
+
+---
+
+## Status Models Summary
+
+| Object | Statuses (in order) | Notes |
+|---|---|---|
+| Org / trial | Provisioned > Trial active > Trial expired / Paid active > Suspended | Entitlements (X templates, Y candidates, Z days) set by Platform Admin. |
+| Assessment | Draft > Dry-run passed > Published > Closed > Archived | Publish blocked until dry run passes. |
+| Candidate assignment | Invited > Window not open > Ready > Connected > In progress > Disconnected (resumable) > Submitted / Expired / Revoked | Disconnected is reached when the candidate exits full screen. |
+| Workspace | Queued > Provisioning > Not connected > Connected > Disconnected > Ended > Destroyed | Destroy can be triggered by company, admin, expiry or cleanup job. |
+| Review | Pending > Agents running > Agent report ready > Human review > Finalized > Released to candidate | Release is optional and off by default. |
+| Quote / payment | Draft > Sent > Viewed > Accepted > Paid / Expired / Failed > Refunded | Recurring subscriptions add Active, Past due, Cancelled. |
+| Deal | Lead > Meeting booked > Meeting held > Quoted > Paid > Provisioned | Tracked in Platform Admin. |
+
+---
+
+---
+
+## State Transition Diagrams
+
+### 1. Organization & Trial Lifecycle
+
+```mermaid
+stateDiagram-v2
+  [*] --> Provisioned
+  Provisioned --> TrialActive: platform admin invites
+  TrialActive --> TrialExpired: Z days elapsed or cap reached
+  TrialActive --> PaidActive: quote paid / subscription active
+  TrialExpired --> PaidActive: payment received
+  PaidActive --> Suspended: dunning failure after grace
+  Suspended --> PaidActive: payment resolved
+```
+
+### 2. Assessment (Task) Lifecycle
+
+```mermaid
+stateDiagram-v2
+  [*] --> Draft
+  Draft --> DryRunPassed: company admin passes dry run preview
+  DryRunPassed --> Published: assign candidates & publish
+  Published --> Closed: stop new candidate starts
+  Closed --> Archived: hide from active catalog
+```
+
+### 3. Candidate Assignment Lifecycle
+
+```mermaid
+stateDiagram-v2
+  [*] --> Invited
+  Invited --> WindowNotOpen: window has not started yet
+  Invited --> Ready: inside window / ready to start
+  WindowNotOpen --> Ready: window opens
+  Ready --> Connected: consent accepted & workspace launched
+  Connected --> InProgress: candidate active in workspace
+  InProgress --> Disconnected: fullscreen exit or network drop
+  Disconnected --> InProgress: candidate resumes
+  InProgress --> Submitted: manual submission
+  InProgress --> Submitted: auto-submit at expiry
+  Disconnected --> Submitted: auto-submit at expiry
+  Ready --> Expired: window closed without start
+  Invited --> Revoked: admin revokes invite
+```
+
+### 4. Workspace Container Lifecycle
+
+```mermaid
+stateDiagram-v2
+  [*] --> Queued
+  Queued --> Provisioning: warm pool clone / sysbox init
+  Provisioning --> NotConnected: health check passed
+  Provisioning --> Failed: launch error (triggers auto-retry & alert)
+  NotConnected --> Connected: candidate connects (requests fullscreen)
+  Connected --> Disconnected: fullscreen exit or drop (timer keeps running)
+  Disconnected --> Connected: candidate resumes
+  Connected --> Ended: candidate submits or timer expires
+  Ended --> Destroyed: snapshot saved, container cleaned up
+  Connected --> Destroyed: admin or company force-destroy
+```
+
+### 5. Review & Scoring Lifecycle
+
+```mermaid
+stateDiagram-v2
+  [*] --> Pending
+  Pending --> AgentsRunning: submission queued for review
+  AgentsRunning --> AgentReportReady: independent reviewer agents cite evidence
+  AgentReportReady --> HumanReview: hiring manager reviews report
+  HumanReview --> Finalized: manager overrides/approves & finalizes
+  Finalized --> Released: release results toggle enabled (default OFF)
+  Finalized --> Finalized: post-finalize versioned edit
+```
+
+### 6. Commercial Deal & Payment Lifecycle
+
+```mermaid
+stateDiagram-v2
+  [*] --> Lead
+  Lead --> MeetingBooked: cal.com webhook
+  MeetingBooked --> MeetingHeld: discovery call completed
+  MeetingHeld --> Quoted: custom quote issued
+  Quoted --> Paid: Razorpay payment webhook
+  Paid --> Provisioned: org & entitlements active
+```

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# QA helper, run on the VPS in /srv/hellosmart as user deploy.
+# QA helper, run on the QA host in /srv/hellosmart as user deploy.
 #   ./qa.sh deploy <sha>   pull images for <sha>, migrate, restart, smoke
 #   ./qa.sh reset          wipe QA data, migrate, seed fixtures
 #   ./qa.sh logs <svc>     tail logs

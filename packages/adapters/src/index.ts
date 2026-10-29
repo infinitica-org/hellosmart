@@ -1,3 +1,5 @@
+import type { Buffer } from 'node:buffer';
+
 // Ports for every external dependency. Each has a real and a fake implementation so no department
 // is ever blocked on credentials. Selected by env (*_PROVIDER / PAYMENT_GATEWAY / WORKSPACE_RUNTIME).
 // Fakes are forbidden in production (enforced in apps/api config).
@@ -33,4 +35,51 @@ export interface SecretStore {
 /** Outbound HTTP for user-influenced URLs (webhooks tests, logo fetch, DNS checks). SSRF-safe. */
 export interface SafeHttp {
   get(url: string, opts?: { allowHosts?: string[]; timeoutMs?: number; maxBytes?: number }): Promise<{ status: number; body: Buffer }>;
+}
+
+// Export Fake implementations
+export * from './fake-payment.js';
+export * from './fake-email.js';
+export * from './fake-workspace.js';
+export * from './fake-secrets.js';
+export * from './fake-http.js';
+export * from './fake-llm.js';
+
+import { FakeEmailSender } from './fake-email.js';
+import { FakePaymentGateway } from './fake-payment.js';
+import { FakeSafeHttp } from './fake-http.js';
+import { FakeSecretStore } from './fake-secrets.js';
+import { FakeWorkspaceRuntime } from './fake-workspace.js';
+
+export type PaymentProvider = 'fake' | 'razorpay';
+export type EmailProvider = 'fake' | 'ses';
+export type WorkspaceRuntimeProvider = 'fake' | 'sysbox';
+
+export function createPaymentGateway(provider: PaymentProvider): PaymentGateway {
+  if (provider === 'fake') {
+    return new FakePaymentGateway();
+  }
+  throw new Error('Razorpay payment gateway is not implemented in MMP yet');
+}
+
+export function createEmailSender(provider: EmailProvider): EmailSender {
+  if (provider === 'fake') {
+    return new FakeEmailSender();
+  }
+  throw new Error('SES email provider is not implemented in MMP yet');
+}
+
+export function createWorkspaceRuntime(provider: WorkspaceRuntimeProvider): WorkspaceRuntime {
+  if (provider === 'fake') {
+    return new FakeWorkspaceRuntime();
+  }
+  throw new Error('Sysbox workspace runtime is not wired in apps/api yet');
+}
+
+export function createSecretStore(): SecretStore {
+  return new FakeSecretStore();
+}
+
+export function createSafeHttp(): SafeHttp {
+  return new FakeSafeHttp();
 }

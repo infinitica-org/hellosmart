@@ -17,6 +17,8 @@ HelloSmart uses **PostgreSQL 16** with `citext` and `pgcrypto` extensions. Multi
 erDiagram
     ORGANIZATIONS ||--o{ ENTITLEMENTS : "governs"
     ORGANIZATIONS ||--o{ USERS : "contains"
+    ORGANIZATIONS ||--o{ INVITATIONS : "issues"
+    USERS ||--o{ INVITATIONS : "receives"
     ORGANIZATIONS ||--o{ TEMPLATE_ASSIGNMENTS : "licensed_to"
     ORGANIZATIONS ||--o{ ASSESSMENTS : "creates"
     ORGANIZATIONS ||--o{ CANDIDATES : "owns"
@@ -75,6 +77,18 @@ erDiagram
         boolean must_reset_password
         string status "invited | active | suspended | deleted"
         timestamptz locked_until
+    }
+
+    INVITATIONS {
+        uuid id PK
+        uuid org_id FK
+        uuid user_id FK
+        citext email
+        string role "company_admin | candidate"
+        bytea token_hash UK "sha256(raw_token)"
+        timestamptz expires_at "Strictly <= 72h"
+        timestamptz used_at
+        timestamptz created_at
     }
 
     ASSESSMENTS {
@@ -147,6 +161,8 @@ ALTER TABLE app.assessments FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON app.assessments
   USING (org_id = app.current_org_id() OR app.is_platform())
   WITH CHECK (org_id = app.current_org_id() OR app.is_platform());
+
+`app.is_platform()` treats an empty session GUC as false (migration `0002_fix_is_platform_boolean`) so RLS policies do not error on `''::boolean`.
 ```
 
 ### Context Injection on Every Transaction
@@ -175,3 +191,16 @@ For SOC 2 Type II compliance and BR-31 invariants, the audit log uses a **crypto
 | `hash` | `bytea` | `SHA256(prev_hash || row_payload)` |
 
 Because each row's hash includes the previous row's hash, **no row can be modified, deleted, or back-dated without invalidating the entire subsequent audit chain**.
+
+---
+
+## 4. Pre-Login Stored Functions & Safe Elevation
+
+Pre-login operations (login lookup and invitation acceptance) cannot supply a verified `org_id` context because the user is not yet authenticated. Instead of elevating permissions in Node.js application code, HelloSmart uses pinned, audited `SECURITY DEFINER` routines:
+
+1. **`app.lookup_user_for_login(p_email)`**:
+   Returns authentication credentials (`user_id`, `org_id`, `password_hash`, `role`, `status`, `must_reset_password`) without exposing sensitive user table columns to unauthenticated RLS context. Pinned to `search_path = pg_catalog, app`.
+2. **`app.lookup_invitation(p_token_hash)`**:
+   Returns public invitation metadata (email, role, organization name and slug) for the invite acceptance UI, without granting access to the underlying `app.invitations` table.
+3. **`app.accept_invitation(p_token_hash, p_password_hash, p_ip, p_user_agent, p_request_id)`**:
+   Atomically burns the invitation token, marks the user status as `active`, sets the password hash, and records an immutable audit log entry in `audit.events` inside a single database transaction. Eliminates any need for the API to execute `set_config('app.is_platform', 'true')` in client code.

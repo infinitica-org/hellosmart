@@ -2,6 +2,8 @@ openapi: 3.1.0
 info:
   title: HelloSmart API
   version: 0.1.0
+  license:
+    name: Proprietary
   description: |
     Contract-first API (frozen 30 Oct 2026; additive changes only after that).
     Org is always derived from the session, never from the request (BR-01).
@@ -9,22 +11,30 @@ info:
     Full path list: AGENTS.md §13. Each department adds its paths here via a `contract:` PR in S0.
 servers:
   - url: http://localhost:4010/api/v1
-    description: Prism mock
+    description: Prism mock server
   - url: http://localhost:4000/api/v1
-    description: Local API
+    description: Local development API
 security:
   - session: []
 tags:
-  - { name: auth }
-  - { name: org }
-  - { name: candidates }
-  - { name: assessments }
-  - { name: candidate-portal }
-  - { name: admin }
-  - { name: webhooks }
+  - name: auth
+    description: Master authentication, session management, and SSO verification
+  - name: admin
+    description: Platform Admin tenant provisioning and organization operations
+  - name: org
+    description: Tenant configuration and branding
+  - name: candidates
+    description: Candidate management and onboarding
+  - name: candidate-portal
+    description: Candidate assessment session and workspace launch
+  - name: assessments
+    description: Assessment blueprints, rubrics, and timing configurations
+  - name: webhooks
+    description: External integration webhooks
 paths:
   /auth/login:
     post:
+      summary: Sign in with email and password or SSO
       tags: [auth]
       operationId: authLogin
       x-requirement: [CO-001, CA-002]
@@ -43,14 +53,174 @@ paths:
                 mfaCode: { type: string, pattern: '^[0-9]{6}$' }
       responses:
         '200':
-          description: Logged in; session cookie set (HttpOnly, Secure, SameSite=Lax).
+          description: Logged in successfully; session cookie set (HttpOnly, Secure, SameSite=Lax).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Me' }
-        '401': { $ref: '#/components/responses/Problem' }
+              examples:
+                platformAdmin:
+                  summary: Platform Admin user profile
+                  value:
+                    id: '11111111-1111-4111-8111-111111111111'
+                    email: 'superadmin@hellosmart.ai'
+                    name: 'Super Admin'
+                    role: 'platform_admin'
+                    portal: 'admin'
+                    mustResetPassword: false
+                    org: null
+                companyAdmin:
+                  summary: Company Admin user profile
+                  value:
+                    id: '22222222-2222-4222-8222-222222222222'
+                    email: 'admin@asterridge.com'
+                    name: 'Aster Ridge Admin'
+                    role: 'company_admin'
+                    portal: 'company'
+                    mustResetPassword: false
+                    org:
+                      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+                      name: 'Aster Ridge Inc.'
+                      logoUrl: 'https://cdn.hellosmart.ai/aster.png'
+                candidate:
+                  summary: Candidate user profile
+                  value:
+                    id: '33333333-3333-4333-8333-333333333333'
+                    email: 'candidate@example.com'
+                    name: 'Sarah Connor'
+                    role: 'candidate'
+                    portal: 'candidate'
+                    mustResetPassword: false
+                    org:
+                      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+                      name: 'Aster Ridge Inc.'
+                      logoUrl: null
+        '401':
+          $ref: '#/components/responses/Problem'
+        '429':
+          $ref: '#/components/responses/Problem'
+
+  /auth/sso/verify:
+    post:
+      tags: [auth]
+      summary: Verify third-party SSO token (Google or Microsoft)
+      operationId: authSsoVerify
+      x-requirement: [CO-001, BR-04]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, idToken]
+              properties:
+                provider: { type: string, enum: [google, microsoft] }
+                idToken: { type: string, minLength: 1 }
+      responses:
+        '200':
+          description: SSO token verified; session cookie set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+
+  /auth/mfa/verify:
+    post:
+      tags: [auth]
+      summary: Verify TOTP multi-factor authentication code
+      operationId: authMfaVerify
+      x-requirement: [AD-001]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [preAuthToken, totpCode]
+              properties:
+                preAuthToken: { type: string, minLength: 1 }
+                totpCode: { type: string, pattern: '^[0-9]{6}$' }
+      responses:
+        '200':
+          description: MFA verification successful; full session cookie issued.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401':
+          $ref: '#/components/responses/Problem'
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Invalidate user session and clear authentication cookies
+      operationId: authLogout
+      x-requirement: [CO-001]
+      responses:
+        '200':
+          description: Logged out successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: 'Logged out successfully' }
+
+  /auth/invitations/{token}:
+    get:
+      summary: Validate an invitation token and fetch details
+      tags: [auth]
+      operationId: validateInvitation
+      x-requirement: [S0-T08-1, BR-24]
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: Raw 32-byte invitation token
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Valid, unexpired, unused invitation details.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvitationDetails' }
+        '404': { $ref: '#/components/responses/Problem' }
         '429': { $ref: '#/components/responses/Problem' }
+
+  /auth/invitations/accept:
+    post:
+      summary: Accept an invitation and set user password
+      tags: [auth]
+      operationId: acceptInvitation
+      x-requirement: [S0-T08-1, BR-24]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInvitationRequest'
+      responses:
+        '200':
+          description: Invitation accepted, user activated, password set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AcceptInvitationResponse' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+
   /me:
     get:
+      summary: Get current authenticated user profile and portal route
       tags: [auth]
       operationId: getMe
       x-requirement: [CO-004]
@@ -60,9 +230,114 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Me' }
+              examples:
+                platformAdmin:
+                  value:
+                    id: '11111111-1111-4111-8111-111111111111'
+                    email: 'superadmin@hellosmart.ai'
+                    name: 'Super Admin'
+                    role: 'platform_admin'
+                    portal: 'admin'
+                    mustResetPassword: false
+                    org: null
+                companyAdmin:
+                  value:
+                    id: '22222222-2222-4222-8222-222222222222'
+                    email: 'admin@asterridge.com'
+                    name: 'Aster Ridge Admin'
+                    role: 'company_admin'
+                    portal: 'company'
+                    mustResetPassword: false
+                    org:
+                      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+                      name: 'Aster Ridge Inc.'
+                      logoUrl: 'https://cdn.hellosmart.ai/aster.png'
+                candidate:
+                  value:
+                    id: '33333333-3333-4333-8333-333333333333'
+                    email: 'candidate@example.com'
+                    name: 'Sarah Connor'
+                    role: 'candidate'
+                    portal: 'candidate'
+                    mustResetPassword: false
+                    org:
+                      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+                      name: 'Aster Ridge Inc.'
+                      logoUrl: null
+        '401':
+          $ref: '#/components/responses/Problem'
+
+  /admin/organizations:
+    post:
+      tags: [admin]
+      summary: Provision a new customer tenant organization (Platform Admin only)
+      operationId: provisionOrganization
+      x-requirement: [AD-001, BR-04]
+      x-roles: [platform_admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, adminEmail, adminName]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 120, example: 'Brindle & Co' }
+                slug: { type: string, pattern: '^[a-z0-9-]+$', example: 'brindle-co' }
+                planId: { type: string, example: 'plan_trial' }
+                retentionDays: { type: integer, minimum: 1, maximum: 365, default: 90 }
+                whiteLabel: { type: boolean, default: false }
+                customDomain: { type: string, example: 'assess.brindle.co' }
+                adminEmail: { type: string, format: email, example: 'admin@brindle.co' }
+                adminName: { type: string, minLength: 1, example: 'Jane Doe' }
+      responses:
+        '201':
+          description: Organization created and initial admin user invited.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Organization' }
         '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /admin/organizations/{id}/status:
+    patch:
+      tags: [admin]
+      summary: Update organization status (activate or suspend)
+      operationId: updateOrganizationStatus
+      x-requirement: [AD-001]
+      x-roles: [platform_admin]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [provisioned, trial_active, paid_active, suspended]
+                  example: 'suspended'
+                reason:
+                  type: string
+                  example: 'Payment overdue'
+      responses:
+        '200':
+          description: Organization status updated successfully.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Organization' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
   /candidates:
     get:
+      summary: List candidates in the caller's organization
       tags: [candidates]
       operationId: listCandidates
       x-requirement: [CO-014]
@@ -83,7 +358,10 @@ paths:
                 properties:
                   items: { type: array, items: { $ref: '#/components/schemas/Candidate' } }
                   nextCursor: { type: [string, 'null'] }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
     post:
+      summary: Create and invite a candidate to an assessment
       tags: [candidates]
       operationId: createCandidate
       x-requirement: [CO-011, CO-013]
@@ -106,10 +384,13 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Candidate' }
+        '401': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
+
   /candidate/assignments/{id}/connect:
     post:
+      summary: Connect to candidate workspace session
       tags: [candidate-portal]
       operationId: connectWorkspace
       x-requirement: [CA-008, CA-012, BR-06, BR-08, BR-12]
@@ -121,9 +402,11 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/WorkspaceConnection' }
+        '401': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         '423': { $ref: '#/components/responses/Problem' }
+
 components:
   securitySchemes:
     session: { type: apiKey, in: cookie, name: hs_session }
@@ -138,6 +421,34 @@ components:
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
+          examples:
+            unauthorized:
+              summary: 401 Unauthorized example
+              value:
+                type: 'https://hellosmart.ai/problems/unauthorized'
+                title: 'Unauthorized'
+                status: 401
+                detail: 'Invalid credentials or session expired'
+                code: 'INVALID_CREDENTIALS'
+                requestId: 'req_unauth_001'
+            forbidden:
+              summary: 403 Forbidden example
+              value:
+                type: 'https://hellosmart.ai/problems/forbidden'
+                title: 'Forbidden'
+                status: 403
+                detail: 'Insufficient permissions for this action'
+                code: 'FORBIDDEN'
+                requestId: 'req_forbid_002'
+            rateLimited:
+              summary: 429 Rate Limited example
+              value:
+                type: 'https://hellosmart.ai/problems/rate-limited'
+                title: 'Too Many Requests'
+                status: 429
+                detail: 'Rate limit exceeded. Please wait 60 seconds before retrying.'
+                code: 'RATE_LIMITED'
+                requestId: 'req_rate_003'
   schemas:
     Problem:
       type: object
@@ -150,6 +461,25 @@ components:
         code: { type: string, description: 'Stable machine code, e.g. TRIAL_CAP_REACHED, WINDOW_NOT_OPEN, CONSENT_REQUIRED' }
         requestId: { type: string }
     Role: { type: string, enum: [platform_admin, company_admin, candidate] }
+    InvitationDetails:
+      type: object
+      required: [email, role, orgName]
+      properties:
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/Role' }
+        orgName: { type: string }
+    AcceptInvitationRequest:
+      type: object
+      required: [token, password]
+      properties:
+        token: { type: string, minLength: 1 }
+        password: { type: string, minLength: 12, maxLength: 128 }
+    AcceptInvitationResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean, enum: [true] }
+        message: { type: string }
     Me:
       type: object
       required: [id, email, name, role, portal]
@@ -160,7 +490,26 @@ components:
         role: { $ref: '#/components/schemas/Role' }
         portal: { type: string, enum: [admin, company, candidate] }
         mustResetPassword: { type: boolean }
-        org: { type: [object, 'null'], properties: { id: { type: string, format: uuid }, name: { type: string }, logoUrl: { type: [string, 'null'] } } }
+        org:
+          type: [object, 'null']
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            logoUrl: { type: [string, 'null'] }
+    Organization:
+      type: object
+      required: [id, name, slug, status, whiteLabel, retentionDays, createdAt]
+      properties:
+        id: { type: string, format: uuid, example: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }
+        name: { type: string, example: 'Aster Ridge Inc.' }
+        slug: { type: string, example: 'aster-ridge' }
+        status: { type: string, enum: [provisioned, trial_active, paid_active, suspended], example: 'paid_active' }
+        planId: { type: [string, 'null'], example: 'plan_growth' }
+        logoUrl: { type: [string, 'null'], example: 'https://cdn.hellosmart.ai/aster.png' }
+        whiteLabel: { type: boolean, example: false }
+        customDomain: { type: [string, 'null'], example: 'assess.asterridge.com' }
+        retentionDays: { type: integer, example: 90 }
+        createdAt: { type: string, format: date-time, example: '2026-10-01T00:00:00Z' }
     CandidateStatus: { type: string, enum: [invited, active, deleted] }
     Candidate:
       type: object

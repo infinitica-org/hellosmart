@@ -1,0 +1,112 @@
+---
+title: "BRD: Platform Admin Requirements (AD-001 – AD-029)"
+description: "Internal administration, accounts, trials & entitlements, private templates, reviewer agent library, workspace orchestration, and retention."
+---
+
+<RoleBadge roles={["sde", "ai", "qa", "mgmt"]} />
+
+# Business Requirements: Platform Admin (AD-001 – AD-029)
+
+Requirements for HelloSmart's internal administration: accounts, trials and entitlements, pricing, private templates, reviewer agents, workspaces, routing and governance.
+
+Total Platform Admin Requirements: **29** (Must: 21, Should: 8, Could: 0 | MMP: 25, Phase 2: 4, Phase 3: 0).
+
+---
+
+Requirements for HelloSmart's internal administration: accounts, trials and entitlements, pricing, private templates, reviewer agents, workspaces, routing and governance.
+
+### 9.1 Access control
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **AD-001** | Platform Admin master login with MFA | MFA mandatory; session timeout; IP/device logging. | Must | MMP |  |
+
+### 9.2 Accounts
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **AD-002** | Create all types of accounts | Platform Admin can create orgs, Company Admins, Candidates, and internal staff; sends invite emails. | Must | MMP |  |
+| **AD-003** | Role-based access control matrix | Defined roles (Platform Admin, Sales, Support, Company Admin, Reviewer, Candidate) with permission sets; least privilege enforced server-side. | Must | MMP |  |
+| **AD-004** | Enable/disable/suspend orgs and users | Suspension blocks login and workspace launch; reversible; audit-logged. | Must | MMP |  |
+| **AD-005** | Impersonate/support-view a company (read-only) | Time-limited, reason required, fully audit-logged. | Should | Phase 2 |  |
+
+### 9.3 Trial and entitlements
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **AD-006** | Provision trial with X templates, Y candidates, Z days per org | Values set at provisioning and editable later; usage counters visible. | Must | MMP |  |
+| **AD-007** | Per-org entitlement overrides and feature flags | Toggle workspace modes, white label, custom domain, extra agents, retention days, AI credits. | Must | MMP |  |
+
+### 9.4 Pricing and plans
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **AD-008** | Maintain pricing plans and features | Plan catalog with price, billing interval, included limits and feature set; change history; new plans do not alter existing contracts silently. | Must | MMP |  |
+| **AD-009** | Add-on catalog | Add-ons: white label, custom routing/domain, custom template build, local mode, extended retention, extra agents, AI credits packs. | Must | MMP |  |
+
+### 9.5 Templates
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **AD-010** | Build and manage task templates | Create manifest (scenario, resources, environment, env slots, AI defaults, reviewers, timing); versioned; draft > tested > published. | Must | MMP | Built behind the curtain by HelloSmart. |
+| **AD-011** | Templates are private per company | Each template is assigned to specific org(s); no public marketplace; org users can never see another org's templates. | Must | MMP | Key business rule. |
+| **AD-012** | Clone a base template into a company-specific copy | Clone, customize and assign to one org; lineage tracked. | Must | MMP |  |
+| **AD-013** | Build resources and golden images | Codebase at pinned commit, seed data, services, env slots; automated smoke test must pass before publish. | Must | MMP |  |
+
+### 9.6 Agents
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **AD-014** | Maintain reviewer agent library | Define agents (prompt/config, model, version, enabled flag); version and roll back. | Must | MMP |  |
+| **AD-015** | Monitor each independent agent's performance and health | Dashboard per agent: success/failure rate, latency, queue depth, cost per review, score consistency and inter-agent agreement, drift; alerts on thresholds. | Must | MMP |  |
+| **AD-016** | Re-run or force a review | Admin can re-run an agent on a submission; both runs are retained. | Should | Phase 2 |  |
+| **AD-017** | Prompt-injection and gaming safeguards for graders | Grader inputs sanitized; adversarial test suite; flags suspicious submissions for human review. | Must | MMP |  |
+
+### 9.7 Workspaces
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **AD-018** | Oversee all workspaces across orgs | Global list with org, candidate, mode, status, age, resource usage and cost; filters and search. | Must | MMP |  |
+| **AD-019** | Force-destroy any workspace; orphan and idle cleanup | Auto-destroy at session end/expiry; orphan detection job; spend alerts. | Must | MMP |  |
+| **AD-020** | Capacity and warm pool management | Configure pool size and VM sizes; capacity alerts. | Should | Phase 2 |  |
+
+### 9.8 Routing and branding
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **AD-021** | Configure custom routing/domain for an org | Enter custom domain, DNS verification, automatic SSL; candidate links and emails use it; only if entitlement is active. | Should | MMP | Paid add-on. |
+| **AD-022** | Configure white label for an org | Remove 'Powered by' mark, custom colors/logo, custom email sender domain; only if entitlement is active. | Should | MMP | Paid add-on. |
+
+### 9.9 AI credits
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **AD-023** | Manually allocate a platform AI key and cap to an org (MMP interim) | Admin assigns a platform-held key with a token/currency cap per org and per assessment; usage visible; billed as a quoted line item; revocable. | Must | MMP | Decision accepted (Open Q7): interim route so the Chat workspace works before self-serve credits ship. |
+| **AD-024** | Manage HelloSmart-managed AI credits | Platform keys held in vault; per-org credit allocation, usage and caps; markup configuration. | Should | Phase 2 |  |
+
+### 9.10 Analytics
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **AD-025** | Platform-wide analytics | Orgs, trials, conversion, usage, workspace cost, agent cost, revenue. | Should | MMP |  |
+
+### 9.11 Support
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **AD-026** | Extend trial, candidate window or re-provision a session | Admin tools with reason and audit log. | Must | MMP |  |
+
+### 9.12 Governance
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **AD-027** | Global audit log | Immutable log of admin actions, config and data access. | Must | MMP |  |
+| **AD-028** | Data retention and deletion policy controls | Default retention is 90 days after the assessment closes for recordings, transcripts and artifacts; configurable per org within limits set by Platform Admin; automatic deletion jobs; every deletion logged. | Must | MMP | Decision accepted (Open Q9). Counsel to confirm the period per market. |
+
+### 9.13 Communications
+
+| ID | Requirement | Acceptance criteria | Priority | Phase | Notes |
+|---|---|---|---|---|---|
+| **AD-029** | Manage email templates | Invite, password reset, assignment, reminders, payment; variables and preview. | Should | MMP |  |
+
+---

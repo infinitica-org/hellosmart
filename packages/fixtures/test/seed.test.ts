@@ -91,6 +91,18 @@ function resolveTestDbUrl(): string {
   return 'postgres://hs_migrator:hs_migrator_local@localhost:5434/hellosmart_test';
 }
 
+async function checkDbReachability(url: string): Promise<boolean> {
+  const probe = new pg.Client({ connectionString: url });
+  probe.on('error', () => {});
+  try {
+    await probe.connect();
+    await probe.end();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
   const TEST_DB_URL = resolveTestDbUrl();
   let client: pg.Client | null = null;
@@ -585,7 +597,8 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
 
   describe('Secret Masking on Output', () => {
     it('ensures captured console output from seed contains no raw secrets or passwords', async (t) => {
-      if (!dbAvailable || !client) {
+      const isReachable = await checkDbReachability(TEST_DB_URL);
+      if (!isReachable || !dbAvailable || !client) {
         return t.skip('Postgres test database not available');
       }
 

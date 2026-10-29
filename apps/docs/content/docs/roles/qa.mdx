@@ -5,60 +5,68 @@ description: "Test automation strategy, multi-tenant isolation validation, Playw
 
 <RoleBadge role="qa" />
 
-Welcome to the HelloSmart Quality Assurance and Test Engineering team. As a QA Engineer on HelloSmart, your mission is to guarantee uncompromising security, rock-solid multi-tenancy, and flawless candidate examination experiences.
+This playbook is the quality assurance and test engineering guide for QA Engineers and SDETs on HelloSmart.
 
-Because HelloSmart simulates real work in sandboxed environments, software reliability directly impacts candidates' career opportunities and companies' hiring decisions.
+As a QA Engineer on HelloSmart, your primary mission is to protect **tenant isolation**, guarantee **workspace security**, and ensure **flawless candidate examination experiences**.
 
 ---
 
 ## 1. Test Architecture Matrix
 
-Our testing pyramid is divided into four automated tiers:
+HelloSmart organizes testing into four automated tiers to balance rapid feedback in CI with comprehensive end-to-end coverage:
 
-| Tier | Focus | Tooling | Execution Frequency |
+| Testing Tier | Verification Focus | Tooling | Execution Trigger |
 |---|---|---|---|
-| **Tenancy Isolation** | RLS enforcement, cross-org 404s (BR-01) | Vitest, PostgreSQL test containers | Every PR & commit |
-| **Contract Checks** | OpenAPI 3.1 & Zod schema validation | Prism, `@hs/contracts` | Every PR |
-| **Integration** | Workspace orchestration, AI proxy quotas | Vitest, Docker local mock | Hourly / Nightly |
-| **End-to-End (E2E)** | Candidate portal, full-screen events, review | Playwright, Chromium | Pre-merge & Nightly |
+| **Multi-Tenant Isolation** | Row-Level Security enforcement, cross-tenant 404 assertions (`BR-01`) | Vitest, PostgreSQL test containers | Every pull request and commit |
+| **Contract Validation** | OpenAPI 3.1 specifications and shared Zod schemas (`@hs/contracts`) | Prism, Zod | Every pull request |
+| **Service Integration** | Workspace container orchestration, AI proxy token quotas, BullMQ queues | Vitest, Docker local mock | Hourly CI and Nightly runs |
+| **End-to-End (E2E)** | Candidate portal, fullscreen tracking, review workflows, billing webhooks | Playwright, Chromium | Pre-merge verification and Nightly |
 
 ---
 
 ## 2. Multi-Tenant Isolation Testing (BR-01)
 
-The most critical invariant in HelloSmart is **strict tenant isolation**. Data belonging to Organization A must never be accessible, visible, or inferable by Organization B.
+The foundation of enterprise trust in HelloSmart is **strict tenant isolation**. Data belonging to Organization A must never be accessible, visible, or inferable by Organization B.
 
-### The 404 Invariant
-When a user from Org A queries a resource ID belonging to Org B, the API **must return HTTP 404 Not Found**, never HTTP 403 Forbidden. Returning 403 leaks the existence of IDs across tenant boundaries.
+### The 404 Invariant Rule
+When a user belonging to Organization A requests a resource ID that belongs to Organization B, the API **must return HTTP 404 Not Found**, never HTTP 403 Forbidden.
 
-### Running Tenancy Tests
+Returning a 403 leaks that the identifier exists inside another company's account. Returning 404 preserves complete opacity.
+
+### Running Tenancy Suites
 ```bash
-# Run the dedicated cross-tenant suite
+# Execute the automated cross-tenant test suite
 pnpm test:tenancy
 ```
 
-### Writing a Tenancy Test
+### Authoring a Multi-Tenant Test Case
 ```typescript
 import { describe, it, expect } from 'vitest';
 import { createTenantContext, testClient } from '@hs/fixtures';
 
-describe('BR-01: Candidate Access Cross-Tenant Boundary', () => {
-  it('returns 404 when Org B queries a candidate in Org A', async () => {
+describe('BR-01: Cross-Tenant Resource Isolation', () => {
+  it('returns 404 when Org B queries a candidate created by Org A', async () => {
+    // 1. Provision two distinct isolated tenant contexts
     const orgA = await createTenantContext('acme-corp');
     const orgB = await createTenantContext('beta-industries');
     
-    // Create candidate in Org A
-    const candidateA = await orgA.createCandidate({ email: 'jane@example.com' });
+    // 2. Create candidate Jane Doe inside Org A
+    const candidateA = await orgA.createCandidate({ 
+      name: 'Jane Doe',
+      email: 'jane@example.com' 
+    });
 
-    // Attempt access using Org B session token
-    const res = await testClient(orgB.sessionToken).get(`/api/v1/candidates/${candidateA.id}`);
+    // 3. Attempt to fetch Jane Doe using Org B authenticated session
+    const response = await testClient(orgB.sessionToken)
+      .get(`/api/v1/candidates/${candidateA.id}`);
 
-    expect(res.status).toBe(404);
-    expect(res.body).toEqual({
+    // 4. Assert HTTP 404 with RFC 7807 Problem Details payload
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({
       type: 'https://hellosmart.ai/problems/not-found',
       title: 'Not Found',
       status: 404,
-      detail: `Candidate not found`,
+      detail: 'Candidate not found',
     });
   });
 });
@@ -68,34 +76,55 @@ describe('BR-01: Candidate Access Cross-Tenant Boundary', () => {
 
 ## 3. Playwright End-to-End Testing
 
-The E2E suite lives in `tests/e2e/` and validates the complete user journey:
+End-to-end tests live in `tests/e2e/` and simulate realistic candidate and administrator browser interactions:
 
 ```bash
-# Run all browser test scenarios
+# Run headless browser test suite
 pnpm test:e2e
 
-# Run with interactive UI
+# Run with interactive Playwright UI runner
 pnpm --filter @hs/e2e test:ui
 ```
 
-### Critical Flow Test Scenarios
-1. **First-Login Password Reset (BR-24)**: Asserts that an invited candidate with `must_reset_password=true` is forced to reset their password before accessing their dashboard.
-2. **Consent Screen Gate (BR-12)**: Asserts that the "Connect to Workspace" button remains disabled until the candidate explicitly accepts the mode-specific recording consent.
-3. **Full-Screen Exit Detection (BR-10)**: Simulates exiting fullscreen mode (`document.exitFullscreen()`), asserting that the WebSocket gateway logs a `fullscreen_exit` activity event and displays the disconnect overlay.
-4. **Auto-Submit on Timer Expiry (BR-08)**: Simulates deadline expiration, asserting that the orchestrator creates a snapshot, marks the assignment as `auto_submitted`, and closes the session.
+### Critical Examination Flows to Verify
+1. **First-Login Password Reset (BR-24)**: Asserts that an invited candidate with `must_reset_password = true` cannot navigate to the dashboard until they submit a new password.
+2. **Consent Screen Gate (BR-12)**: Asserts that the "Connect to Workspace" button is strictly disabled until the candidate reviews and accepts the recording consent checkbox.
+3. **Fullscreen Disconnect Detection (BR-10)**: Simulates exiting browser fullscreen (`document.exitFullscreen()`). Asserts that the terminal session is immediately disconnected, logs a `fullscreen_exit` telemetry event, and displays the modal resume overlay.
+4. **Auto-Submit on Timer Expiry (BR-08)**: Simulates backend deadline expiration. Asserts that the orchestrator creates a final snapshot, marks the assignment as `auto_submitted`, and closes the session.
+5. **Spend Cap Warning and Hard Rejection (BR-15)**: Sends simulated prompt traffic exceeding candidate budget caps, verifying that candidate chat displays a spend cap warning followed by a friendly rate limit block.
 
 ---
 
-## 4. Security & Audit Verification (BR-31)
+## 4. Tamper-Evident Audit Chain Verification (BR-31)
 
-All security-sensitive operations must generate an immutable audit log row in `audit.events`:
-- Organization creation and suspension
-- Entitlement limit changes
-- Candidate creation, destruction, or result release
-- AI provider key updates (only storing last 4 digits)
+All high-privilege mutations generate an append-only audit log row in `audit.events`:
+- Organization provisioning, status modifications, and suspensions
+- Entitlement quota changes (template counts, candidate caps)
+- Candidate creation, deletion, or score releases
+- AI provider key creations or updates (recording only the last 4 digits)
 
-The QA team verifies the tamper-evident SHA-256 hash chain:
+The QA suite verifies the cryptographic SHA-256 hash chain:
 ```
 hash_n = SHA256(hash_(n-1) || row_payload_n)
 ```
-Any modified or deleted rows immediately break the cryptographic chain and trigger an alert.
+Any simulated row deletion, update, or out-of-order insertion must immediately fail hash chain verification and raise a security alarm.
+
+---
+
+## 5. Performance and Resilience Benchmarks
+
+Every release candidate is tested against these operational benchmarks:
+- **Workspace Launch Latency**: Warm container connect time must be &le; 15 seconds from candidate click to interactive terminal.
+- **Continuous Snapshot Recovery (BR-11)**: Simulated container crashes must restore file diffs, git commits, and terminal history with recovery point objective (RPO) &le; 30 seconds.
+- **WebSocket Reconnection**: Temporary network drops must auto-reconnect within 5 seconds without resetting session timers.
+
+---
+
+## 6. QA Definition of Done (DoD) and Release Sign-Off
+
+Before signing off on any release branch (`dev` to `qa`, or `qa` to `main`):
+1. Multi-tenant isolation test suite passes with zero failures (`pnpm test:tenancy`).
+2. All Playwright browser test suites pass across Chrome and Firefox (`pnpm test:e2e`).
+3. Cryptographic audit chain validation succeeds on sample seed mutations.
+4. Contract compliance is confirmed with Prism mock server (`pnpm contracts:check`).
+5. Zero documentation drift is verified (`pnpm docs:sync-check`).

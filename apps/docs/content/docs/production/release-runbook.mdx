@@ -33,7 +33,7 @@ sequenceDiagram
 
     Note over Dev,DB: Phase 1: Expand (Non-breaking additive changes)
     Dev->>DB: Apply Migration (Add new column / table with NULL or default)
-    Note over V1,DB: App v1.2 runs unaware of new column; works normally.
+    Note over V1,DB: App v1.2 runs unaware of new column and functions normally
     
     Note over Dev,DB: Phase 2: Deploy New App
     Dev->>V2: Deploy App v1.3 (reads and writes both old and new columns)
