@@ -1,0 +1,37 @@
+=== TEST 1: Unscoped query under hs_app ===
+SET
+RESET
+ unscoped_org_count 
+--------------------
+                  0
+(1 row)
+
+ unscoped_user_count 
+---------------------
+                   0
+(1 row)
+
+=== TEST 2: Scoped query for Aster Ridge under hs_app ===
+SET
+                  id                  |           name           |    slug     
+--------------------------------------+--------------------------+-------------
+ 7beb8d79-ccde-5d73-922c-894648d63e54 | Aster Ridge Technologies | aster-ridge
+(1 row)
+
+ aster_user_count 
+------------------
+              101
+(1 row)
+
+=== TEST 3: Cross-tenant query (attempting to read Brindle & Co data) ===
+ cross_tenant_read_count 
+-------------------------
+                       0
+(1 row)
+
+=== TEST 4: Cross-tenant write test under hs_app ===
+DO
+NOTICE:  SUCCESS: RLS insufficient_privilege caught! Cross-tenant write was successfully blocked.
+RESET
+RESET
+=== RLS VERIFICATION COMPLETE ===

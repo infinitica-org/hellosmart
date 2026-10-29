@@ -1,0 +1,19 @@
+> @hs/web@0.1.0 test C:\Users\sathe\OneDrive\Desktop\hellosmart\apps\web
+> vitest run "src/__tests__/middleware.test.ts"
+
+ RUN  v2.1.4 C:/Users/sathe/OneDrive/Desktop/hellosmart/apps/web
+
+ ✓ src/__tests__/middleware.test.ts  (12 tests) 82ms
+
+Test Files  1 passed (1)
+     Tests  12 passed (12)
+  Duration  2.53s
+
+Verified:
+- Public routes bypass session checks
+- Protected portals redirect unauthenticated requests to /login with sanitized 'from' parameter
+- Candidate role boundary: accessing /admin or /company redirects to /candidate (BR-25)
+- Company Admin role boundary: accessing /admin redirects to /company (BR-25)
+- Forced password reset on first login (BR-24)
+- Security headers: Nonce-based CSP, X-Content-Type-Options: nosniff, Referrer-Policy, Permissions-Policy
+

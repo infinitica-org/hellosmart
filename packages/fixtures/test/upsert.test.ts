@@ -1,7 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import pg from 'pg';
-import { runSafeSeed, ensureInvitationsTable } from '../dist/lib/upsert.js';
+import { runSafeSeed } from '../dist/lib/upsert.js';
 import { deterministicUuid, normaliseEmail } from '../dist/lib/keys.js';
 import { ASTER_RIDGE_ID, BRINDLE_CO_ID, SUPERADMIN_ID } from '../dist/entities/organizations.js';
 
@@ -30,7 +30,6 @@ describe('Deterministic UUID & Idempotent Upsert Tests ([6.2])', () => {
       // Clean test database for test suite in reverse FK order
       await client.query('SET search_path TO app, public;');
       await client.query("SELECT set_config('app.is_platform', 'true', false);");
-      await ensureInvitationsTable(client);
       await client.query('DELETE FROM app.invitations;');
       await client.query('DELETE FROM app.users;');
       await client.query('DELETE FROM app.entitlements;');

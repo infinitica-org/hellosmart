@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import '@hs/ui/styles/fonts.css';
 import '@hs/ui/styles/tokens.css';
 import './globals.css';
-import { BrandMark } from '@hs/ui';
+
 
 export const metadata: Metadata = {
   title: 'HelloSmart.ai — Hire by Doing',
@@ -27,14 +27,9 @@ export default function RootLayout({
     <html lang="en" className="light" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className="min-h-screen bg-canvas text-neutral-900 font-sans font-normal antialiased selection:bg-primary/20 selection:text-primary"
+        className="min-h-screen  bg-canvas text-neutral-900 font-sans font-normal antialiased selection:bg-primary/20 selection:text-primary m-0 p-0"
       >
-        <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-          {children}
-        </main>
-        <footer className="py-4 text-center text-xs text-slate-400">
-          <BrandMark />
-        </footer>
+        {children}
       </body>
     </html>
   );

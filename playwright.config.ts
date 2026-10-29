@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3000";
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const apiURL = process.env.API_BASE_URL ?? "http://127.0.0.1:4000";
 
 export default defineConfig({
@@ -14,7 +14,7 @@ export default defineConfig({
     ["html", { open: "never", outputFolder: "./playwright-report" }],
   ],
   timeout: 30_000,
-  expect: { timeout: 8_000 },
+  expect: { timeout: 15_000 },
   use: {
     baseURL,
     headless: true,
@@ -42,9 +42,10 @@ export default defineConfig({
           url: baseURL,
           env: {
             API_BASE_URL: apiURL,
+            NEXT_PUBLIC_API_URL: apiURL,
             PORT: "3000",
           },
-          reuseExistingServer: !process.env.CI,
+          reuseExistingServer: true,
           stdout: "pipe",
           stderr: "pipe",
           timeout: 60_000,

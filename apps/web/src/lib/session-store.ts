@@ -15,3 +15,11 @@ export const DEV_SESSION_STORE = new Map<string, DevSession>([
   ['sess_abc_candidate', { role: 'candidate', email: 'candidate@example.com' }],
 ]);
 
+export interface PreAuthEntry {
+  email: string;
+  attempts: number;
+  expiresAt: number;
+}
+
+export const MOCK_PREAUTH_STORE = new Map<string, PreAuthEntry>();
+

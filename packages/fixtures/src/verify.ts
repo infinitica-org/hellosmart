@@ -468,6 +468,22 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
           mfaErrors.push(
             `Platform admin ${admin.email} has raw plaintext Base32 TOTP secret in mfa_secret_ref`,
           );
+          continue;
+        }
+
+        // Check env: reference prefix and that the referenced env var is set when running locally
+        if (admin.mfa_secret_ref.startsWith('env:')) {
+          const envKey = admin.mfa_secret_ref.slice('env:'.length);
+          const envVal =
+            process.env[envKey] ||
+            (envKey === 'PLATFORM_ADMIN_MFA_SECRET'
+              ? process.env.SEED_PLATFORM_ADMIN_TOTP_SECRET
+              : undefined);
+          if (!envVal || envVal.trim() === '') {
+            mfaErrors.push(
+              `Platform admin ${admin.email} references env var '${envKey}' which is not set in local environment`,
+            );
+          }
         }
       }
 
@@ -475,7 +491,7 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
         checks.push({
           name: 'Platform Admin MFA Configuration',
           status: 'PASS',
-          details: `Platform admin MFA configured via secret reference '${platAdmins.rows[0]?.mfa_secret_ref}' (not plain Base32; AES-GCM decryption not checked because S0-T14-3 does not exist yet)`,
+          details: `Platform admin MFA configured via secret reference '${platAdmins.rows[0]?.mfa_secret_ref}' (valid env: reference configured)`,
         });
       } else {
         checks.push({
@@ -556,12 +572,25 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
       let usedCount = 0;
       const now = Date.now();
 
+      const localTokensForInv = options.tokens ?? getInMemoryTokens() ?? loadLocalTokens();
+      const rawTokensForInv = localTokensForInv
+        ? [localTokensForInv.valid, localTokensForInv.expired, localTokensForInv.used].filter(
+            Boolean,
+          )
+        : [];
+
       for (const inv of invsRes.rows) {
-        // Must be a 64-char lowercase hex string
-        if (!/^[0-9a-f]{64}$/.test(inv.token_hash)) {
-          invErrors.push(
-            `Invitation ${inv.id} token_hash is not a 64-character lowercase hexadecimal string`,
-          );
+        // Must be a 32-byte binary Buffer (bytea)
+        if (!Buffer.isBuffer(inv.token_hash) || inv.token_hash.length !== 32) {
+          invErrors.push(`Invitation ${inv.id} token_hash is not a 32-byte binary Buffer (bytea)`);
+        } else {
+          // Assert token_hash is not equal to raw token bytes
+          for (const rawToken of rawTokensForInv) {
+            const rawBytes = Buffer.from(rawToken, 'hex');
+            if (inv.token_hash.equals(rawBytes)) {
+              invErrors.push(`Invitation ${inv.id} token_hash stores unhashed raw token bytes`);
+            }
+          }
         }
 
         const expTime = new Date(inv.expires_at).getTime();
@@ -585,7 +614,8 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
         checks.push({
           name: 'Invitations State & Token Hashes',
           status: 'PASS',
-          details: '1 valid, 1 expired, 1 used; all tokens are 64-hex SHA-256 digests',
+          details:
+            '1 valid, 1 expired, 1 used; all tokens are 32-byte SHA-256 binary digests (bytea)',
         });
       } else {
         checks.push({
@@ -742,15 +772,40 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
       `);
       for (const row of invsRows.rows) {
         const val = row.token_hash;
-        if (seedPassword && val.includes(seedPassword)) {
-          secretFindings.push({ table: 'app.invitations', column: 'token_hash', rowId: row.id });
-        }
-        if (totpSecret && val.includes(totpSecret)) {
-          secretFindings.push({ table: 'app.invitations', column: 'token_hash', rowId: row.id });
-        }
-        for (const token of rawTokensList) {
-          if (val === token) {
+        if (Buffer.isBuffer(val)) {
+          const valUtf8 = val.toString('utf8');
+          const valHex = val.toString('hex');
+          if (seedPassword && valUtf8.includes(seedPassword)) {
             secretFindings.push({ table: 'app.invitations', column: 'token_hash', rowId: row.id });
+          }
+          if (totpSecret && valUtf8.includes(totpSecret)) {
+            secretFindings.push({ table: 'app.invitations', column: 'token_hash', rowId: row.id });
+          }
+          for (const token of rawTokensList) {
+            const tokenBytes = Buffer.from(token, 'hex');
+            if (val.equals(tokenBytes) || valHex === token || valUtf8.includes(token)) {
+              secretFindings.push({
+                table: 'app.invitations',
+                column: 'token_hash',
+                rowId: row.id,
+              });
+            }
+          }
+        } else if (typeof val === 'string') {
+          if (seedPassword && val.includes(seedPassword)) {
+            secretFindings.push({ table: 'app.invitations', column: 'token_hash', rowId: row.id });
+          }
+          if (totpSecret && val.includes(totpSecret)) {
+            secretFindings.push({ table: 'app.invitations', column: 'token_hash', rowId: row.id });
+          }
+          for (const token of rawTokensList) {
+            if (val === token || val.includes(token)) {
+              secretFindings.push({
+                table: 'app.invitations',
+                column: 'token_hash',
+                rowId: row.id,
+              });
+            }
           }
         }
       }

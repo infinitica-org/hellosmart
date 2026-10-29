@@ -17,6 +17,7 @@ export const ARGON2ID_PREFIX = `$argon2id$v=19$m=${ARGON2_CONFIG.memoryCost},t=$
 
 export const SEED_PASSWORD_ENV_VAR = 'SEED_DEFAULT_PASSWORD';
 export const SEED_TOTP_SECRET_ENV_VAR = 'SEED_PLATFORM_ADMIN_TOTP_SECRET';
+export const PLATFORM_ADMIN_MFA_SECRET_ENV_VAR = 'PLATFORM_ADMIN_MFA_SECRET';
 
 /**
  * Checks if a password hash string starts with the expected Argon2id prefix and parameters.
@@ -101,7 +102,8 @@ export async function resolveSeedPasswordHash(
  * Returns null if not set. Validates Base32 formatting when present.
  */
 export function getPlatformAdminTotpSecret(): string | null {
-  const secret = process.env[SEED_TOTP_SECRET_ENV_VAR];
+  const secret =
+    process.env[PLATFORM_ADMIN_MFA_SECRET_ENV_VAR] || process.env[SEED_TOTP_SECRET_ENV_VAR];
   if (!secret || !secret.trim()) {
     return null;
   }
@@ -109,7 +111,7 @@ export function getPlatformAdminTotpSecret(): string | null {
   // Standard Base32 validation (RFC 4648: A-Z, 2-7, optional padding)
   if (!/^[A-Z2-7]+=*$/.test(cleaned)) {
     throw new Error(
-      `Invalid format for ${SEED_TOTP_SECRET_ENV_VAR}: secret must be a valid Base32 string.`,
+      `Invalid format for ${PLATFORM_ADMIN_MFA_SECRET_ENV_VAR} / ${SEED_TOTP_SECRET_ENV_VAR}: secret must be a valid Base32 string.`,
     );
   }
   return cleaned;
