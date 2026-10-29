@@ -24,6 +24,15 @@ const ConfigSchema = z
     PLATFORM_ADMIN_MFA_SECRET: z.string().min(16).optional(),
     /** Optional Mailpit URL for local email capture in development. */
     MAILPIT_URL: z.string().url().default('http://127.0.0.1:8025'),
+    /** S0-T17-1: Have I Been Pwned breach check fail-open toggle (default true). */
+    HIBP_FAIL_OPEN: z
+      .union([z.boolean(), z.string()])
+      .optional()
+      .transform((v) => {
+        if (v === undefined) return true;
+        if (typeof v === 'boolean') return v;
+        return v.toLowerCase() !== 'false' && v !== '0';
+      }),
   })
   .transform((raw) => {
     const corsList = raw.CORS_ORIGINS

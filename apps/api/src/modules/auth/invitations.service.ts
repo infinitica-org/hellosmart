@@ -16,6 +16,7 @@ import {
 } from '@hs/contracts';
 import { PG_POOL } from '../database/database.tokens.js';
 import { SessionService } from '../session/session.service.js';
+import { PasswordPolicyService } from './password-policy.service.js';
 import { hashPassword } from './password.js';
 
 /**
@@ -64,6 +65,7 @@ export class InvitationsService {
   constructor(
     @Inject(PG_POOL) private readonly pool: Pool,
     @Optional() @Inject(SessionService) private readonly sessionService?: SessionService,
+    @Optional() @Inject(PasswordPolicyService) private readonly passwordPolicyService?: PasswordPolicyService,
   ) {}
 
   /**
@@ -132,6 +134,16 @@ export class InvitationsService {
       throw new WeakPasswordException(issue, options.requestId);
     }
 
+    if (this.passwordPolicyService) {
+      const breachCheck = await this.passwordPolicyService.checkBreached(input.password);
+      if (breachCheck.breached) {
+        throw new WeakPasswordException(
+          'This password has appeared in a known data breach and cannot be used.',
+          options.requestId,
+        );
+      }
+    }
+
     if (!input.token || typeof input.token !== 'string') {
       throw new InvitationInvalidException(options.requestId);
     }
@@ -164,7 +176,22 @@ export class InvitationsService {
       throw new InvitationInvalidException(options.requestId);
     }
 
-    // 4. Session Revocation hook
+    // 4. Record initial password in history so it cannot be reused
+    if (this.passwordPolicyService && this.pool) {
+      try {
+        await this.passwordPolicyService.recordPasswordHistory(
+          row.user_id,
+          passwordHash,
+          this.pool as any,
+        );
+      } catch (err: unknown) {
+        this.logger.warn(`Failed to record initial password history for user ${row.user_id}`, {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    // 5. Session Revocation hook
     await this.revokeUserSessions(row.user_id);
 
     return {

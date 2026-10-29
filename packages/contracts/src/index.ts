@@ -3,6 +3,8 @@ export * from './schemas/user.js';
 export * from './schemas/auth.js';
 export * from './schemas/session.js';
 export * from './schemas/org.js';
+export * from './password-policy.js';
+export * from './data/common-passwords.data.js';
 
 export type * from './generated/api.js';
 export * from './events.js';
@@ -23,4 +25,5 @@ export interface ProblemDetails {
   code: string;
   requestId?: string;
   errors?: Array<{ field?: string; message: string }>;
+  reasons?: string[];
 }

@@ -8,6 +8,7 @@ import { InvitationsService } from './invitations.service.js';
 import { SessionsController } from './sessions.controller.js';
 import { LoginLockoutService } from './login-lockout.service.js';
 import { MfaService } from './mfa.service.js';
+import { PasswordPolicyService } from './password-policy.service.js';
 import { PreAuthService } from './pre-auth.service.js';
 
 @Module({
@@ -20,7 +21,8 @@ import { PreAuthService } from './pre-auth.service.js';
     MfaService,
     InvitationsService,
     MailService,
+    PasswordPolicyService,
   ],
-  exports: [AuthService, InvitationsService, MailService],
+  exports: [AuthService, InvitationsService, MailService, PasswordPolicyService],
 })
 export class AuthModule {}

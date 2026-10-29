@@ -343,6 +343,31 @@ export class SessionService {
     return revoked.length;
   }
 
+  /** Revoke all sessions except the one matching the current cookie token (e.g. after password change). */
+  async revokeOtherSessionsForUser(userId: string, exceptRawToken?: string): Promise<number> {
+    const exceptTokenHash = exceptRawToken?.trim()
+      ? hashToken(exceptRawToken.trim())
+      : '';
+    const revoked = await this.store.revokeOtherSessionsForUser(userId, exceptTokenHash);
+
+    for (const record of revoked) {
+      await this.safeAuditLog({
+        actorId: userId,
+        actorRole: record.role,
+        orgId: record.orgId,
+        action: 'session.revoked',
+        entity: 'session',
+        entityId: record.sessionId,
+        after: {
+          sessionId: record.sessionId,
+          reason: 'PASSWORD_CHANGE',
+        },
+      });
+    }
+
+    return revoked.length;
+  }
+
   private async safeAuditLog(entry: {
     actorId?: string | null | undefined;
     actorRole: string;

@@ -12,6 +12,7 @@ export function problem(
     code: partial.code,
     ...(partial.instance !== undefined ? { instance: partial.instance } : {}),
     ...(partial.errors !== undefined ? { errors: partial.errors } : {}),
+    ...(partial.reasons !== undefined ? { reasons: partial.reasons } : {}),
   };
   return new HttpException(problemBody, partial.status);
 }

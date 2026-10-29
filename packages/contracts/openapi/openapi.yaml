@@ -34,7 +34,7 @@ tags:
 paths:
   /auth/login:
     post:
-      summary: Sign in with email and password or SSO
+      summary: Authenticate user with email and password
       tags: [auth]
       operationId: authLogin
       x-requirement: [CO-001, CA-002]
@@ -339,10 +339,47 @@ paths:
         '422': { $ref: '#/components/responses/Problem' }
         '429': { $ref: '#/components/responses/Problem' }
 
+  /auth/password/change:
+    post:
+      tags: [auth]
+      summary: Change authenticated user password and revoke other sessions
+      operationId: authChangePassword
+      x-requirement: [CO-001, CA-002, S0-T17-1]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              additionalProperties: false
+              properties:
+                currentPassword: { type: string, minLength: 1, maxLength: 128 }
+                newPassword: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        '200':
+          description: Password changed successfully; other sessions revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: 'Password changed successfully.' }
+        '400':
+          $ref: '#/components/responses/Problem'
+        '401':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+
   /me:
     get:
-      summary: Get current authenticated user profile and portal route
       tags: [auth]
+      summary: Get current authenticated user profile and portal route
       operationId: getMe
       x-requirement: [CO-004]
       responses:
