@@ -39,6 +39,10 @@ packer_cache/
 Thumbs.db
 .idea/
 *.swp
+# testing
+playwright-report/
+test-results/
+
 # agent worktrees
 .worktrees/
 
@@ -48,5 +52,14 @@ Thumbs.db
 # spreadsheets
 *.xlsx
 
+# caches and test results
+.cache/
+test-results/
+playwright-report/
+
 # zoho
 zoho/
+
+# playwright
+test-results/
+playwright-report/

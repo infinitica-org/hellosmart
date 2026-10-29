@@ -8,7 +8,7 @@ import type { RequestMeta } from '../auth/auth.service.js';
 import { problem } from '../../common/errors/app-http.exception.js';
 import type { UserContext } from '../../common/types/user-context.js';
 import { appendAuditEvent } from '../audit/audit-writer.js';
-import { PG_POOL } from '../database/database.tokens.js';
+import { PG_PLATFORM_POOL } from '../database/database.tokens.js';
 import { EMAIL_SENDER_PORT, type EmailSenderPort } from '../adapters/adapters.tokens.js';
 import { SessionService } from '../session/session.service.js';
 import { withPlatform } from '../tenancy/with-org.js';
@@ -21,7 +21,7 @@ const DEFAULT_MAX_CANDIDATES = 10;
 @Injectable()
 export class AdminOrganizationsService {
   constructor(
-    @Inject(PG_POOL) private readonly pool: Pool,
+    @Inject(PG_PLATFORM_POOL) private readonly pool: Pool,
     @Inject(EMAIL_SENDER_PORT) private readonly email: EmailSenderPort,
     @Inject(SessionService) private readonly sessions: SessionService,
     @Optional() @Inject(MailService) private readonly mailService?: MailService,
@@ -213,6 +213,27 @@ export class AdminOrganizationsService {
         }
 
         return toOrgDto(row);
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  async list(): Promise<OrgDto[]> {
+    const client = await this.pool.connect();
+
+    try {
+      return await withPlatform(client, async (tx) => {
+        const result = await tx.query<OrganizationRow>(
+          `SELECT id, name, slug, status, logo_key, custom_domain,
+                  retention_days, created_at
+           FROM app.organizations
+           ORDER BY created_at DESC`,
+        );
+
+        return result.rows.map((row) =>
+          toOrgDto(row, null, false),
+        );
       });
     } finally {
       client.release();

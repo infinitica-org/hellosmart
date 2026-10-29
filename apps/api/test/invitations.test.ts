@@ -124,8 +124,11 @@ function createMockDbPool() {
             return { rows: [], rowCount: 0 };
           }
 
-          // 1. app.lookup_invitation($1)
-          if (normalized.includes('app.lookup_invitation')) {
+          // 1. app.find_invitation_by_token_hash($1) or app.lookup_invitation($1)
+          if (
+            normalized.includes('app.find_invitation_by_token_hash') ||
+            normalized.includes('app.lookup_invitation')
+          ) {
             const tokenHash = params[0] as Buffer;
             const hashHex = tokenHash.toString('hex');
             const inv = invitations.get(hashHex);

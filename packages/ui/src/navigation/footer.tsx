@@ -52,6 +52,9 @@ export interface FooterProps extends React.HTMLAttributes<HTMLElement> {
   /** Full copyright text override */
   copyrightText?: string | undefined;
 
+  /** Whether to show the copyright notice. Defaults to true for marketing/simple, false for auth */
+  showCopyright?: boolean | undefined;
+
   /**
    * Whether to display the "Powered by HelloSmart.ai" attribution badge.
    * Per BR-28, shown by default; can be disabled when white-label entitlement is active.
@@ -144,11 +147,12 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
       brandTitle,
       logoSrc = HELLOSMART_LOGO_SRC,
       logoVariant = 'image',
-      showLogo = true,
+      showLogo,
       logoSize,
       logoRounded = 'xl',
       copyrightYear = new Date().getFullYear(),
       copyrightText,
+      showCopyright,
       showPoweredBy = true,
       poweredByText = 'Powered by HelloSmart.ai',
       poweredByHref = 'https://hellosmart.ai',
@@ -174,15 +178,19 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
     // 1. Auth Variant (Optimized for Login & Password Change Pages)
     // --------------------------------------------------------------------------
     if (variant === 'auth') {
+      const shouldShowLogo = showLogo ?? false;
+      const shouldShowPoweredBy = showPoweredBy !== undefined ? showPoweredBy : false;
+      const shouldShowCopyright = showCopyright !== undefined ? showCopyright : false;
+
       return (
         <footer
           ref={ref}
           role="contentinfo"
-          className={`w-full max-w-md mx-auto pt-4 pb-6 px-4 text-center space-y-3.5 select-none ${className}`}
+          className={`w-full max-w-md mx-auto pt-2 pb-6 px-4 text-center space-y-3 select-none ${className}`}
           {...props}
         >
-          {/* Brand Logo & Title on Footer */}
-          {showLogo && (
+          {/* Optional Brand Logo & Title on Footer */}
+          {shouldShowLogo && (
             <div className="flex items-center justify-center gap-2 mb-2">
               <HelloSmartLogo
                 size={logoSize ?? 24}
@@ -226,11 +234,11 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
 
           {/* Secondary Action Text */}
           {secondaryActionText && (
-            <p className="text-[11px] text-neutral-500 font-light">
+            <p className="text-xs text-neutral-500 font-light">
               {secondaryActionHref ? (
                 <a
                   href={secondaryActionHref}
-                  className="hover:text-neutral-800 hover:underline transition-colors"
+                  className="hover:text-neutral-800 hover:underline transition-colors font-normal text-neutral-700"
                 >
                   {secondaryActionText}
                 </a>
@@ -244,7 +252,7 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
           {links && links.length > 0 && (
             <nav
               aria-label="Legal links"
-              className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-neutral-500"
+              className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-neutral-400 font-light"
             >
               {links.map((link, idx) => (
                 <React.Fragment key={link.href + idx}>
@@ -252,13 +260,13 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
                     href={link.href}
                     target={link.external ? '_blank' : undefined}
                     rel={link.external ? 'noopener noreferrer' : undefined}
-                    className="hover:text-neutral-800 hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xs"
+                    className="hover:text-neutral-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xs"
                   >
                     {link.label}
                   </a>
                   {idx < links.length - 1 && (
                     <span className="text-neutral-300 select-none" aria-hidden="true">
-                      •
+                      &bull;
                     </span>
                   )}
                 </React.Fragment>
@@ -266,35 +274,36 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
             </nav>
           )}
 
-          {/* Copyright and Powered By Badge with Real Image Logo */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1 text-[11px] text-neutral-400">
-            <span>{finalCopyright}</span>
-
-            {showPoweredBy && (
-              <>
-                <span className="hidden sm:inline text-neutral-300" aria-hidden="true">
-                  •
-                </span>
-                <a
-                  href={poweredByHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-100/90 hover:bg-neutral-200/90 border border-neutral-200 text-neutral-600 hover:text-neutral-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-2xs"
-                  title="Powered by HelloSmart.ai hiring platform"
-                >
-                  <HelloSmartLogo
-                    size={16}
-                    src={logoSrc}
-                    variant={logoVariant}
-                    rounded="full"
-                    className="shrink-0"
-                    alt="HelloSmart Logo"
-                  />
-                  <span className="font-medium text-[11px]">{poweredByText}</span>
-                </a>
-              </>
-            )}
-          </div>
+          {/* Optional Copyright & Powered By */}
+          {(shouldShowCopyright || shouldShowPoweredBy) && (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1 text-[11px] text-neutral-400 font-light">
+              {shouldShowCopyright && <span>{finalCopyright}</span>}
+              {shouldShowPoweredBy && (
+                <>
+                  {shouldShowCopyright && <span className="hidden sm:inline text-neutral-300">&bull;</span>}
+                  <a
+                    href={poweredByHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-100/90 hover:bg-neutral-200/90 border border-neutral-200 text-neutral-600 hover:text-neutral-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-2xs"
+                    title="Powered by HelloSmart.ai hiring platform"
+                  >
+                    <HelloSmartLogo
+                      size={16}
+                      src={logoSrc}
+                      variant={logoVariant}
+                      rounded="full"
+                      className="shrink-0"
+                      alt="HelloSmart"
+                    />
+                    <span className="text-[11px] font-medium tracking-tight">
+                      {poweredByText}
+                    </span>
+                  </a>
+                </>
+              )}
+            </div>
+          )}
 
           {children && <div className="pt-2">{children}</div>}
         </footer>
@@ -305,6 +314,7 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
     // 2. Simple Variant (Clean Single-Line)
     // --------------------------------------------------------------------------
     if (variant === 'simple') {
+      const shouldShowLogo = showLogo ?? true;
       return (
         <footer
           ref={ref}
@@ -313,7 +323,7 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
           {...props}
         >
           <div className="flex items-center gap-2.5">
-            {showLogo && (
+            {shouldShowLogo && (
               <HelloSmartLogo
                 size={logoSize ?? 20}
                 src={logoSrc}
@@ -367,6 +377,8 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
     // --------------------------------------------------------------------------
     // 3. Marketing Variant (Multi-Column Layout)
     // --------------------------------------------------------------------------
+    const shouldShowLogo = showLogo ?? true;
+
     return (
       <footer
         ref={ref}
@@ -379,7 +391,7 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
             {/* Brand column with Image Logo */}
             <div className="md:col-span-2 space-y-4">
               <div className="flex items-center gap-2.5">
-                {showLogo && (
+                {shouldShowLogo && (
                   <HelloSmartLogo
                     size={logoSize ?? 36}
                     src={logoSrc}

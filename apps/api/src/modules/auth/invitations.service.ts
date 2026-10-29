@@ -92,7 +92,7 @@ export class InvitationsService {
     // without exposing cross-tenant tables to unauthenticated callers.
     const result = await this.pool.query(
       `SELECT id, org_id, user_id, email, role, org_name, expires_at, used_at
-       FROM app.lookup_invitation($1)`,
+       FROM app.find_invitation_by_token_hash($1)`,
       [tokenHash],
     );
 
