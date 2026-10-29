@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import { before, after, describe, it } from 'node:test';
 import pg from 'pg';
 import { runVerifySeed, DEFAULT_REQUIRE_ALL_ACTIVE_USERS_HASH } from '../dist/verify.js';
-import { runSafeSeed, ensureInvitationsTable } from '../dist/lib/upsert.js';
+import { runSafeSeed } from '../dist/lib/upsert.js';
 import { deterministicUuid } from '../dist/lib/keys.js';
 import { SUPERADMIN_ID, ASTER_RIDGE_ID } from '../dist/entities/organizations.js';
 
@@ -32,7 +32,6 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
       // Ensure clean state and seed test database
       await client.query('SET search_path TO app, public;');
       await client.query("SELECT set_config('app.is_platform', 'true', false);");
-      await ensureInvitationsTable(client);
 
       // Perform initial clean seed
       await runSafeSeed(client, {
@@ -165,9 +164,8 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
         const mfa = summary.checks.find((c) => c.name === 'Platform Admin MFA Configuration');
         assert.strictEqual(mfa?.status, 'PASS');
         assert.ok(
-          mfa?.details.includes(
-            'AES-GCM decryption not checked because S0-T14-3 does not exist yet',
-          ),
+          mfa?.details.includes('valid env: reference configured'),
+          'MFA verification must confirm valid env: reference is configured',
         );
 
         const ents = summary.checks.find((c) => c.name === 'Entitlements & Trial Windows');
@@ -315,7 +313,7 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
         assert.ok(mfaCheck?.details.includes('plaintext'));
       } finally {
         await client.query(
-          "UPDATE app.users SET mfa_secret_ref = 'secrets/seed-superadmin-mfa' WHERE id = $1;",
+          "UPDATE app.users SET mfa_secret_ref = 'env:PLATFORM_ADMIN_MFA_SECRET' WHERE id = $1;",
           [SUPERADMIN_ID],
         );
       }
@@ -327,7 +325,7 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
       }
 
       const validId = deterministicUuid('invitation', 'valid');
-      let originalHash: string = '';
+      let originalHash: Buffer | null = null;
       const origRes = await client.query('SELECT token_hash FROM app.invitations WHERE id = $1;', [
         validId,
       ]);
@@ -335,7 +333,7 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
 
       try {
         await client.query('UPDATE app.invitations SET token_hash = $1 WHERE id = $2;', [
-          'unhashed-raw-token-not-64-hex',
+          Buffer.from('not-32-bytes', 'utf8'),
           validId,
         ]);
 
@@ -439,7 +437,7 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
         assert.doesNotMatch(output, /postgres:\/\/.*:.*@/);
       } finally {
         await client.query(
-          "UPDATE app.users SET mfa_secret_ref = 'secrets/seed-superadmin-mfa' WHERE id = $1;",
+          "UPDATE app.users SET mfa_secret_ref = 'env:PLATFORM_ADMIN_MFA_SECRET' WHERE id = $1;",
           [SUPERADMIN_ID],
         );
       }

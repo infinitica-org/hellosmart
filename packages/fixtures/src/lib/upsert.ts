@@ -56,53 +56,6 @@ export interface SeedOptions {
 }
 
 /**
- * TODO: Remove when app.invitations has a real migration (seed must not run DDL).
- *
- * Ensures the app.invitations table exists with strict tenant isolation,
- * indexes, and foreign keys matching HelloSmart specifications.
- * Uses an advisory transaction lock to avoid concurrent DDL race conditions.
- */
-export async function ensureInvitationsTable(client: ClientBase): Promise<void> {
-  const check = await client.query(`
-    SELECT 1 FROM information_schema.tables 
-    WHERE table_schema = 'app' AND table_name = 'invitations'
-  `);
-  if (check.rowCount && check.rowCount > 0) {
-    return;
-  }
-
-  const ddl = `
-    SELECT pg_advisory_xact_lock(hashtext('app.invitations'));
-    CREATE TABLE IF NOT EXISTS app.invitations (
-      id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      org_id      uuid NOT NULL REFERENCES app.organizations(id),
-      user_id     uuid NOT NULL REFERENCES app.users(id),
-      token_hash  text NOT NULL UNIQUE,
-      invited_by  uuid REFERENCES app.users(id),
-      expires_at  timestamptz NOT NULL,
-      used_at     timestamptz,
-      created_at  timestamptz NOT NULL DEFAULT now()
-    );
-    CREATE INDEX IF NOT EXISTS invitations_org_idx ON app.invitations (org_id);
-    CREATE INDEX IF NOT EXISTS invitations_user_idx ON app.invitations (user_id);
-    ALTER TABLE app.invitations ENABLE ROW LEVEL SECURITY;
-    ALTER TABLE app.invitations FORCE ROW LEVEL SECURITY;
-    DO $$ BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_policies WHERE schemaname = 'app' AND tablename = 'invitations' AND policyname = 'tenant_isolation'
-      ) THEN
-        CREATE POLICY tenant_isolation ON app.invitations
-          USING (org_id = app.current_org_id() OR app.is_platform())
-          WITH CHECK (org_id = app.current_org_id() OR app.is_platform());
-      END IF;
-    END $$;
-    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE app.invitations TO hs_app;
-    GRANT SELECT ON TABLE app.invitations TO hs_readonly;
-  `;
-  await client.query(ddl);
-}
-
-/**
  * Upserts an organization record using ON CONFLICT (id) DO UPDATE.
  * Does NOT overwrite created_at; updates updated_at.
  * If an organization with the same slug exists under an outdated ID,
@@ -268,19 +221,21 @@ export async function upsertInvitation(
 
   const query = `
     INSERT INTO app.invitations (
-      id, org_id, user_id, token_hash, invited_by, expires_at, used_at, created_at
+      id, org_id, user_id, email, role, token_hash, expires_at, used_at, created_at
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8
+      $1, $2, $3, $4, $5, $6, $7, $8, $9
     )
     ON CONFLICT (id) DO UPDATE SET
       org_id = EXCLUDED.org_id,
       user_id = EXCLUDED.user_id,
+      email = EXCLUDED.email,
+      role = EXCLUDED.role,
       token_hash = EXCLUDED.token_hash,
-      invited_by = EXCLUDED.invited_by,
       expires_at = EXCLUDED.expires_at,
+      created_at = EXCLUDED.created_at,
       used_at = CASE
-        WHEN EXCLUDED.id = $9 THEN NULL
-        WHEN EXCLUDED.id = $10 THEN COALESCE(app.invitations.used_at, EXCLUDED.used_at)
+        WHEN EXCLUDED.id = $10 THEN NULL
+        WHEN EXCLUDED.id = $11 THEN COALESCE(app.invitations.used_at, EXCLUDED.used_at)
         ELSE EXCLUDED.used_at
       END;
   `;
@@ -289,8 +244,9 @@ export async function upsertInvitation(
     invitation.id,
     invitation.org_id,
     invitation.user_id,
+    invitation.email,
+    invitation.role,
     invitation.token_hash,
-    invitation.invited_by,
     invitation.expires_at,
     invitation.used_at,
     invitation.created_at,
@@ -420,15 +376,23 @@ export async function runSafeSeed(
     await client.query('SET search_path TO app, public;');
     await client.query("SELECT set_config('app.is_platform', 'true', true);");
 
-    // Ensure table structure exists before inserting
-    await ensureInvitationsTable(client);
+    // Ensure table structure exists before inserting (migration 0003_invitations.sql must be applied)
+    const tableCheck = await client.query(`
+      SELECT 1 FROM information_schema.tables 
+      WHERE table_schema = 'app' AND table_name = 'invitations'
+    `);
+    if (!tableCheck.rowCount || tableCheck.rowCount === 0) {
+      throw new Error(
+        'Required table app.invitations does not exist. Please run migrations first: pnpm db:migrate',
+      );
+    }
 
     // Resolve invitation tokens (idempotent: keep existing tokens if hashes match DB)
     const validId = deterministicUuid('invitation', 'valid');
     const expiredId = deterministicUuid('invitation', 'expired');
     const usedId = deterministicUuid('invitation', 'used');
 
-    const existingInvsMap = new Map<string, { token_hash: string; used_at: Date | null }>();
+    const existingInvsMap = new Map<string, { token_hash: Buffer; used_at: Date | null }>();
     try {
       const existingInvs = await client.query(
         'SELECT id, token_hash, used_at FROM app.invitations WHERE id = ANY($1)',
@@ -450,7 +414,9 @@ export async function runSafeSeed(
         candidateLocalToken &&
         is32ByteEntropyToken(candidateLocalToken) &&
         existingRow &&
-        hashInvitationToken(candidateLocalToken) === existingRow.token_hash
+        existingRow.token_hash &&
+        Buffer.isBuffer(existingRow.token_hash) &&
+        hashInvitationToken(candidateLocalToken).equals(existingRow.token_hash)
       ) {
         resolvedTokens[label] = candidateLocalToken;
       } else if (candidateLocalToken && is32ByteEntropyToken(candidateLocalToken) && !existingRow) {

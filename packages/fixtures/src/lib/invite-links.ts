@@ -49,15 +49,22 @@ export function generateRawInviteToken(): string {
 }
 
 /**
- * PROVISIONAL: must match S0-T08 accept-invite hashing; verify when S0-T08 lands.
- *
- * Computes the SHA-256 hash of a raw invitation token string.
- * Stores the hex-encoded digest in app.invitations.token_hash matching schema constraints.
+ * Computes the binary SHA-256 hash of a raw invitation token string.
+ * Matches backend InvitationsService.hashToken (apps/api/src/modules/auth/invitations.service.ts:73)
+ * and PostgreSQL app.invitations.token_hash (bytea, 32 bytes) from migration 0003_invitations.sql.
  *
  * @param rawToken The plaintext token string.
+ * @returns 32-byte binary Buffer for app.invitations.token_hash bytea column.
  */
-export function hashInvitationToken(rawToken: string): string {
-  return crypto.createHash('sha256').update(rawToken).digest('hex');
+export function hashInvitationToken(rawToken: string): Buffer {
+  return crypto.createHash('sha256').update(rawToken.trim()).digest();
+}
+
+/**
+ * Helper to return the hexadecimal representation of the token hash.
+ */
+export function hashInvitationTokenHex(rawToken: string): string {
+  return hashInvitationToken(rawToken).toString('hex');
 }
 
 /**
