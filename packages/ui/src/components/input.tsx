@@ -91,7 +91,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             </svg>
           </button>
         ) : rightIcon ? (
-          <div className="absolute right-3 flex items-center pointer-events-none text-neutral-400">
+          <div className="absolute right-3 flex items-center text-neutral-400">
             {rightIcon}
           </div>
         ) : null}

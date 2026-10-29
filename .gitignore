@@ -48,5 +48,10 @@ Thumbs.db
 # spreadsheets
 *.xlsx
 
+# caches and test results
+.cache/
+test-results/
+playwright-report/
+
 # zoho
 zoho/

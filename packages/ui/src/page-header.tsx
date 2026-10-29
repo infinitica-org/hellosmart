@@ -28,9 +28,9 @@ export function PageHeader({
   };
 
   return (
-    <div className="mb-8 flex flex-col gap-3 pb-5 border-b border-neutral-200/80">
+    <div className="mb-6 sm:mb-8 flex flex-col gap-3 pb-5 border-b border-neutral-200/80">
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-neutral-500 font-light">
+        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-500 font-light">
           {breadcrumbs.map((crumb, idx) => (
             <React.Fragment key={idx}>
               {crumb.href ? (
@@ -51,13 +51,13 @@ export function PageHeader({
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-medium tracking-tight text-neutral-900 sm:text-3xl">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-medium tracking-tight text-neutral-900">
               {title}
             </h1>
             {badge && (
               <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-normal border ${
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-normal border shrink-0 ${
                   badgeColors[badge.variant || 'default']
                 }`}
               >
@@ -66,14 +66,14 @@ export function PageHeader({
             )}
           </div>
           {description && (
-            <p className="mt-1 text-sm text-neutral-600 max-w-3xl leading-relaxed font-normal">
+            <p className="mt-1 text-xs sm:text-sm text-neutral-600 max-w-3xl leading-relaxed font-normal">
               {description}
             </p>
           )}
         </div>
 
         {actions && (
-          <div className="flex items-center gap-2.5 flex-shrink-0">
+          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
             {actions}
           </div>
         )}
