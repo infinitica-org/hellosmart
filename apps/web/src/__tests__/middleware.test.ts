@@ -1,8 +1,26 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { middleware } from '../middleware';
+import { middleware, DEV_SESSION_STORE } from '../middleware';
 
 describe('Next.js Route Protection Middleware', () => {
+  beforeEach(() => {
+    DEV_SESSION_STORE.set('sess_123_candidate', {
+      role: 'candidate',
+      email: 'candidate@test.com',
+    });
+    DEV_SESSION_STORE.set('sess_123_company', {
+      role: 'company_admin',
+      email: 'admin@test.com',
+    });
+    DEV_SESSION_STORE.set('sess_123_admin', {
+      role: 'platform_admin',
+      email: 'superadmin@test.com',
+    });
+    DEV_SESSION_STORE.set('sess_abc_candidate', {
+      role: 'candidate',
+      email: 'candidate2@test.com',
+    });
+  });
   it('redirects unauthenticated requests on /admin to /login with from param', async () => {
     const req = new NextRequest('http://localhost:3000/admin');
     const res = await middleware(req);

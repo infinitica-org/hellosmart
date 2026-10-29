@@ -215,7 +215,7 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
                   <a
                     href={authActionHref}
                     onClick={onAuthActionClick}
-                    className="text-primary hover:text-primary-hover font-medium hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xs"
+                    className="text-primary hover:text-primary-hover font-medium hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nav-accent rounded-xs"
                   >
                     {authActionText}
                   </a>
@@ -223,7 +223,7 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
                   <button
                     type="button"
                     onClick={onAuthActionClick}
-                    className="text-primary hover:text-primary-hover font-medium hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xs cursor-pointer"
+                    className="text-primary hover:text-primary-hover font-medium hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nav-accent rounded-xs cursor-pointer"
                   >
                     {authActionText}
                   </button>
@@ -260,7 +260,7 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
                     href={link.href}
                     target={link.external ? '_blank' : undefined}
                     rel={link.external ? 'noopener noreferrer' : undefined}
-                    className="hover:text-neutral-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xs"
+                    className="hover:text-neutral-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nav-accent rounded-xs"
                   >
                     {link.label}
                   </a>
@@ -285,7 +285,7 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
                     href={poweredByHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-100/90 hover:bg-neutral-200/90 border border-neutral-200 text-neutral-600 hover:text-neutral-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-100/90 hover:bg-neutral-200/90 border border-neutral-200 text-neutral-600 hover:text-neutral-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nav-accent shadow-2xs"
                     title="Powered by HelloSmart.ai hiring platform"
                   >
                     <HelloSmartLogo
@@ -319,7 +319,7 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
         <footer
           ref={ref}
           role="contentinfo"
-          className={`w-full py-4 px-6 border-t border-neutral-200/80 bg-white/50 backdrop-blur-xs text-xs text-neutral-500 flex flex-wrap items-center justify-between gap-4 ${className}`}
+          className={`w-full py-4 px-6 border-t border-neutral-200/80 bg-white/50 text-xs text-neutral-500 flex flex-wrap items-center justify-between gap-4 ${className}`}
           {...props}
         >
           <div className="flex items-center gap-2.5">
@@ -409,7 +409,7 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
                 {tagline}
               </p>
               {showPoweredBy && (
-                <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white border border-neutral-200 text-xs text-neutral-600 shadow-2xs">
+                <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-sm bg-white border border-neutral-200 text-xs text-neutral-600 shadow-2xs">
                   <HelloSmartLogo
                     size={16}
                     src={logoSrc}

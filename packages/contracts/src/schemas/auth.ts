@@ -20,11 +20,79 @@ export const SsoVerifyDtoSchema = z.object({
 });
 export type SsoVerifyDto = z.infer<typeof SsoVerifyDtoSchema>;
 
-export const MfaVerifyDtoSchema = z.object({
-  preAuthToken: z.string().min(1, 'Pre-authentication token is required'),
+/** Normalizes backup codes to canonical `XXXX-XXXX` (accepts 8 chars without dash). */
+export function normalizeMfaBackupCodeInput(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') {
+    return undefined;
+  }
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const cleaned = trimmed.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (cleaned.length === 8) {
+    return `${cleaned.slice(0, 4)}-${cleaned.slice(4)}`;
+  }
+  return trimmed.toUpperCase();
+}
+
+export const MfaVerifyDtoSchema = z
+  .object({
+    preAuthToken: z.string().min(1, 'Pre-authentication token is required'),
+    totpCode: z
+      .string()
+      .regex(/^[0-9]{6}$/, 'TOTP code must be exactly 6 digits')
+      .optional(),
+    backupCode: z.preprocess(
+      normalizeMfaBackupCodeInput,
+      z
+        .string()
+        .regex(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/i, 'Backup code must be formatted XXXX-XXXX')
+        .optional(),
+    ),
+  })
+  .refine((v) => Boolean(v.totpCode || v.backupCode), {
+    message: 'Either a TOTP code or backup code is required',
+    path: ['totpCode'],
+  });
+export type MfaVerifyDto = z.infer<typeof MfaVerifyDtoSchema>;
+
+export const MfaStatusResponseSchema = z.object({
+  enrolled: z.boolean(),
+  backupCodesRemaining: z.number().int().nonnegative(),
+});
+export type MfaStatusResponse = z.infer<typeof MfaStatusResponseSchema>;
+
+export const MfaSetupStartResponseSchema = z.object({
+  secret: z.string(),
+  otpauthUri: z.string(),
+});
+export type MfaSetupStartResponse = z.infer<typeof MfaSetupStartResponseSchema>;
+
+export const MfaSetupConfirmDtoSchema = z.object({
   totpCode: z.string().regex(/^[0-9]{6}$/, 'TOTP code must be exactly 6 digits'),
 });
-export type MfaVerifyDto = z.infer<typeof MfaVerifyDtoSchema>;
+export type MfaSetupConfirmDto = z.infer<typeof MfaSetupConfirmDtoSchema>;
+
+export const MfaSetupConfirmResponseSchema = z.object({
+  backupCodes: z.array(z.string()),
+});
+export type MfaSetupConfirmResponse = z.infer<typeof MfaSetupConfirmResponseSchema>;
+
+export const MfaBackupRegenerateDtoSchema = MfaSetupConfirmDtoSchema;
+export type MfaBackupRegenerateDto = z.infer<typeof MfaBackupRegenerateDtoSchema>;
+
+export const ChangePasswordDtoSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required').max(128),
+  newPassword: z.string().min(1, 'New password is required').max(128),
+});
+export type ChangePasswordDto = z.infer<typeof ChangePasswordDtoSchema>;
+
+export const ChangePasswordResponseDtoSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+export type ChangePasswordResponseDto = z.infer<typeof ChangePasswordResponseDtoSchema>;
 
 export const LogoutResponseDtoSchema = z.object({
   success: z.boolean(),

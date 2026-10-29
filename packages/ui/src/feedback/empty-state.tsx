@@ -23,9 +23,9 @@ export function EmptyState({
 }: EmptyStateProps): React.JSX.Element {
   return (
     <div
-      className={`flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/60 ${className}`}
+      className={`flex flex-col items-center justify-center p-8 sm:p-10 text-center rounded-md border border-dashed border-[#d8dee6] bg-white ${className}`}
     >
-      <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center text-primary mb-4 shadow-xs">
+      <div className="w-12 h-12 rounded-sm bg-[#eaf3fb] border border-[#b7d4ee] flex items-center justify-center text-nav mb-4">
         {icon || (
           <svg
             className="w-7 h-7"
@@ -53,7 +53,7 @@ export function EmptyState({
           {action.href ? (
             <a
               href={action.href}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-white bg-primary rounded-full hover:bg-primary-hover transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-white bg-primary rounded-full hover:bg-primary-hover transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-nav-accent"
             >
               {action.label}
             </a>
@@ -61,7 +61,7 @@ export function EmptyState({
             <button
               type="button"
               onClick={action.onClick}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-white bg-primary rounded-full hover:bg-primary-hover transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-white bg-primary rounded-full hover:bg-primary-hover transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-nav-accent"
             >
               {action.label}
             </button>

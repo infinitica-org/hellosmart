@@ -95,14 +95,14 @@ export const Table = forwardRef<HTMLTableElement, TableProps>(
 
     const containerStyle =
       variant === 'bento'
-        ? 'rounded-3xl border border-neutral-200/80 bg-neutral-50/70 p-3 shadow-xs space-y-2'
+        ? 'rounded-md border border-neutral-200/80 bg-neutral-50/70 p-3 shadow-xs space-y-2'
         : variant === 'candidate'
-        ? 'rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/[0.02] to-white shadow-xs overflow-hidden'
+        ? 'rounded-md border border-primary/20 bg-gradient-to-b from-primary/[0.02] to-white shadow-xs overflow-hidden'
         : isCard
-        ? 'rounded-2xl border border-neutral-200/90 bg-white shadow-sm overflow-hidden'
+        ? 'rounded-md border border-[#d8dee6] bg-white overflow-hidden'
         : variant === 'minimal'
         ? 'overflow-auto'
-        : 'relative w-full overflow-auto rounded-xl border border-neutral-200 bg-white shadow-xs';
+        : 'relative w-full overflow-auto rounded-md border border-[#d8dee6] bg-white';
 
     const hasHeader = Boolean(title || subtitle || badge || headerActions);
 
@@ -404,7 +404,7 @@ export function TableRowActions({
             onClick={() => setIsOpen(!isOpen)}
             aria-expanded={isOpen}
             aria-label="Row actions"
-            className="w-8 h-8 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-2xs"
+            className="w-8 h-8 rounded-sm border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-nav-accent/20 shadow-2xs"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
@@ -416,9 +416,9 @@ export function TableRowActions({
       {isOpen && (
         <div
           role="menu"
-          className={`absolute top-full mt-1.5 w-48 bg-white border border-neutral-200 rounded-xl shadow-xl z-50 py-1 text-xs divide-y divide-neutral-100 animate-fade-in ${
-            align === 'right' ? 'right-0' : 'left-0'
-          }`}
+          className={`absolute top-full mt-1.5 w-48 bg-white border border-neutral-200 rounded-md shadow-xl z-50 py-1 text-xs divide-y divide-neutral-100 animate-fade-in ${
+ align === 'right' ? 'right-0' : 'left-0'
+ }`}
         >
           <div className="py-1">
             {items.map((item, idx) => {
@@ -437,10 +437,10 @@ export function TableRowActions({
                     item.onClick?.();
                   }}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-left font-medium transition-colors ${
-                    item.disabled
-                      ? 'opacity-40 cursor-not-allowed text-neutral-400'
+ item.disabled
+ ? 'opacity-40 cursor-not-allowed text-neutral-400'
                       : item.variant === 'danger'
-                        ? 'text-rose-600 hover:bg-rose-50 hover:text-rose-700'
+                        ? 'text-danger hover:bg-danger-muted hover:text-danger-foreground'
                         : 'text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900'
                   }`}
                 >
@@ -527,7 +527,7 @@ export interface ListProps extends HTMLAttributes<HTMLUListElement> {
 
 export const List = forwardRef<HTMLUListElement, ListProps>(
   ({ className = '', children, ...props }, ref) => (
-    <ul ref={ref} className={`divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white shadow-xs ${className}`} {...props}>
+    <ul ref={ref} className={`divide-y divide-neutral-200 rounded-md border border-neutral-200 bg-white shadow-xs ${className}`} {...props}>
       {children}
     </ul>
   )
@@ -781,7 +781,7 @@ export function SimpleTable<T extends Record<string, any>>({
   const sortableColumns = columns.filter((c) => c.sortable);
 
   return (
-    <div className={`rounded-2xl border border-neutral-200/90 bg-white shadow-xs overflow-hidden ${className}`}>
+    <div className={`rounded-md border border-[#d8dee6] bg-white overflow-hidden ${className}`}>
       {/* Header bar */}
       {(title || subtitle || badge || headerActions) && (
         <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 border-b border-neutral-200/80 bg-white">
@@ -808,8 +808,8 @@ export function SimpleTable<T extends Record<string, any>>({
       {(searchable || (showSortControl && sortRules.length > 0)) && (
         <div
           className={`flex flex-wrap items-center gap-3 px-4 py-2.5 bg-neutral-50/60 border-b border-neutral-200/70 ${
-            searchable ? 'justify-between' : 'justify-end'
-          }`}
+ searchable ? 'justify-between' : 'justify-end'
+ }`}
         >
           {searchable && (
             <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -821,7 +821,7 @@ export function SimpleTable<T extends Record<string, any>>({
                   setCurrentPage(1);
                 }}
                 placeholder={searchPlaceholder}
-                className="w-full rounded-lg border border-neutral-300 bg-white pl-8 pr-3 py-1.5 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                className="w-full rounded-sm border border-neutral-300 bg-white pl-8 pr-3 py-1.5 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-nav-accent/20"
               />
               <svg
                 className="w-4 h-4 text-neutral-400 absolute left-2.5 top-2 pointer-events-none"
@@ -910,7 +910,7 @@ export function SimpleTable<T extends Record<string, any>>({
                     if (el) el.indeterminate = isSomePageSelected;
                   }}
                   onChange={(e) => handleSelectAllPage(e.target.checked)}
-                  className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary/25 cursor-pointer accent-primary"
+                  className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-nav-accent/25 cursor-pointer accent-primary"
                 />
               </TableHead>
             )}
@@ -993,7 +993,7 @@ export function SimpleTable<T extends Record<string, any>>({
                         aria-label={`Select row ${String(id)}`}
                         checked={isSelected}
                         onChange={() => handleToggleRow(id)}
-                        className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary/25 cursor-pointer accent-primary"
+                        className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-nav-accent/25 cursor-pointer accent-primary"
                       />
                     </TableCell>
                   )}
@@ -1053,7 +1053,7 @@ export function SimpleTable<T extends Record<string, any>>({
                     setRowsPerPage(Number(e.target.value));
                     setCurrentPage(1);
                   }}
-                  className="bg-white border border-neutral-300 rounded-md px-1.5 py-0.5 text-xs text-neutral-800 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                  className="bg-white border border-neutral-300 rounded-md px-1.5 py-0.5 text-xs text-neutral-800 focus:outline-none focus:ring-1 focus:ring-nav-accent cursor-pointer"
                 >
                   {pageSizeOptions.map((sz) => (
                     <option key={sz} value={sz}>
@@ -1070,7 +1070,7 @@ export function SimpleTable<T extends Record<string, any>>({
               type="button"
               disabled={validCurrentPage <= 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="px-2.5 py-1 rounded-lg border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors cursor-pointer"
+              className="px-2.5 py-1 rounded-sm border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors cursor-pointer"
             >
               Previous
             </button>
@@ -1082,9 +1082,9 @@ export function SimpleTable<T extends Record<string, any>>({
                   key={page}
                   type="button"
                   onClick={() => setCurrentPage(page)}
-                  className={`w-7 h-7 rounded-lg text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
-                    validCurrentPage === page
-                      ? 'bg-primary text-white shadow-2xs shadow-primary/20'
+                  className={`w-7 h-7 rounded-sm text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
+ validCurrentPage === page
+ ? 'bg-primary text-white shadow-2xs shadow-primary/20'
                       : 'text-neutral-600 hover:bg-neutral-100'
                   }`}
                 >
@@ -1097,7 +1097,7 @@ export function SimpleTable<T extends Record<string, any>>({
               type="button"
               disabled={validCurrentPage >= totalPages || totalPages === 0}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="px-2.5 py-1 rounded-lg border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors cursor-pointer"
+              className="px-2.5 py-1 rounded-sm border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors cursor-pointer"
             >
               Next
             </button>
@@ -1181,9 +1181,9 @@ export function AssessmentTable({
     const activeVms = assessments.filter((a) => a.mode === 'cloud' && a.status === 'in_progress').length;
 
     return (
-      <div className={`rounded-3xl border border-neutral-200/80 bg-neutral-50/80 p-4 shadow-xs space-y-3 ${className}`}>
+      <div className={`rounded-md border border-neutral-200/80 bg-neutral-50/80 p-4 shadow-xs space-y-3 ${className}`}>
         {/* Bento Top Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-neutral-200/70 shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-md border border-neutral-200/70 shadow-2xs">
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base font-bold text-neutral-900 tracking-tight">
@@ -1199,11 +1199,11 @@ export function AssessmentTable({
           </div>
 
           <div className="flex items-center gap-2 text-xs">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-neutral-100 border border-neutral-200 text-neutral-700 font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-neutral-100 border border-neutral-200 text-neutral-700 font-medium">
+              <span className="w-2 h-2 rounded-full bg-success" />
               {scoredCount} Scored
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-neutral-100 border border-neutral-200 text-neutral-700 font-medium">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-neutral-100 border border-neutral-200 text-neutral-700 font-medium">
               <span className="w-2 h-2 rounded-full bg-primary" />
               {activeVms} Cloud VMs
             </span>
@@ -1212,7 +1212,7 @@ export function AssessmentTable({
         </div>
 
         {toolbar && (
-          <div className="bg-white px-4 py-2.5 rounded-xl border border-neutral-200/70">
+          <div className="bg-white px-4 py-2.5 rounded-md border border-neutral-200/70">
             {toolbar}
           </div>
         )}
@@ -1225,9 +1225,9 @@ export function AssessmentTable({
             return (
               <div
                 key={item.id}
-                className={`flex flex-wrap items-center justify-between gap-4 p-3.5 bg-white rounded-2xl border transition-all ${
-                  isSelected
-                    ? 'border-primary/50 shadow-xs ring-1 ring-primary/20'
+                className={`flex flex-wrap items-center justify-between gap-4 p-3.5 bg-white rounded-md border transition-all ${
+ isSelected
+ ? 'border-primary/50 shadow-xs ring-1 ring-primary/20'
                     : 'border-neutral-200/70 hover:border-neutral-300 hover:shadow-2xs'
                 }`}
               >
@@ -1237,7 +1237,7 @@ export function AssessmentTable({
                     aria-label={`Select ${item.candidateName}`}
                     checked={isSelected}
                     onChange={() => onToggleSelect?.(item.id)}
-                    className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary/25 cursor-pointer accent-primary"
+                    className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-nav-accent/25 cursor-pointer accent-primary"
                   />
                   <Avatar
                     size="md"
@@ -1270,7 +1270,7 @@ export function AssessmentTable({
                         {item.mode === 'cloud' ? 'Cloud VM' : 'Chat Workspace'}
                       </span>
                       {item.aiPolicy.enabled ? (
-                        <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-medium text-success-foreground bg-success-muted px-1.5 py-0.5 rounded">
                           AI Active
                         </span>
                       ) : (
@@ -1282,7 +1282,7 @@ export function AssessmentTable({
                   </div>
 
                   {item.score !== undefined && (
-                    <div className="px-2.5 py-1 rounded-xl bg-neutral-50 border border-neutral-200/80 text-center">
+                    <div className="px-2.5 py-1 rounded-md bg-neutral-50 border border-neutral-200/80 text-center">
                       <div className="text-[10px] uppercase font-bold text-neutral-400">Score</div>
                       <div className="text-xs font-bold font-mono text-neutral-900">{item.score}/100</div>
                     </div>
@@ -1495,8 +1495,8 @@ export function AssessmentTable({
 
                 <TableCell>
                   {item.aiPolicy.enabled ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="inline-flex items-center gap-1.5 text-xs text-success-foreground font-medium">
+                      <span className="w-2 h-2 rounded-full bg-success" />
                       Governed AI Enabled
                     </span>
                   ) : (
@@ -1606,7 +1606,7 @@ export function AssessmentTable({
                 if (el) el.indeterminate = someSelected;
               }}
               onChange={(e) => onSelectAll?.(e.target.checked)}
-              className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary/25 cursor-pointer accent-primary"
+              className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-nav-accent/25 cursor-pointer accent-primary"
             />
           </TableHead>
           <TableHead>Candidate</TableHead>
@@ -1634,7 +1634,7 @@ export function AssessmentTable({
                   aria-label={`Select ${item.candidateName}`}
                   checked={isSelected}
                   onChange={() => onToggleSelect?.(item.id)}
-                  className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary/25 cursor-pointer accent-primary"
+                  className="h-4 w-4 rounded border-neutral-300 text-primary focus:ring-nav-accent/25 cursor-pointer accent-primary"
                 />
               </TableCell>
 
@@ -1679,7 +1679,7 @@ export function AssessmentTable({
               <TableCell>
                 {item.aiPolicy.enabled ? (
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="w-2 h-2 rounded-full bg-success shrink-0" />
                     <span className="text-xs font-medium text-neutral-800">AI Active</span>
                     {item.aiPolicy.spend && (
                       <span className="text-[11px] text-neutral-500 font-mono">
@@ -1711,11 +1711,11 @@ export function AssessmentTable({
                   <div className="flex items-center gap-1.5">
                     <span
                       className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold font-mono ${
-                        item.score >= 85
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+ item.score >= 85
+ ? 'bg-success-muted text-success-foreground border border-success-border'
                           : item.score >= 70
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          ? 'bg-warning-muted text-warning-foreground border border-warning-border'
+                          : 'bg-danger-muted text-danger-foreground border border-danger-border'
                       }`}
                     >
                       {item.score}/100

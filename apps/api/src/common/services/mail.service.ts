@@ -25,6 +25,8 @@ export const DEFAULT_MAIL_CONFIG: Config = {
   WORKSPACE_RUNTIME: 'fake',
   APP_BASE_URL: 'http://localhost:3000',
   MAILPIT_URL: 'http://127.0.0.1:8025',
+  HIBP_FAIL_OPEN: true,
+  MFA_ENCRYPTION_KEY_ID: 'k1',
 };
 
 @Injectable()

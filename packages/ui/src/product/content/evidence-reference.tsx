@@ -8,12 +8,12 @@ export interface EvidenceReferenceProps extends HTMLAttributes<HTMLSpanElement> 
 }
 
 const typeConfig: Record<EvidenceType, { label: string; bg: string; text: string; border: string }> = {
-  term: { label: 'Terminal', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  term: { label: 'Terminal', bg: 'bg-success-muted', text: 'text-success-foreground', border: 'border-success-border' },
   diff: { label: 'Git Diff', bg: 'bg-primary/10', text: 'text-primary', border: 'border-primary/30' },
-  ai: { label: 'AI Prompt', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+  ai: { label: 'AI Prompt', bg: 'bg-primary/10', text: 'text-primary-700', border: 'border-primary/30' },
   file: { label: 'File', bg: 'bg-neutral-100', text: 'text-neutral-800', border: 'border-neutral-200' },
   event: { label: 'Activity', bg: 'bg-neutral-100', text: 'text-neutral-700', border: 'border-neutral-300' },
-  test: { label: 'Test Result', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+  test: { label: 'Test Result', bg: 'bg-danger-muted', text: 'text-danger-foreground', border: 'border-danger-border' },
 };
 
 export const EvidenceReference = forwardRef<HTMLSpanElement, EvidenceReferenceProps>(
@@ -29,9 +29,9 @@ export const EvidenceReference = forwardRef<HTMLSpanElement, EvidenceReferencePr
       <span
         ref={ref}
         onClick={() => isClickable && onView?.(reference)}
-        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg border text-[11px] font-mono select-none transition-colors ${
-          cfg.bg
-        } ${cfg.text} ${cfg.border} ${
+        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm border text-[11px] font-mono select-none transition-colors ${
+ cfg.bg
+ } ${cfg.text} ${cfg.border} ${
           isClickable ? 'cursor-pointer hover:brightness-125' : ''
         } ${className}`}
         {...props}

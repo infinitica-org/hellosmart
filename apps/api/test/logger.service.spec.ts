@@ -109,6 +109,12 @@ describe('AppLoggerService & Configuration', () => {
       expect(DEFAULT_REDACT_PATHS).toContain('*.mfaSecret');
       expect(DEFAULT_REDACT_PATHS).toContain('mfa_secret');
       expect(DEFAULT_REDACT_PATHS).toContain('*.mfa_secret');
+      expect(DEFAULT_REDACT_PATHS).toContain('mfaCode');
+      expect(DEFAULT_REDACT_PATHS).toContain('*.mfaCode');
+      expect(DEFAULT_REDACT_PATHS).toContain('totpCode');
+      expect(DEFAULT_REDACT_PATHS).toContain('*.totpCode');
+      expect(DEFAULT_REDACT_PATHS).toContain('code');
+      expect(DEFAULT_REDACT_PATHS).toContain('*.code');
       expect(DEFAULT_REDACT_PATHS).toContain('invitationToken');
       expect(DEFAULT_REDACT_PATHS).toContain('*.invitationToken');
       expect(DEFAULT_REDACT_PATHS).toContain('invitation_token');
@@ -141,6 +147,11 @@ describe('AppLoggerService & Configuration', () => {
           mfa_secret: 'mfa-snake-secret-key-456',
           invitationToken: 'invite-token-secret-999',
           recoveryCode: 'backup-code-secret-888',
+          mfaCode: '123456',
+          mfa_code: '654321',
+          totpCode: '789012',
+          totp_code: '210987',
+          code: 'secret_code_111',
         },
         apiKey: 'sk_live_1234567890',
         api_key: 'sk_live_snake_key_999',
@@ -165,6 +176,11 @@ describe('AppLoggerService & Configuration', () => {
       expect(log.auth?.mfa_secret).toBe('[REDACTED]');
       expect(log.auth?.invitationToken).toBe('[REDACTED]');
       expect(log.auth?.recoveryCode).toBe('[REDACTED]');
+      expect(log.auth?.mfaCode).toBe('[REDACTED]');
+      expect(log.auth?.mfa_code).toBe('[REDACTED]');
+      expect(log.auth?.totpCode).toBe('[REDACTED]');
+      expect(log.auth?.totp_code).toBe('[REDACTED]');
+      expect(log.auth?.code).toBe('[REDACTED]');
       expect(log.apiKey).toBe('[REDACTED]');
       expect(log.api_key).toBe('[REDACTED]');
       expect(log.DATABASE_URL).toBe('[REDACTED]');

@@ -7,7 +7,7 @@ export interface SkeletonProps extends HTMLAttributes<HTMLDivElement> {
 export const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(
   ({ variant = 'rectangular', className = '', ...props }, ref) => {
     const variantStyles = {
-      rectangular: 'rounded-xl',
+      rectangular: 'rounded-md',
       circular: 'rounded-full',
       text: 'rounded-md h-4 w-full',
     };

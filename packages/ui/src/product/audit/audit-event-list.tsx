@@ -19,12 +19,12 @@ export const AuditEventList = forwardRef<HTMLDivElement, AuditEventListProps>(
     return (
       <div
         ref={ref}
-        className={`w-full rounded-2xl border border-neutral-200 bg-white shadow-xs overflow-hidden ${className}`}
+        className={`w-full rounded-md border border-neutral-200 bg-white shadow-xs overflow-hidden ${className}`}
         {...props}
       >
         <div className="px-5 py-3.5 bg-neutral-50 border-b border-neutral-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="w-2 h-2 rounded-full bg-success" />
             <span className="text-xs font-semibold text-neutral-900">
               Append-Only Audit Trail (BR-31)
             </span>

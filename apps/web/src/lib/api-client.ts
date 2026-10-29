@@ -41,6 +41,53 @@ export class RateLimitedError extends ApiError {
   }
 }
 
+export const CSRF_HEADER_NAME = 'X-HS-CSRF';
+export const CSRF_HEADER_VALUE = '1';
+
+const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/**
+ * Returns CSRF header object if the method is state-changing (POST, PUT, PATCH, DELETE).
+ */
+export function getCsrfHeaders(method?: string): Record<string, string> {
+  if (method && STATE_CHANGING_METHODS.has(method.toUpperCase())) {
+    return { [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE };
+  }
+  return {};
+}
+
+/**
+ * Attaches the CSRF header to a HeadersInit object for state-changing HTTP methods.
+ */
+export function attachCsrfHeader(headers: HeadersInit = {}, method?: string): Headers {
+  const h = new Headers(headers);
+  if (method && STATE_CHANGING_METHODS.has(method.toUpperCase())) {
+    h.set(CSRF_HEADER_NAME, CSRF_HEADER_VALUE);
+  }
+  return h;
+}
+
+/**
+ * Shared fetch wrapper that attaches X-HS-CSRF on browser state-changing requests
+ * and ensures credentials: 'include'.
+ */
+export async function apiFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  fetchFn: typeof fetch = fetch,
+): Promise<Response> {
+  const method = (init.method || 'GET').toUpperCase();
+  const headers = new Headers(init.headers || {});
+  if (STATE_CHANGING_METHODS.has(method)) {
+    headers.set(CSRF_HEADER_NAME, CSRF_HEADER_VALUE);
+  }
+  return fetchFn(input, {
+    ...init,
+    headers,
+    credentials: init.credentials || 'include',
+  });
+}
+
 export interface UserMe {
   id: string;
   email: string;
@@ -56,10 +103,49 @@ export interface UserMe {
 }
 
 export function getApiBaseUrl(): string {
-  if (typeof window !== 'undefined') {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000';
+  const raw =
+    typeof window !== 'undefined'
+      ? process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000'
+      : process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000';
+  const trimmed = raw.replace(/\/$/, '');
+  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+}
+
+/**
+ * Browser calls go through the Next.js BFF so HttpOnly hs_session (on :3000) is forwarded to the API.
+ */
+export function resolveBrowserAuthUrl(apiV1Path: string): string {
+  if (typeof window === 'undefined') {
+    const base = getApiBaseUrl();
+    return `${base}${apiV1Path.startsWith('/') ? apiV1Path : `/${apiV1Path}`}`;
   }
-  return process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000';
+
+  const path = apiV1Path.startsWith('/') ? apiV1Path : `/${apiV1Path}`;
+
+  if (path === '/me') {
+    return '/api/auth/me';
+  }
+  if (path === '/auth/logout') {
+    return '/api/auth/logout';
+  }
+  if (path === '/auth/sessions') {
+    return '/api/auth/sessions';
+  }
+  if (path === '/auth/logout-all') {
+    return '/api/auth/logout-all';
+  }
+  if (path === '/auth/password/change') {
+    return '/api/auth/password/change';
+  }
+  if (path.startsWith('/auth/mfa/')) {
+    return `/api/auth${path.slice('/auth'.length)}`;
+  }
+  const sessionRevokeMatch = /^\/auth\/sessions\/([^/]+)$/.exec(path);
+  if (sessionRevokeMatch?.[1]) {
+    return `/api/auth/sessions/${encodeURIComponent(sessionRevokeMatch[1])}`;
+  }
+
+  return `${getApiBaseUrl()}${path}`;
 }
 
 /**
@@ -118,6 +204,7 @@ export async function acceptInvitation(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE,
     },
     body: JSON.stringify(data),
     credentials: 'include',
@@ -157,27 +244,31 @@ export async function acceptInvitation(
 }
 
 /**
- * Authenticates user via POST /api/v1/auth/login.
+ * Authenticates user via the Next.js BFF in the browser (same-origin cookies),
+ * or POST /api/v1/auth/login on the server.
  */
 export async function login(
   credentials: { email: string; password: string; mfaCode?: string },
   fetchFn: typeof fetch = fetch,
 ): Promise<UserMe> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/auth/login`;
+  const url =
+    typeof window !== 'undefined'
+      ? '/api/auth/login'
+      : `${getApiBaseUrl()}/auth/login`;
 
   const res = await fetchFn(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE,
     },
     body: JSON.stringify(credentials),
     credentials: 'include',
   });
 
   if (res.status === 401) {
-    throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid email or password.');
+    throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid email or password, or account not found.');
   }
 
   if (res.status === 429) {
@@ -204,13 +295,13 @@ export async function login(
 export async function logout(
   fetchFn: typeof fetch = fetch,
 ): Promise<SimpleSuccessResponse> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/auth/logout`;
+  const url = resolveBrowserAuthUrl('/auth/logout');
 
   const res = await fetchFn(url, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
+      [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE,
     },
     credentials: 'include',
   });
@@ -235,8 +326,7 @@ export async function logout(
 export async function listSessions(
   fetchFn: typeof fetch = fetch,
 ): Promise<ActiveSessionsResponse> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/auth/sessions`;
+  const url = resolveBrowserAuthUrl('/auth/sessions');
 
   const res = await fetchFn(url, {
     method: 'GET',
@@ -271,8 +361,7 @@ export async function revokeSession(
   sessionId: string,
   fetchFn: typeof fetch = fetch,
 ): Promise<SimpleSuccessResponse> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/auth/sessions/${encodeURIComponent(sessionId)}`;
+  const url = resolveBrowserAuthUrl(`/auth/sessions/${encodeURIComponent(sessionId)}`);
 
   const res = await fetchFn(url, {
     method: 'DELETE',
@@ -301,13 +390,12 @@ export async function revokeSession(
 }
 
 /**
- * Revokes all sessions for current user across all devices via POST /api/v1/auth/sessions/logout-all.
+ * Revokes all sessions for current user across all devices via POST /api/v1/auth/logout-all.
  */
 export async function logoutAllSessions(
   fetchFn: typeof fetch = fetch,
 ): Promise<SimpleSuccessResponse> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/auth/sessions/logout-all`;
+  const url = resolveBrowserAuthUrl('/auth/logout-all');
 
   const res = await fetchFn(url, {
     method: 'POST',
@@ -342,14 +430,14 @@ export async function changePassword(
   input: ChangePasswordRequest,
   fetchFn: typeof fetch = fetch,
 ): Promise<SimpleSuccessResponse> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/auth/password/change`;
+  const url = resolveBrowserAuthUrl('/auth/password/change');
 
   const res = await fetchFn(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE,
     },
     body: JSON.stringify(input),
     credentials: 'include',
@@ -394,8 +482,7 @@ export async function changePassword(
 export async function getMe(
   fetchFn: typeof fetch = fetch,
 ): Promise<UserMe> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/me`;
+  const url = resolveBrowserAuthUrl('/me');
 
   const res = await fetchFn(url, {
     method: 'GET',

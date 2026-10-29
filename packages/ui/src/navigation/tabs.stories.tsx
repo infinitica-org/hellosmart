@@ -82,7 +82,7 @@ export const InteractiveTabSwitching: Story = {
 
 export const FittedSegmentedTabs: Story = {
   render: () => (
-    <div className="max-w-md bg-white p-4 rounded-2xl border border-neutral-200">
+    <div className="max-w-md bg-white p-4 rounded-md border border-neutral-200">
       <Tabs variant="segmented" fitted defaultValue="all">
         <TabsList>
           <TabsTrigger value="all">All (42)</TabsTrigger>
@@ -101,7 +101,7 @@ export const FittedSegmentedTabs: Story = {
 
 export const FittedPillTabsWithIcons: Story = {
   render: () => (
-    <div className="max-w-lg bg-white p-4 rounded-2xl border border-neutral-200">
+    <div className="max-w-lg bg-white p-4 rounded-md border border-neutral-200">
       <Tabs variant="pills" fitted defaultValue="terminal">
         <TabsList>
           <TabsTrigger

@@ -34,7 +34,7 @@ type Story = StoryObj<typeof AssignmentStatusBadge>;
 
 export const Default: Story = {
   render: (args) => (
-    <div className="p-8 bg-white rounded-2xl border border-neutral-200 shadow-xs flex items-center justify-center">
+    <div className="p-8 bg-white rounded-md border border-neutral-200 shadow-xs flex items-center justify-center">
       <AssignmentStatusBadge {...args} />
     </div>
   ),
@@ -43,7 +43,7 @@ export const Default: Story = {
 export const LifecycleMatrix: Story = {
   name: 'Complete Lifecycle States (BRD 7.1)',
   render: () => (
-    <div className="p-8 max-w-xl mx-auto bg-white rounded-2xl border border-neutral-200/80 shadow-xs space-y-3">
+    <div className="p-8 max-w-xl mx-auto bg-white rounded-md border border-neutral-200/80 shadow-xs space-y-3">
       <div className="grid grid-cols-2 gap-3">
         {ALL_STATUSES.map((status) => (
           <div

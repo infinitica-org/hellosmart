@@ -1,95 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logDevError } from '@/lib/dev-error-log';
+import { DEV_LOGIN_ACCOUNTS } from '@/lib/dev-login-accounts';
+import { resolveServerApiV1Base } from '@/lib/api-base-url';
+import { forwardApiSessionCookie } from '@/lib/forward-api-session-cookie';
 import { DEV_SESSION_STORE, MOCK_PREAUTH_STORE } from '@/lib/session-store';
-
-interface DevUser {
-  email: string;
-  role: 'platform_admin' | 'company_admin' | 'candidate';
-  portal: 'admin' | 'company' | 'candidate';
-  name: string;
-  requiresMfa?: boolean;
-  status?: 'active' | 'suspended';
-}
-
-const DEV_ACCOUNTS: Record<string, DevUser> = {
-  'admin@hellosmart.ai': {
-    email: 'admin@hellosmart.ai',
-    role: 'platform_admin',
-    portal: 'admin',
-    name: 'Platform Administrator',
-    requiresMfa: true,
-    status: 'active',
-  },
-  'platform.admin@hellosmart.ai': {
-    email: 'platform.admin@hellosmart.ai',
-    role: 'platform_admin',
-    portal: 'admin',
-    name: 'Platform Administrator',
-    requiresMfa: true,
-    status: 'active',
-  },
-  'admin.super@seed.example.test': {
-    email: 'admin.super@seed.example.test',
-    role: 'platform_admin',
-    portal: 'admin',
-    name: 'Super Admin',
-    requiresMfa: true,
-    status: 'active',
-  },
-  'company@example.com': {
-    email: 'company@example.com',
-    role: 'company_admin',
-    portal: 'company',
-    name: 'Acme Corp Admin',
-    requiresMfa: false,
-    status: 'active',
-  },
-  'company.admin@seed.example.test': {
-    email: 'company.admin@seed.example.test',
-    role: 'company_admin',
-    portal: 'company',
-    name: 'Company Admin',
-    requiresMfa: false,
-    status: 'active',
-  },
-  'candidate@example.com': {
-    email: 'candidate@example.com',
-    role: 'candidate',
-    portal: 'candidate',
-    name: 'Jane Doe',
-    requiresMfa: false,
-    status: 'active',
-  },
-  'complete@seed.example.test': {
-    email: 'complete@seed.example.test',
-    role: 'candidate',
-    portal: 'candidate',
-    name: 'Complete Candidate',
-    requiresMfa: false,
-    status: 'active',
-  },
-  'alex.turner@seed.example.test': {
-    email: 'alex.turner@seed.example.test',
-    role: 'candidate',
-    portal: 'candidate',
-    name: 'Alex Turner',
-    requiresMfa: false,
-    status: 'active',
-  },
-  'suspended@example.com': {
-    email: 'suspended@example.com',
-    role: 'company_admin',
-    portal: 'company',
-    name: 'Suspended Account',
-    status: 'suspended',
-  },
-  'admin.suspended@seed.example.test': {
-    email: 'admin.suspended@seed.example.test',
-    role: 'platform_admin',
-    portal: 'admin',
-    name: 'Suspended Admin',
-    status: 'suspended',
-  },
-};
 
 // Track failed attempts in memory for rate-limiting simulation
 const failedAttempts: Record<string, number> = {};
@@ -137,19 +51,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const rawApiUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
-    const apiBaseUrl = rawApiUrl.replace(/\/$/, '');
+    const apiBaseUrl = resolveServerApiV1Base();
 
     // 1. Attempt real backend call first
     try {
-      const loginUrl = apiBaseUrl.endsWith('/api/v1')
-        ? `${apiBaseUrl}/auth/login`
-        : `${apiBaseUrl}/api/v1/auth/login`;
+      const loginUrl = `${apiBaseUrl}/auth/login`;
 
       const apiRes = await fetch(loginUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-HS-CSRF': '1',
         },
         body: JSON.stringify({ email: normalizedEmail, password, mfaCode }),
       });
@@ -159,15 +71,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (apiRes.ok) {
         failedAttempts[normalizedEmail] = 0;
         const res = NextResponse.json(data, { status: 200 });
-        const setCookie = apiRes.headers.get('set-cookie');
-        if (setCookie) {
-          res.headers.set('set-cookie', setCookie);
-        }
+        forwardApiSessionCookie(apiRes, res);
         return res;
       }
 
       // If backend returned a specific error status (401, 403, 429, etc.), relay it directly.
       // Never fall back to DEV_ACCOUNTS when the backend is reachable.
+      if (apiRes.status >= 500) {
+        logDevError('auth/login:backend-error', new Error(data?.detail || data?.title || 'Backend login failed'), {
+          status: apiRes.status,
+          code: data?.code,
+          email: normalizedEmail,
+          body: data,
+        });
+      }
       return NextResponse.json(
         data || {
           type: 'about:blank',
@@ -177,7 +94,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         },
         { status: apiRes.status },
       );
-    } catch {
+    } catch (backendError) {
+      logDevError('auth/login:backend-fetch', backendError, {
+        loginUrl: `${apiBaseUrl}/auth/login`,
+        email: normalizedEmail,
+      });
       // Backend offline / unreachable
       // Never use demo credentials if the backend is unavailable
       // unless explicitly enabled for local development. Fail closed with 503.
@@ -195,7 +116,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // 2. Development-only mock fallback (reachable ONLY when devFallbackEnabled is true)
-    const user = DEV_ACCOUNTS[normalizedEmail];
+    const user = DEV_LOGIN_ACCOUNTS[normalizedEmail];
 
     if (!user) {
       failedAttempts[normalizedEmail] = (failedAttempts[normalizedEmail] || 0) + 1;
@@ -300,13 +221,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     return res;
-  } catch {
+  } catch (error) {
+    logDevError('auth/login', error);
     return NextResponse.json(
       {
         type: 'about:blank',
         title: 'Internal Server Error',
         status: 500,
-        detail: 'An unexpected error occurred during login.',
+        detail:
+          process.env.NODE_ENV === 'development' && error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred during login.',
       },
       { status: 500 },
     );

@@ -119,16 +119,16 @@ const variantConfigs: Record<ToastVariant, { border: string; badge: string }> = 
     badge: 'bg-primary/10 text-primary border-primary/20',
   },
   success: {
-    border: 'border-neutral-200/90 border-l-4 border-l-emerald-500',
-    badge: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+    border: 'border-neutral-200/90 border-l-4 border-l-success',
+    badge: 'bg-success-muted text-success border-success-border',
   },
   warning: {
-    border: 'border-neutral-200/90 border-l-4 border-l-amber-500',
-    badge: 'bg-amber-50 text-amber-600 border-amber-200',
+    border: 'border-neutral-200/90 border-l-4 border-l-warning',
+    badge: 'bg-warning-muted text-warning border-warning-border',
   },
   error: {
-    border: 'border-neutral-200/90 border-l-4 border-l-rose-500',
-    badge: 'bg-rose-50 text-rose-600 border-rose-200',
+    border: 'border-neutral-200/90 border-l-4 border-l-danger',
+    badge: 'bg-danger-muted text-danger border-danger-border',
   },
 };
 
@@ -187,10 +187,10 @@ export const ToastItem = forwardRef<HTMLDivElement, ToastItemProps>(
         aria-live="polite"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-2xl bg-white border ${config.border} shadow-xl shadow-neutral-900/10 backdrop-blur-md text-neutral-900 transition-all duration-200 animate-fade-in ${itemClassName}`}
+        className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-md bg-white border ${config.border} shadow-lg text-neutral-900 transition-all duration-200 animate-fade-in ${itemClassName}`}
         {...props}
       >
-        <div className={`p-1.5 rounded-xl border shrink-0 ${config.badge}`}>
+        <div className={`p-1.5 rounded-md border shrink-0 ${config.badge}`}>
           {icon}
         </div>
 
@@ -220,7 +220,7 @@ export const ToastItem = forwardRef<HTMLDivElement, ToastItemProps>(
             type="button"
             onClick={handleDismiss}
             aria-label="Dismiss notification"
-            className="text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 p-1 rounded-lg transition-colors shrink-0 cursor-pointer"
+            className="text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 p-1 rounded-sm transition-colors shrink-0 cursor-pointer"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
               <path

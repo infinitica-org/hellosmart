@@ -30,7 +30,7 @@ export const WorkspaceConnectionStatus = forwardRef<HTMLDivElement, WorkspaceCon
     return (
       <div
         ref={ref}
-        className={`inline-flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white border border-neutral-200 text-xs shadow-xs text-neutral-900 ${className}`}
+        className={`inline-flex items-center gap-3 px-3 py-1.5 rounded-md bg-white border border-neutral-200 text-xs shadow-xs text-neutral-900 ${className}`}
         {...props}
       >
         <StatusIndicator status={cfg.type} label={cfg.label} />

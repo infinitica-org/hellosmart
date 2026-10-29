@@ -47,7 +47,7 @@ export const Auth: Story = {
     logoVariant: 'image',
   },
   render: (args) => (
-    <div className="w-full max-w-lg mx-auto p-6 bg-canvas rounded-2xl border border-neutral-200 shadow-xs">
+    <div className="w-full max-w-lg mx-auto p-6 bg-canvas rounded-md border border-neutral-200 shadow-xs">
       <div className="p-8 bg-white rounded-xl border border-neutral-200 text-center mb-4">
         <h3 className="font-semibold text-neutral-800 text-base">Login</h3>
         <p className="text-xs text-neutral-500 mt-1">Sign in to your account</p>
@@ -115,7 +115,7 @@ export const PasswordReset: Story = {
     logoVariant: 'image',
   },
   render: (args) => (
-    <div className="w-full max-w-lg mx-auto p-6 bg-canvas rounded-2xl border border-neutral-200 shadow-xs">
+    <div className="w-full max-w-lg mx-auto p-6 bg-canvas rounded-md border border-neutral-200 shadow-xs">
       <div className="p-8 bg-white rounded-xl border border-neutral-200 text-center mb-4">
         <h3 className="font-semibold text-neutral-800 text-base">Reset Password</h3>
         <p className="text-xs text-neutral-500 mt-1">Create a new secure password</p>

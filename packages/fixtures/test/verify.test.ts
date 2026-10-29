@@ -84,11 +84,33 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
       }, /SECURITY FATAL: Database host 'production-db\.hellosmart\.ai' is non-local and not in the approved local host allowlist/);
     });
 
+    it('refuses verification before connecting when DATABASE_MIGRATOR_URL in environment points to non-local host', async () => {
+      const origMigrator = process.env.DATABASE_MIGRATOR_URL;
+      try {
+        process.env.DATABASE_MIGRATOR_URL =
+          'postgres://hs_migrator:secret@production-migrator.hellosmart.ai:5432/hellosmart';
+        await assert.rejects(async () => {
+          await runVerifySeed({
+            nodeEnv: 'test',
+            databaseUrl: TEST_DB_URL,
+            quiet: true,
+          });
+        }, /SECURITY FATAL: Database host 'production-migrator\.hellosmart\.ai' is non-local and not in the approved local host allowlist/);
+      } finally {
+        if (origMigrator) process.env.DATABASE_MIGRATOR_URL = origMigrator;
+        else delete process.env.DATABASE_MIGRATOR_URL;
+      }
+    });
+
     it('refuses verification before connecting when DATABASE_URL is missing', async () => {
       const origMigrator = process.env.DATABASE_MIGRATOR_URL;
       const origDb = process.env.DATABASE_URL;
+      const origTest = process.env.TEST_DATABASE_URL;
+      const origSeed = process.env.SEED_DATABASE_URL;
       delete process.env.DATABASE_MIGRATOR_URL;
       delete process.env.DATABASE_URL;
+      delete process.env.TEST_DATABASE_URL;
+      delete process.env.SEED_DATABASE_URL;
 
       try {
         await assert.rejects(async () => {
@@ -101,6 +123,8 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
       } finally {
         if (origMigrator) process.env.DATABASE_MIGRATOR_URL = origMigrator;
         if (origDb) process.env.DATABASE_URL = origDb;
+        if (origTest) process.env.TEST_DATABASE_URL = origTest;
+        if (origSeed) process.env.SEED_DATABASE_URL = origSeed;
       }
     });
   });

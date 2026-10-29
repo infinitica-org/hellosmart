@@ -183,7 +183,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
         }}
         role="menu"
         aria-orientation="vertical"
-        className={`absolute z-50 mt-2 min-w-[12rem] rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl shadow-black/10 focus:outline-none ${alignClasses} ${className}`}
+        className={`absolute z-50 mt-2 min-w-[12rem] rounded-md border border-[#d8dee6] bg-white p-1 shadow-lg focus:outline-none ${alignClasses} ${className}`}
         {...props}
       >
         {children}
@@ -211,7 +211,7 @@ export const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemPr
 
     const variantStyles =
       variant === 'danger'
-        ? 'text-rose-600 hover:bg-rose-50 focus:bg-rose-50'
+        ? 'text-danger hover:bg-danger-muted focus:bg-danger-muted'
         : 'text-neutral-700 hover:text-neutral-900 hover:bg-primary/10 focus:bg-primary/10 focus:text-neutral-900';
 
     return (
@@ -221,7 +221,7 @@ export const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemPr
         role="menuitem"
         disabled={disabled}
         onClick={handleClick}
-        className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none focus:outline-none ${variantStyles} ${className}`}
+        className={`flex w-full items-center gap-2.5 rounded-sm px-2.5 py-2 text-xs font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none focus:outline-none ${variantStyles} ${className}`}
         {...props}
       >
         {icon && <span className="flex-shrink-0 text-neutral-500">{icon}</span>}
@@ -298,7 +298,7 @@ export const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>(
               menuRef.current = node;
             }}
             style={{ position: 'fixed', left: `${pos.x}px`, top: `${pos.y}px` }}
-            className="z-50 min-w-[10rem] rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl shadow-black/10"
+            className="z-50 min-w-[10rem] rounded-md border border-neutral-200 bg-white p-1.5 shadow-lg"
           >
             {content}
           </div>
@@ -336,9 +336,9 @@ export const SidebarNavItem = forwardRef<HTMLAnchorElement, SidebarNavItemProps>
     <a
       ref={ref}
       href={href}
-      className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-        active
-          ? 'bg-primary/10 text-primary border border-primary/30 font-semibold'
+      className={`flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-all ${
+ active
+ ? 'bg-primary/10 text-primary border border-primary/30 font-semibold'
           : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
       } ${className}`}
       {...props}

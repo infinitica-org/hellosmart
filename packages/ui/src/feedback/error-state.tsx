@@ -26,7 +26,7 @@ export function ErrorState({
     <div
       className={`min-h-[60vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
-      <div className="w-18 h-18 rounded-3xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-6 shadow-sm p-4">
+      <div className="w-18 h-18 rounded-md bg-danger-muted border border-danger-border flex items-center justify-center text-danger mb-6 shadow-sm p-4">
         <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
@@ -37,7 +37,7 @@ export function ErrorState({
         </svg>
       </div>
 
-      <span className="text-xs font-mono font-bold tracking-widest text-rose-600 uppercase mb-2">
+      <span className="text-xs font-mono font-bold tracking-widest text-danger uppercase mb-2">
         Application Error
       </span>
 
@@ -74,7 +74,7 @@ export function NotFound({
     <div
       className={`min-h-[70vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
-      <div className="w-20 h-20 rounded-3xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary mb-6 shadow-sm">
+      <div className="w-20 h-20 rounded-md bg-primary/10 border border-primary/30 flex items-center justify-center text-primary mb-6 shadow-sm">
         <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
@@ -117,7 +117,7 @@ export function AccessDenied({
     <div
       className={`min-h-[70vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
-      <div className="w-20 h-20 rounded-3xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mb-6 shadow-sm">
+      <div className="w-20 h-20 rounded-md bg-warning-muted border border-warning-border flex items-center justify-center text-warning mb-6 shadow-sm">
         <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
@@ -128,7 +128,7 @@ export function AccessDenied({
         </svg>
       </div>
 
-      <span className="text-xs font-mono font-bold tracking-widest text-amber-600 uppercase mb-2">
+      <span className="text-xs font-mono font-bold tracking-widest text-warning uppercase mb-2">
         403 &bull; Forbidden
       </span>
 
@@ -161,7 +161,7 @@ export function ServerError({
     <div
       className={`min-h-[70vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
-      <div className="w-20 h-20 rounded-3xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-6 shadow-sm">
+      <div className="w-20 h-20 rounded-md bg-danger-muted border border-danger-border flex items-center justify-center text-danger mb-6 shadow-sm">
         <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
@@ -172,7 +172,7 @@ export function ServerError({
         </svg>
       </div>
 
-      <span className="text-xs font-mono font-bold tracking-widest text-rose-600 uppercase mb-2">
+      <span className="text-xs font-mono font-bold tracking-widest text-danger uppercase mb-2">
         500 &bull; Server Failure
       </span>
 
@@ -208,7 +208,7 @@ export function NetworkError({
     <div
       className={`min-h-[60vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
-      <div className="w-18 h-18 rounded-3xl bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-600 mb-6 shadow-sm p-4">
+      <div className="w-18 h-18 rounded-md bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-600 mb-6 shadow-sm p-4">
         <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"

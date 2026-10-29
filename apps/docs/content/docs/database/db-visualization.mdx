@@ -19,6 +19,7 @@ erDiagram
     ORGANIZATIONS ||--o{ USERS : "contains"
     ORGANIZATIONS ||--o{ INVITATIONS : "issues"
     USERS ||--o{ INVITATIONS : "receives"
+    USERS ||--o{ PASSWORD_HISTORY : "retains"
     ORGANIZATIONS ||--o{ TEMPLATE_ASSIGNMENTS : "licensed_to"
     ORGANIZATIONS ||--o{ ASSESSMENTS : "creates"
     ORGANIZATIONS ||--o{ CANDIDATES : "owns"
@@ -75,6 +76,8 @@ erDiagram
         string role "platform_admin | company_admin | candidate"
         string password_hash "argon2id"
         boolean must_reset_password
+        text mfa_secret_ref "AES-256-GCM envelope or env reference"
+        bigint mfa_last_step "Atomic TOTP replay protection counter"
         string status "invited | active | suspended | deleted"
         timestamptz locked_until
     }
@@ -88,6 +91,12 @@ erDiagram
         bytea token_hash UK "sha256(raw_token)"
         timestamptz expires_at "Strictly <= 72h"
         timestamptz used_at
+    }
+
+    PASSWORD_HISTORY {
+        uuid id PK
+        uuid user_id FK
+        string password_hash "argon2id"
         timestamptz created_at
     }
 
@@ -216,6 +225,18 @@ Pre-login operations (login lookup and invitation acceptance) cannot supply a ve
    Returns public invitation metadata (email, role, organization name) for the invite acceptance UI, without granting access to the underlying `app.invitations` table. Requires an unexpired, unconsumed invitation with exact 32-byte SHA-256 token hash.
 4. **`app.accept_invitation(p_token_hash, p_password_hash, p_ip, p_user_agent, p_request_id)`**:
    Atomically burns the invitation token, marks the user status as `active`, sets the password hash, and records an immutable audit log entry in `audit.events` inside a single database transaction. Eliminates any need for the API to execute `set_config('app.is_platform', 'true')` in client code.
+5. **`app.consume_totp_step(p_user_id, p_step)`** (migration `0007_mfa_hardening`):
+   Atomically consumes a TOTP time-step (`mfa_last_step`) using conditional update (`WHERE mfa_last_step IS NULL OR mfa_last_step < p_step`). Guarantees concurrent TOTP replay protection across distributed API nodes with zero race conditions.
+6. **`app.get_user_mfa_last_step(p_user_id)`**:
+   Returns the last consumed time-step counter for verification and security audit inspection.
+7. **`app.upgrade_user_mfa_secret(p_user_id, p_encrypted_secret)`**:
+   Enables opportunistic zero-downtime migration of legacy plaintext Base32 secrets or envelopes encrypted with previous keys to the active AES-256-GCM encryption key upon successful login.
+8. **`app.set_mfa_enrollment_pending` / `app.confirm_mfa_enrollment`** (migration `0008_mfa_enrollment`):
+   Stores a pending encrypted TOTP secret during platform-admin MFA setup, then promotes it to `mfa_secret_ref` after the user confirms an authenticator code.
+9. **`app.mfa_backup_codes` table** (migration `0008_mfa_enrollment`):
+   Stores SHA-256 hashes of one-time backup codes; `app.consume_mfa_backup_code` marks a code used at login when the authenticator app is unavailable.
+10. **`app.get_mfa_enrollment_pending(p_user_id)`** (migration `0009_mfa_enrollment_pending_read`):
+   Reads pending MFA setup material under `SECURITY DEFINER` so platform-admin rows remain visible when RLS would otherwise hide `org_id IS NULL` users.
 
 ### Principle of Least Privilege
 All `SECURITY DEFINER` routines revoke `EXECUTE` privileges from `PUBLIC` and grant execute permissions exclusively to the non-owner application role `hs_app`:

@@ -50,7 +50,7 @@ type Story = StoryObj<typeof ToastItem>;
 export const Default: Story = {
   name: '1. Standalone Toast (Controls Enabled)',
   render: (args) => (
-    <div className="max-w-md p-6 bg-neutral-50 rounded-2xl border border-neutral-200">
+    <div className="max-w-md p-6 bg-neutral-50 rounded-md border border-neutral-200">
       <ToastItem {...args} />
     </div>
   ),
@@ -62,7 +62,7 @@ export const Default: Story = {
 export const AllVariants: Story = {
   name: '2. All Color Variants Showcase',
   render: () => (
-    <div className="flex flex-col gap-3 max-w-md p-6 bg-neutral-50 rounded-2xl border border-neutral-200">
+    <div className="flex flex-col gap-3 max-w-md p-6 bg-neutral-50 rounded-md border border-neutral-200">
       <ToastItem
         variant="info"
         title="Environment Saved (Info)"
@@ -99,7 +99,7 @@ export const AllVariants: Story = {
 export const WithAction: Story = {
   name: '3. Toast with Action Callback',
   render: () => (
-    <div className="max-w-md p-6 bg-neutral-50 rounded-2xl border border-neutral-200">
+    <div className="max-w-md p-6 bg-neutral-50 rounded-md border border-neutral-200">
       <ToastItem
         variant="success"
         title="Candidate Submitted Task"
@@ -120,7 +120,7 @@ export const WithAction: Story = {
 export const CustomIcon: Story = {
   name: '4. Custom Icon Override',
   render: () => (
-    <div className="max-w-md p-6 bg-neutral-50 rounded-2xl border border-neutral-200">
+    <div className="max-w-md p-6 bg-neutral-50 rounded-md border border-neutral-200">
       <ToastItem
         variant="info"
         title="Git Snapshot Committed"

@@ -39,27 +39,27 @@ export type ButtonProps = ButtonBaseProps &
 
 const baseVariantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-primary hover:bg-primary-hover text-white shadow-md shadow-primary/25 border border-primary/40 focus-visible:ring-primary',
+    'bg-primary hover:bg-primary-hover text-white border border-primary/30 shadow-none focus-visible:ring-nav-accent',
   orange:
-    'bg-primary hover:bg-primary-hover text-white shadow-md shadow-primary/25 border border-primary/40 focus-visible:ring-primary',
+    'bg-primary hover:bg-primary-hover text-white border border-primary/30 shadow-none focus-visible:ring-nav-accent',
   black:
-    'bg-neutral-900 hover:bg-black text-white shadow-md shadow-neutral-950/25 border border-neutral-800 focus-visible:ring-neutral-900',
+    'bg-chrome hover:bg-chrome-hover text-white border border-chrome shadow-none focus-visible:ring-nav-accent',
   white:
-    'bg-white hover:bg-neutral-50 text-neutral-900 shadow-xs border border-neutral-200 focus-visible:ring-neutral-400',
+    'bg-white hover:bg-canvas text-foreground border border-[#d8dee6] shadow-none focus-visible:ring-nav-accent',
   secondary:
-    'bg-white hover:bg-neutral-50 text-neutral-800 border border-neutral-300 shadow-xs focus-visible:ring-neutral-400',
+    'bg-white hover:bg-canvas text-foreground border border-[#d8dee6] shadow-none focus-visible:ring-nav-accent',
   outline:
-    'bg-transparent hover:bg-neutral-100 text-neutral-700 border border-neutral-300 focus-visible:ring-neutral-400',
+    'bg-white hover:bg-canvas text-foreground border border-[#d8dee6] focus-visible:ring-nav-accent',
   ghost:
-    'bg-transparent hover:bg-neutral-100 text-neutral-700 hover:text-neutral-900 border-transparent shadow-none focus-visible:ring-neutral-400',
+    'bg-transparent hover:bg-canvas text-[#3d4754] hover:text-foreground border-transparent shadow-none focus-visible:ring-nav-accent',
   text:
-    'bg-transparent hover:bg-neutral-100/80 text-neutral-700 hover:text-neutral-900 border-transparent shadow-none focus-visible:ring-neutral-400',
+    'bg-transparent hover:bg-canvas text-[#3d4754] hover:text-foreground border-transparent shadow-none focus-visible:ring-nav-accent',
   link:
-    'bg-transparent hover:underline text-primary hover:text-primary-hover p-0 h-auto min-h-0 border-transparent shadow-none focus-visible:ring-primary rounded-none',
+    'bg-transparent hover:underline text-nav-accent hover:text-nav p-0 h-auto min-h-0 border-transparent shadow-none focus-visible:ring-nav-accent rounded-none',
   danger:
-    'bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-950/20 border border-rose-500/30 focus-visible:ring-rose-400',
+    'bg-danger hover:bg-danger-foreground text-white border border-danger/30 shadow-none focus-visible:ring-danger',
   success:
-    'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950/20 border border-emerald-500/30 focus-visible:ring-emerald-400',
+    'bg-success hover:bg-success-foreground text-white border border-success/30 shadow-none focus-visible:ring-success',
 };
 
 function resolveButtonClasses(variant: ButtonVariant = 'primary', color?: ButtonColor): string {
@@ -69,13 +69,13 @@ function resolveButtonClasses(variant: ButtonVariant = 'primary', color?: Button
 
   if (color === 'orange') {
     if (variant === 'outline') {
-      return 'bg-transparent hover:bg-primary/10 text-primary border border-primary/50 focus-visible:ring-primary';
+      return 'bg-transparent hover:bg-primary/10 text-primary border border-primary/50 focus-visible:ring-nav-accent';
     }
     if (variant === 'ghost' || variant === 'text') {
-      return 'bg-transparent hover:bg-primary/10 text-primary hover:text-primary-hover border-transparent shadow-none focus-visible:ring-primary';
+      return 'bg-transparent hover:bg-primary/10 text-primary hover:text-primary-hover border-transparent shadow-none focus-visible:ring-nav-accent';
     }
     if (variant === 'link') {
-      return 'bg-transparent hover:underline text-primary hover:text-primary-hover p-0 h-auto min-h-0 border-transparent shadow-none focus-visible:ring-primary rounded-none';
+      return 'bg-transparent hover:underline text-primary hover:text-primary-hover p-0 h-auto min-h-0 border-transparent shadow-none focus-visible:ring-nav-accent rounded-none';
     }
     return baseVariantStyles.orange;
   }
@@ -105,20 +105,20 @@ function resolveButtonClasses(variant: ButtonVariant = 'primary', color?: Button
 
   if (color === 'danger') {
     if (variant === 'outline') {
-      return 'bg-transparent hover:bg-rose-50 text-rose-600 border border-rose-300 focus-visible:ring-rose-400';
+      return 'bg-transparent hover:bg-danger-muted text-danger border border-danger-border focus-visible:ring-danger';
     }
     if (variant === 'ghost' || variant === 'text') {
-      return 'bg-transparent hover:bg-rose-50 text-rose-600 hover:text-rose-700 border-transparent shadow-none focus-visible:ring-rose-400';
+      return 'bg-transparent hover:bg-danger-muted text-danger hover:text-danger-foreground border-transparent shadow-none focus-visible:ring-danger';
     }
     return baseVariantStyles.danger;
   }
 
   if (color === 'success') {
     if (variant === 'outline') {
-      return 'bg-transparent hover:bg-emerald-50 text-emerald-600 border border-emerald-300 focus-visible:ring-emerald-400';
+      return 'bg-transparent hover:bg-success-muted text-success border border-success-border focus-visible:ring-success';
     }
     if (variant === 'ghost' || variant === 'text') {
-      return 'bg-transparent hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700 border-transparent shadow-none focus-visible:ring-emerald-400';
+      return 'bg-transparent hover:bg-success-muted text-success hover:text-success-foreground border-transparent shadow-none focus-visible:ring-success';
     }
     return baseVariantStyles.success;
   }
@@ -127,9 +127,9 @@ function resolveButtonClasses(variant: ButtonVariant = 'primary', color?: Button
 }
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'text-xs px-3 py-1.5 gap-1.5 rounded-lg min-h-[32px]',
-  md: 'text-sm px-4 py-2 gap-2 rounded-xl min-h-[40px]',
-  lg: 'text-base px-5 py-2.5 gap-2.5 rounded-xl min-h-[48px]',
+  sm: 'text-xs px-2.5 py-1 gap-1.5 rounded-sm min-h-[28px]',
+  md: 'text-[13px] px-3.5 py-1.5 gap-1.5 rounded-sm min-h-[32px]',
+  lg: 'text-sm px-4 py-2 gap-2 rounded-md min-h-[40px]',
 };
 
 const pillSizeStyles: Record<ButtonSize, string> = {
@@ -140,8 +140,8 @@ const pillSizeStyles: Record<ButtonSize, string> = {
 
 const textSizeStyles: Record<ButtonSize, string> = {
   sm: 'text-xs px-2 py-1 gap-1 rounded-md min-h-[26px]',
-  md: 'text-sm px-2.5 py-1.5 gap-1.5 rounded-lg min-h-[32px]',
-  lg: 'text-base px-3 py-2 gap-2 rounded-lg min-h-[38px]',
+  md: 'text-sm px-2.5 py-1.5 gap-1.5 rounded-sm min-h-[32px]',
+  lg: 'text-base px-3 py-2 gap-2 rounded-sm min-h-[38px]',
 };
 
 const pillTextSizeStyles: Record<ButtonSize, string> = {
@@ -180,7 +180,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonPr
       pill === true;
 
     const baseClasses =
-      'inline-flex items-center justify-center font-medium transition-all duration-150 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed';
+      'inline-flex items-center justify-center font-medium tracking-[0.01em] transition-colors duration-100 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-white disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed';
 
     const appliedSizeStyles =
       variant === 'link'

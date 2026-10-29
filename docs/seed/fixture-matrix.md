@@ -194,4 +194,4 @@ For engineers testing Platform Admin login flows locally:
 >
 > - Never print the TOTP secret, QR code, or `otpauth://` URI to terminal console output, logs, or documentation.
 > - Never commit `.env.local` to git version control.
-> - When S0-T14-3 (AES-256-GCM vault encryption helper) and S0-T17 (shared password policy) are implemented, the seed engine will automatically bind to those components.
+> - When the AES-256-GCM vault encryption helper and shared password policy are implemented, the seed engine will automatically bind to those components.

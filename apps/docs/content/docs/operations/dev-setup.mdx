@@ -23,6 +23,7 @@ The HelloSmart local development stack provides isolated, reproducible container
 | **Redis** | `redis:7-alpine` | `6379` | In-memory key-value store for session tokens (`session:{token}`) and caching (`hellosmart_redis_data`). |
 | **LocalStack** | `localstack/localstack:3.8` | `4566` | Local AWS emulation (S3 object storage, SQS job queues, KMS secrets). |
 | **Mailpit** | `axllent/mailpit:v1.20` | `8025` (UI) / `1025` (SMTP) | Local email inbox to inspect candidate invites, MFA codes, and notifications. |
+| **Adminer** | `adminer:4.8.1` | `8080` | Web database browser for local PostgreSQL (see [Database viewer](#7-database-viewer-adminer)). |
 | **Mock API** | `stoplight/prism:5.12.0` | `4010` | OpenAPI specification mock server based on `@hs/contracts`. |
 
 ---
@@ -107,7 +108,29 @@ Once the database container is healthy:
 
 ---
 
-## 6. Running the Applications
+## 7. Database viewer (Adminer)
+
+This repo uses **SQL migrations** in `packages/contracts` (not Prisma). For local browsing, use **Adminer** in Docker — it works with any PostgreSQL schema without codegen.
+
+```bash
+pnpm db:viewer
+```
+
+Open [http://127.0.0.1:8080](http://127.0.0.1:8080) and sign in:
+
+| Field | Value |
+|---|---|
+| System | **PostgreSQL** |
+| Server | `postgres` |
+| Username | `hs_owner` (full DDL view) or `hs_app` (RLS, same as API) |
+| Password | from `.env` (`hs_owner_local` / `hs_app_local`) |
+| Database | `hellosmart` |
+
+Browse tenant data under the **`app`** schema. Prefer **`hs_owner`** only on local machines; never use owner credentials in application code.
+
+---
+
+## 8. Running the Applications
 
 With dependencies running and migrations applied, start the development applications:
 

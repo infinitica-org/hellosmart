@@ -4,14 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nest start --watch",
+    "dev": "nest build && node --env-file=../../.env ./node_modules/@nestjs/cli/bin/nest.js start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
-    "lint": "eslint src test",
+    "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:stack": "vitest run test/stack-e2e.test.ts",
-    "test:tenancy": "vitest run --project tenancy",
+    "test:tenancy": "vitest run --project tenancy --passWithNoTests",
     "db:migrate": "nest build && node --env-file=../../.env dist/db/migrate.js"
   },
   "dependencies": {

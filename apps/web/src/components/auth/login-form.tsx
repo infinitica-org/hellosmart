@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { login, type UserMe } from '@/lib/api-client';
-import { isSafeRedirectPath } from '@/lib/session-client';
+import { getSafeRedirectUrl } from '@/lib/safe-redirect';
 
 export interface LoginFormProps {
   onSuccess?: (user: UserMe) => void;
@@ -53,31 +53,11 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
         return;
       }
 
-      // Normal portal routing based on role / portal or validated ?from= redirect
-      const defaultPortal =
-        user.portal ||
-        (user.role === 'platform_admin'
-          ? 'admin'
-          : user.role === 'company_admin'
-            ? 'company'
-            : 'candidate');
-
-      let targetUrl = `/${defaultPortal}`;
-      if (fromParam && isSafeRedirectPath(fromParam)) {
-        // Enforce role boundary (BR-25): candidate cannot redirect to /admin or /company
-        if (
-          user.role === 'candidate' &&
-          (fromParam.startsWith('/admin') || fromParam.startsWith('/company'))
-        ) {
-          targetUrl = '/candidate';
-        } else {
-          targetUrl = fromParam;
-        }
-      }
-
-      router.push(targetUrl);
+      const safeDest = getSafeRedirectUrl(fromParam, user.role, user.portal);
+      router.push(safeDest);
     } catch (err: unknown) {
       setIsSubmitting(false);
+      console.error('[LoginForm]', err);
       if (err instanceof Error) {
         setErrorMessage(err.message);
       } else {

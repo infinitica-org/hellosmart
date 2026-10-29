@@ -22,10 +22,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           disabled={disabled}
           aria-invalid={hasError ? 'true' : undefined}
-          className={`w-full appearance-none bg-white border text-neutral-900 text-sm rounded-xl pl-3.5 pr-10 py-2.5 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white shadow-xs disabled:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed ${
-            hasError
-              ? 'border-rose-500/80 focus:border-rose-500 focus:ring-rose-500/20'
-              : 'border-neutral-300 hover:border-neutral-400 focus:border-primary focus:ring-primary/20'
+          className={`w-full appearance-none bg-white border text-foreground text-[13px] rounded-sm pl-3 pr-9 py-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-white disabled:bg-canvas disabled:opacity-50 disabled:cursor-not-allowed ${
+ hasError
+ ? 'border-[#d64545] focus:border-[#d64545] focus:ring-[#d64545]/15'
+              : 'border-[#d8dee6] hover:border-[#c3ccd6] focus:border-nav-accent focus:ring-nav-accent/20'
           } ${className}`}
           {...props}
         >
@@ -154,9 +154,9 @@ export function MultiSelect({
             setIsOpen(false);
           }
         }}
-        className={`w-full min-h-[42px] bg-white border text-neutral-900 text-sm rounded-xl px-3 py-1.5 transition-colors cursor-pointer flex items-center justify-between gap-2 shadow-xs ${
-          hasError
-            ? 'border-rose-500/80 ring-1 ring-rose-500/20'
+        className={`w-full min-h-[42px] bg-white border text-neutral-900 text-sm rounded-md px-3 py-1.5 transition-colors cursor-pointer flex items-center justify-between gap-2 shadow-xs ${
+ hasError
+ ? 'border-danger ring-1 ring-danger/15'
             : isOpen
               ? 'border-primary ring-2 ring-primary/20'
               : 'border-neutral-300 hover:border-neutral-400'
@@ -169,7 +169,7 @@ export function MultiSelect({
             selectedOptions.map((opt) => (
               <span
                 key={opt.value}
-                className="inline-flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 text-xs font-medium px-2 py-0.5 rounded-lg select-none"
+                className="inline-flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 text-xs font-medium px-2 py-0.5 rounded-sm select-none"
               >
                 <span>{opt.label}</span>
                 <button
@@ -212,7 +212,7 @@ export function MultiSelect({
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-neutral-200 rounded-xl shadow-xl z-50 overflow-hidden animate-fade-in">
+        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-neutral-200 rounded-md shadow-xl z-50 overflow-hidden animate-fade-in">
           {options.length > 5 && (
             <div className="p-2 border-b border-neutral-100">
               <input
@@ -220,7 +220,7 @@ export function MultiSelect({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search options..."
-                className="w-full bg-neutral-50 border border-neutral-200 rounded-lg px-2.5 py-1.5 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-primary"
+                className="w-full bg-neutral-50 border border-neutral-200 rounded-sm px-2.5 py-1.5 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-primary"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -238,8 +238,8 @@ export function MultiSelect({
                     aria-selected={isSelected}
                     onClick={() => !opt.disabled && toggleOption(opt.value)}
                     className={`flex items-center justify-between px-3 py-2 cursor-pointer transition-colors ${
-                      opt.disabled
-                        ? 'opacity-40 cursor-not-allowed bg-neutral-50'
+ opt.disabled
+ ? 'opacity-40 cursor-not-allowed bg-neutral-50'
                         : isSelected
                           ? 'bg-primary/5 text-primary font-medium'
                           : 'text-neutral-800 hover:bg-neutral-50'
@@ -248,8 +248,8 @@ export function MultiSelect({
                     <div className="flex items-center gap-2">
                       <div
                         className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                          isSelected
-                            ? 'bg-primary border-primary text-white'
+ isSelected
+ ? 'bg-primary border-primary text-white'
                             : 'border-neutral-300 bg-white'
                         }`}
                       >

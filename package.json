@@ -18,14 +18,12 @@
     "contracts:check": "pnpm --filter @hs/contracts check",
     "db:migrate": "pnpm --filter @hs/api db:migrate",
     "db:seed": "pnpm --filter @hs/fixtures seed",
+    "db:viewer": "docker compose up -d postgres adminer",
 
     "dev:up": "docker compose up -d",
     "dev:down": "docker compose down",
 
     "db:verify-seed": "pnpm --filter @hs/fixtures verify",
-
-    "dev:up": "docker compose up -d",
-    "dev:down": "docker compose down",
 
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",

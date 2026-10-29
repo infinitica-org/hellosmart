@@ -78,8 +78,8 @@ export function AlertDialog({
   }, [isOpen, loading]);
 
   const iconColors = {
-    danger: 'bg-rose-50 text-rose-600 border-rose-200',
-    warning: 'bg-amber-50 text-amber-600 border-amber-200',
+    danger: 'bg-danger-muted text-danger border-danger-border',
+    warning: 'bg-warning-muted text-warning border-warning-border',
     primary: 'bg-primary/10 text-primary border-primary/30',
   };
 
@@ -96,7 +96,7 @@ export function AlertDialog({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-neutral-950/60 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-chrome/50 transition-opacity"
         onClick={() => {
           if (!loading) handleOpenChange(false);
         }}
@@ -110,11 +110,11 @@ export function AlertDialog({
         aria-labelledby={titleId}
         aria-describedby={descId}
         data-testid={testId}
-        className={`relative z-10 w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl focus:outline-none transition-all ${className}`}
+        className={`relative z-10 w-full max-w-md rounded-md border border-neutral-200 bg-white p-6 shadow-lg focus:outline-none transition-all ${className}`}
       >
         <div className="flex items-start gap-4">
           <div
-            className={`flex-shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center ${iconColors[variant]}`}
+            className={`flex-shrink-0 w-10 h-10 rounded-md border flex items-center justify-center ${iconColors[variant]}`}
           >
             {variant === 'danger' ? (
               <svg

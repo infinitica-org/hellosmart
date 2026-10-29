@@ -81,7 +81,7 @@ export const CompactCards: Story = {
 
 export const TimelineExample: Story = {
   render: () => (
-    <div className="max-w-md bg-white p-6 rounded-2xl border border-neutral-200">
+    <div className="max-w-md bg-white p-6 rounded-md border border-neutral-200">
       <Timeline>
         <TimelineItem title="Candidate Invited" time="10:00 AM">
           Email invite sent with expiring link (BR-24)

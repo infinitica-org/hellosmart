@@ -12,28 +12,28 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 
 const badgeVariants: Record<BadgeVariant, { container: string; dot: string }> = {
   default: {
-    container: 'bg-neutral-100 text-neutral-800 border-neutral-200',
-    dot: 'bg-neutral-500',
+    container: 'bg-[#f4f6f8] text-[#3d4754] border-[#d8dee6]',
+    dot: 'bg-[#8a95a3]',
   },
   primary: {
-    container: 'bg-primary/10 text-primary border-primary/30 font-medium',
+    container: 'bg-[#fff7ed] text-[#c2410c] border-[#fed7aa] font-medium',
     dot: 'bg-primary',
   },
   success: {
-    container: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    dot: 'bg-emerald-500',
+    container: 'bg-[#e8f7ee] text-[#0f6b38] border-[#b7e3c8]',
+    dot: 'bg-[#1aa053]',
   },
   warning: {
-    container: 'bg-amber-50 text-amber-700 border-amber-200',
-    dot: 'bg-amber-500',
+    container: 'bg-[#fff7e8] text-[#9a4d05] border-[#f3d7a1]',
+    dot: 'bg-[#d97706]',
   },
   danger: {
-    container: 'bg-rose-50 text-rose-700 border-rose-200',
-    dot: 'bg-rose-500',
+    container: 'bg-[#fdeeee] text-[#9b1c1c] border-[#f3c4c4]',
+    dot: 'bg-[#d64545]',
   },
   info: {
-    container: 'bg-primary/10 text-primary border-primary/25',
-    dot: 'bg-primary',
+    container: 'bg-[#eaf3fb] text-[#0b2f5c] border-[#b7d4ee]',
+    dot: 'bg-[#1b6bba]',
   },
 };
 
@@ -49,9 +49,9 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     return (
       <span
         ref={ref}
-        className={`inline-flex items-center font-medium rounded-full border tracking-wide select-none ${
-          config.container
-        } ${badgeSizes[size]} ${className}`}
+        className={`inline-flex items-center font-medium rounded-sm border tracking-[0.02em] uppercase select-none ${
+ config.container
+ } ${badgeSizes[size]} ${className}`}
         {...props}
       >
         {dot && <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} aria-hidden="true" />}
@@ -72,8 +72,8 @@ export interface StatusIndicatorProps extends HTMLAttributes<HTMLSpanElement> {
 
 const statusConfig: Record<StatusType, { color: string; pingColor: string; defaultLabel: string }> = {
   online: {
-    color: 'bg-emerald-500',
-    pingColor: 'bg-emerald-400',
+    color: 'bg-success',
+    pingColor: 'bg-success',
     defaultLabel: 'Online',
   },
   offline: {
@@ -92,8 +92,8 @@ const statusConfig: Record<StatusType, { color: string; pingColor: string; defau
     defaultLabel: 'Idle',
   },
   error: {
-    color: 'bg-rose-500',
-    pingColor: 'bg-rose-400',
+    color: 'bg-danger',
+    pingColor: 'bg-danger',
     defaultLabel: 'Error',
   },
 };

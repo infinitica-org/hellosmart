@@ -91,6 +91,13 @@ export interface SidebarProps {
   renderLink?: ((props: SidebarRenderLinkProps) => ReactNode) | undefined;
   portalTitle?: ReactNode | undefined;
   companyName?: string | undefined;
+  /** Extra items in the footer user menu (before Sign out) */
+  profileMenuItems?: ReactNode | undefined;
+  /** Render the fixed mobile hamburger bar. Disable when a Topbar owns the chrome. */
+  showMobileBar?: boolean | undefined;
+  /** Controlled mobile drawer */
+  mobileOpen?: boolean | undefined;
+  onMobileOpenChange?: ((open: boolean) => void) | undefined;
 }
 
 export interface UserProfileDropdownProps {
@@ -102,6 +109,7 @@ export interface UserProfileDropdownProps {
   compact?: boolean | undefined;
   variant?: ('card' | 'pill' | 'avatar') | undefined;
   placement?: ('top' | 'bottom' | 'right') | undefined;
+  extraMenuItems?: ReactNode | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -213,20 +221,20 @@ const PanelLeftCloseIcon = () => (
 
 const activeStyleClasses: Record<NonNullable<SidebarProps['activeStyle']>, { active: string; inactive: string }> = {
   light: {
-    active: 'bg-orange-50 text-orange-600 border border-orange-200/90 font-semibold shadow-2xs',
-    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-transparent',
+    active: 'bg-[rgba(11,47,92,0.06)] text-nav font-semibold border-l-[3px] border-l-primary rounded-none',
+    inactive: 'text-[#5b6775] hover:text-nav hover:bg-[#f4f6f8] border-l-[3px] border-l-transparent rounded-none',
   },
   brand: {
-    active: 'bg-orange-50 text-orange-600 border border-orange-200/90 font-semibold shadow-2xs',
-    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-transparent',
+    active: 'bg-[rgba(11,47,92,0.06)] text-nav font-semibold border-l-[3px] border-l-primary rounded-none',
+    inactive: 'text-[#5b6775] hover:text-nav hover:bg-[#f4f6f8] border-l-[3px] border-l-transparent rounded-none',
   },
   subtle: {
-    active: 'bg-neutral-100 text-neutral-900 font-semibold border border-transparent',
-    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-transparent',
+    active: 'bg-[#f4f6f8] text-foreground font-semibold border-l-[3px] border-l-[#c3ccd6] rounded-none',
+    inactive: 'text-[#5b6775] hover:text-nav hover:bg-[#f4f6f8] border-l-[3px] border-l-transparent rounded-none',
   },
   dark: {
-    active: 'bg-neutral-900 text-white font-semibold border border-neutral-800',
-    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-transparent',
+    active: 'bg-chrome text-white font-semibold border-l-[3px] border-l-primary rounded-none',
+    inactive: 'text-[#5b6775] hover:text-nav hover:bg-[#f4f6f8] border-l-[3px] border-l-transparent rounded-none',
   },
 };
 
@@ -284,6 +292,7 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
       compact = false,
       variant = 'card',
       placement = variant === 'card' ? 'top' : 'bottom',
+      extraMenuItems,
     },
     ref
   ) => {
@@ -320,7 +329,7 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
 
     const dropdownMenu = (
       <div
-        className={`absolute z-50 w-64 rounded-2xl border border-neutral-200 bg-white p-2 shadow-2xl shadow-black/10 animate-fade-in ${placementClasses[placement] || placementClasses.top}`}
+        className={`absolute z-50 w-64 rounded-md border border-neutral-200 bg-white p-2 shadow-lg animate-fade-in ${placementClasses[placement] || placementClasses.top}`}
         role="menu"
       >
         {/* Header: name + online badge */}
@@ -343,7 +352,7 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
             type="button"
             role="menuitem"
             onClick={() => setOpen(false)}
-            className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors focus:outline-none"
+            className="flex w-full items-center justify-between gap-2 rounded-sm px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors focus:outline-none"
           >
             <span className="flex items-center gap-2.5">
               <UserIcon />
@@ -356,7 +365,7 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
             type="button"
             role="menuitem"
             onClick={() => setOpen(false)}
-            className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors focus:outline-none"
+            className="flex w-full items-center justify-between gap-2 rounded-sm px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors focus:outline-none"
           >
             <span className="flex items-center gap-2.5">
               <SettingsIcon />
@@ -364,6 +373,7 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
             </span>
             <kbd className="hidden sm:inline-flex text-[10px] text-neutral-400 font-mono bg-neutral-100 rounded px-1.5 py-0.5">⌘,</kbd>
           </button>
+          {extraMenuItems}
         </div>
 
         {/* Divider */}
@@ -378,7 +388,7 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
               setOpen(false);
               onLogout?.();
             }}
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors focus:outline-none"
+            className="flex w-full items-center gap-2.5 rounded-sm px-3 py-2 text-xs font-medium text-danger hover:bg-danger-muted transition-colors focus:outline-none"
           >
             <LogoutIcon />
             Sign Out
@@ -404,18 +414,18 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
             aria-label="User account menu"
             aria-haspopup="menu"
             aria-expanded={open}
-            className="relative p-1 rounded-2xl hover:bg-neutral-100 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 group"
+            className="relative p-1 rounded-md hover:bg-neutral-100 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-nav-accent/20 group"
           >
             <div className="relative">
               <Avatar
                 src={userAvatar}
                 name={userName}
                 size="md"
-                variant="orange"
+                variant="dark"
                 shape="circle"
               />
               <span
-                className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white"
+                className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-success ring-2 ring-white"
                 title="Online"
               />
             </div>
@@ -438,15 +448,15 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
           className="relative"
         >
           <div
-            className={`w-full flex items-center gap-2.5 rounded-xl border border-neutral-200/90 bg-neutral-50/80 px-3 py-2.5 shadow-2xs hover:bg-neutral-100/60 transition-colors ${
-              compact ? 'justify-center' : ''
-            }`}
+            className={`w-full flex items-center gap-2.5 rounded-md border border-neutral-200/90 bg-neutral-50/80 px-3 py-2.5 shadow-2xs hover:bg-neutral-100/60 transition-colors ${
+ compact ? 'justify-center' : ''
+ }`}
           >
             <Avatar
               src={userAvatar}
               name={userName}
               size="sm"
-              variant="orange"
+              variant="dark"
               shape="circle"
             />
 
@@ -469,7 +479,7 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
               aria-label="User menu"
               aria-haspopup="menu"
               aria-expanded={open}
-              className="shrink-0 rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200/60 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-300"
+              className="shrink-0 rounded-sm p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200/60 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-300"
             >
               <EllipsisVerticalIcon />
             </button>
@@ -502,7 +512,7 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
             src={userAvatar}
             name={userName}
             size="xs"
-            variant="orange"
+            variant="dark"
             shape="circle"
           />
           <span className="truncate max-w-[120px]">{userName}</span>
@@ -572,7 +582,7 @@ function SidebarNavItemRow({
     item.onClick?.();
   };
 
-  const classes = `flex items-center justify-between gap-2 w-full rounded-xl transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-neutral-300/50 px-3 py-2 text-sm ${
+  const classes = `flex items-center justify-between gap-2 w-full rounded-none transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-nav-accent/30 px-3 py-2 text-[13px] ${
     active ? styleConfig.active : styleConfig.inactive
   } ${item.className || ''} ${item.disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`;
 
@@ -583,7 +593,7 @@ function SidebarNavItemRow({
     <>
       <span className="flex items-center gap-3 min-w-0">
         {item.icon ? (
-          <span className={`w-5 h-5 flex items-center justify-center shrink-0 transition-colors ${active ? 'text-orange-600' : 'text-neutral-400 group-hover:text-neutral-700'}`}>
+          <span className={`w-5 h-5 flex items-center justify-center shrink-0 transition-colors ${active ? 'text-nav' : 'text-[#8a95a3] group-hover:text-nav'}`}>
             {item.icon}
           </span>
         ) : (
@@ -604,8 +614,8 @@ function SidebarNavItemRow({
         {hasSubItems && (
           <ChevronRightIcon
             className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-200 ${
-              expanded ? 'rotate-90' : ''
-            }`}
+ expanded ? 'rotate-90' : ''
+ }`}
           />
         )}
       </span>
@@ -725,13 +735,26 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       activeStyle = 'light',
       hideHeader = false,
       portalRole,
-      width = 'w-64',
+      portalTitle,
+      profileMenuItems,
+      showMobileBar = true,
+      mobileOpen: mobileOpenProp,
+      onMobileOpenChange,
+      width = 'w-60',
       className = '',
       renderLink,
     },
     ref
   ) => {
-    const [mobileOpen, setMobileOpen] = useState(false);
+    const [internalMobileOpen, setInternalMobileOpen] = useState(false);
+    const mobileOpen = mobileOpenProp ?? internalMobileOpen;
+    const setMobileOpen = (open: boolean) => {
+      if (mobileOpenProp === undefined) {
+        setInternalMobileOpen(open);
+      }
+      onMobileOpenChange?.(open);
+    };
+    const resolvedBrandTitle = brandTitle ?? portalTitle;
     const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
@@ -831,8 +854,8 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
         <nav
           onScroll={() => setHoveredRailItem(null)}
           className={`flex-1 min-h-0 py-3 space-y-1.5 flex flex-col w-full transition-all duration-300 overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgba(212,212,216,0.8)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-200 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full ${
-            isRailExpanded ? 'px-3' : 'px-2 items-center'
-          }`}
+ isRailExpanded ? 'px-3' : 'px-2 items-center'
+ }`}
         >
           {allItems.map((item, idx) => {
             const active = isItemActive(item, currentPath, activeId);
@@ -866,23 +889,21 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
             // Light active style (soft light brand orange tint with crisp border and gentle depth)
             const activeBgClass = isDark
-              ? 'bg-neutral-900 text-white shadow-2xs border border-neutral-800'
+              ? 'bg-chrome text-white border border-chrome-muted'
               : activeStyle === 'subtle'
-                ? 'bg-neutral-100 text-neutral-900 border border-neutral-200/90 shadow-2xs'
-                : 'bg-orange-50 text-orange-600 border border-orange-200/90 shadow-2xs hover:bg-orange-100/70 hover:border-orange-300/80';
+                ? 'bg-canvas text-foreground border border-card-border'
+                : 'bg-[rgba(11,47,92,0.06)] text-nav border-l-[3px] border-l-primary border-y border-r border-transparent';
 
-            const activeIconColor = isDark
-              ? 'text-orange-500'
-              : 'text-orange-600';
+            const activeIconColor = isDark ? 'text-primary' : 'text-nav';
 
-            const baseClasses = `group relative flex items-center transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/25 select-none ${
+            const baseClasses = `group relative flex items-center transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-nav-accent/25 select-none ${
               isRailExpanded
-                ? 'w-full px-3 py-2.5 gap-3 rounded-xl'
-                : 'w-12 h-12 justify-center mx-auto rounded-2xl'
+                ? 'w-full px-3 py-2.5 gap-3 rounded-md'
+                : 'w-12 h-12 justify-center mx-auto rounded-md'
             } ${
               active
                 ? activeBgClass
-                : 'text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100/80 border border-transparent rounded-2xl'
+                : 'text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100/80 border border-transparent rounded-md'
             } ${item.className || ''} ${item.disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`;
 
             const isTextBadge = typeof item.badge === 'string' && isNaN(Number(item.badge));
@@ -892,8 +913,8 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
                 {/* Active icon: strictly locked to 20x20 dimensions so it never grows or scales */}
                 <span
                   className={`flex items-center justify-center shrink-0 transition-colors duration-200 ${
-                    active ? activeIconColor : 'text-neutral-400 group-hover:text-neutral-700'
-                  }`}
+ active ? activeIconColor : 'text-neutral-400 group-hover:text-neutral-700'
+ }`}
                   style={{ width: 20, height: 20, minWidth: 20, maxWidth: 20, minHeight: 20, maxHeight: 20 }}
                 >
                   {item.icon || <span className="w-2.5 h-2.5 rounded-full bg-current" />}
@@ -915,16 +936,16 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
                   ) : isTextBadge ? (
                     <span className="absolute top-2 right-2 flex h-2.5 w-2.5 pointer-events-none">
                       {item.badgeVariant === 'success' && (
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
                       )}
                       <span
                         className={`relative inline-flex rounded-full h-2.5 w-2.5 ring-2 ring-white shadow-2xs ${
-                          item.badgeVariant === 'success'
-                            ? 'bg-emerald-500'
+ item.badgeVariant === 'success'
+ ? 'bg-success'
                             : item.badgeVariant === 'warning'
-                              ? 'bg-amber-500'
+                              ? 'bg-warning'
                               : item.badgeVariant === 'danger'
-                                ? 'bg-rose-500'
+                                ? 'bg-danger'
                                 : 'bg-primary'
                         }`}
                       />
@@ -932,12 +953,12 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
                   ) : (
                     <span
                       className={`absolute top-1 right-1 min-w-[16px] h-4 px-1 text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-2xs leading-none pointer-events-none ${
-                        item.badgeVariant === 'success'
-                          ? 'bg-emerald-500 text-white'
+ item.badgeVariant === 'success'
+ ? 'bg-success text-white'
                           : item.badgeVariant === 'warning'
-                            ? 'bg-amber-500 text-white'
+                            ? 'bg-warning text-white'
                             : item.badgeVariant === 'danger'
-                              ? 'bg-rose-500 text-white'
+                              ? 'bg-danger text-white'
                               : 'bg-primary text-white'
                       }`}
                     >
@@ -1030,14 +1051,14 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       if (hideHeader) return null;
 
       return (
-        <div className="flex items-center justify-between shrink-0 h-16 px-5 border-b border-neutral-200">
+        <div className="flex items-center justify-between shrink-0 h-14 px-4 border-b border-[#d8dee6]">
           <BrandMark
             showLogo={showLogo}
             logoSrc={logoSrc}
             whiteLabel={whiteLabel}
             showSubtitle={false}
             size="md"
-            customTitle={brandTitle}
+            customTitle={resolvedBrandTitle}
           />
 
           {/* Collapse button (only when explicitly enabled via collapsible && showCollapseButton) */}
@@ -1047,7 +1068,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
               onClick={handleToggleCollapse}
               aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors focus:outline-none cursor-pointer"
+              className="rounded-sm p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors focus:outline-none cursor-pointer"
             >
               <PanelLeftIcon />
             </button>
@@ -1070,7 +1091,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
               showSubtitle={false}
               size="md"
               fullText={true}
-              customTitle={brandTitle}
+              customTitle={resolvedBrandTitle}
             />
           </div>
         );
@@ -1086,7 +1107,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             size="md"
             logoSize="md"
             fullText={false}
-            customTitle={brandTitle}
+            customTitle={resolvedBrandTitle}
           />
         </div>
       );
@@ -1104,6 +1125,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             userAvatar={userAvatar}
             portalRole={portalRole}
             onLogout={onLogout}
+            extraMenuItems={profileMenuItems}
             variant="card"
             placement="top"
           />
@@ -1124,6 +1146,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
               userAvatar={userAvatar}
               portalRole={portalRole}
               onLogout={onLogout}
+              extraMenuItems={profileMenuItems}
               variant="card"
               placement="top"
             />
@@ -1139,6 +1162,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             userAvatar={userAvatar}
             portalRole={portalRole}
             onLogout={onLogout}
+            extraMenuItems={profileMenuItems}
             variant="avatar"
             placement="right"
           />
@@ -1152,8 +1176,8 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
         return (
           <aside
             className={`flex flex-col bg-white w-full h-full shrink-0 border-r border-neutral-200 transition-all duration-300 ${className} ${
-              !isRailExpanded ? 'items-center' : ''
-            }`}
+ !isRailExpanded ? 'items-center' : ''
+ }`}
           >
             {renderRailHeader()}
             {renderRailNavItems()}
@@ -1182,7 +1206,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             onClick={handleToggleCollapse}
             aria-label="Expand sidebar"
             title="Expand sidebar"
-            className="fixed top-3 left-3 z-40 p-2 rounded-xl bg-white border border-neutral-200 shadow-md hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 transition-all duration-300 hover:scale-105 cursor-pointer animate-fade-in"
+            className="fixed top-3 left-3 z-40 p-2 rounded-md bg-white border border-neutral-200 shadow-md hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 transition-all duration-300 cursor-pointer animate-fade-in"
           >
             <PanelLeftIcon />
           </button>
@@ -1191,9 +1215,9 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
         {/* ── Desktop sidebar with smooth collapse & slide animation ── */}
         <div
           ref={ref}
-          className={`hidden md:flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out shrink-0 z-30 bg-white border-r border-neutral-200 ${
-            isRail ? 'overflow-visible' : ''
-          } ${
+          className={`hidden md:flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out shrink-0 z-30 bg-white border-r border-[#d8dee6] ${
+ isRail ? 'overflow-visible' : ''
+ } ${
             isCollapsed
               ? 'w-0 opacity-0 -translate-x-full border-r-0 pointer-events-none'
               : `${effectiveWidth} opacity-100 translate-x-0`
@@ -1206,7 +1230,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
               onClick={toggleRailExpand}
               aria-label={isRailExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
               title={isRailExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
-              className="absolute -right-3.5 top-[66px] z-40 w-7 h-7 rounded-full bg-white border border-neutral-200/90 shadow-2xs hover:shadow-md text-neutral-500 hover:text-neutral-900 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="absolute -right-3.5 top-[66px] z-40 w-7 h-7 rounded-full bg-white border border-neutral-200/90 shadow-2xs hover:shadow-md text-neutral-500 hover:text-neutral-900 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer focus:outline-none focus:ring-2 focus:ring-nav-accent/20"
             >
               {isRailExpanded ? (
                 <ChevronLeftIcon className="w-3.5 h-3.5" />
@@ -1218,8 +1242,8 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
           <div
             className={`flex flex-col h-full ${effectiveWidth} transition-all duration-300 ease-in-out ${
-              isRail && !isRailExpanded ? 'overflow-visible' : ''
-            } ${
+ isRail && !isRailExpanded ? 'overflow-visible' : ''
+ } ${
               isCollapsed ? 'opacity-0' : 'opacity-100'
             }`}
           >
@@ -1227,15 +1251,16 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
           </div>
         </div>
 
-        {/* ── Mobile hamburger top bar ── */}
-        <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between bg-white border-b border-neutral-200 px-4 py-2.5">
+        {/* ── Mobile hamburger top bar (skipped when Topbar owns chrome) ── */}
+        {showMobileBar && (
+        <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between hs-chrome text-white px-4 py-2.5">
           <BrandMark
             showLogo={showLogo}
             logoSrc={logoSrc}
             whiteLabel={whiteLabel}
             showSubtitle={false}
             size="sm"
-            customTitle={brandTitle}
+            customTitle={resolvedBrandTitle}
           />
           <div className="flex items-center gap-2">
             <UserProfileDropdown
@@ -1244,6 +1269,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
               userAvatar={userAvatar}
               portalRole={portalRole}
               onLogout={onLogout}
+              extraMenuItems={profileMenuItems}
               variant="avatar"
               placement="bottom"
             />
@@ -1251,19 +1277,20 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
               type="button"
               onClick={() => setMobileOpen(true)}
               aria-label="Open menu"
-              className="rounded-lg p-2 text-neutral-700 hover:bg-neutral-100 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-300"
+              className="rounded-sm p-2 text-white/90 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
             >
               <MenuIcon />
             </button>
           </div>
         </div>
+        )}
 
         {/* ── Mobile slide-out drawer ── */}
         {mobileOpen && (
           <div className="md:hidden fixed inset-0 z-50">
             {/* Backdrop */}
             <div
-              className="absolute inset-0 bg-neutral-950/50 backdrop-blur-xs animate-fade-in"
+              className="absolute inset-0 bg-chrome/50 animate-fade-in"
               onClick={() => setMobileOpen(false)}
               aria-hidden="true"
             />
@@ -1275,7 +1302,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
                 type="button"
                 onClick={() => setMobileOpen(false)}
                 aria-label="Close menu"
-                className="absolute top-4 right-4 z-10 rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors focus:outline-none"
+                className="absolute top-4 right-4 z-10 rounded-sm p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors focus:outline-none"
               >
                 <CloseIcon />
               </button>
@@ -1293,19 +1320,19 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
               left: `${hoveredRailItem.left}px`,
             }}
             role="tooltip"
-            className="fixed -translate-y-1/2 z-[99999] px-3 py-1.5 bg-neutral-900 text-white text-xs font-medium rounded-xl whitespace-nowrap shadow-xl shadow-black/30 flex items-center gap-2 pointer-events-none select-none animate-in fade-in zoom-in-95 duration-100"
+            className="fixed -translate-y-1/2 z-[99999] px-3 py-1.5 bg-chrome text-white text-xs font-medium rounded-md whitespace-nowrap shadow-lg flex items-center gap-2 pointer-events-none select-none animate-in fade-in zoom-in-95 duration-100"
           >
-            <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-neutral-900 rotate-45" />
+            <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-chrome rotate-45" />
             <span>{hoveredRailItem.label}</span>
             {hoveredRailItem.badge !== undefined && (
               <span
                 className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none shadow-2xs ${
-                  hoveredRailItem.badgeVariant === 'success'
-                    ? 'bg-emerald-500 text-white'
+ hoveredRailItem.badgeVariant === 'success'
+ ? 'bg-success text-white'
                     : hoveredRailItem.badgeVariant === 'warning'
-                      ? 'bg-amber-500 text-white'
+                      ? 'bg-warning text-white'
                       : hoveredRailItem.badgeVariant === 'danger'
-                        ? 'bg-rose-500 text-white'
+                        ? 'bg-danger text-white'
                         : 'bg-primary text-white'
                 }`}
               >

@@ -111,14 +111,14 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
             onBlur={handleBlur}
             onPaste={allowPaste ? props.onPaste : (e) => e.preventDefault()}
             className={`
-              w-full h-10 px-3 py-2 text-sm text-neutral-900 bg-white
-              border rounded-md shadow-xs transition-colors duration-150
+ w-full h-10 px-3 py-2 text-sm text-neutral-900 bg-white
+ border rounded-md shadow-xs transition-colors duration-150
               placeholder:text-neutral-400
               hover:border-neutral-400
-              focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary
+              focus:outline-hidden focus:ring-2 focus:ring-nav-accent/20 focus:border-primary
               disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:text-neutral-400 disabled:border-neutral-200
               ${showToggle ? 'pr-10' : ''}
-              ${errorMessage ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20' : 'border-neutral-300'}
+              ${errorMessage ? 'border-danger focus:border-danger focus:ring-danger/15' : 'border-neutral-300'}
               ${inputClassName}
               ${className}
             `}
@@ -152,9 +152,9 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
             role="status"
             aria-live="polite"
             data-testid="caps-lock-warning"
-            className="text-xs text-amber-700 flex items-center gap-1 mt-1 font-medium bg-amber-50 border border-amber-200/80 rounded px-2 py-1"
+            className="text-xs text-warning-foreground flex items-center gap-1 mt-1 font-medium bg-warning-muted border border-warning-border/80 rounded px-2 py-1"
           >
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600" aria-hidden="true" />
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-warning" aria-hidden="true" />
             <span>Caps Lock is on</span>
           </p>
         )}
@@ -165,7 +165,7 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
             id={errorId}
             role="alert"
             data-testid="password-error-message"
-            className="text-xs text-rose-600 flex items-center gap-1 mt-1 font-medium"
+            className="text-xs text-danger flex items-center gap-1 mt-1 font-medium"
           >
             <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path

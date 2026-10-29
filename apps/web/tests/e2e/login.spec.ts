@@ -42,8 +42,9 @@ const users: UserFixture[] = [
 
 async function signIn(page: Page, email: string, password: string) {
   await page.goto("/login");
-  await page.getByLabel(/email/i).fill(email);
-  await page.getByTestId('password-input').fill(password);
+  await page.getByLabel(/work email|email/i).fill(email);
+  await page.getByTestId("login-continue-button").click();
+  await page.getByTestId("password-input").fill(password);
   await page.getByRole("button", { name: /sign in|log in|login/i }).click();
 
   // If platform_admin, explicitly wait for the MFA dialog (5s) and complete TOTP step

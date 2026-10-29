@@ -97,7 +97,7 @@ export function BrandMark({
           src={logoSrc}
           variant={logoVariant}
           rounded={logoRounded}
-          className="transition-transform duration-200 hover:scale-105"
+          className="transition-transform duration-200 "
         />
       )}
 

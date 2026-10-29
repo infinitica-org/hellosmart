@@ -92,9 +92,9 @@ export const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
     const listRef = useRef<HTMLDivElement>(null);
 
     const variantStyles = {
-      pills: 'bg-neutral-100/80 p-1 rounded-xl border border-neutral-200/80 gap-1',
-      segmented: 'bg-neutral-100 p-1 rounded-xl border border-neutral-200 gap-1 shadow-2xs',
-      line: 'border-b border-neutral-200 gap-6',
+      pills: 'bg-[#f4f6f8] p-0.5 rounded-sm border border-[#d8dee6] gap-0.5',
+      segmented: 'bg-[#f4f6f8] p-0.5 rounded-sm border border-[#d8dee6] gap-0.5',
+      line: 'border-b border-[#d8dee6] gap-5',
     }[variant];
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -126,8 +126,8 @@ export const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
         role="tablist"
         onKeyDown={handleKeyDown}
         className={`flex items-center overflow-x-auto no-scrollbar ${
-          fitted ? 'w-full [&>*]:flex-1' : ''
-        } ${variantStyles} ${className}`}
+ fitted ? 'w-full [&>*]:flex-1' : ''
+ } ${variantStyles} ${className}`}
         {...props}
       >
         {children}
@@ -152,19 +152,19 @@ export const TabsTrigger = forwardRef<HTMLButtonElement, TabsTriggerProps>(
     const isSelected = activeValue === value;
 
     const baseStyles =
-      'inline-flex items-center gap-2 whitespace-nowrap text-xs sm:text-sm font-medium transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 select-none cursor-pointer';
+      'inline-flex items-center gap-2 whitespace-nowrap text-xs sm:text-sm font-medium transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nav-accent focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 select-none cursor-pointer';
 
     const lineStyles = isSelected
-      ? 'border-b-2 border-primary text-primary pb-2.5 -mb-px font-medium'
-      : 'text-neutral-500 hover:text-neutral-900 border-b-2 border-transparent pb-2.5 -mb-px font-medium';
+      ? 'border-b-2 border-nav-accent text-nav pb-2.5 -mb-px font-semibold'
+      : 'text-[#5b6775] hover:text-nav border-b-2 border-transparent pb-2.5 -mb-px font-medium';
 
     const pillStyles = isSelected
-      ? 'bg-primary text-white rounded-lg px-3.5 py-1.5 shadow-xs font-medium'
-      : 'text-neutral-600 hover:text-neutral-900 px-3.5 py-1.5 rounded-lg hover:bg-neutral-200/60 font-medium';
+      ? 'bg-nav text-white rounded-sm px-3 py-1.5 font-medium'
+      : 'text-[#5b6775] hover:text-nav px-3 py-1.5 rounded-sm hover:bg-white font-medium';
 
     const segmentedStyles = isSelected
-      ? 'bg-white text-neutral-900 rounded-lg px-3.5 py-1.5 shadow-xs border border-neutral-200/80 font-medium'
-      : 'text-neutral-600 hover:text-neutral-900 px-3.5 py-1.5 rounded-lg hover:bg-neutral-200/40 border border-transparent font-medium';
+      ? 'bg-white text-nav rounded-sm px-3 py-1.5 border border-[#d8dee6] font-semibold'
+      : 'text-[#5b6775] hover:text-nav px-3 py-1.5 rounded-sm hover:bg-white border border-transparent font-medium';
 
     const styleVariant =
       variant === 'segmented'

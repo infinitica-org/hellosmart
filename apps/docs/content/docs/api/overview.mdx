@@ -84,6 +84,16 @@ POST /api/v1/auth/logout
 ```
 
 ```http
+POST /api/v1/auth/password/change
+Content-Type: application/json
+
+{
+  "currentPassword": "OldPassword123!",
+  "newPassword": "NewStrongPassword456!"
+}
+```
+
+```http
 GET /api/v1/me
 ```
 
@@ -153,3 +163,36 @@ HelloSmart processes incoming asynchronous webhooks idempotently:
 
 - **Razorpay**: Reconciles subscription renewals and one-time quote purchases at `/api/v1/webhooks/razorpay`. Verifies HMAC-SHA256 signature using `RAZORPAY_WEBHOOK_SECRET`.
 - **cal.com**: Ingests prospective enterprise customer discovery meetings at `/api/v1/webhooks/calcom` to automatically transition leads in our sales pipeline.
+
+---
+
+## 5. Security Controls & Request Hardening (S0-T14-1)
+
+The API enforces strict defense-in-depth security controls on all incoming and outgoing HTTP traffic:
+
+### A. HTTP Security Headers
+- **HSTS**: `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` in production/staging environments (disabled in development to prevent local browser lockouts).
+- **MIME Sniffing**: `X-Content-Type-Options: nosniff` enforced on all responses, including RFC 7807 error envelopes.
+- **Clickjacking / Framing**: `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'` prevent embedding API responses.
+- **Server Identity**: `X-Powered-By` header is stripped across all responses.
+
+### B. Strict CORS Architecture
+- **Origin Whitelist**: Validates requests against explicit entries in `CORS_ORIGINS`. Untrusted origins do not receive CORS headers.
+- **No Wildcard**: Wildcard `*` is strictly disallowed when `credentials: true`.
+- **Allowed Methods**: `GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS`.
+- **Preflight Cache**: 86,400 seconds (24 hours).
+
+### C. CSRF & Origin Validation
+- **Custom Header**: State-changing browser requests (`POST`, `PUT`, `PATCH`, `DELETE`) must send `X-HS-CSRF: 1`.
+- **Origin / Referer Verification**: Evaluates request `Origin` (falling back to strict URL parsing on `Referer` if `Origin` is omitted) against the configured trusted origin. Substring and domain-suffix attacks are rejected.
+- **Exemptions**: Server-to-server endpoints (such as external payment and booking webhooks) are explicitly decorated with `@SkipCsrf()`.
+
+### D. Input Validation & Body Size Caps
+- **Body Limit**: Enforced at 1 MB (1,048,576 bytes) by Fastify adapter. Oversized payloads return RFC 7807 `413 PAYLOAD_TOO_LARGE`.
+- **Strict Zod Schemas**: Incoming JSON payloads are parsed with `ZodValidationPipe`, which rejects unknown/unrecognized properties with `422 VALIDATION_ERROR`.
+- **Malformed JSON**: Parse errors return RFC 7807 `400 BAD_REQUEST`.
+
+### E. Rate Limiting (Throttling)
+- **Global Tier**: 100 requests per minute per IP address.
+- **Authentication Tier**: Strict 5 requests per minute per IP on credentialed auth endpoints (`/auth/login`, `/auth/mfa/verify`). Integrated with account lockout controls (5 failed attempts per user account).
+

@@ -12,9 +12,9 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
 }
 
 const sizeStyles: Record<InputSize, string> = {
-  sm: 'text-xs py-1.5 px-3 rounded-md',
-  md: 'text-sm py-2 px-3.5 rounded-lg',
-  lg: 'text-base py-2.5 px-4 rounded-xl',
+  sm: 'text-xs py-1 px-2.5 rounded-sm',
+  md: 'text-[13px] py-1.5 px-3 rounded-sm',
+  lg: 'text-sm py-2 px-3.5 rounded-md',
 };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
@@ -43,12 +43,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           disabled={disabled || isLoading}
           aria-invalid={hasError ? 'true' : undefined}
-          className={`w-full bg-white border text-neutral-900 placeholder-neutral-400 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed ${
-            sizeStyles[size]
-          } ${
+          className={`w-full bg-white border text-foreground placeholder-[#8a95a3] transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed ${
+ sizeStyles[size]
+ } ${
             hasError
-              ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20'
-              : 'border-neutral-200/90 hover:border-neutral-300 focus:border-primary focus:ring-primary/20'
+              ? 'border-[#d64545] focus:border-[#d64545] focus:ring-[#d64545]/15'
+              : 'border-[#d8dee6] hover:border-[#c3ccd6] focus:border-nav-accent focus:ring-nav-accent/20'
           } ${leftIcon ? 'pl-9' : ''} ${rightIcon || onClear || isLoading ? 'pr-9' : ''} ${className}`}
           {...props}
         />

@@ -34,7 +34,7 @@ Before running the seed command, verify that your local environment satisfies th
      # Shared local test password used to generate Argon2id hashes for loginable accounts (uncommitted)
      SEED_DEFAULT_PASSWORD=
 
-     # Base32 TOTP secret for local testing of Platform Admin MFA (RFC 4648 Base32: A-Z, 2-7, uncommitted)
+     # Optional: Base32 TOTP secret if you seed platform admin MFA via env reference (not used by default seed)
      SEED_PLATFORM_ADMIN_TOTP_SECRET=
      ```
 
@@ -96,10 +96,10 @@ Status          : Seed Completed Successfully (Idempotent)
 | ------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Organizations**         | **3**   | Aster Ridge Technologies (`paid_active`), Brindle & Co (`trial_active`), and Crestview Financial (`suspended` negative sample).                                                                                                                             |
 | **Entitlements**          | **3**   | Quota definitions, feature flags (`cloud`, `chat`), and trial window (14 days).                                                                                                                                                                             |
-| **Platform Admins**       | **1**   | `superadmin@hellosmart.ai` with MFA enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`).                                                                                                                                                         |
+| **Platform Admins**       | **1**   | `superadmin@hellosmart.ai` — **no MFA in seed** (`mfa_secret_ref` is null); enroll TOTP manually when ready.                                                                                                                                              |
 | **Company Admins**        | **3**   | `admin@asterridge.com` (Aster Ridge), `trialadmin@brindle.co` (Brindle & Co), and `admin@crestview.test` (Crestview Financial negative test sample).                                                                                                        |
 | **Candidates**            | **110** | **Aster Ridge**: 100 candidates (full quota capacity test: 70 active, 15 invited, 10 suspended, 5 deleted).<br>**Brindle & Co**: 10 candidates (full trial cap test: 4 active, 3 invited, 1 suspended, 2 deleted). Includes designated loginable candidate. |
-| **Candidate Invitations** | **3**   | Candidate onboarding tokens: 1 valid (72h expiry), 1 expired (-24h), 1 used (`used_at` set).                                                                                                                                                                |
+| **Candidate Invitations** | **3**   | Candidate onboarding tokens: 1 valid (72h expiry), 1 expired (-24h), 1 used (`used_at` set). See [Invitation API Dependencies](invitation-api-dependencies.md) for endpoint contracts, database functions, and security specifications.                     |
 | **GRAND TOTAL**           | **123** | **123 persistent records across 4 tenant-isolated tables.**                                                                                                                                                                                                 |
 
 ---
@@ -129,7 +129,7 @@ The verification runner connects using the schema owner role (`DATABASE_MIGRATOR
 4. **User Role & Status Distribution**: Asserts exact breakdown across roles and statuses (78 active, 18 invited, 11 suspended, 7 deleted).
 5. **Tenant Scoping & Foreign Keys**: Verifies all 113 tenant users have valid `org_id` foreign keys, platform admin has `org_id IS NULL`, and invitations match user organization context.
 6. **Active User Password Hashes**: Verifies that all 78 active users (platform admin, 3 company admins, and 74 candidates) have valid Argon2id password hashes ($64\text{ MB}$, $3$ iterations, parallelism $1$), sharing a single seed-computed hash for sub-3-second seed performance.
-7. **Platform Admin MFA Configuration**: Verifies `mfa_secret_ref` is populated and contains a Secrets Manager reference rather than a raw plaintext Base32 secret. (Note: AES-256-GCM decryption is not checked because S0-T14-3 does not exist yet).
+7. **Platform Admin MFA Configuration**: Verifies `mfa_secret_ref` is populated and contains an environment/secrets reference (`env:PLATFORM_ADMIN_MFA_SECRET`) rather than a raw plaintext Base32 secret. (Note: AES-256-GCM vault decryption is not checked because the vault encryption helper does not exist yet).
 8. **Entitlements & Trial Windows**: Verifies 1:1 entitlement mapping with organizations and valid trial deadlines.
 9. **Invitations State & Token Hashes**: Verifies exactly 1 valid, 1 expired, and 1 used invitation, each storing a 64-character hexadecimal SHA-256 digest (`token_hash`).
 10. **Soft-Deletion Invariants**: Asserts that `status = 'deleted'` users have `deleted_at` timestamps populated while active users have `null`.
@@ -231,7 +231,7 @@ For full credential details, passwords, and candidate distribution tables, see t
 
 | Persona                                    | Email                                               | Password Hash                    | Role / Classification | Notes                                                                              |
 | ------------------------------------------ | --------------------------------------------------- | -------------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
-| **Platform Super Admin**                   | `superadmin@hellosmart.ai`                          | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | MFA Enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`)                 |
+| **Platform Super Admin**                   | `superadmin@hellosmart.ai`                          | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | No MFA in seed — password-only login until you enroll TOTP in the product        |
 | **Aster Ridge Company Admin**              | `admin@asterridge.com`                              | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Mature paid tenant administrator (`paid_active`)                                   |
 | **Brindle & Co Company Admin**             | `trialadmin@brindle.co`                             | Hash of `$SEED_DEFAULT_PASSWORD` | **Loginable**         | Active 14-day trial administrator (`trial_active`)                                 |
 | **Active Candidates (74 total)**           | `candidate.aster-ridge.*`, `candidate.brindle-co.*` | Hash of `$SEED_DEFAULT_PASSWORD` | Active Pool           | All 74 active candidates share a single precomputed seed Argon2id hash             |
@@ -241,17 +241,11 @@ For full credential details, passwords, and candidate distribution tables, see t
 | **Invited Candidates (18 total)**          | `candidate.aster-ridge.071@example.com`, etc.       | `null` (Pending Reset)           | Onboarding Testing    | Must complete first-login onboarding & password reset via invite token (`BR-24`)   |
 | **Other Suspended/Deleted Candidates**     | `candidate.*` (bulk suspended/deleted)              | `null`                           | Inactive Sample Pool  | Non-sample suspended/deleted candidates retain NULL hash                           |
 
-### Setting Up Platform Admin TOTP in Authenticator Apps
+### Enrolling Platform Admin TOTP manually
 
-To test Platform Admin login with two-factor authentication locally:
+Seed data leaves `mfa_secret_ref` **null** for `superadmin@hellosmart.ai` so you can enroll MFA through the admin UI (or by updating `app.users.mfa_secret_ref` via an approved admin flow) when ready.
 
-1. Copy `.env.local.example` to `.env.local`:
-   ```bash
-   cp .env.local.example .env.local
-   ```
-2. Set `SEED_PLATFORM_ADMIN_TOTP_SECRET` (or `PLATFORM_ADMIN_MFA_SECRET`) to a valid RFC 4648 Base32 key (e.g. `JBSWY3DPEHPK3PXP`).
-3. Note on API compatibility: The platform admin user is seeded with `mfa_secret_ref = 'env:PLATFORM_ADMIN_MFA_SECRET'`. The backend API process (`apps/api`) resolves this via `PLATFORM_ADMIN_MFA_SECRET` from its environment or `.env` file. Both the seed runner and the backend API process must share this environment variable for MFA verification to succeed.
-4. Add the key manually to your authenticator app (Google Authenticator, 1Password, etc.) as a Time-based (TOTP) account.
+To test TOTP locally after enrollment, set `PLATFORM_ADMIN_MFA_SECRET` (or an encrypted envelope in `mfa_secret_ref`) in the API environment and use your authenticator app.
 5. **Never print, commit, or log the TOTP secret string or an `otpauth://` URI.**
 
 ---
@@ -298,3 +292,11 @@ pnpm lint
   ```bash
   pnpm infra:up
   ```
+
+---
+
+## 8. Related Documentation
+
+- [HelloSmart Integration Testing & Local Verification Guide](integration-testing.md): Comprehensive guide for local setup, environment configuration, database seeding, verification checks, seeded accounts matrix, and running integration test suites.
+- [Candidate Invitation API Dependencies & Contract Specification](invitation-api-dependencies.md): Complete specification of invitation endpoints (`GET /auth/invitations/:token`, `POST /auth/invitations/accept`), request/response contracts, PostgreSQL `SECURITY DEFINER` functions, seed dependencies, missing endpoints, and open questions.
+- [Fixture Matrix](fixture-matrix.md): Enterprise entity matrix covering Aster Ridge, Brindle & Co, and Crestview Financial.

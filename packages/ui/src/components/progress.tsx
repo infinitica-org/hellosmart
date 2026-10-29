@@ -14,9 +14,9 @@ export interface ProgressProps extends HTMLAttributes<HTMLDivElement> {
 
 const variantStyles: Record<ProgressVariant, string> = {
   primary: 'bg-primary',
-  success: 'bg-emerald-500',
-  warning: 'bg-amber-500',
-  danger: 'bg-rose-500',
+  success: 'bg-success',
+  warning: 'bg-warning',
+  danger: 'bg-danger',
 };
 
 const sizeStyles: Record<ProgressSize, string> = {

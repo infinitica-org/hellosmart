@@ -48,9 +48,9 @@ export const EntitlementUsageCard = forwardRef<HTMLDivElement, EntitlementUsageC
           </div>
           {daysRemaining !== null && (
             <span
-              className={`text-xs font-mono px-2.5 py-1 rounded-full border ${
+              className={`text-xs font-mono px-2.5 py-1 rounded-sm border ${
                 daysRemaining <= 3
-                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                  ? 'bg-danger-muted text-danger-foreground border-danger-border'
                   : 'bg-primary/10 text-primary border-primary/30'
               }`}
             >

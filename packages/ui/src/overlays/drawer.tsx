@@ -136,7 +136,7 @@ export function Drawer({
     <div className="fixed inset-0 z-50 overflow-hidden" role="presentation">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-neutral-950/60 backdrop-blur-xs transition-opacity animate-fade-in"
+        className="fixed inset-0 bg-chrome/50 transition-opacity animate-fade-in"
         onClick={() => {
           if (closeOnBackdropClick) {
             handleOpenChange(false);
@@ -150,7 +150,7 @@ export function Drawer({
         role="dialog"
         aria-modal="true"
         data-testid={testId}
-        className={`fixed z-10 w-full bg-white text-neutral-900 shadow-2xl flex flex-col justify-between overflow-y-auto ${positionClasses[position]} ${sizeClass} ${animationClasses[position]} ${className}`}
+        className={`fixed z-10 w-full bg-white text-neutral-900 shadow-lg flex flex-col justify-between overflow-y-auto ${positionClasses[position]} ${sizeClass} ${animationClasses[position]} ${className}`}
       >
         {/* Accessible Close Button */}
         {showCloseButton && (
@@ -158,7 +158,7 @@ export function Drawer({
             type="button"
             onClick={() => handleOpenChange(false)}
             aria-label="Close drawer"
-            className="absolute right-4 top-4 rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400 transition-colors z-20"
+            className="absolute right-4 top-4 rounded-sm p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400 transition-colors z-20"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -290,7 +290,7 @@ export const DrawerClose = forwardRef<HTMLButtonElement, DrawerCloseProps>(
       ref={ref}
       type="button"
       onClick={onClick}
-      className={`rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors ${className}`}
+      className={`rounded-sm p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors ${className}`}
       {...props}
     >
       {children ?? (

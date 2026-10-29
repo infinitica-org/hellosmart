@@ -1,7 +1,8 @@
 'use client';
 
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode } from 'react';
 import { BrandMark } from '../brand-mark';
+import { Avatar } from '../components/avatar';
 import { Input } from '../components/input';
 import { Breadcrumbs, BreadcrumbItemData } from './breadcrumbs';
 import {
@@ -82,6 +83,12 @@ export interface TopbarProps {
   showBreadcrumbs?: boolean;
   /** Additional action elements rendered in the right section */
   actions?: ReactNode;
+  /** Extra items rendered in the shared profile dropdown (before Sign out) */
+  profileMenuItems?: ReactNode;
+  /** Test id on the profile trigger (used by portal session tests) */
+  profileTriggerTestId?: string;
+  /** Mobile hamburger — opens the shared sidebar drawer */
+  onMenuClick?: () => void;
   /** Additional CSS classes for the root element */
   className?: string;
   /** Custom link renderer for breadcrumbs and navigation */
@@ -106,33 +113,15 @@ function UserAvatar({
   name?: string | undefined;
   size?: ('sm' | 'md') | undefined;
 }) {
-  const sizeClasses = size === 'md' ? 'w-8 h-8 text-xs' : 'w-7 h-7 text-[11px]';
-  const initials = name
-    ? name
-        .split(' ')
-        .map((part) => part[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : 'U';
-
-  if (src) {
-    return (
-      <img
-        src={src}
-        alt={name || 'User avatar'}
-        className={`${sizeClasses} rounded-full object-cover ring-2 ring-white shadow-2xs block`}
-      />
-    );
-  }
-
   return (
-    <span
-      className={`${sizeClasses} rounded-full bg-gradient-to-tr from-primary to-orange-400 text-white font-bold flex items-center justify-center ring-2 ring-white shadow-2xs select-none`}
-      aria-hidden="true"
-    >
-      {initials}
-    </span>
+    <Avatar
+      src={src}
+      name={name}
+      size={size === 'md' ? 'sm' : 'xs'}
+      variant="dark"
+      shape="circle"
+      status="online"
+    />
   );
 }
 
@@ -147,6 +136,8 @@ function TopbarUserProfileDropdown({
   userRole,
   companyName,
   onLogout,
+  profileMenuItems,
+  profileTriggerTestId = 'user-menu-trigger',
 }: {
   userName?: string | undefined;
   userEmail?: string | undefined;
@@ -154,33 +145,32 @@ function TopbarUserProfileDropdown({
   userRole?: string | undefined;
   companyName?: string | undefined;
   onLogout?: (() => void) | undefined;
+  profileMenuItems?: ReactNode | undefined;
+  profileTriggerTestId?: string | undefined;
 }) {
   return (
     <DropdownMenu>
       {/* Pill trigger: avatar with online dot + name + role subtitle + chevron */}
       <DropdownMenuTrigger
-        className="group flex items-center gap-1.5 sm:gap-2.5 h-9 sm:h-10 pl-1 sm:pl-1.5 pr-1.5 sm:pr-3 rounded-full bg-white border border-neutral-200/90 shadow-2xs hover:bg-neutral-50/90 hover:border-neutral-300 transition-all duration-200 cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-primary/20 shrink-0"
+        data-testid={profileTriggerTestId}
+        className="group flex items-center gap-1.5 sm:gap-2 h-8 pl-1 pr-2 rounded-sm bg-white border border-[#d8dee6] hover:bg-[#f4f6f8] transition-colors cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-nav-accent/30 shrink-0"
         aria-label="User account menu"
       >
         <div className="relative shrink-0">
           <UserAvatar src={userAvatar} name={userName} size="sm" />
-          <span
-            className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white"
-            title="Online"
-          />
         </div>
         <div className="min-w-0 text-left hidden md:block">
-          <p className="text-xs font-semibold text-neutral-900 leading-tight truncate max-w-[120px]">
+          <p className="text-xs font-semibold text-foreground leading-tight truncate max-w-[120px]">
             {userName || 'Account'}
           </p>
           {userRole && (
-            <p className="text-[10px] text-neutral-400 font-medium leading-tight truncate max-w-[120px]">
+            <p className="text-[10px] text-[#5b6775] font-medium leading-tight truncate max-w-[120px]">
               {userRole}
             </p>
           )}
         </div>
         <svg
-          className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-700 transition-transform duration-200 shrink-0 hidden sm:block"
+          className="w-3.5 h-3.5 text-[#8a95a3] group-hover:text-nav transition-transform duration-200 shrink-0 hidden sm:block"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -241,6 +231,8 @@ function TopbarUserProfileDropdown({
           Settings
         </DropdownMenuItem>
 
+        {profileMenuItems}
+
         <DropdownMenuSeparator />
 
         {onLogout && (
@@ -277,10 +269,10 @@ function NotificationBell({
       type="button"
       aria-label="Notifications"
       onClick={onClick}
-      className="relative w-10 h-10 rounded-full bg-white border border-neutral-200/90 shadow-2xs hover:bg-neutral-50/90 hover:border-neutral-300 text-neutral-600 hover:text-neutral-900 flex items-center justify-center transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
+      className="relative w-8 h-8 rounded-sm bg-white border border-[#d8dee6] hover:bg-[#f4f6f8] text-[#3d4754] hover:text-nav flex items-center justify-center transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-nav-accent/30"
       title="Notifications"
     >
-      <svg className="w-4 h-4 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -305,7 +297,7 @@ function SearchButton({ onClick }: { onClick?: () => void }) {
       type="button"
       aria-label="Search"
       onClick={onClick}
-      className="w-9 h-9 rounded-full flex items-center justify-center text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
+      className="w-8 h-8 rounded-sm flex items-center justify-center text-inherit opacity-80 hover:opacity-100 hover:bg-black/10 transition-colors cursor-pointer"
       title="Search"
     >
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -325,7 +317,7 @@ function HelpButton({ onClick }: { onClick?: () => void }) {
       type="button"
       aria-label="Help"
       onClick={onClick}
-      className="w-9 h-9 rounded-full flex items-center justify-center text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
+      className="w-8 h-8 rounded-sm flex items-center justify-center text-inherit opacity-80 hover:opacity-100 hover:bg-black/10 transition-colors cursor-pointer"
       title="Help"
     >
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -379,6 +371,9 @@ export function Topbar({
   breadcrumbItems,
   showBreadcrumbs = false,
   actions,
+  profileMenuItems,
+  profileTriggerTestId,
+  onMenuClick,
   className = '',
   renderLink,
 }: TopbarProps): React.JSX.Element {
@@ -389,11 +384,24 @@ export function Topbar({
   // For dashboard and search variants, hide logo by default (it's already in the sidebar)
   const shouldShowLogo = showLogo !== undefined ? showLogo : (variant !== 'dashboard' && variant !== 'search');
 
+  const profile = showProfile ? (
+    <TopbarUserProfileDropdown
+      userName={userName}
+      userEmail={userEmail}
+      userAvatar={userAvatar}
+      userRole={userRole ?? (variant === 'workspace' ? 'Candidate' : undefined)}
+      companyName={companyName}
+      onLogout={onLogout}
+      profileMenuItems={profileMenuItems}
+      profileTriggerTestId={profileTriggerTestId}
+    />
+  ) : null;
+
   // ── Variant: minimal ────────────────────────────────────────────────────
   if (variant === 'minimal') {
     return (
       <header
-        className={`sticky top-0 z-40 flex items-center justify-between h-16 px-6 bg-white border-b border-neutral-200 ${className}`}
+        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-6 bg-white border-b border-[#d8dee6] ${className}`}
         role="banner"
       >
         {/* Left: logo */}
@@ -411,16 +419,7 @@ export function Topbar({
 
         {/* Right: profile and actions */}
         <div className="flex items-center gap-2">
-          {showProfile && (
-            <TopbarUserProfileDropdown
-              userName={userName}
-              userEmail={userEmail}
-              userAvatar={userAvatar}
-              userRole={userRole}
-              companyName={companyName}
-              onLogout={onLogout}
-            />
-          )}
+          {profile}
           {actions}
         </div>
       </header>
@@ -431,11 +430,25 @@ export function Topbar({
   if (variant === 'dashboard') {
     return (
       <header
-        className={`sticky top-0 z-30 flex items-center justify-between h-16 px-4 sm:px-8 bg-white border-b border-neutral-200 ${className}`}
+        className={`hs-chrome sticky top-0 z-30 flex items-center justify-between h-14 px-4 sm:px-6 text-white ${className}`}
         role="banner"
       >
         {/* Left section: breadcrumbs, custom leftContent, or title */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
+          {onMenuClick && (
+            <button
+              type="button"
+              onClick={onMenuClick}
+              aria-label="Open menu"
+              className="md:hidden shrink-0 rounded-sm p-2 text-white/90 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <line x1="4" y1="18" x2="20" y2="18" />
+              </svg>
+            </button>
+          )}
           {shouldShowLogo && (
             <BrandMark
               showLogo
@@ -453,7 +466,7 @@ export function Topbar({
               <Breadcrumbs items={breadcrumbItems} showHomeIcon />
             </div>
           ) : title ? (
-            <div className="min-w-0 truncate text-sm font-medium text-neutral-800">{title}</div>
+            <div className="min-w-0 truncate text-[13px] font-medium text-white">{title}</div>
           ) : null}
         </div>
 
@@ -466,16 +479,7 @@ export function Topbar({
               <NotificationBell count={notificationCount} onClick={onNotificationsClick} />
             </div>
           )}
-          {showProfile && (
-            <TopbarUserProfileDropdown
-              userName={userName}
-              userEmail={userEmail}
-              userAvatar={userAvatar}
-              userRole={userRole}
-              companyName={companyName}
-              onLogout={onLogout}
-            />
-          )}
+          {profile}
           {actions && <div className="flex items-center gap-1 sm:gap-1.5 ml-1 sm:ml-1.5 shrink-0">{actions}</div>}
         </div>
       </header>
@@ -486,7 +490,7 @@ export function Topbar({
   if (variant === 'search') {
     return (
       <header
-        className={`sticky top-0 z-40 flex items-center justify-between h-16 px-4 sm:px-8 bg-white border-b border-neutral-200 ${className}`}
+        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white border-b border-[#d8dee6] ${className}`}
         role="banner"
       >
         {/* Left section: Quick search bar without breadcrumbs */}
@@ -534,16 +538,7 @@ export function Topbar({
           {showNotifications && (
             <NotificationBell count={notificationCount} onClick={onNotificationsClick} />
           )}
-          {showProfile && (
-            <TopbarUserProfileDropdown
-              userName={userName}
-              userEmail={userEmail}
-              userAvatar={userAvatar}
-              userRole={userRole}
-              companyName={companyName}
-              onLogout={onLogout}
-            />
-          )}
+          {profile}
           {actions && <div className="flex items-center gap-1.5 ml-1.5">{actions}</div>}
         </div>
       </header>
@@ -554,7 +549,7 @@ export function Topbar({
   if (variant === 'workspace') {
     return (
       <header
-        className={`sticky top-0 z-40 flex items-center justify-between h-16 px-4 sm:px-8 bg-white border-b border-neutral-200 ${className}`}
+        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white border-b border-[#d8dee6] ${className}`}
         role="banner"
       >
         {/* Left: Brand logo + divider + assessment title */}
@@ -578,8 +573,8 @@ export function Topbar({
         {/* Center / Right: Live Timer + AI Status + Profile + Submit Button */}
         <div className="flex items-center gap-3 flex-shrink-0">
           {/* Live countdown timer badge */}
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-mono font-medium shadow-2xs">
-            <svg className="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-warning-muted text-warning-foreground border border-warning-border rounded-full text-xs font-mono font-medium shadow-2xs">
+            <svg className="w-3.5 h-3.5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>
@@ -588,26 +583,17 @@ export function Topbar({
 
           {/* AI Status badge */}
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-neutral-100 text-neutral-700 border border-neutral-200 rounded-full text-[11px] font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
             <span>AI Assistant: ON</span>
           </div>
 
-          {showProfile && (
-            <TopbarUserProfileDropdown
-              userName={userName}
-              userEmail={userEmail}
-              userAvatar={userAvatar}
-              userRole={userRole || 'Candidate'}
-              companyName={companyName}
-              onLogout={onLogout}
-            />
-          )}
+          {profile}
 
           {/* Submit Work CTA */}
           <button
             type="button"
             onClick={onSubmitWork}
-            className="text-xs font-semibold px-4 py-2 bg-primary text-white rounded-full hover:bg-primary/90 transition-all shadow-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="text-xs font-semibold px-4 py-2 bg-primary text-white rounded-full hover:bg-primary/90 transition-all shadow-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-nav-accent/20"
           >
             Submit Work
           </button>
@@ -619,7 +605,7 @@ export function Topbar({
   // ── Variant: default ────────────────────────────────────────────────────
   return (
     <header
-      className={`sticky top-0 z-40 flex items-center justify-between h-16 px-4 sm:px-8 bg-white border-b border-neutral-200 ${className}`}
+      className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white border-b border-[#d8dee6] ${className}`}
       role="banner"
     >
       {/* Left section: logo + title/subtitle */}
@@ -654,16 +640,7 @@ export function Topbar({
         {showNotifications && (
           <NotificationBell count={notificationCount} onClick={onNotificationsClick} />
         )}
-        {showProfile && (
-          <TopbarUserProfileDropdown
-            userName={userName}
-            userEmail={userEmail}
-            userAvatar={userAvatar}
-            userRole={userRole}
-            companyName={companyName}
-            onLogout={onLogout}
-          />
-        )}
+        {profile}
         {actions && <div className="flex items-center gap-1.5 ml-1.5">{actions}</div>}
       </div>
     </header>

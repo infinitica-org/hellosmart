@@ -9,6 +9,7 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import {
   LogoutAllResponseSchema,
   RevokeSessionResponseSchema,
@@ -72,6 +73,7 @@ export class SessionsController {
     @Inject(SessionService) private readonly sessionService: SessionService,
   ) {}
 
+  @SkipThrottle()
   @Get('sessions')
   async listSessions(@Req() request: AuthenticatedRequest) {
     const user = request[REQUEST_USER_KEY];

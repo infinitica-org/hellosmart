@@ -12,6 +12,8 @@ import {
   getInviteToken,
   hashInvitationToken,
   hashInvitationTokenHex,
+  resolveEffectiveDatabaseUrl,
+  isRoleAllowedToWrite,
 } from '../dist/index.js';
 import {
   ASTER_RIDGE_ID,
@@ -283,9 +285,10 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
         'Platform admin must have org_id = null (BR-01, BR-04)',
       );
       assert.strictEqual(admin.status, 'active');
-      assert.ok(
+      assert.strictEqual(
         admin.mfa_secret_ref,
-        'Platform admin must have MFA secret ref configured (MFA enabled)',
+        null,
+        'Seed platform admin has no MFA until enrolled manually',
       );
     });
 
@@ -591,6 +594,133 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
       const stderr = result.stderr || result.stdout;
       assert.match(stderr, /BLOCKED BY SAFETY GUARD/i);
       assert.match(stderr, /rds-postgres\.us-east-1\.amazonaws\.com/);
+    });
+
+    it('proves safety guard runs on the URL that is ACTUALLY used to connect (a)', async () => {
+      // When a remote databaseUrl is passed, the guard fails on that exact remote URL
+      await assert.rejects(
+        () =>
+          runCliSeed({
+            nodeEnv: 'development',
+            databaseUrl:
+              'postgres://hs_migrator:secret@db.custom-remote-actual.internal:5432/hellosmart_test',
+            exitProcess: false,
+          }),
+        /db\.custom-remote-actual\.internal/,
+      );
+    });
+
+    it('proves remote DATABASE_MIGRATOR_URL blocks seed even if DATABASE_URL is local (b)', async () => {
+      const origMigrator = process.env.DATABASE_MIGRATOR_URL;
+      const origDb = process.env.DATABASE_URL;
+      try {
+        process.env.DATABASE_URL = 'postgres://hs_app:local@localhost:5434/hellosmart';
+        process.env.DATABASE_MIGRATOR_URL =
+          'postgres://hs_migrator:secret@rds-migrator.internal:5432/hellosmart';
+
+        await assert.rejects(
+          () =>
+            runCliSeed({
+              nodeEnv: 'development',
+              exitProcess: false,
+            }),
+          /rds-migrator\.internal/,
+        );
+      } finally {
+        if (origMigrator) process.env.DATABASE_MIGRATOR_URL = origMigrator;
+        else delete process.env.DATABASE_MIGRATOR_URL;
+        if (origDb) process.env.DATABASE_URL = origDb;
+        else delete process.env.DATABASE_URL;
+      }
+    });
+
+    it('blocks CLI child process when DATABASE_MIGRATOR_URL is remote even with local DATABASE_URL (b)', () => {
+      const result = spawnSync(process.execPath, [ROOT_CLI_PATH], {
+        env: {
+          ...process.env,
+          NODE_ENV: 'development',
+          DATABASE_URL: 'postgres://hs_app:local@localhost:5434/hellosmart',
+          DATABASE_MIGRATOR_URL:
+            'postgres://hs_migrator:secret@rds-migrator.us-east-1.amazonaws.com:5432/hellosmart',
+        },
+        encoding: 'utf8',
+      });
+
+      assert.strictEqual(result.status, 1, 'Process must exit with non-zero exit code (1)');
+      const stderr = result.stderr || result.stdout;
+      assert.match(stderr, /BLOCKED BY SAFETY GUARD/i);
+      assert.match(stderr, /rds-migrator\.us-east-1\.amazonaws\.com/);
+    });
+
+    it('proves tests specifying their own database URL can never write to dev DB (c)', () => {
+      const origMigrator = process.env.DATABASE_MIGRATOR_URL;
+      const origDb = process.env.DATABASE_URL;
+      const origTest = process.env.TEST_DATABASE_URL;
+      const origSeed = process.env.SEED_DATABASE_URL;
+
+      try {
+        // Dev database is set in DATABASE_MIGRATOR_URL
+        process.env.DATABASE_MIGRATOR_URL =
+          'postgres://hs_migrator:hs_migrator_local@localhost:5434/hellosmart';
+
+        // 1. Programmatic databaseUrl option always wins
+        const urlOpt = resolveEffectiveDatabaseUrl({
+          databaseUrl: 'postgres://hs_migrator:hs_migrator_local@localhost:5434/hellosmart_test',
+        });
+        assert.strictEqual(
+          urlOpt,
+          'postgres://hs_migrator:hs_migrator_local@localhost:5434/hellosmart_test',
+          'Explicit programmatic databaseUrl must not be overridden by DATABASE_MIGRATOR_URL',
+        );
+
+        // 2. SEED_DATABASE_URL takes priority over DATABASE_MIGRATOR_URL
+        process.env.SEED_DATABASE_URL =
+          'postgres://hs_migrator:hs_migrator_local@localhost:5434/hellosmart_custom_seed';
+        const urlSeed = resolveEffectiveDatabaseUrl();
+        assert.strictEqual(
+          urlSeed,
+          'postgres://hs_migrator:hs_migrator_local@localhost:5434/hellosmart_custom_seed',
+        );
+        delete process.env.SEED_DATABASE_URL;
+
+        // 3. TEST_DATABASE_URL takes priority over DATABASE_MIGRATOR_URL
+        process.env.TEST_DATABASE_URL =
+          'postgres://hs_migrator:hs_migrator_local@localhost:5434/hellosmart_test';
+        const urlTest = resolveEffectiveDatabaseUrl();
+        assert.strictEqual(
+          urlTest,
+          'postgres://hs_migrator:hs_migrator_local@localhost:5434/hellosmart_test',
+        );
+        delete process.env.TEST_DATABASE_URL;
+
+        // 4. DATABASE_URL with a writing role (hs_migrator, hs_owner) takes priority over DATABASE_MIGRATOR_URL
+        process.env.DATABASE_URL =
+          'postgres://hs_migrator:hs_migrator_local@localhost:5434/hellosmart_test';
+        const urlDbWithRole = resolveEffectiveDatabaseUrl();
+        assert.strictEqual(
+          urlDbWithRole,
+          'postgres://hs_migrator:hs_migrator_local@localhost:5434/hellosmart_test',
+          'DATABASE_URL with write-capable role must take precedence and not revert to dev hellosmart DB',
+        );
+
+        // 5. DATABASE_URL with hs_app falls back to DATABASE_MIGRATOR_URL for safe multi-tenant seeding
+        process.env.DATABASE_URL = 'postgres://hs_app:hs_app_local@localhost:5434/hellosmart';
+        assert.strictEqual(isRoleAllowedToWrite(process.env.DATABASE_URL), false);
+        const urlDevFallback = resolveEffectiveDatabaseUrl();
+        assert.strictEqual(
+          urlDevFallback,
+          'postgres://hs_migrator:hs_migrator_local@localhost:5434/hellosmart',
+        );
+      } finally {
+        if (origMigrator) process.env.DATABASE_MIGRATOR_URL = origMigrator;
+        else delete process.env.DATABASE_MIGRATOR_URL;
+        if (origDb) process.env.DATABASE_URL = origDb;
+        else delete process.env.DATABASE_URL;
+        if (origTest) process.env.TEST_DATABASE_URL = origTest;
+        else delete process.env.TEST_DATABASE_URL;
+        if (origSeed) process.env.SEED_DATABASE_URL = origSeed;
+        else delete process.env.SEED_DATABASE_URL;
+      }
     });
   });
 

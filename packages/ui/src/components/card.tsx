@@ -10,17 +10,17 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'>
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ variant = 'solid', title, subtitle, className = '', children, ...props }, ref) => {
     const variantStyles = {
-      glass: 'bg-white/90 backdrop-blur-md border border-neutral-200/80 shadow-xs',
-      solid: 'bg-white border border-neutral-200/80 shadow-xs',
-      bordered: 'bg-transparent border border-neutral-300',
+      glass: 'bg-white border border-[#d8dee6]',
+      solid: 'bg-white border border-[#d8dee6]',
+      bordered: 'bg-transparent border border-[#d8dee6]',
       interactive:
-        'bg-white border border-neutral-200/80 hover:border-primary hover:shadow-md hover:shadow-primary/10 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer',
+        'bg-white border border-[#d8dee6] hover:border-[#c3ccd6] transition-colors duration-100 cursor-pointer',
     };
 
     return (
       <div
         ref={ref}
-        className={`rounded-2xl text-neutral-900 ${variantStyles[variant]} ${className}`}
+        className={`rounded-md text-foreground ${variantStyles[variant]} ${className}`}
         {...props}
       >
         {(title || subtitle) && (
@@ -45,7 +45,7 @@ export const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
     return (
       <div
         ref={ref}
-        className={`flex flex-col space-y-1.5 p-6 border-b border-neutral-100 ${className}`}
+        className={`flex flex-col space-y-1 p-4 border-b border-[#eef1f4] ${className}`}
         {...props}
       >
         {children}
@@ -65,7 +65,7 @@ export const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
     return (
       <Component
         ref={ref}
-        className={`text-lg font-semibold tracking-tight text-neutral-900 ${className}`}
+        className={`text-[15px] font-semibold tracking-tight text-foreground ${className}`}
         {...props}
       >
         {children}
@@ -101,7 +101,7 @@ export interface CardContentProps extends HTMLAttributes<HTMLDivElement> {
 export const CardContent = forwardRef<HTMLDivElement, CardContentProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div ref={ref} className={`p-6 ${className}`} {...props}>
+      <div ref={ref} className={`p-4 ${className}`} {...props}>
         {children}
       </div>
     );
@@ -118,7 +118,7 @@ export const CardFooter = forwardRef<HTMLDivElement, CardFooterProps>(
     return (
       <div
         ref={ref}
-        className={`flex items-center justify-between p-6 pt-4 border-t border-neutral-100 ${className}`}
+        className={`flex items-center justify-between p-4 pt-3 border-t border-[#eef1f4] ${className}`}
         {...props}
       >
         {children}

@@ -109,7 +109,7 @@ export const Breadcrumbs = forwardRef<HTMLElement, BreadcrumbsProps>(
 
     const containerPillClass =
       variant === 'pills'
-        ? 'inline-flex items-center bg-neutral-100/80 px-3 py-1.5 rounded-xl border border-neutral-200/60 shadow-2xs'
+        ? 'inline-flex items-center bg-neutral-100/80 px-3 py-1.5 rounded-md border border-neutral-200/60 shadow-2xs'
         : '';
 
     return (
@@ -131,8 +131,8 @@ export const Breadcrumbs = forwardRef<HTMLElement, BreadcrumbsProps>(
                     {isLast || !item.href ? (
                       <span
                         className={`flex items-center gap-1.5 text-neutral-900 font-semibold truncate max-w-xs ${
-                          isPill ? 'bg-white px-2.5 py-1 rounded-lg border border-neutral-200/80 shadow-2xs text-xs' : ''
-                        }`}
+ isPill ? 'bg-white px-2.5 py-1 rounded-sm border border-neutral-200/80 shadow-2xs text-xs' : ''
+ }`}
                         aria-current={isLast ? 'page' : undefined}
                       >
                         {item.icon && <span className="w-4 h-4 shrink-0 flex items-center justify-center text-neutral-500">{item.icon}</span>}
@@ -142,8 +142,8 @@ export const Breadcrumbs = forwardRef<HTMLElement, BreadcrumbsProps>(
                       <a
                         href={item.href}
                         className={`group flex items-center gap-1.5 text-neutral-500 hover:text-primary transition-colors ${
-                          isPill ? 'hover:bg-white/80 px-2 py-0.5 rounded-md text-xs' : ''
-                        }`}
+ isPill ? 'hover:bg-white/80 px-2 py-0.5 rounded-md text-xs' : ''
+ }`}
                       >
                         {item.icon && <span className="w-4 h-4 shrink-0 flex items-center justify-center text-neutral-400 group-hover:text-primary transition-colors">{item.icon}</span>}
                         <span>{item.label}</span>
@@ -259,12 +259,12 @@ export function CommandMenu({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 p-4" role="dialog" aria-modal="true">
-      <div className="fixed inset-0 bg-neutral-950/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
-      <div className="relative z-10 w-full max-w-lg rounded-xl border border-neutral-200 bg-white shadow-2xl p-4">
+      <div className="fixed inset-0 bg-chrome/50" onClick={onClose} aria-hidden="true" />
+      <div className="relative z-10 w-full max-w-lg rounded-md border border-neutral-200 bg-white shadow-lg p-4">
         <input
           type="text"
           placeholder={placeholder}
-          className="w-full bg-neutral-50 border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          className="w-full bg-neutral-50 border border-neutral-300 rounded-sm px-3.5 py-2 text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-nav-accent/20 focus:border-primary"
           autoFocus
         />
         {children && <div className="mt-3">{children}</div>}

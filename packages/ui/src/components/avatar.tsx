@@ -30,13 +30,13 @@ const variantClasses: Record<AvatarVariant, string> = {
   orange: 'bg-primary text-white border border-primary-600/30 shadow-xs shadow-primary/20',
   subtle: 'bg-primary/10 text-primary border border-primary/25',
   neutral: 'bg-neutral-100 text-neutral-800 border border-neutral-200',
-  dark: 'bg-neutral-900 text-white border border-neutral-800',
+  dark: 'bg-chrome text-white border border-chrome-muted',
 };
 
 const statusDotColors = {
-  online: 'bg-emerald-500 ring-white',
-  busy: 'bg-rose-500 ring-white',
-  away: 'bg-amber-400 ring-white',
+  online: 'bg-success ring-white',
+  busy: 'bg-danger ring-white',
+  away: 'bg-warning ring-white',
   offline: 'bg-neutral-400 ring-white',
 };
 
@@ -84,15 +84,15 @@ export const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
     const [imageError, setImageError] = useState(false);
     const cfg = sizeClasses[size];
     const twoLetters = getTwoLetterInitials(name, alt, initials || fallback);
-    const shapeClass = shape === 'circle' ? 'rounded-full' : 'rounded-xl';
+    const shapeClass = shape === 'circle' ? 'rounded-full' : 'rounded-md';
     const variantClass = variantClasses[variant] || variantClasses.orange;
 
     return (
       <div
         ref={ref}
         className={`relative inline-flex items-center justify-center shrink-0 select-none ${variantClass} ${
-          cfg.container
-        } ${shapeClass} ${className}`}
+ cfg.container
+ } ${shapeClass} ${className}`}
         {...props}
       >
         {src && !imageError ? (
@@ -159,8 +159,8 @@ export function AvatarGroup({
       {remaining > 0 && (
         <div
           className={`relative inline-flex items-center justify-center rounded-full bg-neutral-100 border border-neutral-200 ring-2 ring-white text-neutral-800 font-semibold shrink-0 ${
-            cfg.container
-          } ${cfg.text}`}
+ cfg.container
+ } ${cfg.text}`}
         >
           +{remaining}
         </div>

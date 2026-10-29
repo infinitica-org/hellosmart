@@ -124,8 +124,8 @@ export const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerPr
         <span>{children}</span>
         <svg
           className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180' : ''
-          }`}
+ isOpen ? 'rotate-180' : ''
+ }`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

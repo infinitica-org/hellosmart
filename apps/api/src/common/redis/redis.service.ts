@@ -17,11 +17,12 @@ export class RedisService implements OnModuleDestroy {
           enableReadyCheck: false,
           retryStrategy: () => null, // Fail fast on connection loss
         });
-        this.client.on('error', (err) => {
+        this.client.on('error', (err: Error) => {
           this.logger.error(`Redis connection error: ${err.message}`);
         });
-      } catch (err: any) {
-        this.logger.error(`Failed to initialize Redis client: ${err.message}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Failed to initialize Redis client: ${message}`);
       }
     }
   }

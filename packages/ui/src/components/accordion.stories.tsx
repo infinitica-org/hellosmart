@@ -33,7 +33,7 @@ type Story = StoryObj<typeof Accordion>;
 
 export const Default: Story = {
   render: (args) => (
-    <div className="w-full max-w-xl mx-auto p-6 bg-white rounded-2xl border border-neutral-200/80 shadow-xs">
+    <div className="w-full max-w-xl mx-auto p-6 bg-white rounded-md border border-neutral-200/80 shadow-xs">
       <Accordion {...args}>
         <AccordionItem value="item-1">
           <AccordionTrigger>What is HelloSmart.ai?</AccordionTrigger>
@@ -65,7 +65,7 @@ export const MultipleExpand: Story = {
     defaultValue: ['item-1', 'item-2'],
   },
   render: (args) => (
-    <div className="w-full max-w-xl mx-auto p-6 bg-white rounded-2xl border border-neutral-200/80 shadow-xs">
+    <div className="w-full max-w-xl mx-auto p-6 bg-white rounded-md border border-neutral-200/80 shadow-xs">
       <Accordion {...args}>
         <AccordionItem value="item-1">
           <AccordionTrigger>Assessment Configuration</AccordionTrigger>

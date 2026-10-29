@@ -11,9 +11,9 @@ export interface IconButtonProps
 }
 
 const roundedSizeStyles: Record<ButtonSize, string> = {
-  sm: 'w-8 h-8 rounded-lg',
-  md: 'w-10 h-10 rounded-xl',
-  lg: 'w-12 h-12 rounded-xl',
+  sm: 'w-8 h-8 rounded-sm',
+  md: 'w-10 h-10 rounded-md',
+  lg: 'w-12 h-12 rounded-md',
 };
 
 const circleSizeStyles: Record<ButtonSize, string> = {
