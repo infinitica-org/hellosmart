@@ -7,7 +7,7 @@
 
 ## 1. Overview & Architecture
 
-HelloSmart's integration test suite validates multi-tenant isolation ([`BR-01`](file:///c:/Users/Vedika/OneDrive/Infinitica/hellosmart/AGENTS.md#L206)), authentication compatibility ([`CO-001`](file:///c:/Users/Vedika/OneDrive/Infinitica/hellosmart/AGENTS.md#L45)), candidate onboarding & invitation lifecycle ([`S0-T08`](file:///c:/Users/Vedika/OneDrive/Infinitica/hellosmart/docs/seed/invitation-api-dependencies.md#L3), [`BR-24`](file:///c:/Users/Vedika/OneDrive/Infinitica/hellosmart/AGENTS.md#L214)), and database idempotency against a local PostgreSQL instance.
+HelloSmart's integration test suite validates multi-tenant isolation ([`BR-01`](file:///c:/Users/Vedika/OneDrive/Infinitica/hellosmart/AGENTS.md#L206)), authentication compatibility ([`CO-001`](file:///c:/Users/Vedika/OneDrive/Infinitica/hellosmart/AGENTS.md#L45)), candidate onboarding & invitation lifecycle ([`CA-001`](file:///c:/Users/Vedika/OneDrive/Infinitica/hellosmart/AGENTS.md), [`BR-24`](file:///c:/Users/Vedika/OneDrive/Infinitica/hellosmart/AGENTS.md#L214)), and database idempotency against a local PostgreSQL instance.
 
 ```mermaid
 flowchart TD
@@ -69,6 +69,22 @@ flowchart TD
    - `0003_invitations.sql`: Candidate invitations schema (`token_hash bytea`, lookup functions).
    - `0004_rls_access_paths.sql`: Stored procedures for login, user lookup, and invitation token search.
    - `0005_platform_role.sql`: `hs_platform` database role and privilege configuration.
+
+> [!NOTE] > **Fresh volume vs. Existing Docker volume (`hs_platform` role setup)**:
+>
+> - **Fresh Docker volume**: When initializing a clean container volume, PostgreSQL automatically executes `packages/contracts/db/init/001_roles.sql` from `/docker-entrypoint-initdb.d`, which creates the physical database role `hs_platform` with `NOBYPASSRLS`.
+> - **Existing Docker volume**: If you already have an existing local PostgreSQL volume from before migration `0005`, PostgreSQL does not re-run entrypoint scripts because the database cluster is already initialized. When `pnpm db:migrate` runs, migration `0005_platform_role.sql` attempts to run `CREATE ROLE hs_platform` as `hs_migrator`, which lacks `CREATEROLE` permissions, and `apps/api/src/db/migrate.ts` fails with `error: role "hs_platform" does not exist`.
+>   - **Non-destructive fix (preserve existing data)**: Apply `001_roles.sql` using the database superuser `hs_owner`:
+>     ```bash
+>     docker compose exec postgres psql -U hs_owner -d hellosmart -f /docker-entrypoint-initdb.d/001_roles.sql
+>     ```
+>   - **Clean reset (re-seed afterwards)**: Reset the volume and re-run migrations and seeding:
+>     ```bash
+>     docker compose down -v
+>     pnpm infra:up
+>     pnpm db:migrate
+>     pnpm db:seed
+>     ```
 
 ### 2.3 Environment Variable Configuration
 
@@ -147,21 +163,21 @@ pnpm db:verify-seed
 
 The test database contains designated positive and negative test personas across three organizations and the platform scope. **No passwords or secrets are documented here; all loginable accounts authenticate using the local `$SEED_DEFAULT_PASSWORD`.**
 
-| Account Role              | Organization              | Email Identifier                        | State / Status                    |   Expected Login Result   | Test Purpose                                 |
-| :------------------------ | :------------------------ | :-------------------------------------- | :-------------------------------- | :-----------------------: | :------------------------------------------- |
-| **Platform Admin**        | Platform (`org_id: null`) | `superadmin@hellosmart.ai`              | `active` (MFA enabled)            |   `200 OK` (2-step MFA)   | S0-T14 Platform Superadmin access            |
-| **Company Admin**         | Aster Ridge Technologies  | `admin@asterridge.com`                  | `active`                          |         `200 OK`          | S0-T14 Paid customer company admin           |
-| **Company Admin**         | Brindle & Co              | `trialadmin@brindle.co`                 | `active`                          |         `200 OK`          | S0-T14 Trial customer company admin          |
-| **Company Admin**         | Crestview Financial       | `admin@crestview.test`                  | `active` (Org suspended)          |    `403 ORG_SUSPENDED`    | Negative test: suspended organization access |
-| **Candidate (Active)**    | Aster Ridge Technologies  | `candidate.aster-ridge.001@example.com` | `active`                          |         `200 OK`          | S0-T14 Active candidate workspace access     |
-| **Candidate (Invited)**   | Aster Ridge Technologies  | `candidate.aster-ridge.071@example.com` | `invited` (`password_hash: null`) | `401 INVALID_CREDENTIALS` | S0-T08 Unaccepted candidate cannot log in    |
-| **Candidate (Suspended)** | Aster Ridge Technologies  | `candidate.aster-ridge.081@example.com` | `suspended`                       |  `403 ACCOUNT_SUSPENDED`  | Negative test: suspended candidate access    |
-| **Candidate (Deleted)**   | Aster Ridge Technologies  | `candidate.aster-ridge.091@example.com` | `deleted` (`deleted_at` set)      | `401 INVALID_CREDENTIALS` | Negative test: soft-deleted candidate login  |
-| **Candidate (Invited)**   | Brindle & Co              | `candidate.brindle.008@example.com`     | `invited` (`password_hash: null`) | `401 INVALID_CREDENTIALS` | Trial org candidate invitation sample        |
-| **Non-Existent User**     | None                      | `unknown-user@example.com`              | Not in DB                         | `401 INVALID_CREDENTIALS` | Negative test: uniform error response        |
+| Account Role              | Organization              | Email Identifier                        | State / Status                    |   Expected Login Result   | Test Purpose                                                    |
+| :------------------------ | :------------------------ | :-------------------------------------- | :-------------------------------- | :-----------------------: | :-------------------------------------------------------------- |
+| **Platform Admin**        | Platform (`org_id: null`) | `superadmin@hellosmart.ai`              | `active` (MFA enabled)            |   `200 OK` (2-step MFA)   | Master login platform superadmin access (`AD-001`, `BR-04`)     |
+| **Company Admin**         | Aster Ridge Technologies  | `admin@asterridge.com`                  | `active`                          |         `200 OK`          | Master login company admin access (`CO-001`, `CO-004`)          |
+| **Company Admin**         | Brindle & Co              | `trialadmin@brindle.co`                 | `active`                          |         `200 OK`          | Master login trial company admin access (`CO-001`, `BR-07`)     |
+| **Company Admin**         | Crestview Financial       | `admin@crestview.test`                  | `active` (Org suspended)          |    `403 ORG_SUSPENDED`    | Negative test: suspended organization access (`BR-07`)          |
+| **Candidate (Active)**    | Aster Ridge Technologies  | `candidate.aster-ridge.001@example.com` | `active`                          |         `200 OK`          | Active candidate workspace login access (`CO-001`, `CA-001`)    |
+| **Candidate (Invited)**   | Aster Ridge Technologies  | `candidate.aster-ridge.071@example.com` | `invited` (`password_hash: null`) | `401 INVALID_CREDENTIALS` | Unaccepted candidate password login blocked (`CO-001`, `BR-24`) |
+| **Candidate (Suspended)** | Aster Ridge Technologies  | `candidate.aster-ridge.081@example.com` | `suspended`                       |  `403 ACCOUNT_SUSPENDED`  | Negative test: suspended candidate access (`CO-001`, `BR-24`)   |
+| **Candidate (Deleted)**   | Aster Ridge Technologies  | `candidate.aster-ridge.091@example.com` | `deleted` (`deleted_at` set)      | `401 INVALID_CREDENTIALS` | Negative test: soft-deleted candidate login (`CO-001`, `BR-24`) |
+| **Candidate (Invited)**   | Brindle & Co              | `candidate.brindle.008@example.com`     | `invited` (`password_hash: null`) | `401 INVALID_CREDENTIALS` | Trial org candidate invitation sample (`BR-07`, `BR-24`)        |
+| **Non-Existent User**     | None                      | `unknown-user@example.com`              | Not in DB                         | `401 INVALID_CREDENTIALS` | Negative test: uniform error response (`CO-001`)                |
 
 > [!NOTE]
-> Per security specification ([`BR-18`](file:///c:/Users/Vedika/OneDrive/Infinitica/hellosmart/AGENTS.md#L45)), `unknown email`, `wrong password`, `invited user (null password_hash)`, and `deleted user` all return an identical RFC 9457 `401 Unauthorized` (`INVALID_CREDENTIALS`) to prevent account enumeration.
+> Per security specification ([`CO-001`](file:///c:/Users/Vedika/OneDrive/Infinitica/hellosmart/AGENTS.md#L45)), `unknown email`, `wrong password`, `invited user (null password_hash)`, and `deleted user` all return an identical RFC 9457 `401 Unauthorized` (`INVALID_CREDENTIALS`) to prevent account enumeration.
 
 ---
 

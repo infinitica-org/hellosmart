@@ -1,6 +1,6 @@
 # Candidate Invitation API Dependencies & Contract Specification
 
-This document details the API, database, and fixture dependencies for candidate invitations (`S0-T08`, `BR-24`), based on codebase implementation and confirmed by the backend engineering team.
+This document details the API, database, and fixture dependencies for candidate invitations (`CA-001`, `BR-24`), based on codebase implementation and confirmed by the backend engineering team.
 
 ---
 
@@ -184,6 +184,6 @@ Request logging in `apps/api` includes path redaction specifically designed for 
 ### Remaining Notes & Observations
 
 1. **Session Revocation Infrastructure on Accept**:
-   In `InvitationsService.acceptInvitation`, `this.revokeUserSessions` checks `if (this.sessionService)`. In development and test runs without `SessionService` injected, it logs `Session revocation hook invoked for user ... (session infrastructure pending)`. Session store revocation will be wired once Redis session management (`S0-T03`) is active.
+   In `InvitationsService.acceptInvitation`, `this.revokeUserSessions` checks `if (this.sessionService)`. In development and test runs without `SessionService` injected, it logs `Session revocation hook invoked for user ... (session infrastructure pending)`. Session store revocation will be wired once Redis session management (`CO-001` session infrastructure) is active.
 2. **Acceptance Handoff**:
    `POST /auth/invitations/accept` returns `{ success: true, message: "Password set successfully. Please log in." }`. The candidate is directed to `/login` to enter their newly created password, preserving distinct authentication boundaries.

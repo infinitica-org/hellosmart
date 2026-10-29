@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { assertEnvironmentSafe } from './lib/guard.js';
 import { maskSensitiveData } from './lib/masker.js';
-import { loadEnvFiles, extractTargetDbInfo } from './index.js';
+import { loadEnvFiles, extractTargetDbInfo, resolveEffectiveDatabaseUrl } from './index.js';
 import {
   getOrganizations,
   getPlatformAdmins,
@@ -117,9 +117,7 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
   loadEnvFiles();
 
   const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV ?? 'development';
-  // Connect with OWNER role: DATABASE_MIGRATOR_URL takes precedence, falling back to DATABASE_URL
-  const databaseUrl =
-    options.databaseUrl ?? process.env.DATABASE_MIGRATOR_URL ?? process.env.DATABASE_URL;
+  const databaseUrl = resolveEffectiveDatabaseUrl(options);
 
   if (!databaseUrl || databaseUrl.trim() === '') {
     const errorMsg =
@@ -133,6 +131,17 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
   }
 
   // 2. Safety Guard Check FIRST before any DB connection
+  // Guard both configured environment URLs (DATABASE_URL, DATABASE_MIGRATOR_URL)
+  // as well as the effective databaseUrl that is ACTUALLY used to connect.
+  if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== '') {
+    assertEnvironmentSafe(nodeEnv, process.env.DATABASE_URL);
+  }
+  if (process.env.DATABASE_MIGRATOR_URL && process.env.DATABASE_MIGRATOR_URL.trim() !== '') {
+    assertEnvironmentSafe(nodeEnv, process.env.DATABASE_MIGRATOR_URL);
+  }
+  if (process.env.SEED_DATABASE_URL && process.env.SEED_DATABASE_URL.trim() !== '') {
+    assertEnvironmentSafe(nodeEnv, process.env.SEED_DATABASE_URL);
+  }
   assertEnvironmentSafe(nodeEnv, databaseUrl);
 
   const targetDb = extractTargetDbInfo(databaseUrl);
