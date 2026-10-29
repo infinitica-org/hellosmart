@@ -238,6 +238,9 @@ importers:
         specifier: 8.13.1
         version: 8.13.1
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.5
       '@types/pg':
         specifier: 8.11.10
         version: 8.11.10
@@ -8982,7 +8985,7 @@ snapshots:
 
   '@types/type-is@1.6.7':
     dependencies:
-      '@types/node': 26.6.5
+      '@types/node': 22.20.5
 
   '@types/unist@2.0.11': {}
 
@@ -11197,7 +11200,7 @@ snapshots:
 
   jest-worker@27.5.1:
     dependencies:
-      '@types/node': 26.6.5
+      '@types/node': 22.20.5
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
