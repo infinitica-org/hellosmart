@@ -6,8 +6,12 @@ const ConfigSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'staging', 'production']),
     PORT: z.coerce.number().int().default(4000),
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+      .default('info'),
     DATABASE_URL: z.string().url(),
     DATABASE_MIGRATOR_URL: z.string().url().optional(),
+    DATABASE_PLATFORM_URL: z.string().url().optional(),
     /** Required in staging/production. Unit tests omit Redis and use in-memory stores. */
     REDIS_URL: z.string().url().optional(),
     SESSION_SECRET: z.string().min(32),
@@ -15,8 +19,11 @@ const ConfigSchema = z
     PAYMENT_GATEWAY: z.enum(['fake', 'razorpay']).default('fake'),
     EMAIL_PROVIDER: z.enum(['fake', 'ses']).default('fake'),
     WORKSPACE_RUNTIME: z.enum(['fake', 'sysbox']).default('fake'),
+    APP_BASE_URL: z.string().url().default('http://localhost:3000'),
     /** Base32 TOTP secret for platform admin MFA (dev/test). Production uses vault via mfa_secret_ref. */
     PLATFORM_ADMIN_MFA_SECRET: z.string().min(16).optional(),
+    /** Optional Mailpit URL for local email capture in development. */
+    MAILPIT_URL: z.string().url().default('http://127.0.0.1:8025'),
   })
   .transform((raw) => {
     const corsList = raw.CORS_ORIGINS
@@ -40,6 +47,9 @@ const ConfigSchema = z
       CORS_ORIGINS: corsList,
       DATABASE_MIGRATOR_URL:
         raw.DATABASE_MIGRATOR_URL ?? raw.DATABASE_URL.replace('hs_app:', 'hs_migrator:'),
+      DATABASE_PLATFORM_URL:
+        raw.DATABASE_PLATFORM_URL ??
+        raw.DATABASE_URL.replace('hs_app:hs_app_local', 'hs_platform:hs_platform_local').replace('hs_app:', 'hs_platform:'),
     };
   });
 
@@ -55,6 +65,31 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const nodeEnv = parsed.data.NODE_ENV;
   if ((nodeEnv === 'production' || nodeEnv === 'staging') && !parsed.data.REDIS_URL) {
     throw new Error('REDIS_URL is required in staging and production');
+  }
+  if ((nodeEnv === 'production' || nodeEnv === 'staging') && !env.DATABASE_PLATFORM_URL) {
+    throw new Error('DATABASE_PLATFORM_URL is required in staging and production');
+  }
+  if (parsed.data.DATABASE_PLATFORM_URL) {
+    try {
+      const platformUrl = new URL(parsed.data.DATABASE_PLATFORM_URL);
+      if (platformUrl.username === 'hs_app') {
+        throw new Error('DATABASE_PLATFORM_URL cannot use hs_app runtime role');
+      }
+    } catch (e: any) {
+      if (e.message?.includes('hs_app')) throw e;
+      throw new Error('Invalid DATABASE_PLATFORM_URL');
+    }
+  }
+  if (parsed.data.DATABASE_URL) {
+    try {
+      const appUrl = new URL(parsed.data.DATABASE_URL);
+      if (appUrl.username === 'hs_platform' || appUrl.username === 'postgres' || appUrl.username === 'hs_migrator') {
+        throw new Error('DATABASE_URL must connect as restricted runtime role (hs_app)');
+      }
+    } catch (e: any) {
+      if (e.message?.includes('restricted runtime role')) throw e;
+      throw new Error('Invalid DATABASE_URL');
+    }
   }
   if (nodeEnv === 'production') {
     const { PAYMENT_GATEWAY, EMAIL_PROVIDER, WORKSPACE_RUNTIME } = parsed.data;

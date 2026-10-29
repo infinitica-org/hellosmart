@@ -1,12 +1,14 @@
-import { Inject, Injectable } from '@nestjs/common';
+import crypto from 'node:crypto';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { CreateOrgDto, OrgDto, UpdateOrgStatusDto } from '@hs/contracts';
 import type { Pool } from 'pg';
+import { MailService } from '../../common/services/mail.service.js';
 import { hashPassword } from '../auth/password.js';
 import type { RequestMeta } from '../auth/auth.service.js';
 import { problem } from '../../common/errors/app-http.exception.js';
 import type { UserContext } from '../../common/types/user-context.js';
 import { appendAuditEvent } from '../audit/audit-writer.js';
-import { PG_POOL } from '../database/database.tokens.js';
+import { PG_PLATFORM_POOL } from '../database/database.tokens.js';
 import { EMAIL_SENDER_PORT, type EmailSenderPort } from '../adapters/adapters.tokens.js';
 import { SessionService } from '../session/session.service.js';
 import { withPlatform } from '../tenancy/with-org.js';
@@ -19,9 +21,10 @@ const DEFAULT_MAX_CANDIDATES = 10;
 @Injectable()
 export class AdminOrganizationsService {
   constructor(
-    @Inject(PG_POOL) private readonly pool: Pool,
+    @Inject(PG_PLATFORM_POOL) private readonly pool: Pool,
     @Inject(EMAIL_SENDER_PORT) private readonly email: EmailSenderPort,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Optional() @Inject(MailService) private readonly mailService?: MailService,
   ) {}
 
   async provision(
@@ -40,6 +43,9 @@ export class AdminOrganizationsService {
     }
 
     const adminEmail = dto.adminEmail.trim().toLowerCase();
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest();
+    const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 hours (BR-24)
     const invitePassword = crypto.randomUUID();
     const passwordHash = await hashPassword(invitePassword);
 
@@ -82,6 +88,13 @@ export class AdminOrganizationsService {
           [adminId, orgId, adminEmail, dto.adminName.trim(), passwordHash],
         );
 
+        await tx.query(
+          `INSERT INTO app.invitations (
+             id, org_id, user_id, email, role, token_hash, expires_at
+           ) VALUES (gen_random_uuid(), $1, $2, $3, 'company_admin', $4, $5)`,
+          [orgId, adminId, adminEmail, tokenHash, expiresAt],
+        );
+
         await appendAuditEvent(tx, {
           actorId: actor.userId,
           actorRole: actor.role,
@@ -115,12 +128,22 @@ export class AdminOrganizationsService {
       client.release();
     }
 
-    await this.email.send({
-      to: adminEmail,
-      template: 'company_admin_invite',
-      vars: { name: dto.adminName, orgName: dto.name },
-      orgId: org.id,
-    });
+    if (this.mailService) {
+      await this.mailService.sendInvitationEmail({
+        to: adminEmail,
+        token: rawToken,
+        role: 'company_admin',
+        orgName: dto.name,
+        orgId: org.id,
+      });
+    } else {
+      await this.email.send({
+        to: adminEmail,
+        template: 'company_admin_invite',
+        vars: { name: dto.adminName, orgName: dto.name },
+        orgId: org.id,
+      });
+    }
 
     return org;
   }
@@ -190,6 +213,27 @@ export class AdminOrganizationsService {
         }
 
         return toOrgDto(row);
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  async list(): Promise<OrgDto[]> {
+    const client = await this.pool.connect();
+
+    try {
+      return await withPlatform(client, async (tx) => {
+        const result = await tx.query<OrganizationRow>(
+          `SELECT id, name, slug, status, logo_key, custom_domain,
+                  retention_days, created_at
+           FROM app.organizations
+           ORDER BY created_at DESC`,
+        );
+
+        return result.rows.map((row) =>
+          toOrgDto(row, null, false),
+        );
       });
     } finally {
       client.release();

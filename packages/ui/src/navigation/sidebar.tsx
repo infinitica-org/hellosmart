@@ -236,8 +236,25 @@ const activeStyleClasses: Record<NonNullable<SidebarProps['activeStyle']>, { act
 
 function isItemActive(item: SidebarItem, currentPath?: string, activeId?: string): boolean {
   if (activeId && item.id) return item.id === activeId;
-  if (currentPath && item.href) return currentPath === item.href || currentPath.startsWith(item.href + '/');
-  return false;
+  if (!currentPath || !item.href) return false;
+
+  // Exact match
+  if (currentPath === item.href || currentPath === `${item.href}/`) return true;
+
+  // Root or portal base paths (/admin, /company, /candidate, /dashboard, /) must only match exact
+  const isPortalRoot =
+    item.href === '/admin' ||
+    item.href === '/company' ||
+    item.href === '/candidate' ||
+    item.href === '/dashboard' ||
+    item.href === '/';
+
+  if (isPortalRoot) {
+    return false;
+  }
+
+  // Sub-routes (e.g. /admin/companies/new matches /admin/companies)
+  return currentPath.startsWith(item.href + '/');
 }
 
 // ---------------------------------------------------------------------------
@@ -1013,7 +1030,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       if (hideHeader) return null;
 
       return (
-        <div className="flex items-center justify-between shrink-0 px-4 py-4 border-b border-neutral-200/60">
+        <div className="flex items-center justify-between shrink-0 h-16 px-5 border-b border-neutral-200">
           <BrandMark
             showLogo={showLogo}
             logoSrc={logoSrc}
@@ -1045,7 +1062,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
       if (isRailExpanded) {
         return (
-          <div className="flex items-center shrink-0 h-20 px-4 border-b border-neutral-100 w-full overflow-hidden">
+          <div className="flex items-center shrink-0 h-16 px-4 border-b border-neutral-200 w-full overflow-hidden">
             <BrandMark
               showLogo={showLogo}
               logoSrc={logoSrc}
@@ -1060,15 +1077,14 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       }
 
       return (
-        <div className="flex items-center justify-center shrink-0 h-20 w-full border-b border-neutral-100">
+        <div className="flex items-center justify-center shrink-0 h-16 w-full border-b border-neutral-200">
           <BrandMark
             showLogo={showLogo}
             logoSrc={logoSrc}
             whiteLabel={whiteLabel}
             showSubtitle={false}
-            size="xl"
-            logoSize="xl"
-            logoRounded="2xl"
+            size="md"
+            logoSize="md"
             fullText={false}
             customTitle={brandTitle}
           />
@@ -1135,7 +1151,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       if (isRail) {
         return (
           <aside
-            className={`flex flex-col bg-white ${sidebarWidth} h-full shrink-0 transition-all duration-300 ${className} ${
+            className={`flex flex-col bg-white w-full h-full shrink-0 border-r border-neutral-200 transition-all duration-300 ${className} ${
               !isRailExpanded ? 'items-center' : ''
             }`}
           >
@@ -1148,7 +1164,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
       return (
         <aside
-          className={`flex flex-col bg-white ${sidebarWidth} h-full shrink-0 transition-all duration-300 ${className}`}
+          className={`flex flex-col bg-white w-full h-full shrink-0 border-r border-neutral-200 transition-all duration-300 ${className}`}
         >
           {renderHeader()}
           {renderNavItems()}
@@ -1166,7 +1182,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             onClick={handleToggleCollapse}
             aria-label="Expand sidebar"
             title="Expand sidebar"
-            className="fixed top-3 left-3 z-40 p-2 rounded-xl bg-white border border-neutral-200/90 shadow-md hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 transition-all duration-300 hover:scale-105 cursor-pointer animate-fade-in"
+            className="fixed top-3 left-3 z-40 p-2 rounded-xl bg-white border border-neutral-200 shadow-md hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 transition-all duration-300 hover:scale-105 cursor-pointer animate-fade-in"
           >
             <PanelLeftIcon />
           </button>
@@ -1175,7 +1191,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
         {/* ── Desktop sidebar with smooth collapse & slide animation ── */}
         <div
           ref={ref}
-          className={`hidden md:flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out shrink-0 z-30 bg-white border-r border-neutral-200/80 ${
+          className={`hidden md:flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out shrink-0 z-30 bg-white border-r border-neutral-200 ${
             isRail ? 'overflow-visible' : ''
           } ${
             isCollapsed
@@ -1212,7 +1228,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
         </div>
 
         {/* ── Mobile hamburger top bar ── */}
-        <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between bg-white border-b border-neutral-200 px-4 py-3">
+        <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between bg-white border-b border-neutral-200 px-4 py-2.5">
           <BrandMark
             showLogo={showLogo}
             logoSrc={logoSrc}
@@ -1221,14 +1237,25 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             size="sm"
             customTitle={brandTitle}
           />
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            aria-label="Open menu"
-            className="rounded-lg p-2 text-neutral-700 hover:bg-neutral-100 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-300"
-          >
-            <MenuIcon />
-          </button>
+          <div className="flex items-center gap-2">
+            <UserProfileDropdown
+              userName={userName}
+              userEmail={userEmail}
+              userAvatar={userAvatar}
+              portalRole={portalRole}
+              onLogout={onLogout}
+              variant="avatar"
+              placement="bottom"
+            />
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+              className="rounded-lg p-2 text-neutral-700 hover:bg-neutral-100 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-300"
+            >
+              <MenuIcon />
+            </button>
+          </div>
         </div>
 
         {/* ── Mobile slide-out drawer ── */}

@@ -10,6 +10,11 @@ x-app: &app
   tmpfs: [/tmp]
   security_opt: ["no-new-privileges:true"]
   cap_drop: [ALL]
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "50m"
+      max-file: "5"
 
 services:
   caddy:
@@ -21,6 +26,11 @@ services:
       - caddy_data:/data
     env_file: .env.qa
     networks: [internal]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   web:
     <<: *app

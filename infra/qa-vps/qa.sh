@@ -3,6 +3,7 @@
 #   ./qa.sh deploy <sha>   pull images for <sha>, migrate, restart, smoke
 #   ./qa.sh reset          wipe QA data, migrate, seed fixtures
 #   ./qa.sh logs <svc>     tail logs
+#   ./qa.sh archive        flush container logs and archive expired logs (>7 days)
 set -euo pipefail
 cd "$(dirname "$0")"
 COMPOSE=(docker compose -f docker-compose.qa.yml --env-file .env.qa)
@@ -12,6 +13,8 @@ case "${1:-}" in
     sha="${2:?usage: qa.sh deploy <sha>}"
     [[ "$sha" =~ ^[0-9a-f]{7,40}$ ]] || { echo "invalid sha"; exit 1; }
     sed -i "s/^TAG=.*/TAG=${sha}/" .env.qa
+    # Ingest and archive logs prior to container recreate to ensure no log loss across deploys
+    ./qa-archive.sh || echo "Warning: Pre-deployment log archival encountered an issue, proceeding with deploy."
     "${COMPOSE[@]}" pull
     "${COMPOSE[@]}" run --rm api node dist/db/migrate.js
     "${COMPOSE[@]}" up -d --remove-orphans
@@ -31,6 +34,9 @@ case "${1:-}" in
   logs)
     "${COMPOSE[@]}" logs -f --tail=200 "${2:-api}"
     ;;
+  archive)
+    ./qa-archive.sh
+    ;;
   *)
-    echo "usage: qa.sh deploy <sha> | reset | logs <service>"; exit 1 ;;
+    echo "usage: qa.sh deploy <sha> | reset | logs <service> | archive"; exit 1 ;;
 esac

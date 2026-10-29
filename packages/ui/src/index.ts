@@ -17,6 +17,8 @@ export * from './components/button';
 export * from './components/texture-button';
 export * from './components/icon-button';
 export * from './components/input';
+export * from './components/password-field';
+export * from './components/password-strength-meter';
 export * from './components/textarea';
 export * from './components/select';
 export * from './components/checkbox';
@@ -55,8 +57,28 @@ export * from './feedback/error-state';
 export * from './feedback/toast';
 
 // Forms
-export * from './forms/form-field';
+export {
+  FormField,
+  FormLabel,
+  FormDescription,
+  FormError,
+  Form,
+  TextField,
+  TextAreaField,
+  SelectField,
+  CheckboxField,
+  type FormFieldProps,
+  type FormProps,
+  type TextFieldProps,
+  type TextAreaFieldProps,
+  type SelectFieldProps,
+  type CheckboxFieldProps,
+} from './forms/form-field';
 export * from './forms/validation-message';
+
+// Icons
+export * from './icons/lucide';
+
 
 // HelloSmart Product Domain Components
 export * from './product';

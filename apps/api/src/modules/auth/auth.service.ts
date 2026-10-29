@@ -7,7 +7,6 @@ import { appendAuditEvent } from '../audit/audit-writer.js';
 import type { AuditRecordInput } from '../audit/audit.types.js';
 import { PG_POOL } from '../database/database.tokens.js';
 import { SessionService, SESSION_TTL_SECONDS } from '../session/session.service.js';
-import { withPlatform } from '../tenancy/with-org.js';
 import { toMeDto } from './auth.mapper.js';
 import { LoginLockoutService } from './login-lockout.service.js';
 import { MfaService } from './mfa.service.js';
@@ -182,18 +181,8 @@ export class AuthService {
   }
 
   private async completeLogin(user: DbUserRow, meta: RequestMeta): Promise<MeDto> {
-    const client = await this.pool.connect();
-    try {
-      await withPlatform(client, async (tx) => {
-        await tx.query(
-          `UPDATE app.users SET last_login_at = now(), failed_logins = 0, locked_until = NULL WHERE id = $1`,
-          [user.id],
-        );
-        await this.auditLogin(user.id, user.role, user.org_id, true, meta, tx);
-      });
-    } finally {
-      client.release();
-    }
+    await this.pool.query('SELECT app.record_login_success($1)', [user.id]);
+    await this.auditLogin(user.id, user.role, user.org_id, true, meta);
     return this.toMeFromRow(user);
   }
 
@@ -225,9 +214,7 @@ export class AuthService {
     }
     const pooled = await this.pool.connect();
     try {
-      await withPlatform(pooled, async (tx) => {
-        await appendAuditEvent(tx, input);
-      });
+      await appendAuditEvent(pooled, input);
     } finally {
       pooled.release();
     }
@@ -272,45 +259,27 @@ export class AuthService {
   }
 
   private async findUserByEmail(email: string): Promise<DbUserRow | null> {
-    const client = await this.pool.connect();
-    try {
-      return await withPlatform(client, async (tx) => {
-        const result = await tx.query<DbUserRow>(
-          `SELECT u.id, u.org_id, u.email::text AS email, u.name, u.role, u.password_hash,
-                  u.status, u.must_reset_password, u.mfa_secret_ref,
-                  o.status AS org_status, o.name AS org_name, o.logo_key
-           FROM app.users u
-           LEFT JOIN app.organizations o ON o.id = u.org_id
-           WHERE lower(u.email::text) = $1 AND u.deleted_at IS NULL
-           LIMIT 1`,
-          [email],
-        );
-        return result.rows[0] ?? null;
-      });
-    } finally {
-      client.release();
-    }
+    const result = await this.pool.query<DbUserRow>(
+      `SELECT id, org_id, email::text AS email, name, role, password_hash,
+              status, must_reset_password, mfa_secret_ref,
+              org_status, org_name, logo_key
+       FROM app.find_user_for_login($1)
+       LIMIT 1`,
+      [email],
+    );
+    return result.rows[0] ?? null;
   }
 
   private async findUserById(userId: string): Promise<DbUserRow | null> {
-    const client = await this.pool.connect();
-    try {
-      return await withPlatform(client, async (tx) => {
-        const result = await tx.query<DbUserRow>(
-          `SELECT u.id, u.org_id, u.email::text AS email, u.name, u.role, u.password_hash,
-                  u.status, u.must_reset_password, u.mfa_secret_ref,
-                  o.status AS org_status, o.name AS org_name, o.logo_key
-           FROM app.users u
-           LEFT JOIN app.organizations o ON o.id = u.org_id
-           WHERE u.id = $1 AND u.deleted_at IS NULL
-           LIMIT 1`,
-          [userId],
-        );
-        return result.rows[0] ?? null;
-      });
-    } finally {
-      client.release();
-    }
+    const result = await this.pool.query<DbUserRow>(
+      `SELECT id, org_id, email::text AS email, name, role, password_hash,
+              status, must_reset_password, mfa_secret_ref,
+              org_status, org_name, logo_key
+       FROM app.find_user_by_id($1)
+       LIMIT 1`,
+      [userId],
+    );
+    return result.rows[0] ?? null;
   }
 }
 

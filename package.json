@@ -2,7 +2,10 @@
   "name": "hellosmart",
   "private": true,
   "packageManager": "pnpm@9.12.3",
-  "engines": { "node": ">=22.11.0", "pnpm": ">=9.12.0" },
+  "engines": {
+    "node": ">=22.11.0",
+    "pnpm": ">=9.12.0"
+  },
   "scripts": {
     "dev": "turbo run dev --parallel",
     "build": "turbo run build",
@@ -15,6 +18,7 @@
     "contracts:check": "pnpm --filter @hs/contracts check",
     "db:migrate": "pnpm --filter @hs/api db:migrate",
     "db:seed": "pnpm --filter @hs/fixtures seed",
+    "db:verify-seed": "pnpm --filter @hs/fixtures verify",
     "dev:up": "docker compose up -d",
     "dev:down": "docker compose down",
     "infra:up": "docker compose up -d",
@@ -22,13 +26,20 @@
     "docs:dev": "pnpm --dir apps/docs dev",
     "docs:build": "pnpm --dir apps/docs build",
     "docs:sync-check": "node scripts/aidlc-docs-check.mjs",
+    "matrix:verify": "node scripts/verify-traceability.mjs",
     "secrets:scan": "gitleaks detect --no-banner --redact",
     "format": "prettier --write ."
   },
   "devDependencies": {
     "@hs/config": "workspace:*",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "prettier": "3.3.3",
     "turbo": "2.2.3",
     "typescript": "5.6.3"
+  },
+  "overrides": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
   }
 }
