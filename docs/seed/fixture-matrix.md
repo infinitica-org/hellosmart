@@ -129,17 +129,17 @@ Platform Admin
 > Seeded candidate invitations use 32 random bytes (`crypto.randomBytes(32)`) generated dynamically.
 >
 > - Raw tokens are **never committed**, **never stored in the database**, and **never written to logs or docs**.
-> - Only the **SHA-256 hex digest** (`token_hash`) is persisted in `app.invitations.token_hash`.
+> - Only the **SHA-256 32-byte binary digest** (`token_hash`) is persisted in `app.invitations.token_hash` (`bytea`), matching migration `0003_invitations.sql` and backend `InvitationsService.hashToken`.
 > - Local persistence: Raw tokens are stored in the gitignored file `packages/fixtures/.seed-tokens.local.json` (mode `0600`) for helper consumption, and in memory during test execution.
 > - To print raw tokens and links to the console for local debugging, pass the `--show-tokens` CLI flag: `pnpm db:seed -- --show-tokens`. (Printing is strictly refused in CI environments).
 
 ### Token Specification & Candidate Linkages
 
-| Label     | Candidate Email                         | Organization                   | Status / State                                   | Token Storage & Entropy                         | Expiration Window (`INVITE_TTL_HOURS = 72`) | Used At (`used_at`)         | Intended Test Coverage                                               |
-| --------- | --------------------------------------- | ------------------------------ | ------------------------------------------------ | ----------------------------------------------- | ------------------------------------------- | --------------------------- | -------------------------------------------------------------------- |
-| `valid`   | `candidate.aster-ridge.071@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `invited`, `must_reset_password: true` | Dynamic 32-byte random token; SHA-256 hex in DB | `seed_now + 72h` (unexpired)                | `null` (reset on re-seed)   | First-login password reset flow (`BR-24`, `CA-001`)                  |
-| `expired` | `candidate.aster-ridge.072@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `invited`, `must_reset_password: true` | Dynamic 32-byte random token; SHA-256 hex in DB | `seed_now - 28h` (created at `now - 100h`)  | `null`                      | Expired invite token rejection and resend prompt (`EX-12`, `CO-017`) |
-| `used`    | `candidate.aster-ridge.001@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `active`, completed onboarding         | Dynamic 32-byte random token; SHA-256 hex in DB | `seed_now + 48h` (created at `now - 24h`)   | `seed_now - 12h` (consumed) | Consumed token rejection / already used error                        |
+| Label     | Candidate Email                         | Organization                   | Status / State                                   | Token Storage & Entropy                           | Expiration Window (`INVITE_TTL_HOURS = 72`) | Used At (`used_at`)         | Intended Test Coverage                                               |
+| --------- | --------------------------------------- | ------------------------------ | ------------------------------------------------ | ------------------------------------------------- | ------------------------------------------- | --------------------------- | -------------------------------------------------------------------- |
+| `valid`   | `candidate.aster-ridge.071@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `invited`, `must_reset_password: true` | Dynamic 32-byte random token; 32-byte bytea in DB | `seed_now + 72h` (unexpired)                | `null` (reset on re-seed)   | First-login password reset flow (`BR-24`, `CA-001`)                  |
+| `expired` | `candidate.aster-ridge.072@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `invited`, `must_reset_password: true` | Dynamic 32-byte random token; 32-byte bytea in DB | `seed_now - 28h` (created at `now - 100h`)  | `null`                      | Expired invite token rejection and resend prompt (`EX-12`, `CO-017`) |
+| `used`    | `candidate.aster-ridge.001@example.com` | Aster Ridge (`ASTER_RIDGE_ID`) | Candidate `active`, completed onboarding         | Dynamic 32-byte random token; 32-byte bytea in DB | `seed_now + 48h` (created at `now - 24h`)   | `seed_now - 12h` (consumed) | Consumed token rejection / already used error                        |
 
 ### Programmatic Helper Usage (`packages/fixtures/src/lib/invite-links.ts`)
 
@@ -173,7 +173,11 @@ cp .env.local.example .env.local
 SEED_DEFAULT_PASSWORD=
 
 # Base32 TOTP secret for local testing of Platform Admin MFA (RFC 4648 Base32: A-Z, 2-7, uncommitted)
+# Note: The platform admin user stores mfa_secret_ref = 'env:PLATFORM_ADMIN_MFA_SECRET'.
+# The backend API process (apps/api) resolves this via PLATFORM_ADMIN_MFA_SECRET from its environment.
+# Configure this in .env.local and .env so both the seed runner and API process share the secret.
 SEED_PLATFORM_ADMIN_TOTP_SECRET=
+PLATFORM_ADMIN_MFA_SECRET=
 ```
 
 ### Adding Platform Admin MFA to an Authenticator App (Local Development Only)

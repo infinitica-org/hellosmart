@@ -11,6 +11,7 @@ import {
   formatSummaryTable,
   getInviteToken,
   hashInvitationToken,
+  hashInvitationTokenHex,
 } from '../dist/index.js';
 import {
   ASTER_RIDGE_ID,
@@ -30,7 +31,6 @@ import {
   NEGATIVE_DELETED_CANDIDATE_EMAIL,
   NEGATIVE_CRESTVIEW_ADMIN_EMAIL,
 } from '../dist/index.js';
-import { ensureInvitationsTable } from '../dist/lib/upsert.js';
 
 // Resolve directory of current file
 const __filename = fileURLToPath(import.meta.url);
@@ -120,7 +120,6 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
 
       await client.query('SET search_path TO app, public;');
       await client.query("SELECT set_config('app.is_platform', 'true', false);");
-      await ensureInvitationsTable(client);
 
       // Clean test database in reverse FK order before testing
       await client.query('DELETE FROM app.invitations;');
@@ -863,7 +862,7 @@ describe('CLI Data Loader Command & Fixture Test Suite ([6.4])', () => {
       assert.doesNotMatch(combined, new RegExp(rawValid));
       assert.doesNotMatch(combined, new RegExp(rawExpired));
       assert.doesNotMatch(combined, new RegExp(rawUsed));
-      assert.doesNotMatch(combined, new RegExp(hashInvitationToken(rawValid)));
+      assert.doesNotMatch(combined, new RegExp(hashInvitationTokenHex(rawValid)));
       assert.doesNotMatch(combined, /accept-invite\?token=/);
     });
 

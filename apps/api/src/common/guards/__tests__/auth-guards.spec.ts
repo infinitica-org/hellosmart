@@ -5,10 +5,9 @@ import { SessionGuard } from '../session.guard.js';
 import { RolesGuard } from '../roles.guard.js';
 import { ProblemDetailsException } from '../../exceptions/problem-details.exception.js';
 import { ProblemDetailsFilter } from '../../exceptions/problem-details.filter.js';
-import { RedisService } from '../../redis/redis.service.js';
+import { SessionService, COOKIE_HOST_SESSION_NAME, COOKIE_SESSION_NAME } from '../../../modules/session/session.service.js';
 import { DatabaseService } from '../../database/database.service.js';
 import {
-  COOKIE_SESSION_NAME,
   IS_PUBLIC_KEY,
   ROLES_KEY,
   SessionData,
@@ -18,16 +17,27 @@ import { Roles } from '../../decorators/roles.decorator.js';
 
 describe('Auth & Role Guards Suite (Subtask 9.1)', () => {
   let reflector: Reflector;
-  let redisService: RedisService;
+  let sessionService: SessionService;
   let databaseService: DatabaseService;
   let sessionGuard: SessionGuard;
   let rolesGuard: RolesGuard;
 
-  const mockValidSession: SessionData = {
+  const mockValidSession: any = {
+    id: '33333333-3333-3333-3333-333333333333',
+    sessionId: '33333333-3333-3333-3333-333333333333',
+    user: {
+      userId: '11111111-1111-1111-1111-111111111111',
+      orgId: '22222222-2222-2222-2222-222222222222',
+      role: 'company_admin',
+      email: 'admin@acme.corp',
+    },
     userId: '11111111-1111-1111-1111-111111111111',
     orgId: '22222222-2222-2222-2222-222222222222',
     role: 'company_admin',
     email: 'admin@acme.corp',
+    createdAt: Date.now(),
+    lastSeenAt: Date.now(),
+    absoluteExpiresAt: Date.now() + 3600000,
   };
 
   const createMockContext = (options: {
@@ -65,7 +75,9 @@ describe('Auth & Role Guards Suite (Subtask 9.1)', () => {
 
   beforeEach(() => {
     reflector = new Reflector();
-    redisService = new RedisService();
+    sessionService = {
+      resolveSession: vi.fn(),
+    } as unknown as SessionService;
     databaseService = new DatabaseService();
 
     // Default mock behavior for DatabaseService: active user and active org
@@ -74,7 +86,7 @@ describe('Auth & Role Guards Suite (Subtask 9.1)', () => {
       orgStatus: 'paid_active',
     }));
 
-    sessionGuard = new SessionGuard(reflector, redisService, databaseService);
+    sessionGuard = new SessionGuard(reflector, sessionService, databaseService);
     rolesGuard = new RolesGuard(reflector);
   });
 
@@ -129,9 +141,9 @@ describe('Auth & Role Guards Suite (Subtask 9.1)', () => {
       }
     });
 
-    it('returns 503 Service Unavailable (fails closed) when Redis is down or throws error', async () => {
+    it('returns 503 Service Unavailable (fails closed) when session store is down or throws error', async () => {
       vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-      vi.spyOn(redisService, 'getSession').mockRejectedValue(
+      vi.spyOn(sessionService, 'resolveSession').mockRejectedValue(
         new Error('ECONNREFUSED 127.0.0.1:6379'),
       );
 
@@ -149,9 +161,9 @@ describe('Auth & Role Guards Suite (Subtask 9.1)', () => {
       }
     });
 
-    it('returns 401 Unauthorized when session token is expired or not found in Redis', async () => {
+    it('returns 401 Unauthorized when session token is expired or not found', async () => {
       vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-      vi.spyOn(redisService, 'getSession').mockResolvedValue(null);
+      vi.spyOn(sessionService, 'resolveSession').mockResolvedValue(null);
 
       const ctx = createMockContext({
         cookies: { [COOKIE_SESSION_NAME]: 'expired-token' },
@@ -167,9 +179,9 @@ describe('Auth & Role Guards Suite (Subtask 9.1)', () => {
       }
     });
 
-    it('returns 403 Forbidden when the user is suspended (even if Redis session is active)', async () => {
+    it('returns 403 Forbidden when the user is suspended (even if session is active)', async () => {
       vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-      vi.spyOn(redisService, 'getSession').mockResolvedValue(mockValidSession);
+      vi.spyOn(sessionService, 'resolveSession').mockResolvedValue(mockValidSession);
       databaseService.setStatusChecker(async () => ({
         userStatus: 'suspended',
         orgStatus: 'paid_active',
@@ -189,9 +201,9 @@ describe('Auth & Role Guards Suite (Subtask 9.1)', () => {
       }
     });
 
-    it('returns 403 Forbidden when the organization is suspended (even if Redis session is active)', async () => {
+    it('returns 403 Forbidden when the organization is suspended (even if session is active)', async () => {
       vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-      vi.spyOn(redisService, 'getSession').mockResolvedValue(mockValidSession);
+      vi.spyOn(sessionService, 'resolveSession').mockResolvedValue(mockValidSession);
       databaseService.setStatusChecker(async () => ({
         userStatus: 'active',
         orgStatus: 'suspended',
@@ -213,7 +225,7 @@ describe('Auth & Role Guards Suite (Subtask 9.1)', () => {
 
     it('attaches user to request and permits access when session and account are active', async () => {
       vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-      vi.spyOn(redisService, 'getSession').mockResolvedValue(mockValidSession);
+      vi.spyOn(sessionService, 'resolveSession').mockResolvedValue(mockValidSession);
       databaseService.setStatusChecker(async () => ({
         userStatus: 'active',
         orgStatus: 'paid_active',
@@ -221,6 +233,30 @@ describe('Auth & Role Guards Suite (Subtask 9.1)', () => {
 
       const ctx = createMockContext({
         cookies: { [COOKIE_SESSION_NAME]: 'valid-token' },
+      });
+
+      const allowed = await sessionGuard.canActivate(ctx);
+      expect(allowed).toBe(true);
+
+      const req = ctx.switchToHttp().getRequest<any>();
+      expect(req.user).toEqual({
+        userId: mockValidSession.userId,
+        orgId: mockValidSession.orgId,
+        role: mockValidSession.role,
+        email: mockValidSession.email,
+      });
+    });
+
+    it('attaches user to request when authenticated via __Host-hs_session cookie', async () => {
+      vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      vi.spyOn(sessionService, 'resolveSession').mockResolvedValue(mockValidSession);
+      databaseService.setStatusChecker(async () => ({
+        userStatus: 'active',
+        orgStatus: 'paid_active',
+      }));
+
+      const ctx = createMockContext({
+        cookies: { [COOKIE_HOST_SESSION_NAME]: 'valid-host-token' },
       });
 
       const allowed = await sessionGuard.canActivate(ctx);

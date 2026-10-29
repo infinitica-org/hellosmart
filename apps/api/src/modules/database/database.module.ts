@@ -3,6 +3,8 @@ import pg from 'pg';
 import { APP_CONFIG } from '../../config/config.tokens.js';
 import type { Config } from '../../config/config.js';
 import { PG_PLATFORM_POOL, PG_POOL, type PgPool } from './database.tokens.js';
+import { DatabaseService } from '../../common/database/database.service.js';
+import { TenantContextService } from '../../common/database/tenant-context.service.js';
 
 @Global()
 @Module({
@@ -25,8 +27,10 @@ import { PG_PLATFORM_POOL, PG_POOL, type PgPool } from './database.tokens.js';
         }),
       inject: [APP_CONFIG],
     },
+    DatabaseService,
+    TenantContextService,
   ],
-  exports: [PG_POOL, PG_PLATFORM_POOL],
+  exports: [PG_POOL, PG_PLATFORM_POOL, DatabaseService, TenantContextService],
 })
 export class DatabaseModule implements OnModuleDestroy {
   constructor(

@@ -68,7 +68,7 @@ export function getPlatformAdmins(
       status: 'active',
       email_verified_at: relativeDate(refDate, -30),
       must_reset_password: false,
-      mfa_secret_ref: options?.platformAdminMfaSecretRef ?? 'secrets/seed-superadmin-mfa',
+      mfa_secret_ref: options?.platformAdminMfaSecretRef ?? 'env:PLATFORM_ADMIN_MFA_SECRET',
       password_hash: options?.passwordHash ?? null,
       failed_logins: 0,
       locked_until: null,

@@ -2,6 +2,7 @@ import { deterministicUuid } from '../lib/keys.js';
 import { ASTER_RIDGE_ID } from './organizations.js';
 import {
   hashInvitationToken,
+  hashInvitationTokenHex,
   generateRawInviteToken,
   getInviteToken,
   getAcceptInviteLink,
@@ -13,6 +14,7 @@ import {
 // Re-export invite-links utilities for consumers
 export {
   hashInvitationToken,
+  hashInvitationTokenHex,
   generateRawInviteToken,
   getInviteToken,
   getAcceptInviteLink,
@@ -27,15 +29,16 @@ export {
 export const INVITE_TTL_HOURS = 72;
 
 /**
- * Candidate Invitation entity representation matching PostgreSQL schema.
- * Note: Raw tokens are NEVER persisted to the database; only token_hash is stored.
+ * Candidate Invitation entity representation matching PostgreSQL schema (0003_invitations.sql).
+ * Note: Raw tokens are NEVER persisted to the database; only 32-byte binary token_hash is stored.
  */
 export interface InvitationEntity {
   id: string; // Deterministic UUIDv5
   org_id: string; // Foreign key to app.organizations(id)
   user_id: string; // Foreign key to app.users(id) - candidate
-  token_hash: string; // SHA-256 hash of raw token
-  invited_by: string; // Foreign key to app.users(id) - inviter admin
+  email: string; // citext NOT NULL
+  role: 'company_admin' | 'candidate'; // text NOT NULL CHECK (role IN ('company_admin','candidate'))
+  token_hash: Buffer; // SHA-256 binary digest (bytea, 32 bytes)
   created_at: Date;
   expires_at: Date;
   used_at: Date | null;
@@ -64,7 +67,6 @@ export function getInvitations(
   tokens?: SeedTokensMap,
 ): InvitationEntity[] {
   const now = refDate.getTime();
-  const asterAdminId = deterministicUuid('user', 'admin@asterridge.com');
 
   // Candidate 071 (Aster Ridge - status: 'invited', must_reset_password: true)
   const validCandidateId = deterministicUuid('candidate', 'candidate.aster-ridge.071@example.com');
@@ -95,8 +97,9 @@ export function getInvitations(
       id: deterministicUuid('invitation', 'valid'),
       org_id: ASTER_RIDGE_ID,
       user_id: validCandidateId,
+      email: 'candidate.aster-ridge.071@example.com',
+      role: 'candidate',
       token_hash: hashInvitationToken(validToken),
-      invited_by: asterAdminId,
       created_at: validCreatedAt,
       expires_at: validExpiresAt,
       used_at: null,
@@ -105,8 +108,9 @@ export function getInvitations(
       id: deterministicUuid('invitation', 'expired'),
       org_id: ASTER_RIDGE_ID,
       user_id: expiredCandidateId,
+      email: 'candidate.aster-ridge.072@example.com',
+      role: 'candidate',
       token_hash: hashInvitationToken(expiredToken),
-      invited_by: asterAdminId,
       created_at: expiredCreatedAt,
       expires_at: expiredExpiresAt,
       used_at: null,
@@ -115,8 +119,9 @@ export function getInvitations(
       id: deterministicUuid('invitation', 'used'),
       org_id: ASTER_RIDGE_ID,
       user_id: usedCandidateId,
+      email: 'candidate.aster-ridge.001@example.com',
+      role: 'candidate',
       token_hash: hashInvitationToken(usedToken),
-      invited_by: asterAdminId,
       created_at: usedCreatedAt,
       expires_at: usedExpiresAt,
       used_at: usedAt,
