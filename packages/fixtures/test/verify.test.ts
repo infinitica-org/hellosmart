@@ -165,9 +165,8 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
         const mfa = summary.checks.find((c) => c.name === 'Platform Admin MFA Configuration');
         assert.strictEqual(mfa?.status, 'PASS');
         assert.ok(
-          mfa?.details.includes(
-            'AES-GCM decryption not checked because S0-T14-3 does not exist yet',
-          ),
+          mfa?.details.includes('valid env: reference configured'),
+          'MFA verification must confirm valid env: reference is configured',
         );
 
         const ents = summary.checks.find((c) => c.name === 'Entitlements & Trial Windows');
@@ -315,7 +314,7 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
         assert.ok(mfaCheck?.details.includes('plaintext'));
       } finally {
         await client.query(
-          "UPDATE app.users SET mfa_secret_ref = 'secrets/seed-superadmin-mfa' WHERE id = $1;",
+          "UPDATE app.users SET mfa_secret_ref = 'env:PLATFORM_ADMIN_MFA_SECRET' WHERE id = $1;",
           [SUPERADMIN_ID],
         );
       }
@@ -439,7 +438,7 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
         assert.doesNotMatch(output, /postgres:\/\/.*:.*@/);
       } finally {
         await client.query(
-          "UPDATE app.users SET mfa_secret_ref = 'secrets/seed-superadmin-mfa' WHERE id = $1;",
+          "UPDATE app.users SET mfa_secret_ref = 'env:PLATFORM_ADMIN_MFA_SECRET' WHERE id = $1;",
           [SUPERADMIN_ID],
         );
       }

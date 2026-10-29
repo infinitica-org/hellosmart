@@ -173,7 +173,11 @@ cp .env.local.example .env.local
 SEED_DEFAULT_PASSWORD=
 
 # Base32 TOTP secret for local testing of Platform Admin MFA (RFC 4648 Base32: A-Z, 2-7, uncommitted)
+# Note: The platform admin user stores mfa_secret_ref = 'env:PLATFORM_ADMIN_MFA_SECRET'.
+# The backend API process (apps/api) resolves this via PLATFORM_ADMIN_MFA_SECRET from its environment.
+# Configure this in .env.local and .env so both the seed runner and API process share the secret.
 SEED_PLATFORM_ADMIN_TOTP_SECRET=
+PLATFORM_ADMIN_MFA_SECRET=
 ```
 
 ### Adding Platform Admin MFA to an Authenticator App (Local Development Only)

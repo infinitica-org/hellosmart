@@ -468,6 +468,22 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
           mfaErrors.push(
             `Platform admin ${admin.email} has raw plaintext Base32 TOTP secret in mfa_secret_ref`,
           );
+          continue;
+        }
+
+        // Check env: reference prefix and that the referenced env var is set when running locally
+        if (admin.mfa_secret_ref.startsWith('env:')) {
+          const envKey = admin.mfa_secret_ref.slice('env:'.length);
+          const envVal =
+            process.env[envKey] ||
+            (envKey === 'PLATFORM_ADMIN_MFA_SECRET'
+              ? process.env.SEED_PLATFORM_ADMIN_TOTP_SECRET
+              : undefined);
+          if (!envVal || envVal.trim() === '') {
+            mfaErrors.push(
+              `Platform admin ${admin.email} references env var '${envKey}' which is not set in local environment`,
+            );
+          }
         }
       }
 
@@ -475,7 +491,7 @@ export async function runVerifySeed(options: VerifyOptions = {}): Promise<Verifi
         checks.push({
           name: 'Platform Admin MFA Configuration',
           status: 'PASS',
-          details: `Platform admin MFA configured via secret reference '${platAdmins.rows[0]?.mfa_secret_ref}' (not plain Base32; AES-GCM decryption not checked because S0-T14-3 does not exist yet)`,
+          details: `Platform admin MFA configured via secret reference '${platAdmins.rows[0]?.mfa_secret_ref}' (valid env: reference configured)`,
         });
       } else {
         checks.push({

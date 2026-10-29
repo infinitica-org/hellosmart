@@ -149,8 +149,7 @@ The verification runner connects using the schema owner role (`DATABASE_MIGRATOR
 │ 3       │ 'User Role & Status Distribution'  │ 'PASS' │ '78 active, 18 invited, 11 suspended, 7 deleted'                                                                            │
 │ 4       │ 'Tenant Scoping & Foreign Keys'    │ 'PASS' │ 'All tenant records strictly scoped; platform_has_no_org holds; FKs match'                                                  │
 │ 5       │ 'Active User Password Hashes'      │ 'PASS' │ 'All 78 active users have non-null Argon2id password_hash'                                                                 │
-│ 6       │ 'Platform Admin MFA Configuration' │ 'PASS' │ "Platform admin MFA configured via secret reference 'secrets/seed-superadmin-mfa' (not plain Base32; AES-GCM decryption not  │
-│         │                                    │        │  checked because S0-T14-3 does not exist yet)"                                                                              │
+│ 6       │ 'Platform Admin MFA Configuration' │ 'PASS' │ "Platform admin MFA configured via secret reference 'env:PLATFORM_ADMIN_MFA_SECRET' (valid env: reference configured)" │
 │ 7       │ 'Entitlements & Trial Windows'     │ 'PASS' │ '1:1 mapping with orgs, trial_ends_at set for trial_active, valid statuses'                                                 │
 │ 8       │ 'Invitations State & Token Hashes' │ 'PASS' │ '1 valid, 1 expired, 1 used; all tokens are 64-hex SHA-256 digests'                                                         │
 │ 9       │ 'Soft-Deletion Invariants'         │ 'PASS' │ 'Deleted users have deleted_at populated; active users have deleted_at null'                                                │
@@ -250,9 +249,10 @@ To test Platform Admin login with two-factor authentication locally:
    ```bash
    cp .env.local.example .env.local
    ```
-2. Set `SEED_PLATFORM_ADMIN_TOTP_SECRET` to a valid RFC 4648 Base32 key (e.g. `JBSWY3DPEHPK3PXP`).
-3. Add the key manually to your authenticator app (Google Authenticator, 1Password, etc.) as a Time-based (TOTP) account.
-4. **Never print, commit, or log the TOTP secret string or an `otpauth://` URI.**
+2. Set `SEED_PLATFORM_ADMIN_TOTP_SECRET` (or `PLATFORM_ADMIN_MFA_SECRET`) to a valid RFC 4648 Base32 key (e.g. `JBSWY3DPEHPK3PXP`).
+3. Note on API compatibility: The platform admin user is seeded with `mfa_secret_ref = 'env:PLATFORM_ADMIN_MFA_SECRET'`. The backend API process (`apps/api`) resolves this via `PLATFORM_ADMIN_MFA_SECRET` from its environment or `.env` file. Both the seed runner and the backend API process must share this environment variable for MFA verification to succeed.
+4. Add the key manually to your authenticator app (Google Authenticator, 1Password, etc.) as a Time-based (TOTP) account.
+5. **Never print, commit, or log the TOTP secret string or an `otpauth://` URI.**
 
 ---
 
