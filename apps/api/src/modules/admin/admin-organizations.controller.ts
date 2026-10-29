@@ -12,20 +12,22 @@ import {
   Req,
 } from '@nestjs/common';
 import {
+  type CreateOrgDto,
   CreateOrgDtoSchema,
   OrgDtoSchema,
   OrgListQueryDtoSchema,
+  type UpdateOrgStatusDto,
   UpdateOrgStatusDtoSchema,
 } from '@hs/contracts';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { problem } from '../../common/errors/app-http.exception.js';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import {
   REQUEST_USER_KEY,
   type AuthenticatedRequest,
 } from '../../common/guards/session.guard.js';
-import { flattenZodErrors } from '../../common/validation/zod-errors.js';
 import type { RequestMeta } from '../auth/auth.service.js';
 import { AdminOrganizationsService } from './admin-organizations.service.js';
 
@@ -57,25 +59,13 @@ export class AdminOrganizationsController {
   @Post()
   @HttpCode(201)
   async provision(
-    @Body() body: unknown,
+    @Body(new ZodValidationPipe(CreateOrgDtoSchema)) body: CreateOrgDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    const parsed = CreateOrgDtoSchema.safeParse(body);
-
-    if (!parsed.success) {
-      throw problem({
-        title: 'Unprocessable Entity',
-        status: 422,
-        detail: 'Invalid organization payload',
-        code: 'VALIDATION_ERROR',
-        errors: flattenZodErrors(parsed.error),
-      });
-    }
-
     const actor = request[REQUEST_USER_KEY];
 
     const org = await this.orgs.provision(
-      parsed.data,
+      body,
       actor,
       requestMeta(request),
     );
@@ -86,7 +76,7 @@ export class AdminOrganizationsController {
   @Patch(':id/status')
   async updateStatus(
     @Param('id') id: string,
-    @Body() body: unknown,
+    @Body(new ZodValidationPipe(UpdateOrgStatusDtoSchema)) body: UpdateOrgStatusDto,
     @Req() request: AuthenticatedRequest,
   ) {
     const orgId = z.string().uuid().safeParse(id);
@@ -100,23 +90,11 @@ export class AdminOrganizationsController {
       });
     }
 
-    const parsed = UpdateOrgStatusDtoSchema.safeParse(body);
-
-    if (!parsed.success) {
-      throw problem({
-        title: 'Unprocessable Entity',
-        status: 422,
-        detail: 'Invalid status payload',
-        code: 'VALIDATION_ERROR',
-        errors: flattenZodErrors(parsed.error),
-      });
-    }
-
     const actor = request[REQUEST_USER_KEY];
 
     const org = await this.orgs.updateStatus(
       orgId.data,
-      parsed.data,
+      body,
       actor,
       requestMeta(request),
     );

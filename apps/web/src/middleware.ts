@@ -1,15 +1,38 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { DEV_SESSION_STORE } from './lib/session-store';
+import { sanitizeRedirectPath } from './lib/safe-redirect';
 
 // Portal route prefixes requiring authentication & authorization (BR-25)
 const PROTECTED_PORTALS = ['/admin', '/company', '/candidate'] as const;
 
 export { DEV_SESSION_STORE };
 
-function applySecurityHeaders(res: NextResponse, nonce: string): NextResponse {
+export function extractOrigin(urlStr?: string): string | null {
+  if (!urlStr) return null;
+  try {
+    const parsed = new URL(urlStr);
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
+export function buildCspDirectives(nonce: string): string {
   const isDev = process.env.NODE_ENV === 'development';
-  const apiOrigin = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const csp = [
+
+  // Extract strictly origin portion without path
+  const connectOrigins = new Set<string>();
+  const publicApiOrigin = extractOrigin(process.env.NEXT_PUBLIC_API_URL);
+  if (publicApiOrigin) connectOrigins.add(publicApiOrigin);
+  const internalApiOrigin = extractOrigin(process.env.API_BASE_URL);
+  if (internalApiOrigin) connectOrigins.add(internalApiOrigin);
+  if (connectOrigins.size === 0) {
+    connectOrigins.add('http://localhost:4000');
+  }
+
+  const originsString = Array.from(connectOrigins).join(' ');
+
+  return [
     "default-src 'self'",
     isDev
       ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
@@ -17,21 +40,63 @@ function applySecurityHeaders(res: NextResponse, nonce: string): NextResponse {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data: https:",
-    `connect-src 'self' ${apiOrigin} http://localhost:4000 http://127.0.0.1:4000 ws: wss: https:`,
+    isDev
+      ? `connect-src 'self' ${originsString} ws: wss: https:`
+      : `connect-src 'self' ${originsString}`,
     'frame-src https://cal.com https://api.razorpay.com',
     "frame-ancestors 'none'",
+    "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
   ].join('; ');
+}
+
+export function applySecurityHeaders(
+  res: NextResponse,
+  nonce: string,
+  pathname?: string,
+): NextResponse {
+  const csp = buildCspDirectives(nonce);
 
   res.headers.set('Content-Security-Policy', csp);
   res.headers.set('X-Content-Type-Options', 'nosniff');
-  const isSensitive = res.headers.get('location')?.includes('reset') || false;
+  res.headers.set('X-Frame-Options', 'DENY');
+
+  // Strict Referrer-Policy on sensitive paths (passwords, auth, resets)
+  const loc = res.headers.get('location') || '';
+  const isSensitive =
+    loc.includes('reset') ||
+    loc.includes('password') ||
+    loc.includes('login') ||
+    Boolean(
+      pathname &&
+        (pathname.includes('reset') ||
+          pathname.includes('password') ||
+          pathname.includes('login')),
+    );
+
   res.headers.set(
     'Referrer-Policy',
-    isSensitive ? 'no-referrer' : 'strict-origin-when-cross-origin'
+    isSensitive ? 'no-referrer' : 'strict-origin-when-cross-origin',
   );
+
   res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+  // Enforce HSTS in production deployments
+  if (process.env.NODE_ENV === 'production') {
+    res.headers.set(
+      'Strict-Transport-Security',
+      'max-age=63072000; includeSubDomains; preload',
+    );
+  }
+
+  // Remove X-Powered-By
+  res.headers.delete('x-powered-by');
+  res.headers.delete('X-Powered-By');
+
+  // Set nonce header for downstream server components or verification
+  res.headers.set('x-nonce', nonce);
+
   return res;
 }
 
@@ -52,14 +117,16 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       if (pathname === '/login') {
         const headers = new Headers(req.headers);
         headers.set('x-nonce', nonce);
-        return applySecurityHeaders(NextResponse.next({ request: { headers } }), nonce);
+        headers.set('Content-Security-Policy', buildCspDirectives(nonce));
+        return applySecurityHeaders(NextResponse.next({ request: { headers } }), nonce, pathname);
       }
 
       const loginUrl = new URL('/login', req.url);
       if (pathname !== '/') {
-        loginUrl.searchParams.set('from', pathname);
+        const cleanFrom = sanitizeRedirectPath(pathname) || pathname;
+        loginUrl.searchParams.set('from', cleanFrom);
       }
-      return applySecurityHeaders(NextResponse.redirect(loginUrl), nonce);
+      return applySecurityHeaders(NextResponse.redirect(loginUrl), nonce, pathname);
     }
 
     // 3. Server-side session & authorization check
@@ -85,18 +152,20 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       } else if (meRes.status === 401 || meRes.status === 403) {
         // Expired or invalid session: clear session cookies and fail closed to /login
         const loginUrl = new URL('/login', req.url);
-        loginUrl.searchParams.set('from', pathname);
+        const cleanFrom = sanitizeRedirectPath(pathname) || pathname;
+        loginUrl.searchParams.set('from', cleanFrom);
         const res = NextResponse.redirect(loginUrl);
         res.cookies.delete('hs_session');
         res.cookies.delete('hs_role');
-        return applySecurityHeaders(res, nonce);
+        return applySecurityHeaders(res, nonce, pathname);
       } else {
         // Backend returned a non-200 but was reachable — session invalid/expired
         const loginUrl = new URL('/login', req.url);
-        loginUrl.searchParams.set('from', pathname);
+        const cleanFrom = sanitizeRedirectPath(pathname) || pathname;
+        loginUrl.searchParams.set('from', cleanFrom);
         loginUrl.searchParams.set('error', 'auth_unavailable');
         const res = NextResponse.redirect(loginUrl);
-        return applySecurityHeaders(res, nonce);
+        return applySecurityHeaders(res, nonce, pathname);
       }
     } catch {
       // Backend is offline or unreachable.
@@ -108,10 +177,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
       if (!devFallbackEnabled) {
         const loginUrl = new URL('/login', req.url);
-        loginUrl.searchParams.set('from', pathname);
+        const cleanFrom = sanitizeRedirectPath(pathname) || pathname;
+        loginUrl.searchParams.set('from', cleanFrom);
         loginUrl.searchParams.set('error', 'auth_unavailable');
         const res = NextResponse.redirect(loginUrl);
-        return applySecurityHeaders(res, nonce);
+        return applySecurityHeaders(res, nonce, pathname);
       }
 
       // Local development only: look up role from a server-side dev session store
@@ -126,7 +196,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     if (mustReset && !pathname.startsWith('/change-password') && !pathname.startsWith('/set-password')) {
       return applySecurityHeaders(
         NextResponse.redirect(new URL('/change-password?required=true', req.url)),
-        nonce
+        nonce,
+        pathname,
       );
     }
 
@@ -141,7 +212,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       if (isTryingRestricted) {
         return applySecurityHeaders(
           NextResponse.redirect(new URL('/candidate', req.url)),
-          nonce
+          nonce,
+          pathname,
         );
       }
     }
@@ -152,7 +224,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       if (isTryingAdmin) {
         return applySecurityHeaders(
           NextResponse.redirect(new URL('/company', req.url)),
-          nonce
+          nonce,
+          pathname,
         );
       }
     }
@@ -160,20 +233,22 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     // If session is present but role could not be authorized, redirect to /login
     if (!userRole) {
       const loginUrl = new URL('/login', req.url);
-      loginUrl.searchParams.set('from', pathname);
+      const cleanFrom = sanitizeRedirectPath(pathname) || pathname;
+      loginUrl.searchParams.set('from', cleanFrom);
       const res = NextResponse.redirect(loginUrl);
       res.cookies.delete('hs_session');
       res.cookies.delete('hs_role');
-      return applySecurityHeaders(res, nonce);
+      return applySecurityHeaders(res, nonce, pathname);
     }
   }
 
   // Set CSP nonce header on request for server components
   const headers = new Headers(req.headers);
   headers.set('x-nonce', nonce);
+  headers.set('Content-Security-Policy', buildCspDirectives(nonce));
   const res = NextResponse.next({ request: { headers } });
 
-  return applySecurityHeaders(res, nonce);
+  return applySecurityHeaders(res, nonce, pathname);
 }
 
 export const config = {

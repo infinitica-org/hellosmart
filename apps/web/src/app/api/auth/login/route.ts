@@ -150,6 +150,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-HS-CSRF': '1',
         },
         body: JSON.stringify({ email: normalizedEmail, password, mfaCode }),
       });

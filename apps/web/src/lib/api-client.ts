@@ -41,6 +41,53 @@ export class RateLimitedError extends ApiError {
   }
 }
 
+export const CSRF_HEADER_NAME = 'X-HS-CSRF';
+export const CSRF_HEADER_VALUE = '1';
+
+const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/**
+ * Returns CSRF header object if the method is state-changing (POST, PUT, PATCH, DELETE).
+ */
+export function getCsrfHeaders(method?: string): Record<string, string> {
+  if (method && STATE_CHANGING_METHODS.has(method.toUpperCase())) {
+    return { [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE };
+  }
+  return {};
+}
+
+/**
+ * Attaches the CSRF header to a HeadersInit object for state-changing HTTP methods.
+ */
+export function attachCsrfHeader(headers: HeadersInit = {}, method?: string): Headers {
+  const h = new Headers(headers);
+  if (method && STATE_CHANGING_METHODS.has(method.toUpperCase())) {
+    h.set(CSRF_HEADER_NAME, CSRF_HEADER_VALUE);
+  }
+  return h;
+}
+
+/**
+ * Shared fetch wrapper that attaches X-HS-CSRF on browser state-changing requests
+ * and ensures credentials: 'include'.
+ */
+export async function apiFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  fetchFn: typeof fetch = fetch,
+): Promise<Response> {
+  const method = (init.method || 'GET').toUpperCase();
+  const headers = new Headers(init.headers || {});
+  if (STATE_CHANGING_METHODS.has(method)) {
+    headers.set(CSRF_HEADER_NAME, CSRF_HEADER_VALUE);
+  }
+  return fetchFn(input, {
+    ...init,
+    headers,
+    credentials: init.credentials || 'include',
+  });
+}
+
 export interface UserMe {
   id: string;
   email: string;
@@ -118,6 +165,7 @@ export async function acceptInvitation(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE,
     },
     body: JSON.stringify(data),
     credentials: 'include',
@@ -171,13 +219,14 @@ export async function login(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE,
     },
     body: JSON.stringify(credentials),
     credentials: 'include',
   });
 
   if (res.status === 401) {
-    throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid email or password.');
+    throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid email or password, or account not found.');
   }
 
   if (res.status === 429) {
@@ -211,6 +260,7 @@ export async function logout(
     method: 'POST',
     headers: {
       Accept: 'application/json',
+      [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE,
     },
     credentials: 'include',
   });
@@ -350,6 +400,7 @@ export async function changePassword(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE,
     },
     body: JSON.stringify(input),
     credentials: 'include',

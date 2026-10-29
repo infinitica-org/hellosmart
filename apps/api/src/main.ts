@@ -5,6 +5,11 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { AppModule } from './app.module.js';
 import { loadConfig } from './config/config.js';
 import {
+  createHelmetOptions,
+  createCorsOptions,
+  DEFAULT_BODY_LIMIT_BYTES,
+} from './config/security.config.js';
+import {
   createLogger,
   AppLoggerService,
   resolveRequestId,
@@ -21,7 +26,7 @@ async function bootstrap(): Promise<void> {
 
   const adapter = new FastifyAdapter({
     trustProxy: true, // behind ALB; client IP from X-Forwarded-For for audit + throttling
-    bodyLimit: 1_048_576, // 1 MB; bulk uploads go to S3 via presigned URLs
+    bodyLimit: DEFAULT_BODY_LIMIT_BYTES, // 1 MB; bulk uploads go to S3 via presigned URLs
     logger,
     disableRequestLogging: true,
     genReqId: resolveRequestId,
@@ -38,15 +43,10 @@ async function bootstrap(): Promise<void> {
 
   app.useLogger(appLogger);
 
-  await app.register(helmet, {
-    contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
-    hsts: { maxAge: 63_072_000, includeSubDomains: true, preload: true },
-    referrerPolicy: { policy: 'no-referrer' },
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
-  });
+  await app.register(helmet, createHelmetOptions(config));
   await app.register(cookie, { secret: config.SESSION_SECRET });
 
-  app.enableCors({ origin: config.CORS_ORIGINS, credentials: true });
+  app.enableCors(createCorsOptions(config));
   app.setGlobalPrefix('api/v1');
   app.enableShutdownHooks();
 

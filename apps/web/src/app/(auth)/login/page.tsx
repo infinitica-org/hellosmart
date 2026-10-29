@@ -4,7 +4,7 @@
 import React, { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { isSafeRedirectPath } from '@/lib/session-client';
+import { getSafeRedirectUrl } from '@/lib/safe-redirect';
 import {
   BrandMark,
   TextField,
@@ -41,22 +41,8 @@ function LoginForm() {
   const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaError, setMfaError] = useState<string | null>(null);
 
-  const getTargetPortal = (role?: string, portal?: string) => {
-    if (portal) return `/${portal}`;
-    if (role === 'platform_admin') return '/admin';
-    if (role === 'candidate') return '/candidate';
-    return '/company';
-  };
-
-  const executeRedirect = (targetPortal: string) => {
-    let dest = targetPortal;
-    if (from && isSafeRedirectPath(from)) {
-      if (targetPortal === '/candidate' && (from.startsWith('/admin') || from.startsWith('/company'))) {
-        dest = '/candidate';
-      } else {
-        dest = from;
-      }
-    }
+  const executeRedirect = (role?: string, portal?: string) => {
+    const dest = getSafeRedirectUrl(from, role || '', portal);
     window.location.href = dest;
   };
 
@@ -77,6 +63,7 @@ function LoginForm() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-HS-CSRF': '1',
         },
         body: JSON.stringify({ email: email.trim(), password }),
       });
@@ -112,8 +99,7 @@ function LoginForm() {
       }
 
       // Successful login redirect based on role
-      const target = getTargetPortal(data?.role, data?.portal);
-      executeRedirect(target);
+      executeRedirect(data?.role, data?.portal);
     } catch {
       setIsLoading(false);
       setErrorMessage('Unable to connect to the authentication server. Please try again later.');
@@ -136,6 +122,7 @@ function LoginForm() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-HS-CSRF': '1',
         },
         body: JSON.stringify({
           preAuthToken,
@@ -168,8 +155,7 @@ function LoginForm() {
       // Successful MFA completion
       setPreAuthToken(null);
       setIsMfaOpen(false);
-      const target = getTargetPortal(data?.role, data?.portal);
-      executeRedirect(target);
+      executeRedirect(data?.role, data?.portal);
     } catch {
       setMfaLoading(false);
       setMfaError('Unable to verify MFA code. Please try again.');

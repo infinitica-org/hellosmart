@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CryptoService } from '../../common/services/crypto.service.js';
 import { MailService } from '../../common/services/mail.service.js';
 import { DatabaseModule } from '../database/database.module.js';
 import { AuthController } from './auth.controller.js';
@@ -19,10 +20,18 @@ import { PreAuthService } from './pre-auth.service.js';
     LoginLockoutService,
     PreAuthService,
     MfaService,
+    CryptoService,
     InvitationsService,
     MailService,
     PasswordPolicyService,
   ],
-  exports: [AuthService, InvitationsService, MailService, PasswordPolicyService],
+  exports: [
+    AuthService,
+    MfaService,
+    CryptoService,
+    InvitationsService,
+    MailService,
+    PasswordPolicyService,
+  ],
 })
 export class AuthModule {}

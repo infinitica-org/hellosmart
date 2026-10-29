@@ -6,15 +6,14 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
-import { CreateCandidateDtoSchema } from '@hs/contracts';
+import { type CreateCandidateDto, CreateCandidateDtoSchema } from '@hs/contracts';
 import type { FastifyRequest } from 'fastify';
 import { Roles } from '../../common/decorators/roles.decorator.js';
-import { problem } from '../../common/errors/app-http.exception.js';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import {
   REQUEST_USER_KEY,
   type AuthenticatedRequest,
 } from '../../common/guards/session.guard.js';
-import { flattenZodErrors } from '../../common/validation/zod-errors.js';
 import type { RequestMeta } from '../auth/auth.service.js';
 import { CandidatesService } from './candidates.service.js';
 
@@ -27,20 +26,12 @@ export class CandidatesController {
 
   @Post()
   @HttpCode(201)
-  async create(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
-    const parsed = CreateCandidateDtoSchema.safeParse(body);
-    if (!parsed.success) {
-      throw problem({
-        title: 'Unprocessable Entity',
-        status: 422,
-        detail: 'Invalid candidate payload',
-        code: 'VALIDATION_ERROR',
-        errors: flattenZodErrors(parsed.error),
-      });
-    }
-
+  async create(
+    @Body(new ZodValidationPipe(CreateCandidateDtoSchema)) body: CreateCandidateDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
     const actor = request[REQUEST_USER_KEY];
-    return this.candidatesService.create(parsed.data, actor, requestMeta(request));
+    return this.candidatesService.create(body, actor, requestMeta(request));
   }
 }
 

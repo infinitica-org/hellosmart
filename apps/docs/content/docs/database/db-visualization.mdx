@@ -76,6 +76,8 @@ erDiagram
         string role "platform_admin | company_admin | candidate"
         string password_hash "argon2id"
         boolean must_reset_password
+        text mfa_secret_ref "AES-256-GCM envelope or env reference"
+        bigint mfa_last_step "Atomic TOTP replay protection counter"
         string status "invited | active | suspended | deleted"
         timestamptz locked_until
     }
@@ -223,6 +225,12 @@ Pre-login operations (login lookup and invitation acceptance) cannot supply a ve
    Returns public invitation metadata (email, role, organization name) for the invite acceptance UI, without granting access to the underlying `app.invitations` table. Requires an unexpired, unconsumed invitation with exact 32-byte SHA-256 token hash.
 4. **`app.accept_invitation(p_token_hash, p_password_hash, p_ip, p_user_agent, p_request_id)`**:
    Atomically burns the invitation token, marks the user status as `active`, sets the password hash, and records an immutable audit log entry in `audit.events` inside a single database transaction. Eliminates any need for the API to execute `set_config('app.is_platform', 'true')` in client code.
+5. **`app.consume_totp_step(p_user_id, p_step)`** (migration `0007_mfa_hardening`):
+   Atomically consumes a TOTP time-step (`mfa_last_step`) using conditional update (`WHERE mfa_last_step IS NULL OR mfa_last_step < p_step`). Guarantees concurrent TOTP replay protection across distributed API nodes with zero race conditions.
+6. **`app.get_user_mfa_last_step(p_user_id)`**:
+   Returns the last consumed time-step counter for verification and security audit inspection.
+7. **`app.upgrade_user_mfa_secret(p_user_id, p_encrypted_secret)`**:
+   Enables opportunistic zero-downtime migration of legacy plaintext Base32 secrets or envelopes encrypted with previous keys to the active AES-256-GCM encryption key upon successful login.
 
 ### Principle of Least Privilege
 All `SECURITY DEFINER` routines revoke `EXECUTE` privileges from `PUBLIC` and grant execute permissions exclusively to the non-owner application role `hs_app`:

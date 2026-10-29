@@ -3,10 +3,13 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, Reflector } from '@nestjs/core'
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import type { Logger } from 'pino';
 import { ProblemDetailsFilter } from './common/filters/problem-details.filter.js';
+import { CsrfOriginGuard } from './common/guards/csrf-origin.guard.js';
 import { OrgScopeGuard } from './common/guards/org-scope.guard.js';
 import { RolesGuard } from './common/guards/roles.guard.js';
 import { SessionGuard } from './common/guards/session.guard.js';
 import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor.js';
+import { DatabaseModule as CommonDatabaseModule } from './common/database/database.module.js';
+import { RedisModule as CommonRedisModule } from './common/redis/redis.module.js';
 import { AppConfigModule } from './config/config.module.js';
 import { DatabaseModule } from './modules/database/database.module.js';
 import { AdaptersModule } from './modules/adapters/adapters.module.js';
@@ -26,16 +29,21 @@ const devControllers =
   imports: [
     AppConfigModule,
     DatabaseModule,
+    CommonDatabaseModule,
     ObservabilityModule,
     ThrottlerModule.forRoot(
       process.env.NODE_ENV === 'test'
-        ? [{ name: 'default', ttl: 60_000, limit: 1_000_000 }]
+        ? [
+            { name: 'default', ttl: 60_000, limit: 1_000_000 },
+            { name: 'login', ttl: 60_000, limit: 1_000_000 },
+          ]
         : [
-            { name: 'default', ttl: 60_000, limit: 120 },
+            { name: 'default', ttl: 60_000, limit: 100 },
             { name: 'login', ttl: 60_000, limit: 5 },
           ],
     ),
     RedisModule,
+    CommonRedisModule,
     SessionModule,
     AdaptersModule,
     AuthModule,
@@ -47,15 +55,17 @@ const devControllers =
   providers: [
     Reflector,
     ProblemDetailsFilter,
+    CsrfOriginGuard,
     SessionGuard,
     RolesGuard,
     OrgScopeGuard,
     IdempotencyInterceptor,
     { provide: APP_FILTER, useExisting: ProblemDetailsFilter },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useExisting: CsrfOriginGuard },
     { provide: APP_GUARD, useExisting: SessionGuard },
     { provide: APP_GUARD, useExisting: RolesGuard },
     { provide: APP_GUARD, useExisting: OrgScopeGuard },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_INTERCEPTOR, useExisting: IdempotencyInterceptor },
   ],
 })
