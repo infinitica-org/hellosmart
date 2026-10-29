@@ -130,7 +130,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List organizations with pagination, status filtering, and search (Platform Admin only) */
+        get: operations["listOrganizations"];
         put?: never;
         /** Provision a new customer tenant organization (Platform Admin only) */
         post: operations["provisionOrganization"];
@@ -155,6 +156,23 @@ export interface paths {
         head?: never;
         /** Update organization status (activate or suspend) */
         patch: operations["updateOrganizationStatus"];
+        trace?: never;
+    };
+    "/admin/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get platform admin overview dashboard metrics (Platform Admin only) */
+        get: operations["getAdminMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/candidates": {
@@ -249,11 +267,8 @@ export interface components {
             name: string;
             /** @example aster-ridge */
             slug: string;
-            /**
-             * @example paid_active
-             * @enum {string}
-             */
-            status: "provisioned" | "trial_active" | "paid_active" | "suspended";
+            /** @example paid_active */
+            status: components["schemas"]["OrgStatus"];
             /** @example plan_growth */
             planId?: string | null;
             /** @example https://cdn.hellosmart.ai/aster.png */
@@ -269,6 +284,49 @@ export interface components {
              * @example 2026-10-01T00:00:00Z
              */
             createdAt: string;
+        };
+        /** @enum {string} */
+        OrgStatus: "provisioned" | "trial" | "trial_active" | "trial_expired" | "active" | "paid_active" | "suspended";
+        OrgListItem: {
+            /**
+             * Format: uuid
+             * @example 00000000-0000-4000-8000-000000000001
+             */
+            id: string;
+            /** @example Brindle & Co */
+            name: string;
+            /** @example brindle-co */
+            slug: string;
+            status: components["schemas"]["OrgStatus"];
+            /** @example 24 */
+            candidateCount: number;
+            /**
+             * Format: date-time
+             * @example 2026-10-01T10:00:00.000Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-11-01T10:00:00.000Z
+             */
+            trialEndsAt?: string | null;
+        };
+        PaginatedOrgList: {
+            items: components["schemas"]["OrgListItem"][];
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            pageSize: number;
+            /** @example 3 */
+            total: number;
+        };
+        AdminMetrics: {
+            /** @example 3 */
+            totalCompanies: number;
+            /** @example 1 */
+            activeTrials: number;
+            /** @example 42 */
+            totalCandidates: number;
         };
         /** @enum {string} */
         CandidateStatus: "invited" | "active" | "deleted";
@@ -508,6 +566,44 @@ export interface operations {
             401: components["responses"]["Problem"];
         };
     };
+    listOrganizations: {
+        parameters: {
+            query?: {
+                /** @description Page number (1-based) */
+                page?: number;
+                /** @description Page size (maximum 100) */
+                pageSize?: number;
+                /**
+                 * @description Filter organizations by status
+                 * @example trial_active
+                 */
+                status?: components["schemas"]["OrgStatus"];
+                /**
+                 * @description Search by organization name or slug
+                 * @example Brindle
+                 */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated list of organizations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedOrgList"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            403: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
+    };
     provisionOrganization: {
         parameters: {
             query?: never;
@@ -592,6 +688,28 @@ export interface operations {
             403: components["responses"]["Problem"];
             404: components["responses"]["Problem"];
             422: components["responses"]["Problem"];
+        };
+    };
+    getAdminMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Summary platform metrics for total companies, active trials, and total candidates. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMetrics"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            403: components["responses"]["Problem"];
         };
     };
     listCandidates: {

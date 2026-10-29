@@ -8,11 +8,13 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import {
   CreateOrgDtoSchema,
   OrgDtoSchema,
+  OrgListQueryDtoSchema,
   UpdateOrgStatusDtoSchema,
 } from '@hs/contracts';
 import type { FastifyRequest } from 'fastify';
@@ -36,13 +38,20 @@ export class AdminOrganizationsController {
   ) {}
 
   @Get()
-  async list() {
-    const organizations = await this.orgs.list();
+  async list(@Query() query: unknown) {
+    const parsed = OrgListQueryDtoSchema.safeParse(query);
 
-    return {
-      organizations: organizations.map((org) => OrgDtoSchema.parse(org)),
-      total: organizations.length,
-    };
+    if (!parsed.success) {
+      throw problem({
+        title: 'Unprocessable Entity',
+        status: 422,
+        detail: 'Invalid query parameters',
+        code: 'VALIDATION_ERROR',
+        errors: flattenZodErrors(parsed.error),
+      });
+    }
+
+    return await this.orgs.listOrganizations(parsed.data);
   }
 
   @Post()
