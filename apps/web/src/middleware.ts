@@ -17,7 +17,7 @@ function applySecurityHeaders(res: NextResponse, nonce: string): NextResponse {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data: https:",
-    `connect-src 'self' ${apiOrigin} ws: wss: https:`,
+    `connect-src 'self' ${apiOrigin} http://localhost:4000 http://127.0.0.1:4000 ws: wss: https:`,
     'frame-src https://cal.com https://api.razorpay.com',
     "frame-ancestors 'none'",
     "base-uri 'self'",

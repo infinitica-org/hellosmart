@@ -171,6 +171,76 @@ paths:
                   success: { type: boolean, example: true }
                   message: { type: string, example: 'Logged out successfully' }
 
+  /auth/sessions:
+    get:
+      tags: [auth]
+      summary: List all active sessions for current user
+      operationId: listActiveSessions
+      x-requirement: [16.2]
+      responses:
+        '200':
+          description: Active sessions returned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessions]
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActiveSession'
+        '401':
+          $ref: '#/components/responses/Problem'
+
+  /auth/sessions/{id}:
+    delete:
+      tags: [auth]
+      summary: Revoke a specific active session
+      operationId: revokeSession
+      x-requirement: [16.2]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: 'Session revoked successfully' }
+        '401':
+          $ref: '#/components/responses/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+
+  /auth/sessions/logout-all:
+    post:
+      tags: [auth]
+      summary: Invalidate all active sessions for the user across all devices
+      operationId: logoutAllSessions
+      x-requirement: [16.2]
+      responses:
+        '200':
+          description: All sessions revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: 'All sessions revoked successfully' }
+        '401':
+          $ref: '#/components/responses/Problem'
+
   /auth/invitations/{token}:
     get:
       summary: Validate an invitation token and fetch details
@@ -531,3 +601,14 @@ components:
         ticket: { type: string, description: 'Single-use, 60 s TTL, bound to workspace + user' }
         deadlineAt: { type: string, format: date-time }
         requireFullscreen: { type: boolean }
+    ActiveSession:
+      type: object
+      required: [id, createdAt, lastActiveAt, isCurrent]
+      properties:
+        id: { type: string, example: 'sess_01' }
+        userAgent: { type: string, example: 'Chrome on Windows' }
+        device: { type: string, example: 'Windows Desktop' }
+        ipAddress: { type: string, example: '127.0.0.1' }
+        createdAt: { type: string, format: date-time, example: '2026-10-29T10:00:00Z' }
+        lastActiveAt: { type: string, format: date-time, example: '2026-10-29T11:30:00Z' }
+        isCurrent: { type: boolean, example: true }

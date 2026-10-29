@@ -1,6 +1,8 @@
 import type {
   AcceptInvitationRequest,
   AcceptInvitationResponse,
+  ActiveSession,
+  ActiveSessionsResponse,
   ChangePasswordRequest,
   InvitationDetailsResponse,
   SimpleSuccessResponse,
@@ -55,9 +57,9 @@ export interface UserMe {
 
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+    return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000';
   }
-  return process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+  return process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000';
 }
 
 /**
@@ -215,6 +217,112 @@ export async function logout(
 
   if (!res.ok) {
     let errorDetail = 'Logout failed';
+    try {
+      const errorJson = await res.json();
+      errorDetail = errorJson.detail || errorDetail;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, 'API_ERROR', errorDetail);
+  }
+
+  return (await res.json()) as SimpleSuccessResponse;
+}
+
+/**
+ * Lists all active sessions for current user via GET /api/v1/auth/sessions.
+ */
+export async function listSessions(
+  fetchFn: typeof fetch = fetch,
+): Promise<ActiveSessionsResponse> {
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/auth/sessions`;
+
+  const res = await fetchFn(url, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+    credentials: 'include',
+  });
+
+  if (res.status === 401) {
+    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
+  }
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to fetch active sessions';
+    try {
+      const errorJson = await res.json();
+      errorDetail = errorJson.detail || errorDetail;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, 'API_ERROR', errorDetail);
+  }
+
+  return (await res.json()) as ActiveSessionsResponse;
+}
+
+/**
+ * Revokes a specific active session via DELETE /api/v1/auth/sessions/:id.
+ */
+export async function revokeSession(
+  sessionId: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<SimpleSuccessResponse> {
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/auth/sessions/${encodeURIComponent(sessionId)}`;
+
+  const res = await fetchFn(url, {
+    method: 'DELETE',
+    headers: {
+      Accept: 'application/json',
+    },
+    credentials: 'include',
+  });
+
+  if (res.status === 401) {
+    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
+  }
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to revoke session';
+    try {
+      const errorJson = await res.json();
+      errorDetail = errorJson.detail || errorDetail;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, 'API_ERROR', errorDetail);
+  }
+
+  return (await res.json()) as SimpleSuccessResponse;
+}
+
+/**
+ * Revokes all sessions for current user across all devices via POST /api/v1/auth/sessions/logout-all.
+ */
+export async function logoutAllSessions(
+  fetchFn: typeof fetch = fetch,
+): Promise<SimpleSuccessResponse> {
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/auth/sessions/logout-all`;
+
+  const res = await fetchFn(url, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+    },
+    credentials: 'include',
+  });
+
+  if (res.status === 401) {
+    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
+  }
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to logout from all devices';
     try {
       const errorJson = await res.json();
       errorDetail = errorJson.detail || errorDetail;

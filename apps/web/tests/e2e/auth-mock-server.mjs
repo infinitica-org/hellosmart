@@ -135,7 +135,7 @@ const server = http.createServer((req, res) => {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
 
   if (req.method === 'OPTIONS') {
@@ -224,7 +224,13 @@ const server = http.createServer((req, res) => {
 
       // Standard roles: issue session cookie directly
       const sessionId = `hs_sess_${crypto.randomUUID()}`;
-      sessions.set(sessionId, user);
+      sessions.set(sessionId, {
+        user,
+        createdAt: new Date().toISOString(),
+        lastActiveAt: new Date().toISOString(),
+        userAgent: req.headers['user-agent'] || 'Chrome on Windows',
+        ipAddress: req.socket.remoteAddress || '127.0.0.1',
+      });
 
       const cookie = `hs_session=${sessionId}; Path=/; HttpOnly; SameSite=Lax`;
       res.writeHead(200, {
@@ -313,7 +319,13 @@ const server = http.createServer((req, res) => {
       preAuthStore.delete(preAuthToken);
       const user = USERS.find((u) => u.id === entry.userId);
       const sessionId = `hs_sess_${crypto.randomUUID()}`;
-      sessions.set(sessionId, user);
+      sessions.set(sessionId, {
+        user,
+        createdAt: new Date().toISOString(),
+        lastActiveAt: new Date().toISOString(),
+        userAgent: req.headers['user-agent'] || 'Chrome on Windows',
+        ipAddress: req.socket.remoteAddress || '127.0.0.1',
+      });
 
       const cookie = `hs_session=${sessionId}; Path=/; HttpOnly; SameSite=Lax`;
       res.writeHead(200, {
@@ -448,7 +460,8 @@ const server = http.createServer((req, res) => {
       sessionToken = req.headers.authorization.slice(7).trim();
     }
 
-    const user = sessionToken ? sessions.get(sessionToken) : null;
+    const sessionData = sessionToken ? sessions.get(sessionToken) : null;
+    const user = sessionData?.user ?? sessionData;
 
     if (!user) {
       res.writeHead(401, { 'Content-Type': 'application/problem+json' });
@@ -462,6 +475,10 @@ const server = http.createServer((req, res) => {
         })
       );
       return;
+    }
+
+    if (sessionData && sessionData.lastActiveAt) {
+      sessionData.lastActiveAt = new Date().toISOString();
     }
 
     // Check organization suspension on live session lookup
@@ -498,6 +515,113 @@ const server = http.createServer((req, res) => {
       'Set-Cookie': 'hs_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax',
     });
     res.end(JSON.stringify({ success: true }));
+    return;
+  }
+
+  // GET /auth/sessions (and /api/v1/auth/sessions)
+  if ((url.pathname === '/auth/sessions' || url.pathname === '/api/v1/auth/sessions') && req.method === 'GET') {
+    const cookies = parseCookies(req.headers.cookie);
+    const sessionToken = cookies['hs_session'];
+    const sessionData = sessionToken ? sessions.get(sessionToken) : null;
+    const user = sessionData?.user ?? sessionData;
+
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/problem+json' });
+      res.end(JSON.stringify({ type: 'about:blank', title: 'Unauthorized', status: 401, detail: 'Authentication required' }));
+      return;
+    }
+
+    const activeList = [];
+    for (const [sId, sData] of sessions.entries()) {
+      const sUser = sData?.user ?? sData;
+      if (sUser && sUser.id === user.id) {
+        activeList.push({
+          id: sId,
+          userAgent: sData?.userAgent || 'Chrome on Windows',
+          device: sData?.userAgent?.includes('Mobile') ? 'Mobile Device' : 'Desktop Browser',
+          ipAddress: sData?.ipAddress || '127.0.0.1',
+          createdAt: sData?.createdAt || new Date().toISOString(),
+          lastActiveAt: sData?.lastActiveAt || new Date().toISOString(),
+          isCurrent: sId === sessionToken,
+        });
+      }
+    }
+
+    // Sort current first, then by lastActiveAt descending
+    activeList.sort((a, b) => (b.isCurrent ? 1 : 0) - (a.isCurrent ? 1 : 0));
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ sessions: activeList }));
+    return;
+  }
+
+  // DELETE /auth/sessions/:id (and /api/v1/auth/sessions/:id)
+  const revokeMatch = url.pathname.match(/^\/(?:api\/v1\/)?auth\/sessions\/([^/]+)$/);
+  if (revokeMatch && req.method === 'DELETE') {
+    const targetId = revokeMatch[1];
+    const cookies = parseCookies(req.headers.cookie);
+    const sessionToken = cookies['hs_session'];
+    const sessionData = sessionToken ? sessions.get(sessionToken) : null;
+    const user = sessionData?.user ?? sessionData;
+
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/problem+json' });
+      res.end(JSON.stringify({ type: 'about:blank', title: 'Unauthorized', status: 401, detail: 'Authentication required' }));
+      return;
+    }
+
+    const targetSession = sessions.get(targetId);
+    if (!targetSession) {
+      res.writeHead(404, { 'Content-Type': 'application/problem+json' });
+      res.end(JSON.stringify({ type: 'about:blank', title: 'Not Found', status: 404, detail: 'Session not found' }));
+      return;
+    }
+
+    const targetUser = targetSession?.user ?? targetSession;
+    if (targetUser.id !== user.id) {
+      res.writeHead(404, { 'Content-Type': 'application/problem+json' });
+      res.end(JSON.stringify({ type: 'about:blank', title: 'Not Found', status: 404, detail: 'Session not found' }));
+      return;
+    }
+
+    sessions.delete(targetId);
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (targetId === sessionToken) {
+      headers['Set-Cookie'] = 'hs_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax';
+    }
+
+    res.writeHead(200, headers);
+    res.end(JSON.stringify({ success: true, message: 'Session revoked successfully' }));
+    return;
+  }
+
+  // POST /auth/sessions/logout-all (and /api/v1/auth/sessions/logout-all)
+  if ((url.pathname === '/auth/sessions/logout-all' || url.pathname === '/api/v1/auth/sessions/logout-all') && req.method === 'POST') {
+    const cookies = parseCookies(req.headers.cookie);
+    const sessionToken = cookies['hs_session'];
+    const sessionData = sessionToken ? sessions.get(sessionToken) : null;
+    const user = sessionData?.user ?? sessionData;
+
+    if (!user) {
+      res.writeHead(401, { 'Content-Type': 'application/problem+json' });
+      res.end(JSON.stringify({ type: 'about:blank', title: 'Unauthorized', status: 401, detail: 'Authentication required' }));
+      return;
+    }
+
+    // Invalidate all sessions for this user
+    for (const [sId, sData] of sessions.entries()) {
+      const sUser = sData?.user ?? sData;
+      if (sUser && sUser.id === user.id) {
+        sessions.delete(sId);
+      }
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Set-Cookie': 'hs_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax',
+    });
+    res.end(JSON.stringify({ success: true, message: 'All sessions revoked successfully' }));
     return;
   }
 

@@ -3,6 +3,8 @@
 import React from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
+import { UserMenu } from '@/components/layout/user-menu';
+import { IdleWarningModal } from '@/components/session/idle-warning-modal';
 import { candidateNavigation } from '@/types/navigation';
 
 export default function CandidateLayout({
@@ -26,6 +28,8 @@ export default function CandidateLayout({
 
   return (
     <div className="min-h-screen flex bg-canvas text-neutral-900 font-sans">
+      <IdleWarningModal />
+
       {/* Candidate Sidebar with Dashboard, My Assessments, My Profile */}
       <Sidebar
         portalTitle="Candidate Portal"
@@ -42,15 +46,17 @@ export default function CandidateLayout({
         <Topbar
           variant="dashboard"
           showLogo={false}
-          showProfile={true}
+          showProfile={false}
           showNotifications={false}
-          userName={candidateName}
-          userEmail={candidateEmail}
-          userRole="Candidate"
-          companyName="Candidate Workspace"
-          onLogout={handleLogout}
+          actions={
+            <UserMenu
+              userName={candidateName}
+              userEmail={candidateEmail}
+              userRole="Candidate"
+              companyName="Candidate Workspace"
+            />
+          }
           className="hidden md:flex h-16 px-6 sm:px-8 bg-white border-b border-neutral-200"
-         
         />
 
         {/* Main Content Area */}

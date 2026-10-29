@@ -3,6 +3,8 @@
 import React from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
+import { UserMenu } from '@/components/layout/user-menu';
+import { IdleWarningModal } from '@/components/session/idle-warning-modal';
 import { companyNavigation } from '@/types/navigation';
 
 export default function CompanyLayout({
@@ -27,6 +29,8 @@ export default function CompanyLayout({
 
   return (
     <div className="min-h-screen flex bg-canvas text-neutral-900 font-sans">
+      <IdleWarningModal />
+
       {/* Reusable Sidebar with Dashboard, Assessments, Candidates, Analytics, Settings */}
       <Sidebar
         portalTitle="Company Portal"
@@ -43,15 +47,17 @@ export default function CompanyLayout({
         <Topbar
           variant="dashboard"
           showLogo={false}
-          showProfile={true}
+          showProfile={false}
           showNotifications={false}
-          userName={userName}
-          userEmail={userEmail}
-          userRole="Company Admin"
-          companyName={companyName}
-          onLogout={handleLogout}
+          actions={
+            <UserMenu
+              userName={userName}
+              userEmail={userEmail}
+              userRole="Company Admin"
+              companyName={companyName}
+            />
+          }
           className="hidden md:flex h-16 px-6 sm:px-8 bg-white border-b border-neutral-200"
-          
         />
 
         {/* Main Content Area */}
