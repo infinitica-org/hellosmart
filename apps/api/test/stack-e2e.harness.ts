@@ -150,7 +150,12 @@ export async function completePlatformAdminLogin(
 }
 
 export async function setUserPassword(email: string, password: string): Promise<void> {
-  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
+  const url =
+    process.env.DATABASE_PLATFORM_URL ??
+    (process.env.DATABASE_URL
+      ? process.env.DATABASE_URL.replace('hs_app:hs_app_local', 'hs_platform:hs_platform_local').replace('hs_app:', 'hs_platform:')
+      : undefined);
+  const pool = new pg.Pool({ connectionString: url ?? process.env.DATABASE_URL, max: 1 });
   const client = await pool.connect();
   const hash = await hashPassword(password);
   try {
