@@ -146,6 +146,55 @@ export function extractTargetDbInfo(connectionString: string): { host: string; d
 }
 
 /**
+ * Determines if the PostgreSQL role specified in a connection string is permitted
+ * to write cross-tenant seed data.
+ *
+ * Roles 'hs_app' (subject to RLS without bypass) and 'hs_readonly' (read-only)
+ * cannot insert multi-tenant seed fixtures.
+ */
+export function isRoleAllowedToWrite(urlString: string): boolean {
+  try {
+    const parsed = new URL(urlString.trim());
+    const username = (parsed.username || '').toLowerCase();
+    return username !== 'hs_app' && username !== 'hs_readonly';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolves the effective target database URL using safe precedence:
+ * 1. Explicit programmatic option (options.databaseUrl)
+ * 2. Explicit seed-specific environment variable (SEED_DATABASE_URL)
+ * 3. Explicit test database environment variable (TEST_DATABASE_URL)
+ * 4. DATABASE_URL when its authenticated role is permitted to write (not hs_app or hs_readonly)
+ * 5. DATABASE_MIGRATOR_URL (connecting as hs_migrator with migrator_policy)
+ * 6. Fallback to DATABASE_URL
+ */
+export function resolveEffectiveDatabaseUrl(options: CliSeedOptions = {}): string | undefined {
+  if (options.databaseUrl !== undefined) {
+    return options.databaseUrl;
+  }
+  if (process.env.SEED_DATABASE_URL && process.env.SEED_DATABASE_URL.trim() !== '') {
+    return process.env.SEED_DATABASE_URL.trim();
+  }
+  if (process.env.TEST_DATABASE_URL && process.env.TEST_DATABASE_URL.trim() !== '') {
+    return process.env.TEST_DATABASE_URL.trim();
+  }
+
+  const dbUrl = process.env.DATABASE_URL?.trim();
+  const migratorUrl = process.env.DATABASE_MIGRATOR_URL?.trim();
+
+  if (dbUrl && dbUrl !== '' && isRoleAllowedToWrite(dbUrl)) {
+    return dbUrl;
+  }
+  if (migratorUrl && migratorUrl !== '') {
+    return migratorUrl;
+  }
+  return dbUrl;
+}
+
+/**
  * Formats a clean ASCII summary table of upserted entities.
  */
 export function formatSummaryTable(summary: SeedSummary): Record<string, string | number>[] {
@@ -237,12 +286,7 @@ export async function runCliSeed(options: CliSeedOptions = {}): Promise<SeedSumm
   loadEnvFiles();
 
   const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV ?? 'development';
-  // Check DATABASE_URL first; fall back to DATABASE_MIGRATOR_URL if DATABASE_URL is not set
-  const databaseUrl =
-    options.databaseUrl ??
-    (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== ''
-      ? process.env.DATABASE_URL
-      : process.env.DATABASE_MIGRATOR_URL);
+  const databaseUrl = resolveEffectiveDatabaseUrl(options);
 
   if (!databaseUrl || databaseUrl.trim() === '') {
     const errorMsg =
@@ -257,7 +301,19 @@ export async function runCliSeed(options: CliSeedOptions = {}): Promise<SeedSumm
   }
 
   // 2. Safety Guard Check FIRST before any DB connection
+  // Guard both configured environment URLs (DATABASE_URL, DATABASE_MIGRATOR_URL)
+  // as well as the effective databaseUrl that is ACTUALLY used to connect.
   try {
+    if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== '') {
+      assertEnvironmentSafe(nodeEnv, process.env.DATABASE_URL);
+    }
+    if (process.env.DATABASE_MIGRATOR_URL && process.env.DATABASE_MIGRATOR_URL.trim() !== '') {
+      assertEnvironmentSafe(nodeEnv, process.env.DATABASE_MIGRATOR_URL);
+    }
+    if (process.env.SEED_DATABASE_URL && process.env.SEED_DATABASE_URL.trim() !== '') {
+      assertEnvironmentSafe(nodeEnv, process.env.SEED_DATABASE_URL);
+    }
+    // Guard the URL that is ACTUALLY used to connect
     assertEnvironmentSafe(nodeEnv, databaseUrl);
   } catch (err: any) {
     const dbInfo = extractTargetDbInfo(databaseUrl);

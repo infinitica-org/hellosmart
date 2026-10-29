@@ -99,7 +99,7 @@ Status          : Seed Completed Successfully (Idempotent)
 | **Platform Admins**       | **1**   | `superadmin@hellosmart.ai` with MFA enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`).                                                                                                                                                         |
 | **Company Admins**        | **3**   | `admin@asterridge.com` (Aster Ridge), `trialadmin@brindle.co` (Brindle & Co), and `admin@crestview.test` (Crestview Financial negative test sample).                                                                                                        |
 | **Candidates**            | **110** | **Aster Ridge**: 100 candidates (full quota capacity test: 70 active, 15 invited, 10 suspended, 5 deleted).<br>**Brindle & Co**: 10 candidates (full trial cap test: 4 active, 3 invited, 1 suspended, 2 deleted). Includes designated loginable candidate. |
-| **Candidate Invitations** | **3**   | Candidate onboarding tokens: 1 valid (72h expiry), 1 expired (-24h), 1 used (`used_at` set).                                                                                                                                                                |
+| **Candidate Invitations** | **3**   | Candidate onboarding tokens: 1 valid (72h expiry), 1 expired (-24h), 1 used (`used_at` set). See [Invitation API Dependencies](invitation-api-dependencies.md) for endpoint contracts, database functions, and security specifications.                     |
 | **GRAND TOTAL**           | **123** | **123 persistent records across 4 tenant-isolated tables.**                                                                                                                                                                                                 |
 
 ---
@@ -129,7 +129,7 @@ The verification runner connects using the schema owner role (`DATABASE_MIGRATOR
 4. **User Role & Status Distribution**: Asserts exact breakdown across roles and statuses (78 active, 18 invited, 11 suspended, 7 deleted).
 5. **Tenant Scoping & Foreign Keys**: Verifies all 113 tenant users have valid `org_id` foreign keys, platform admin has `org_id IS NULL`, and invitations match user organization context.
 6. **Active User Password Hashes**: Verifies that all 78 active users (platform admin, 3 company admins, and 74 candidates) have valid Argon2id password hashes ($64\text{ MB}$, $3$ iterations, parallelism $1$), sharing a single seed-computed hash for sub-3-second seed performance.
-7. **Platform Admin MFA Configuration**: Verifies `mfa_secret_ref` is populated and contains a Secrets Manager reference rather than a raw plaintext Base32 secret. (Note: AES-256-GCM decryption is not checked because S0-T14-3 does not exist yet).
+7. **Platform Admin MFA Configuration**: Verifies `mfa_secret_ref` is populated and contains an environment/secrets reference (`env:PLATFORM_ADMIN_MFA_SECRET`) rather than a raw plaintext Base32 secret. (Note: AES-256-GCM vault decryption is not checked because the vault encryption helper does not exist yet).
 8. **Entitlements & Trial Windows**: Verifies 1:1 entitlement mapping with organizations and valid trial deadlines.
 9. **Invitations State & Token Hashes**: Verifies exactly 1 valid, 1 expired, and 1 used invitation, each storing a 64-character hexadecimal SHA-256 digest (`token_hash`).
 10. **Soft-Deletion Invariants**: Asserts that `status = 'deleted'` users have `deleted_at` timestamps populated while active users have `null`.
@@ -298,3 +298,11 @@ pnpm lint
   ```bash
   pnpm infra:up
   ```
+
+---
+
+## 8. Related Documentation
+
+- [HelloSmart Integration Testing & Local Verification Guide](integration-testing.md): Comprehensive guide for local setup, environment configuration, database seeding, verification checks, seeded accounts matrix, and running integration test suites.
+- [Candidate Invitation API Dependencies & Contract Specification](invitation-api-dependencies.md): Complete specification of invitation endpoints (`GET /auth/invitations/:token`, `POST /auth/invitations/accept`), request/response contracts, PostgreSQL `SECURITY DEFINER` functions, seed dependencies, missing endpoints, and open questions.
+- [Fixture Matrix](fixture-matrix.md): Enterprise entity matrix covering Aster Ridge, Brindle & Co, and Crestview Financial.
