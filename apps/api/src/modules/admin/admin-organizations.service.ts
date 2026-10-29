@@ -218,4 +218,25 @@ export class AdminOrganizationsService {
       client.release();
     }
   }
+
+  async list(): Promise<OrgDto[]> {
+    const client = await this.pool.connect();
+
+    try {
+      return await withPlatform(client, async (tx) => {
+        const result = await tx.query<OrganizationRow>(
+          `SELECT id, name, slug, status, logo_key, custom_domain,
+                  retention_days, created_at
+           FROM app.organizations
+           ORDER BY created_at DESC`,
+        );
+
+        return result.rows.map((row) =>
+          toOrgDto(row, null, false),
+        );
+      });
+    } finally {
+      client.release();
+    }
+  }
 }
