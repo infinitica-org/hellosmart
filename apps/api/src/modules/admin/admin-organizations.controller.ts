@@ -23,6 +23,7 @@ import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { problem } from '../../common/errors/app-http.exception.js';
+import { flattenZodErrors } from '../../common/validation/zod-errors.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import {
   REQUEST_USER_KEY,
