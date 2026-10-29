@@ -11,17 +11,17 @@ test.describe('Onboarding Journey: Invite → Set Password → Login (S0-T15-1, 
 
     // 3. Set password
     const newPassword = 'Password123!@#';
-    await page.getByLabel(/^password$/i).fill(newPassword);
+    await page.getByLabel(/new password/i).fill(newPassword);
     await page.getByLabel(/confirm password/i).fill(newPassword);
 
-    await page.getByRole('button', { name: /set password|complete/i }).click();
+    await page.getByRole('button', { name: /save password|set password|complete/i }).click();
 
     // 4. Redirects to /login
     await expect(page).toHaveURL(/\/login/);
 
     // 5. Sign in with newly created password
     await page.getByLabel(/email/i).fill('new.admin@aster.seed.example.test');
-    await page.getByLabel(/password/i).fill(newPassword);
+    await page.getByTestId('password-input').fill(newPassword);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
     // 6. Role-based routing lands on /company
@@ -39,17 +39,17 @@ test.describe('Onboarding Journey: Invite → Set Password → Login (S0-T15-1, 
 
     // 3. Set password
     const newPassword = 'CandidatePass123!@#';
-    await page.getByLabel(/^password$/i).fill(newPassword);
+    await page.getByLabel(/new password/i).fill(newPassword);
     await page.getByLabel(/confirm password/i).fill(newPassword);
 
-    await page.getByRole('button', { name: /set password|complete/i }).click();
+    await page.getByRole('button', { name: /save password|set password|complete/i }).click();
 
     // 4. Redirects to /login
     await expect(page).toHaveURL(/\/login/);
 
     // 5. Sign in with newly created password
     await page.getByLabel(/email/i).fill('new.candidate@aster.seed.example.test');
-    await page.getByLabel(/password/i).fill(newPassword);
+    await page.getByTestId('password-input').fill(newPassword);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
     // 6. Role-based routing lands on /candidate

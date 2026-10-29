@@ -8,7 +8,7 @@ test.describe('Platform Admin Pre-Auth MFA Flow (CO-001, BR-04, BR-25)', () => {
     await page.goto('/login');
 
     await page.getByLabel(/email/i).fill(adminEmail);
-    await page.getByLabel(/password/i).fill(adminPassword);
+    await page.getByTestId('password-input').fill(adminPassword);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
     // Verify MFA modal appears
@@ -25,7 +25,7 @@ test.describe('Platform Admin Pre-Auth MFA Flow (CO-001, BR-04, BR-25)', () => {
     await page.goto('/login');
 
     await page.getByLabel(/email/i).fill(adminEmail);
-    await page.getByLabel(/password/i).fill(adminPassword);
+    await page.getByTestId('password-input').fill(adminPassword);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
     await expect(page.getByTestId('mfa-dialog')).toBeVisible();
@@ -43,7 +43,7 @@ test.describe('Platform Admin Pre-Auth MFA Flow (CO-001, BR-04, BR-25)', () => {
     await page.goto('/login');
 
     await page.getByLabel(/email/i).fill(adminEmail);
-    await page.getByLabel(/password/i).fill(adminPassword);
+    await page.getByTestId('password-input').fill(adminPassword);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
     await expect(page.getByTestId('mfa-dialog')).toBeVisible();
@@ -66,7 +66,7 @@ test.describe('Platform Admin Pre-Auth MFA Flow (CO-001, BR-04, BR-25)', () => {
     await page.goto('/login');
 
     await page.getByLabel(/email/i).fill(adminEmail);
-    await page.getByLabel(/password/i).fill(adminPassword);
+    await page.getByTestId('password-input').fill(adminPassword);
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
     await expect(page.getByTestId('mfa-dialog')).toBeVisible();

@@ -501,8 +501,8 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  res.writeHead(404, { 'Content-Type': 'application/problem+json' });
-  res.end(
+res.writeHead(404, { 'Content-Type': 'application/problem+json' });
+res.end(
     JSON.stringify({
       type: 'about:blank',
       title: 'Not Found',

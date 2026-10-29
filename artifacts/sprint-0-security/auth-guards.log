@@ -1,0 +1,18 @@
+> @hs/api@0.1.0 test C:\Users\sathe\OneDrive\Desktop\hellosmart\apps\api
+> vitest run "src/common/guards/__tests__/auth-guards.spec.ts"
+
+ RUN  v2.1.4 C:/Users/sathe/OneDrive/Desktop/hellosmart\apps\api
+
+ ✓ |unit| src/common/guards/__tests__/auth-guards.spec.ts  (16 tests) 30ms
+
+Test Files  1 passed (1)
+     Tests  16 passed (16)
+  Duration  2.57s
+
+Verified:
+- SessionGuard: cookie-only hs_session enforcement (rejects missing or empty cookies with AUTH_REQUIRED)
+- SessionGuard: fail-closed on Redis store failure (SESSION_STORE_UNAVAILABLE)
+- SessionGuard: rejects expired/invalid sessions
+- RolesGuard: strictly validates allowed roles against request context (FORBIDDEN)
+- OrgScopeGuard: strictly blocks cross-tenant parameter access with 404 TENANT_NOT_FOUND (BR-01 invariant)
+

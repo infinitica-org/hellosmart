@@ -5,7 +5,7 @@ test.describe('Suspended Organization Access Guard (BR-07, BR-20, BR-25)', () =>
     await page.goto('/login');
 
     await page.getByLabel(/email/i).fill('suspended@aster.seed.example.test');
-    await page.getByLabel(/password/i).fill('DevPassword123!');
+    await page.getByTestId('password-input').fill('DevPassword123!');
     await page.getByRole('button', { name: /sign in|log in/i }).click();
 
     // Verify 403 error message is surfaced

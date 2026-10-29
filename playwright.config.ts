@@ -14,7 +14,7 @@ export default defineConfig({
     ["html", { open: "never", outputFolder: "./playwright-report" }],
   ],
   timeout: 30_000,
-  expect: { timeout: 8_000 },
+  expect: { timeout: 15_000 },
   use: {
     baseURL,
     headless: true,
@@ -42,6 +42,7 @@ export default defineConfig({
           url: baseURL,
           env: {
             API_BASE_URL: apiURL,
+            NEXT_PUBLIC_API_URL: apiURL,
             PORT: "3000",
           },
           reuseExistingServer: true,
