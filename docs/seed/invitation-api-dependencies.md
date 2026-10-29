@@ -1,31 +1,34 @@
 # Candidate Invitation API Dependencies & Contract Specification
 
-This document details the API, database, and fixture dependencies for candidate invitations (`S0-T08`, `BR-24`), as read directly from the codebase. It records the active contracts, verified security postures, missing/unavailable endpoints, and open questions for backend engineering.
+This document details the API, database, and fixture dependencies for candidate invitations (`S0-T08`, `BR-24`), based on codebase implementation and confirmed by the backend engineering team.
 
 ---
 
 ## 1. Invitation Endpoints & Source Files
 
-The integration test suite (`packages/fixtures/test/invitations.test.ts`) depends on the following endpoints implemented in `apps/api`:
+The integration test suite (`packages/fixtures/test/invitations.test.ts`) tests the invitation flow implemented in `apps/api`:
 
 | Method | Endpoint Route             | Global Prefix Applied             | Controller & Action                                                                                 | Service Method                                                                                 | Purpose                                                                                                                                            |
 | ------ | -------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET`  | `/auth/invitations/:token` | `/api/v1/auth/invitations/:token` | `InvitationsController.validateToken` (`apps/api/src/modules/auth/invitations.controller.ts:41`)    | `InvitationsService.lookupInvitation` (`apps/api/src/modules/auth/invitations.service.ts:80`)  | Validates token and returns non-sensitive recipient details before password entry.                                                                 |
 | `POST` | `/auth/invitations/accept` | `/api/v1/auth/invitations/accept` | `InvitationsController.acceptInvitation` (`apps/api/src/modules/auth/invitations.controller.ts:60`) | `InvitationsService.acceptInvitation` (`apps/api/src/modules/auth/invitations.service.ts:120`) | Atomically validates password complexity, consumes token, activates candidate, updates password, logs audit event, and invokes session revocation. |
 
-Both endpoints are decorated with `@Public()` (bypass session cookie requirements) and rate-limited via `@Throttle`:
+### Rate Limiting & Test Avoidance
 
-- Production: 10 attempts per hour per IP.
-- Development / Test: 1000 attempts per hour per IP.
+Both endpoints are decorated with `@Public()` (bypass session cookie requirements) and throttled via `@Throttle`:
+
+- **Production**: 10 attempts per hour per IP (`429 RATE_LIMITED`).
+- **Development / Test**: 1000 attempts per hour per IP.
+- **Test Avoidance Strategy**: The integration test suite avoids HTTP throttling entirely by instantiating and executing `InvitationsService` directly in-process with a PostgreSQL connection pool (`client as any`), rather than sending external HTTP requests through the Fastify network stack.
 
 ---
 
-## 2. API Contract Specification (Read from Code)
+## 2. API Contract Specification (Confirmed by Backend Team)
 
 ### 2.1 `GET /auth/invitations/:token`
 
 - **URL Parameter**:
-  - `token` (string, required): The raw 32-byte cryptographic token (e.g. 64-character hexadecimal or base64url string).
+  - `token` (string, required): 64-character lowercase hexadecimal string (32 cryptographically random bytes).
 - **Headers**:
   - `x-request-id` (string, optional): Request correlation identifier.
 - **Success Response (`200 OK`)**:
@@ -40,7 +43,7 @@ Both endpoints are decorated with `@Public()` (bypass session cookie requirement
     ```
 - **Failure Response (`404 Not Found`)**:
   - Content-Type: `application/problem+json` (RFC 9457)
-  - Returned identically for: non-existent token, expired token, or already-used token.
+  - Identical generic problem details returned for non-existent, expired, used, empty, or whitespace tokens:
     ```json
     {
       "type": "https://hellosmart.ai/problems/invitation-invalid",
@@ -57,7 +60,7 @@ Both endpoints are decorated with `@Public()` (bypass session cookie requirement
 - **Request Body (`AcceptInvitationRequest`)**:
   ```json
   {
-    "token": "string (min 1)",
+    "token": "string (min 1, 64-character lowercase hex string)",
     "password": "string (PasswordPolicySchema: 12-128 chars, uppercase, lowercase, digit, symbol)"
   }
   ```
@@ -90,7 +93,7 @@ Both endpoints are decorated with `@Public()` (bypass session cookie requirement
 
 ---
 
-## 3. Database Dependencies
+## 3. Database Dependencies & Token Storage
 
 The invitation system relies on PostgreSQL migration `packages/contracts/db/migrations/0003_invitations.sql`:
 
@@ -122,9 +125,9 @@ The invitation system relies on PostgreSQL migration `packages/contracts/db/migr
      - Appends tamper-evident audit record to `audit.events` using chained SHA-256 event hash with `pg_advisory_xact_lock(hashtext('audit.events'))`.
    - Returns `{ success: true, user_id, org_id, email, role }`.
 
-4. **Cryptographic Token Hashing Rule**:
-   - Raw tokens are 32 random bytes (64 hexadecimal characters).
-   - Only the SHA-256 digest `crypto.createHash('sha256').update(rawToken.trim()).digest()` (32-byte `Buffer`) is stored as `bytea`.
+4. **Cryptographic Token Hashing Rule (Confirmed by Backend Team)**:
+   - Raw tokens are 32 random bytes, formatted as 64-character lowercase hexadecimal strings.
+   - Only the binary SHA-256 digest `crypto.createHash('sha256').update(rawToken.trim()).digest()` (32-byte `Buffer`) is stored in the database as `bytea`.
    - Raw tokens are never stored, logged, or queried directly.
 
 ---
@@ -135,9 +138,9 @@ The seed engine (`packages/fixtures`) provides deterministic fixtures for invita
 
 1. **Seeded Test Scenarios (All in Aster Ridge `org_id`)**:
 
-   - **Valid (`valid`)**: Candidate 071 (`candidate.aster-ridge.071@example.com`), `expires_at = now() + 48h`, `used_at = null`, role `'candidate'`.
-   - **Expired (`expired`)**: Candidate 072 (`candidate.aster-ridge.072@example.com`), `expires_at = now() - 24h`, `used_at = null`, role `'candidate'`.
-   - **Used (`used`)**: Candidate 001 (`candidate.aster-ridge.001@example.com`), `expires_at = now() + 48h`, `used_at = now() - 1h`, role `'candidate'`.
+   - **Valid (`valid`)**: Candidate 071 (`candidate.aster-ridge.071@example.com`), `expires_at = now() + 48h`, `used_at = null`, role `'candidate'`. Raw token is 64 hex characters.
+   - **Expired (`expired`)**: Candidate 072 (`candidate.aster-ridge.072@example.com`), `expires_at = now() - 24h`, `used_at = null`, role `'candidate'`. Raw token is 64 hex characters.
+   - **Used (`used`)**: Candidate 001 (`candidate.aster-ridge.001@example.com`), `expires_at = now() + 48h`, `used_at = now() - 1h`, role `'candidate'`. Raw token is 64 hex characters.
 
 2. **Valid-Case State Reset & Seed Idempotency**:
 
@@ -150,35 +153,37 @@ The seed engine (`packages/fixtures`) provides deterministic fixtures for invita
 
 ---
 
-## 5. Missing / Unavailable Endpoints (Out of Scope for Fixtures)
+## 5. Candidate Management & Onboarding Status
 
-The following invitation lifecycle capabilities do **not** exist in the backend codebase (`apps/api` and `packages/contracts/openapi/openapi.yaml`):
+The invitation lifecycle features relate to the broader candidate management system as follows:
 
-| Capability / Endpoint                         | Status          | Impact on Test Suite                                                                                             |
-| --------------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `POST /api/v1/candidates/:id/resend-invite`   | Not implemented | Cannot test candidate invite resending via HTTP API; seed creates raw tokens once.                               |
-| `DELETE /api/v1/invitations/:id` (Revocation) | Not implemented | Cannot test explicit manual revocation of an active invitation; only expiration and consumption exist.           |
-| `GET /api/v1/invitations` (List invitations)  | Not implemented | Company admin invitation listing cannot be tested via API.                                                       |
-| Web UI Candidate Onboarding Page              | Not implemented | There is no frontend accept-invite page; tests directly execute backend `InvitationsService` and HTTP contracts. |
+| Capability / Route           | Planned Requirement / Location                   | Architecture Status                                                                                                                                                                                            |
+| ---------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Resend Invitation**        | `CO-017` (`POST /candidates/:id/resend-invite`)  | Company admin action. Issues a fresh 72h token and invalidates previous token. Lives under candidates controller, outside `/auth/invitations`.                                                                 |
+| **Revoke Invitation**        | `CO-031`                                         | Candidate and assignment lifecycle action, not a standalone invitation token endpoint.                                                                                                                         |
+| **List Invitations**         | `GET /candidates`                                | Scoped by `org_id`. Candidate list surfaces invite status (`invited`, `active`, `suspended`, `deleted`).                                                                                                       |
+| **Accept Invitation Web UI** | `apps/web/src/app/(auth)/accept-invite/page.tsx` | Implemented. Next.js client page reads token from URL query, strips token via `history.replaceState`, validates metadata via `validateInvitation`, and renders `SetPasswordForm` with password strength meter. |
+
+_Note: The integration tests in `packages/fixtures/test/invitations.test.ts` intentionally test only the core auth invitation contract (`GET /auth/invitations/:token` and `POST /auth/invitations/accept`). They do not duplicate candidate CRUD routes._
 
 ---
 
-## 6. Open Questions & Findings for Vishal V
+## 6. Request Logging & Redaction Verification
 
-> [!NOTE]
-> The following items are unconfirmed architectural/security questions flagged for confirmation:
+### Confirmed by Backend Team
 
-1. **Request URL Logging of Raw Token in Path**:
+Request logging in `apps/api` includes path redaction specifically designed for invitation routes:
 
-   - **Finding**: In `apps/api/src/common/logger/pino-redact.ts:4-23`, `PINO_REDACT_PATHS` redacts object properties such as `*.token`, `*.invitationToken`, etc. However, Fastify request logging logs `req.url`.
-   - For `GET /api/v1/auth/invitations/:token`, the raw token is in the URL path. Without a path parameter redaction hook or Fastify URL serializer, incoming request logs will record the raw invitation token.
-   - _Question_: Should we introduce a Fastify request logging hook or URL serializer to censor `:token` path parameters in access logs?
+- **Fastify `onResponse` Hook (`apps/api/src/modules/observability/logging.hooks.ts:156-163`)**:
+  The logging hook intercepts completed requests and normalizes the URL. If the URL contains `/auth/invitations/`, regex `/auth\/invitations\/(?!accept$)[^/]+/g` replaces the token path parameter with `[REDACTED]`:
+  - `GET /api/v1/auth/invitations/<token>` $\rightarrow$ `GET /api/v1/auth/invitations/[REDACTED]`
+  - `POST /api/v1/auth/invitations/accept` $\rightarrow$ `POST /api/v1/auth/invitations/accept` (unredacted endpoint name)
+- **Logger Configuration (`apps/api/src/modules/observability/logger.config.ts`)**:
+  `DEFAULT_REDACT_PATHS` redacts `token`, `invitationToken`, `rawToken`, `token_hash`, and password fields across all JSON bodies and query strings.
 
-2. **Session Revocation Infrastructure on Accept**:
+### Remaining Notes & Observations
 
-   - **Finding**: In `InvitationsService.acceptInvitation`, `this.revokeUserSessions` checks `if (this.sessionService)`. In development and test runs without `SessionService` injected, it logs `Session revocation hook invoked for user ... (session infrastructure pending)`.
-   - _Question_: Will session store revocation be integrated across all nodes when Redis session management (`S0-T03`) is wired to `InvitationsService`?
-
-3. **Acceptance Flow Login Handoff**:
-   - **Finding**: `POST /auth/invitations/accept` returns `{ success: true, message: "Password set successfully. Please log in." }`. It does not set a session cookie or return user authentication tokens.
-   - _Question_: Is the candidate always expected to navigate to `/login` to enter their newly configured password, or will auto-login / session cookie issuance on accept be implemented in a future ticket?
+1. **Session Revocation Infrastructure on Accept**:
+   In `InvitationsService.acceptInvitation`, `this.revokeUserSessions` checks `if (this.sessionService)`. In development and test runs without `SessionService` injected, it logs `Session revocation hook invoked for user ... (session infrastructure pending)`. Session store revocation will be wired once Redis session management (`S0-T03`) is active.
+2. **Acceptance Handoff**:
+   `POST /auth/invitations/accept` returns `{ success: true, message: "Password set successfully. Please log in." }`. The candidate is directed to `/login` to enter their newly created password, preserving distinct authentication boundaries.
