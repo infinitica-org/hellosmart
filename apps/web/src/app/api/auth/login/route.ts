@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEV_SESSION_STORE } from '@/lib/session-store';
 
 interface DevUser {
   email: string;
@@ -259,6 +260,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // Issue a cryptographically secure random session token for dev mode
     const devToken = `hs_dev_${crypto.randomUUID()}`;
+    DEV_SESSION_STORE.set(devToken, { role: user.role, email: user.email });
 
     const sessionPayload = {
       user: {

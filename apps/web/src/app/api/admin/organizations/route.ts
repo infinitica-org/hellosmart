@@ -6,8 +6,15 @@ import {
   updateOrganizationStatus,
 } from '../../../../lib/organizations-data';
 import { CreateOrganizationInput, OrganizationStatus } from '@/types/organization';
+import { requirePlatformAdmin } from '@/lib/server-auth';
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  // Enforce server-side authentication & platform_admin authorization
+  const auth = await requirePlatformAdmin(req);
+  if (!auth.authorized) {
+    return auth.errorResponse;
+  }
+
   try {
     const organizations = getOrganizations();
     const metrics = getMetrics();
@@ -32,6 +39,12 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  // Enforce server-side authentication & platform_admin authorization
+  const auth = await requirePlatformAdmin(req);
+  if (!auth.authorized) {
+    return auth.errorResponse;
+  }
+
   try {
     const body = await req.json();
     const {
@@ -109,6 +122,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function PATCH(req: NextRequest): Promise<NextResponse> {
+  // Enforce server-side authentication & platform_admin authorization
+  const auth = await requirePlatformAdmin(req);
+  if (!auth.authorized) {
+    return auth.errorResponse;
+  }
+
   try {
     const body = await req.json();
     const { id, status } = body;
@@ -149,4 +168,3 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     );
   }
 }
-

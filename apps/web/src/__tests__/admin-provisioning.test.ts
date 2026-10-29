@@ -112,8 +112,63 @@ describe('Super Admin Organization Provisioning & Management (Zero Dummy Data)',
     expect(reinstated.status).toBe('active');
   });
 
-  it('handles GET API request returning empty array when no organizations exist', async () => {
-    const res = await GET();
+  describe('Server-side Authentication & Platform Admin Authorization', () => {
+    it('rejects unauthenticated GET, POST, and PATCH requests with 401', async () => {
+      const getReq = new NextRequest('http://localhost:3000/api/admin/organizations');
+      const getRes = await GET(getReq);
+      expect(getRes.status).toBe(401);
+
+      const postReq = new NextRequest('http://localhost:3000/api/admin/organizations', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Acme', slug: 'acme', adminEmail: 'a@a.com', adminName: 'A' }),
+      });
+      const postRes = await POST(postReq);
+      expect(postRes.status).toBe(401);
+
+      const patchReq = new NextRequest('http://localhost:3000/api/admin/organizations', {
+        method: 'PATCH',
+        body: JSON.stringify({ id: 'acme', status: 'active' }),
+      });
+      const patchRes = await PATCH(patchReq);
+      expect(patchRes.status).toBe(401);
+    });
+
+    it('rejects company_admin and candidate callers with 403 Forbidden', async () => {
+      const companyReq = new NextRequest('http://localhost:3000/api/admin/organizations', {
+        headers: { cookie: 'hs_session=sess_123_company' },
+      });
+      const companyRes = await GET(companyReq);
+      expect(companyRes.status).toBe(403);
+
+      const candidateReq = new NextRequest('http://localhost:3000/api/admin/organizations', {
+        method: 'POST',
+        headers: { cookie: 'hs_session=sess_123_candidate' },
+        body: JSON.stringify({ name: 'Acme', slug: 'acme', adminEmail: 'a@a.com', adminName: 'A' }),
+      });
+      const candidateRes = await POST(candidateReq);
+      expect(candidateRes.status).toBe(403);
+    });
+
+    it('rejects forged client-readable hs_role cookie without valid session', async () => {
+      const forgedReq = new NextRequest('http://localhost:3000/api/admin/organizations', {
+        headers: { cookie: 'hs_role=platform_admin' }, // No hs_session!
+      });
+      const forgedRes = await GET(forgedReq);
+      expect(forgedRes.status).toBe(401);
+
+      const invalidTokenReq = new NextRequest('http://localhost:3000/api/admin/organizations', {
+        headers: { cookie: 'hs_session=forged_unauthorized_token; hs_role=platform_admin' },
+      });
+      const invalidTokenRes = await GET(invalidTokenReq);
+      expect(invalidTokenRes.status).toBe(401);
+    });
+  });
+
+  it('handles GET API request returning empty array when no organizations exist for platform admin', async () => {
+    const req = new NextRequest('http://localhost:3000/api/admin/organizations', {
+      headers: { cookie: 'hs_session=sess_123_admin' },
+    });
+    const res = await GET(req);
     expect(res.status).toBe(200);
 
     const data = await res.json();
@@ -122,9 +177,10 @@ describe('Super Admin Organization Provisioning & Management (Zero Dummy Data)',
     expect(data.metrics.activeTrials).toBe(0);
   });
 
-  it('handles POST API request creating a company', async () => {
+  it('handles POST API request creating a company by authorized platform admin', async () => {
     const req = new NextRequest('http://localhost:3000/api/admin/organizations', {
       method: 'POST',
+      headers: { cookie: 'hs_session=sess_123_admin' },
       body: JSON.stringify({
         name: 'Supabase Systems',
         slug: 'supabase-systems',
@@ -145,7 +201,7 @@ describe('Super Admin Organization Provisioning & Management (Zero Dummy Data)',
     expect(data.organization.name).toBe('Supabase Systems');
   });
 
-  it('handles PATCH API request updating organization status', async () => {
+  it('handles PATCH API request updating organization status by authorized platform admin', async () => {
     createOrganization({
       name: 'Stripe Atlas',
       slug: 'stripe-atlas',
@@ -159,6 +215,7 @@ describe('Super Admin Organization Provisioning & Management (Zero Dummy Data)',
 
     const req = new NextRequest('http://localhost:3000/api/admin/organizations', {
       method: 'PATCH',
+      headers: { cookie: 'hs_session=sess_123_admin' },
       body: JSON.stringify({
         id: 'stripe-atlas',
         status: 'suspended',

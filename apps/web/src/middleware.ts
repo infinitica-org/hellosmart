@@ -1,13 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { DEV_SESSION_STORE } from './lib/session-store';
 
 // Portal route prefixes requiring authentication & authorization (BR-25)
 const PROTECTED_PORTALS = ['/admin', '/company', '/candidate'] as const;
 
-// Development-only session store: maps opaque dev tokens → role.
-// Populated by the login route when devFallbackEnabled is true.
-// NEVER used in production — the real backend /me endpoint is the only
-// source of truth for user roles in non-development environments.
-export const DEV_SESSION_STORE = new Map<string, string>();
+export { DEV_SESSION_STORE };
 
 function applySecurityHeaders(res: NextResponse, nonce: string): NextResponse {
   const isDev = process.env.NODE_ENV === 'development';
@@ -120,8 +117,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       // Local development only: look up role from a server-side dev session store
       // keyed by the opaque token. NEVER infer role from the token string or hs_role cookie.
       // TODO(pre-production): remove this block and require real backend sessions.
-      const devSessionRole = DEV_SESSION_STORE.get(sessionToken) ?? null;
-      userRole = devSessionRole;
+      const devSession = DEV_SESSION_STORE.get(sessionToken);
+      userRole = devSession?.role ?? null;
     }
 
     // 4. Force password reset if required (BR-24)
