@@ -13,16 +13,16 @@
   "dependencies": {
     "@hs/contracts": "workspace:*",
     "@hs/ui": "workspace:*",
-    "@tanstack/react-query": "5.59.20",
-    "next": "15.0.3",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "zod": "3.23.8"
+    "@tanstack/react-query": "5.104.5",
+    "next": "15.5.28",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "3.25.76"
   },
   "devDependencies": {
-    "@types/react": "18.3.12",
-    "tailwindcss": "3.4.14",
-    "typescript": "5.6.3",
-    "vitest": "2.1.4"
+    "@types/react": "19.3.0",
+    "tailwindcss": "3.4.19",
+    "typescript": "5.9.3",
+    "vitest": "2.1.9"
   }
 }
