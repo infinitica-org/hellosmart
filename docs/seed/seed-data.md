@@ -99,7 +99,7 @@ Status          : Seed Completed Successfully (Idempotent)
 | **Platform Admins**       | **1**   | `superadmin@hellosmart.ai` with MFA enabled (`mfa_secret_ref`, `$SEED_PLATFORM_ADMIN_TOTP_SECRET`).                                                                                                                                                         |
 | **Company Admins**        | **3**   | `admin@asterridge.com` (Aster Ridge), `trialadmin@brindle.co` (Brindle & Co), and `admin@crestview.test` (Crestview Financial negative test sample).                                                                                                        |
 | **Candidates**            | **110** | **Aster Ridge**: 100 candidates (full quota capacity test: 70 active, 15 invited, 10 suspended, 5 deleted).<br>**Brindle & Co**: 10 candidates (full trial cap test: 4 active, 3 invited, 1 suspended, 2 deleted). Includes designated loginable candidate. |
-| **Candidate Invitations** | **3**   | Candidate onboarding tokens: 1 valid (72h expiry), 1 expired (-24h), 1 used (`used_at` set).                                                                                                                                                                |
+| **Candidate Invitations** | **3**   | Candidate onboarding tokens: 1 valid (72h expiry), 1 expired (-24h), 1 used (`used_at` set). See [Invitation API Dependencies](invitation-api-dependencies.md) for endpoint contracts, database functions, and security specifications.                     |
 | **GRAND TOTAL**           | **123** | **123 persistent records across 4 tenant-isolated tables.**                                                                                                                                                                                                 |
 
 ---
@@ -298,3 +298,10 @@ pnpm lint
   ```bash
   pnpm infra:up
   ```
+
+---
+
+## 8. Related Documentation
+
+- [Candidate Invitation API Dependencies & Contract Specification](invitation-api-dependencies.md): Complete specification of invitation endpoints (`GET /auth/invitations/:token`, `POST /auth/invitations/accept`), request/response contracts, PostgreSQL `SECURITY DEFINER` functions, seed dependencies, missing endpoints, and open questions.
+- [Fixture Matrix](fixture-matrix.md): Enterprise entity matrix covering Aster Ridge, Brindle & Co, and Crestview Financial.
