@@ -151,7 +151,7 @@ The verification runner connects using the schema owner role (`DATABASE_MIGRATOR
 │ 5       │ 'Active User Password Hashes'      │ 'PASS' │ 'All 78 active users have non-null Argon2id password_hash'                                                                 │
 │ 6       │ 'Platform Admin MFA Configuration' │ 'PASS' │ "Platform admin MFA configured via secret reference 'env:PLATFORM_ADMIN_MFA_SECRET' (valid env: reference configured)" │
 │ 7       │ 'Entitlements & Trial Windows'     │ 'PASS' │ '1:1 mapping with orgs, trial_ends_at set for trial_active, valid statuses'                                                 │
-│ 8       │ 'Invitations State & Token Hashes' │ 'PASS' │ '1 valid, 1 expired, 1 used; all tokens are 64-hex SHA-256 digests'                                                         │
+│ 8       │ 'Invitations State & Token Hashes' │ 'PASS' │ '1 valid, 1 expired, 1 used; all tokens are 32-byte SHA-256 binary digests (bytea)'                                    │
 │ 9       │ 'Soft-Deletion Invariants'         │ 'PASS' │ 'Deleted users have deleted_at populated; active users have deleted_at null'                                                │
 │ 10      │ 'Plaintext Secret & Pattern Scan'  │ 'PASS' │ 'Zero plaintext passwords, TOTP secrets, or leaked tokens detected (verified against local raw tokens)'                     │
 │ 11      │ 'Seed Idempotency & Run Timing'    │ 'PASS' │ 'Run 1: 918ms, Run 2: 1019ms (0 extra rows)'                                                                                │

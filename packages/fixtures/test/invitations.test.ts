@@ -2,7 +2,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import pg from 'pg';
 import { InvitationsService } from '../../../apps/api/dist/modules/auth/invitations.service.js';
-import { runSafeSeed, ensureInvitationsTable } from '../dist/lib/upsert.js';
+import { runSafeSeed } from '../dist/lib/upsert.js';
 import {
   INVITE_TTL_HOURS,
   getInvitations,
@@ -11,6 +11,7 @@ import {
 import {
   generateRawInviteToken,
   hashInvitationToken,
+  hashInvitationTokenHex,
   is32ByteEntropyToken,
   getAcceptInviteLink,
   getInviteToken,
@@ -50,7 +51,6 @@ describe('Hashed Invitation Tokens Aligned with Invite Flow ([13.2])', () => {
       // Clean test database for test suite
       await client.query('SET search_path TO app, public;');
       await client.query("SELECT set_config('app.is_platform', 'true', false);");
-      await ensureInvitationsTable(client);
       await client.query('DELETE FROM app.invitations;');
       await client.query('DELETE FROM app.users;');
       await client.query('DELETE FROM app.entitlements;');
@@ -109,16 +109,17 @@ describe('Hashed Invitation Tokens Aligned with Invite Flow ([13.2])', () => {
       assert.strictEqual(is32ByteEntropyToken(null as any), false);
     });
 
-    it('hashInvitationToken generates lowercase SHA-256 hex digest and never equals raw token', () => {
+    it('hashInvitationToken generates 32-byte binary SHA-256 Buffer matching backend and never equals raw token', () => {
       const rawToken = generateRawInviteToken();
       const hash = hashInvitationToken(rawToken);
 
-      assert.strictEqual(hash.length, 64, 'SHA-256 hash must be 64 characters');
-      assert.match(hash, /^[0-9a-f]{64}$/, 'SHA-256 hash must be valid hex');
-      assert.notStrictEqual(hash, rawToken, 'Hash must never match raw token');
+      assert.strictEqual(Buffer.isBuffer(hash), true, 'SHA-256 hash must be a Buffer');
+      assert.strictEqual(hash.length, 32, 'SHA-256 binary hash must be exactly 32 bytes');
+      assert.notStrictEqual(hash.toString('hex'), rawToken, 'Hash must never match raw token');
 
       // Verify deterministic digest for same input
-      assert.strictEqual(hash, hashInvitationToken(rawToken));
+      assert.strictEqual(hash.equals(hashInvitationToken(rawToken)), true);
+      assert.strictEqual(hashInvitationTokenHex(rawToken), hash.toString('hex'));
     });
 
     it('generates exactly 3 invitation records (valid, expired, used) with relative timestamps', () => {
@@ -140,7 +141,9 @@ describe('Hashed Invitation Tokens Aligned with Invite Flow ([13.2])', () => {
         deterministicUuid('candidate', 'candidate.aster-ridge.071@example.com'),
       );
       assert.strictEqual(valid!.used_at, null);
-      assert.strictEqual(valid!.token_hash, hashInvitationToken(mockTokens.valid));
+      assert.ok(valid!.token_hash.equals(hashInvitationToken(mockTokens.valid)));
+      assert.strictEqual(valid!.role, 'candidate');
+      assert.strictEqual(valid!.email, 'candidate.aster-ridge.071@example.com');
       assert.ok(valid!.expires_at.getTime() > refDate.getTime(), 'Valid token expires in future');
       assert.strictEqual(
         valid!.expires_at.getTime() - valid!.created_at.getTime(),
@@ -155,7 +158,9 @@ describe('Hashed Invitation Tokens Aligned with Invite Flow ([13.2])', () => {
         deterministicUuid('candidate', 'candidate.aster-ridge.072@example.com'),
       );
       assert.strictEqual(expired!.used_at, null);
-      assert.strictEqual(expired!.token_hash, hashInvitationToken(mockTokens.expired));
+      assert.ok(expired!.token_hash.equals(hashInvitationToken(mockTokens.expired)));
+      assert.strictEqual(expired!.role, 'candidate');
+      assert.strictEqual(expired!.email, 'candidate.aster-ridge.072@example.com');
       assert.ok(
         expired!.expires_at.getTime() < refDate.getTime(),
         'Expired token expiration is in past',
@@ -178,7 +183,9 @@ describe('Hashed Invitation Tokens Aligned with Invite Flow ([13.2])', () => {
         deterministicUuid('candidate', 'candidate.aster-ridge.001@example.com'),
       );
       assert.ok(used!.used_at !== null, 'Used token must have used_at timestamp set');
-      assert.strictEqual(used!.token_hash, hashInvitationToken(mockTokens.used));
+      assert.ok(used!.token_hash.equals(hashInvitationToken(mockTokens.used)));
+      assert.strictEqual(used!.role, 'candidate');
+      assert.strictEqual(used!.email, 'candidate.aster-ridge.001@example.com');
       assert.ok(
         used!.used_at!.getTime() > used!.created_at.getTime(),
         'used_at is after created_at',
@@ -379,7 +386,9 @@ describe('Hashed Invitation Tokens Aligned with Invite Flow ([13.2])', () => {
         assert.strictEqual(is32ByteEntropyToken(rawToken), true, 'Must have 32 bytes of entropy');
 
         const expectedHash = hashInvitationToken(rawToken);
-        const matchingRow = allRows.find((r) => r.token_hash === expectedHash);
+        const matchingRow = allRows.find(
+          (r) => Buffer.isBuffer(r.token_hash) && r.token_hash.equals(expectedHash),
+        );
         assert.ok(
           matchingRow,
           `DB must contain a row whose token_hash matches SHA-256 of raw token for ${label}`,
@@ -397,7 +406,7 @@ describe('Hashed Invitation Tokens Aligned with Invite Flow ([13.2])', () => {
       }
 
       // 3. State check: Valid invitation
-      const validRow = allRows.find((r) => r.token_hash === hashInvitationToken(tokens.valid))!;
+      const validRow = allRows.find((r) => r.token_hash.equals(hashInvitationToken(tokens.valid)))!;
       assert.ok(
         new Date(validRow.expires_at) > seedNow,
         'Valid token expires in future (~now+72h)',
@@ -417,7 +426,9 @@ describe('Hashed Invitation Tokens Aligned with Invite Flow ([13.2])', () => {
       assert.strictEqual(candValid.rows[0].password_hash, null);
 
       // 4. State check: Expired invitation
-      const expiredRow = allRows.find((r) => r.token_hash === hashInvitationToken(tokens.expired))!;
+      const expiredRow = allRows.find((r) =>
+        r.token_hash.equals(hashInvitationToken(tokens.expired)),
+      )!;
       assert.ok(new Date(expiredRow.expires_at) < seedNow, 'Expired token expires_at is in past');
       assert.strictEqual(expiredRow.used_at, null, 'Expired token used_at must be null');
       assert.strictEqual(
@@ -432,7 +443,7 @@ describe('Hashed Invitation Tokens Aligned with Invite Flow ([13.2])', () => {
       assert.strictEqual(candExpired.rows[0].must_reset_password, true);
 
       // 5. State check: Used invitation
-      const usedRow = allRows.find((r) => r.token_hash === hashInvitationToken(tokens.used))!;
+      const usedRow = allRows.find((r) => r.token_hash.equals(hashInvitationToken(tokens.used)))!;
       assert.ok(usedRow.used_at !== null, 'Used token used_at must be set');
       assert.strictEqual(
         usedRow.user_id,
@@ -478,9 +489,8 @@ describe('Hashed Invitation Tokens Aligned with Invite Flow ([13.2])', () => {
 
       // Assert token hashes remain identical when token file / memory exists
       for (let i = 0; i < preInvs.rows.length; i++) {
-        assert.strictEqual(
-          postInvs.rows[i].token_hash,
-          preInvs.rows[i].token_hash,
+        assert.ok(
+          postInvs.rows[i].token_hash.equals(preInvs.rows[i].token_hash),
           'token_hash must not change on idempotent re-seed',
         );
       }
@@ -673,102 +683,233 @@ describe('Hashed Invitation Tokens Aligned with Invite Flow ([13.2])', () => {
   });
 
   describe('Acceptance Flow S0-T08 Status & Verification', () => {
-    it('valid link activates candidate account once', async (t) => {
+    it('lookup: valid token is found; expired, used, and unknown tokens return identical generic 404 error', async (t) => {
+      if (!dbAvailable || !client) {
+        t.skip('Local test database not available');
+        return;
+      }
+      const tokens = getInMemoryTokens() ?? loadLocalTokens();
+      if (!tokens || !tokens.valid || !tokens.expired || !tokens.used) {
+        t.skip('Seeded raw invitation tokens not available');
+        return;
+      }
+
+      const invitationsService = new InvitationsService(client as any);
+
+      // 1. Valid token lookup succeeds and returns non-sensitive metadata
+      const details = await invitationsService.lookupInvitation(tokens.valid);
+      assert.strictEqual(details.email, 'candidate.aster-ridge.071@example.com');
+      assert.strictEqual(details.role, 'candidate');
+      assert.strictEqual(details.orgName, 'Aster Ridge Technologies');
+
+      // 2. Expired token lookup fails with generic 404
+      let expiredErr: any;
+      try {
+        await invitationsService.lookupInvitation(tokens.expired, 'req-expired-lookup');
+        assert.fail('Expired token lookup should have thrown');
+      } catch (err: any) {
+        expiredErr = err;
+      }
+
+      // 3. Used token lookup fails with generic 404
+      let usedErr: any;
+      try {
+        await invitationsService.lookupInvitation(tokens.used, 'req-used-lookup');
+        assert.fail('Used token lookup should have thrown');
+      } catch (err: any) {
+        usedErr = err;
+      }
+
+      // 4. Unknown token lookup fails with generic 404
+      const unknownToken = generateRawInviteToken();
+      let unknownErr: any;
+      try {
+        await invitationsService.lookupInvitation(unknownToken, 'req-unknown-lookup');
+        assert.fail('Unknown token lookup should have thrown');
+      } catch (err: any) {
+        unknownErr = err;
+      }
+
+      // Assert identical RFC 7807 problem details (apart from requestId)
+      assert.strictEqual(expiredErr.getStatus(), 404);
+      assert.strictEqual(usedErr.getStatus(), 404);
+      assert.strictEqual(unknownErr.getStatus(), 404);
+
+      const expiredBody = expiredErr.getResponse();
+      const usedBody = usedErr.getResponse();
+      const unknownBody = unknownErr.getResponse();
+
+      assert.strictEqual(expiredBody.code, 'INVITATION_INVALID');
+      assert.strictEqual(usedBody.code, 'INVITATION_INVALID');
+      assert.strictEqual(unknownBody.code, 'INVITATION_INVALID');
+
+      assert.strictEqual(
+        expiredBody.detail,
+        'The invitation is invalid, has expired, or has already been used.',
+      );
+      assert.strictEqual(
+        usedBody.detail,
+        'The invitation is invalid, has expired, or has already been used.',
+      );
+      assert.strictEqual(
+        unknownBody.detail,
+        'The invitation is invalid, has expired, or has already been used.',
+      );
+
+      assert.strictEqual(expiredBody.title, unknownBody.title);
+      assert.strictEqual(expiredBody.type, unknownBody.type);
+    });
+
+    it('accept: valid token activates candidate account once and allows login; replay fails', async (t) => {
+      if (!dbAvailable || !client) {
+        t.skip('Local test database not available');
+        return;
+      }
       const tokens = getInMemoryTokens() ?? loadLocalTokens();
       if (!tokens || !tokens.valid) {
-        t.skip('No valid invitation token available in memory or local storage');
+        t.skip('Seeded raw invitation tokens not available');
         return;
       }
 
-      const rawToken = tokens.valid;
-      const invitationsService = new InvitationsService((client ?? {}) as any);
-      const backendHash = invitationsService.hashToken(rawToken);
-      const fixtureHash = hashInvitationToken(rawToken);
-
-      // Verify cryptographic equivalence of the SHA-256 calculation
-      assert.strictEqual(
-        backendHash.toString('hex'),
-        fixtureHash,
-        'Underlying SHA-256 digests must match across backend and fixtures',
+      const invitationsService = new InvitationsService(client as any);
+      const validCandidateId = deterministicUuid(
+        'candidate',
+        'candidate.aster-ridge.071@example.com',
       );
-      assert.strictEqual(
-        Buffer.isBuffer(backendHash),
-        true,
-        'Backend hashToken must return a binary Buffer',
-      );
-      assert.strictEqual(
-        typeof fixtureHash,
-        'string',
-        'Fixtures hashInvitationToken must return a hex string',
-      );
+      const validInvitationId = deterministicUuid('invitation', 'valid');
+      const newPassword = 'CandidateAcceptedSecurePassword!2026';
 
-      const formatsMatch = (backendHash as unknown) === (fixtureHash as unknown);
-      if (!formatsMatch) {
-        t.skip(
-          'FAILING REASON NOTE (for Vishal): Backend InvitationsService.hashToken (apps/api/src/modules/auth/invitations.service.ts:73) produces a 32-byte binary Buffer for bytea columns, while hashInvitationToken (packages/fixtures/src/lib/invite-links.ts:59) produces a 64-character lowercase hex string for text columns. When InvitationsService queries app.lookup_invitation(p_token_hash bytea), PostgreSQL compares bytea against hex text, failing to match the seeded record. S0-T08 acceptance blocked until token hash types are aligned.',
-        );
-        return;
-      }
-
-      if (!dbAvailable || !client) {
-        t.skip('Database unavailable for live acceptance test');
-        return;
-      }
-
-      // If formats ever match, execute backend acceptance and restore state
-      const validCandidateId = deterministicUuid('candidate', '071');
       try {
-        const res = await invitationsService.acceptInvitation({
-          token: rawToken,
-          password: 'NewValidPassword123!',
-        });
-        assert.strictEqual(res.role, 'candidate');
+        // 1. Accept invitation
+        const acceptRes = await invitationsService.acceptInvitation(
+          {
+            token: tokens.valid,
+            password: newPassword,
+          },
+          {
+            clientIp: '127.0.0.1',
+            userAgent: 'test-agent',
+            requestId: 'req-accept-test',
+          },
+        );
+
+        assert.strictEqual(acceptRes.success, true);
+        assert.match(acceptRes.message, /Password set successfully/i);
+
+        // 2. Verify user record in database: active, must_reset_password false, valid Argon2id hash
+        const userRow = await client.query(
+          'SELECT status, must_reset_password, password_hash, email_verified_at FROM app.users WHERE id = $1 AND org_id = $2;',
+          [validCandidateId, ASTER_RIDGE_ID],
+        );
+        assert.strictEqual(userRow.rows[0].status, 'active');
+        assert.strictEqual(userRow.rows[0].must_reset_password, false);
+        assert.ok(userRow.rows[0].email_verified_at !== null);
+        assert.ok(userRow.rows[0].password_hash?.startsWith('$argon2id$'));
+
+        // 3. Verify user can log in with the new password
+        const { verifyPassword } = await import('../../../apps/api/dist/modules/auth/password.js');
+        const passwordMatches = await verifyPassword(userRow.rows[0].password_hash, newPassword);
+        assert.strictEqual(
+          passwordMatches,
+          true,
+          'User must be able to verify with the newly set password',
+        );
+
+        // 4. Replay fails with identical generic 404 error
+        try {
+          await invitationsService.acceptInvitation(
+            {
+              token: tokens.valid,
+              password: 'AnotherAttemptPassword!2026',
+            },
+            {
+              requestId: 'req-replay-test',
+            },
+          );
+          assert.fail('Replay of consumed invitation should have failed');
+        } catch (replayErr: any) {
+          assert.strictEqual(replayErr.getStatus(), 404);
+          const replayBody = replayErr.getResponse();
+          assert.strictEqual(replayBody.code, 'INVITATION_INVALID');
+          assert.strictEqual(
+            replayBody.detail,
+            'The invitation is invalid, has expired, or has already been used.',
+          );
+        }
       } finally {
+        // Restore candidate 071 state and invitation used_at so tests and future seed runs stay idempotent
         await client.query(
-          "UPDATE app.users SET status = 'invited', must_reset_password = true, password_hash = NULL WHERE id = $1 AND org_id = $2;",
+          'UPDATE app.invitations SET used_at = NULL WHERE id = $1 AND org_id = $2;',
+          [validInvitationId, ASTER_RIDGE_ID],
+        );
+        await client.query(
+          `UPDATE app.users
+           SET status = 'invited',
+               must_reset_password = true,
+               password_hash = NULL,
+               email_verified_at = NULL,
+               last_login_at = NULL
+           WHERE id = $1 AND org_id = $2;`,
           [validCandidateId, ASTER_RIDGE_ID],
         );
       }
     });
 
-    it('replay fails on already activated invitation link', async (t) => {
+    it('expired and used tokens return the same generic error as an unknown token on accept', async (t) => {
+      if (!dbAvailable || !client) {
+        t.skip('Local test database not available');
+        return;
+      }
       const tokens = getInMemoryTokens() ?? loadLocalTokens();
-      if (!tokens || !tokens.valid) {
-        t.skip('No valid invitation token available');
+      if (!tokens || !tokens.expired || !tokens.used) {
+        t.skip('Seeded raw invitation tokens not available');
         return;
       }
 
-      const invitationsService = new InvitationsService((client ?? {}) as any);
-      const backendHash = invitationsService.hashToken(tokens.valid);
-      const fixtureHash = hashInvitationToken(tokens.valid);
+      const invitationsService = new InvitationsService(client as any);
 
-      const formatsMatch = (backendHash as unknown) === (fixtureHash as unknown);
-      if (!formatsMatch) {
-        t.skip(
-          'FAILING REASON NOTE (for Vishal): Blocked on S0-T08 invitation token hash format alignment. Backend expects 32-byte Buffer (bytea) for app.accept_invitation, while seed stores 64-character hex string (text). Replay cannot be tested against backend until invitation activation succeeds.',
+      // Expired token rejection
+      let expiredErr: any;
+      try {
+        await invitationsService.acceptInvitation(
+          { token: tokens.expired, password: 'AnyPassword123!' },
+          { requestId: 'req-expired-accept' },
         );
-        return;
-      }
-    });
-
-    it('expired and used tokens return the same generic error as an unknown token', async (t) => {
-      const tokens = getInMemoryTokens() ?? loadLocalTokens();
-      if (!tokens) {
-        t.skip('No tokens available');
-        return;
+        assert.fail('Expired token accept should fail');
+      } catch (err: any) {
+        expiredErr = err;
       }
 
-      const invitationsService = new InvitationsService((client ?? {}) as any);
-      const backendHash = invitationsService.hashToken(tokens.used ?? 'test-token');
-      const fixtureHash = hashInvitationToken(tokens.used ?? 'test-token');
-
-      const formatsMatch = (backendHash as unknown) === (fixtureHash as unknown);
-      if (!formatsMatch) {
-        t.skip(
-          'FAILING REASON NOTE (for Vishal): Blocked on S0-T08 invitation token hash format alignment. Backend InvitationsService.lookupInvitation() queries app.lookup_invitation(p_token_hash bytea). Seeded expired and used invitations are stored with hex text hashes, so generic 404 behavior cannot be verified against backend queries until aligned.',
+      // Used token rejection
+      let usedErr: any;
+      try {
+        await invitationsService.acceptInvitation(
+          { token: tokens.used, password: 'AnyPassword123!' },
+          { requestId: 'req-used-accept' },
         );
-        return;
+        assert.fail('Used token accept should fail');
+      } catch (err: any) {
+        usedErr = err;
       }
+
+      // Unknown token rejection
+      let unknownErr: any;
+      try {
+        await invitationsService.acceptInvitation(
+          { token: generateRawInviteToken(), password: 'AnyPassword123!' },
+          { requestId: 'req-unknown-accept' },
+        );
+        assert.fail('Unknown token accept should fail');
+      } catch (err: any) {
+        unknownErr = err;
+      }
+
+      assert.strictEqual(expiredErr.getStatus(), 404);
+      assert.strictEqual(usedErr.getStatus(), 404);
+      assert.strictEqual(unknownErr.getStatus(), 404);
+      assert.strictEqual(expiredErr.getResponse().code, 'INVITATION_INVALID');
+      assert.strictEqual(usedErr.getResponse().code, 'INVITATION_INVALID');
+      assert.strictEqual(unknownErr.getResponse().code, 'INVITATION_INVALID');
     });
   });
 });

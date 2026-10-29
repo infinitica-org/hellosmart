@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import { before, after, describe, it } from 'node:test';
 import pg from 'pg';
 import { runVerifySeed, DEFAULT_REQUIRE_ALL_ACTIVE_USERS_HASH } from '../dist/verify.js';
-import { runSafeSeed, ensureInvitationsTable } from '../dist/lib/upsert.js';
+import { runSafeSeed } from '../dist/lib/upsert.js';
 import { deterministicUuid } from '../dist/lib/keys.js';
 import { SUPERADMIN_ID, ASTER_RIDGE_ID } from '../dist/entities/organizations.js';
 
@@ -32,7 +32,6 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
       // Ensure clean state and seed test database
       await client.query('SET search_path TO app, public;');
       await client.query("SELECT set_config('app.is_platform', 'true', false);");
-      await ensureInvitationsTable(client);
 
       // Perform initial clean seed
       await runSafeSeed(client, {
@@ -326,7 +325,7 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
       }
 
       const validId = deterministicUuid('invitation', 'valid');
-      let originalHash: string = '';
+      let originalHash: Buffer | null = null;
       const origRes = await client.query('SELECT token_hash FROM app.invitations WHERE id = $1;', [
         validId,
       ]);
@@ -334,7 +333,7 @@ describe('Seed Verification Command & Data Integrity Checks ([13.3])', () => {
 
       try {
         await client.query('UPDATE app.invitations SET token_hash = $1 WHERE id = $2;', [
-          'unhashed-raw-token-not-64-hex',
+          Buffer.from('not-32-bytes', 'utf8'),
           validId,
         ]);
 
