@@ -1,7 +1,9 @@
-import { SetMetadata } from '@nestjs/common';
-import type { UserRole } from '../types/user-context.js';
+import { SetMetadata, CustomDecorator } from '@nestjs/common';
+import { ROLES_KEY, UserRole } from '../constants/auth.constants.js';
 
-export const ROLES_KEY = 'roles';
+/**
+ * Specifies the roles permitted to access a protected route.
+ * Evaluated by RolesGuard.
+ */
+export const Roles = (...roles: UserRole[]): CustomDecorator<string> => SetMetadata(ROLES_KEY, roles);
 
-export const Roles = (...roles: UserRole[]): ReturnType<typeof SetMetadata> =>
-  SetMetadata(ROLES_KEY, roles);

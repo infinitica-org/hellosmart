@@ -17,6 +17,8 @@ __pycache__/
 .env
 .env.*
 !.env.example
+!.env.local.example
+.seed-tokens.local.json
 *.pem
 *.key
 *.p12
@@ -45,6 +47,11 @@ Thumbs.db
 
 # spreadsheets
 *.xlsx
+
+# caches and test results
+.cache/
+test-results/
+playwright-report/
 
 # zoho
 zoho/

@@ -1,6 +1,10 @@
-import { SetMetadata } from '@nestjs/common';
+import { SetMetadata, CustomDecorator } from '@nestjs/common';
+import { IS_PUBLIC_KEY } from '../constants/auth.constants.js';
 
-export const IS_PUBLIC_KEY = 'isPublic';
+export { IS_PUBLIC_KEY };
 
-/** Routes that skip SessionGuard (health, login, webhooks). */
-export const Public = (): ReturnType<typeof SetMetadata> => SetMetadata(IS_PUBLIC_KEY, true);
+/**
+ * Marks an endpoint or controller as publicly accessible without session authentication.
+ */
+export const Public = (): CustomDecorator<string> => SetMetadata(IS_PUBLIC_KEY, true);
+

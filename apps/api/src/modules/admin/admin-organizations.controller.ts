@@ -1,6 +1,8 @@
+
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   Inject,
   Param,
@@ -29,13 +31,28 @@ import { AdminOrganizationsService } from './admin-organizations.service.js';
 @Roles('platform_admin')
 export class AdminOrganizationsController {
   constructor(
-    @Inject(AdminOrganizationsService) private readonly orgs: AdminOrganizationsService,
+    @Inject(AdminOrganizationsService)
+    private readonly orgs: AdminOrganizationsService,
   ) {}
+
+  @Get()
+  async list() {
+    const organizations = await this.orgs.list();
+
+    return {
+      organizations: organizations.map((org) => OrgDtoSchema.parse(org)),
+      total: organizations.length,
+    };
+  }
 
   @Post()
   @HttpCode(201)
-  async provision(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  async provision(
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
     const parsed = CreateOrgDtoSchema.safeParse(body);
+
     if (!parsed.success) {
       throw problem({
         title: 'Unprocessable Entity',
@@ -45,8 +62,15 @@ export class AdminOrganizationsController {
         errors: flattenZodErrors(parsed.error),
       });
     }
+
     const actor = request[REQUEST_USER_KEY];
-    const org = await this.orgs.provision(parsed.data, actor, requestMeta(request));
+
+    const org = await this.orgs.provision(
+      parsed.data,
+      actor,
+      requestMeta(request),
+    );
+
     return OrgDtoSchema.parse(org);
   }
 
@@ -57,6 +81,7 @@ export class AdminOrganizationsController {
     @Req() request: AuthenticatedRequest,
   ) {
     const orgId = z.string().uuid().safeParse(id);
+
     if (!orgId.success) {
       throw problem({
         title: 'Unprocessable Entity',
@@ -65,7 +90,9 @@ export class AdminOrganizationsController {
         code: 'VALIDATION_ERROR',
       });
     }
+
     const parsed = UpdateOrgStatusDtoSchema.safeParse(body);
+
     if (!parsed.success) {
       throw problem({
         title: 'Unprocessable Entity',
@@ -75,28 +102,36 @@ export class AdminOrganizationsController {
         errors: flattenZodErrors(parsed.error),
       });
     }
+
     const actor = request[REQUEST_USER_KEY];
+
     const org = await this.orgs.updateStatus(
       orgId.data,
       parsed.data,
       actor,
       requestMeta(request),
     );
+
     return OrgDtoSchema.parse(org);
   }
 }
 
 function requestMeta(request: FastifyRequest): RequestMeta {
   const meta: RequestMeta = {};
+
   if (request.ip) {
     meta.ip = request.ip;
   }
-  const ua = request.headers['user-agent'];
-  if (typeof ua === 'string') {
-    meta.userAgent = ua;
+
+  const userAgent = request.headers['user-agent'];
+
+  if (typeof userAgent === 'string') {
+    meta.userAgent = userAgent;
   }
+
   if (typeof request.id === 'string') {
     meta.requestId = request.id;
   }
+
   return meta;
 }

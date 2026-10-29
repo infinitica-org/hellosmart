@@ -78,6 +78,8 @@ export interface TopbarProps {
   onHelpClick?: () => void;
   /** Breadcrumb items for the dashboard variant */
   breadcrumbItems?: BreadcrumbItemData[];
+  /** Whether to show breadcrumbs in topbar. Defaults to false */
+  showBreadcrumbs?: boolean;
   /** Additional action elements rendered in the right section */
   actions?: ReactNode;
   /** Additional CSS classes for the root element */
@@ -157,7 +159,7 @@ function TopbarUserProfileDropdown({
     <DropdownMenu>
       {/* Pill trigger: avatar with online dot + name + role subtitle + chevron */}
       <DropdownMenuTrigger
-        className="group flex items-center gap-2.5 h-10 pl-1.5 pr-3 rounded-full bg-white border border-neutral-200/90 shadow-2xs hover:bg-neutral-50/90 hover:border-neutral-300 transition-all duration-200 cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+        className="group flex items-center gap-1.5 sm:gap-2.5 h-9 sm:h-10 pl-1 sm:pl-1.5 pr-1.5 sm:pr-3 rounded-full bg-white border border-neutral-200/90 shadow-2xs hover:bg-neutral-50/90 hover:border-neutral-300 transition-all duration-200 cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-primary/20 shrink-0"
         aria-label="User account menu"
       >
         <div className="relative shrink-0">
@@ -167,7 +169,7 @@ function TopbarUserProfileDropdown({
             title="Online"
           />
         </div>
-        <div className="min-w-0 text-left hidden sm:block">
+        <div className="min-w-0 text-left hidden md:block">
           <p className="text-xs font-semibold text-neutral-900 leading-tight truncate max-w-[120px]">
             {userName || 'Account'}
           </p>
@@ -178,7 +180,7 @@ function TopbarUserProfileDropdown({
           )}
         </div>
         <svg
-          className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-700 transition-transform duration-200 shrink-0"
+          className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-700 transition-transform duration-200 shrink-0 hidden sm:block"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -375,6 +377,7 @@ export function Topbar({
   onHelpClick,
   shortcutKey,
   breadcrumbItems,
+  showBreadcrumbs = false,
   actions,
   className = '',
   renderLink,
@@ -390,7 +393,7 @@ export function Topbar({
   if (variant === 'minimal') {
     return (
       <header
-        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-6 bg-white border-b border-neutral-200 ${className}`}
+        className={`sticky top-0 z-40 flex items-center justify-between h-16 px-6 bg-white border-b border-neutral-200 ${className}`}
         role="banner"
       >
         {/* Left: logo */}
@@ -428,11 +431,11 @@ export function Topbar({
   if (variant === 'dashboard') {
     return (
       <header
-        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-6 bg-white border-b border-neutral-200 ${className}`}
+        className={`sticky top-0 z-30 flex items-center justify-between h-16 px-4 sm:px-8 bg-white border-b border-neutral-200 ${className}`}
         role="banner"
       >
         {/* Left section: breadcrumbs, custom leftContent, or title */}
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
           {shouldShowLogo && (
             <BrandMark
               showLogo
@@ -440,30 +443,28 @@ export function Topbar({
               logoSrc={logoSrc}
               whiteLabel={whiteLabel}
               showSubtitle={false}
-              className="mr-3"
+              className="mr-2 sm:mr-3 shrink-0"
             />
           )}
           {leftContent ? (
-            leftContent
-          ) : (breadcrumbItems && breadcrumbItems.length > 0) ? (
-            <Breadcrumbs items={breadcrumbItems} showHomeIcon />
-          ) : (
-            <Breadcrumbs
-              items={[
-                { label: 'Dashboard', href: '/dashboard' },
-                { label: 'Overview' },
-              ]}
-              showHomeIcon
-            />
-          )}
+            <div className="min-w-0 truncate">{leftContent}</div>
+          ) : (showBreadcrumbs && breadcrumbItems && breadcrumbItems.length > 0) ? (
+            <div className="hidden sm:block min-w-0 truncate">
+              <Breadcrumbs items={breadcrumbItems} showHomeIcon />
+            </div>
+          ) : title ? (
+            <div className="min-w-0 truncate text-sm font-medium text-neutral-800">{title}</div>
+          ) : null}
         </div>
 
         {/* Right section: search, help, notifications, profile, actions */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {onSearchClick && <SearchButton onClick={onSearchClick} />}
           {onHelpClick && <HelpButton onClick={onHelpClick} />}
           {showNotifications && (
-            <NotificationBell count={notificationCount} onClick={onNotificationsClick} />
+            <div className="hidden sm:flex">
+              <NotificationBell count={notificationCount} onClick={onNotificationsClick} />
+            </div>
           )}
           {showProfile && (
             <TopbarUserProfileDropdown
@@ -475,7 +476,7 @@ export function Topbar({
               onLogout={onLogout}
             />
           )}
-          {actions && <div className="flex items-center gap-1.5 ml-1.5">{actions}</div>}
+          {actions && <div className="flex items-center gap-1 sm:gap-1.5 ml-1 sm:ml-1.5 shrink-0">{actions}</div>}
         </div>
       </header>
     );
@@ -485,7 +486,7 @@ export function Topbar({
   if (variant === 'search') {
     return (
       <header
-        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-6 bg-white border-b border-neutral-200 ${className}`}
+        className={`sticky top-0 z-40 flex items-center justify-between h-16 px-4 sm:px-8 bg-white border-b border-neutral-200 ${className}`}
         role="banner"
       >
         {/* Left section: Quick search bar without breadcrumbs */}
@@ -553,7 +554,7 @@ export function Topbar({
   if (variant === 'workspace') {
     return (
       <header
-        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-6 bg-white border-b border-neutral-200 ${className}`}
+        className={`sticky top-0 z-40 flex items-center justify-between h-16 px-4 sm:px-8 bg-white border-b border-neutral-200 ${className}`}
         role="banner"
       >
         {/* Left: Brand logo + divider + assessment title */}
@@ -618,7 +619,7 @@ export function Topbar({
   // ── Variant: default ────────────────────────────────────────────────────
   return (
     <header
-      className={`sticky top-0 z-40 flex items-center justify-between h-14 px-6 bg-white border-b border-neutral-200 ${className}`}
+      className={`sticky top-0 z-40 flex items-center justify-between h-16 px-4 sm:px-8 bg-white border-b border-neutral-200 ${className}`}
       role="banner"
     >
       {/* Left section: logo + title/subtitle */}
