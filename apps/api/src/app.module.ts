@@ -1,18 +1,21 @@
-import { Module } from '@nestjs/common';
-import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { type DynamicModule, Module } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, Reflector } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import type { Logger } from 'pino';
 import { ProblemDetailsFilter } from './common/filters/problem-details.filter.js';
 import { OrgScopeGuard } from './common/guards/org-scope.guard.js';
 import { RolesGuard } from './common/guards/roles.guard.js';
 import { SessionGuard } from './common/guards/session.guard.js';
 import { IdempotencyInterceptor } from './common/interceptors/idempotency.interceptor.js';
 import { AppConfigModule } from './config/config.module.js';
+import { DatabaseModule } from './modules/database/database.module.js';
 import { AdaptersModule } from './modules/adapters/adapters.module.js';
 import { DevTestController } from './modules/dev/dev-test.controller.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CandidatesModule } from './modules/candidates/candidates.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { ObservabilityModule } from './modules/observability/observability.module.js';
 import { RedisModule } from './modules/redis/redis.module.js';
 import { SessionModule } from './modules/session/session.module.js';
 
@@ -22,6 +25,8 @@ const devControllers =
 @Module({
   imports: [
     AppConfigModule,
+    DatabaseModule,
+    ObservabilityModule,
     ThrottlerModule.forRoot(
       process.env.NODE_ENV === 'test'
         ? [{ name: 'default', ttl: 60_000, limit: 1_000_000 }]
@@ -40,6 +45,7 @@ const devControllers =
   ],
   controllers: [...devControllers],
   providers: [
+    Reflector,
     ProblemDetailsFilter,
     SessionGuard,
     RolesGuard,
@@ -53,4 +59,15 @@ const devControllers =
     { provide: APP_INTERCEPTOR, useExisting: IdempotencyInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule {
+  static forRoot(options?: { logger?: Logger }): DynamicModule {
+    const observability = options?.logger
+      ? ObservabilityModule.forRoot({ logger: options.logger })
+      : ObservabilityModule.forRoot();
+
+    return {
+      module: AppModule,
+      imports: [observability],
+    };
+  }
+}

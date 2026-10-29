@@ -2,7 +2,7 @@ import { Global, Inject, Module, OnModuleDestroy } from '@nestjs/common';
 import pg from 'pg';
 import { APP_CONFIG } from '../../config/config.tokens.js';
 import type { Config } from '../../config/config.js';
-import { PG_POOL, type PgPool } from './database.tokens.js';
+import { PG_PLATFORM_POOL, PG_POOL, type PgPool } from './database.tokens.js';
 
 @Global()
 @Module({
@@ -16,13 +16,25 @@ import { PG_POOL, type PgPool } from './database.tokens.js';
         }),
       inject: [APP_CONFIG],
     },
+    {
+      provide: PG_PLATFORM_POOL,
+      useFactory: (config: Config): PgPool =>
+        new pg.Pool({
+          connectionString: config.DATABASE_PLATFORM_URL,
+          max: 5,
+        }),
+      inject: [APP_CONFIG],
+    },
   ],
-  exports: [PG_POOL],
+  exports: [PG_POOL, PG_PLATFORM_POOL],
 })
 export class DatabaseModule implements OnModuleDestroy {
-  constructor(@Inject(PG_POOL) private readonly pool: PgPool) {}
+  constructor(
+    @Inject(PG_POOL) private readonly pool: PgPool,
+    @Inject(PG_PLATFORM_POOL) private readonly platformPool: PgPool,
+  ) {}
 
   async onModuleDestroy(): Promise<void> {
-    await this.pool.end();
+    await Promise.all([this.pool.end(), this.platformPool.end()]);
   }
 }

@@ -1,87 +1,290 @@
-# Every PR and push to main. All jobs are required checks in branch protection.
-# Install: copy to .github/workflows/ (agents are blocked from editing that folder by design).
-# Pin every third-party action to a full commit SHA before the first merge (docs/adr/0007).
+# Automated Quality, Database, E2E, and Security Gates (S0-T12-2)
+# Branch protection: the 'ci' job aggregates all checks and is the required gate.
+
 name: ci
+
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, dev]
+
 permissions:
   contents: read
+
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  node:
+  security:
+    name: security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks secret detection
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Dependency security audit (fail on high/critical)
+        run: pnpm audit --audit-level=high
+
+  quality:
+    name: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate OpenAPI contracts and TypeScript definitions
+        run: pnpm contracts:check
+
+      - name: Documentation synchronization check (AIDLC)
+        run: pnpm docs:sync-check
+
+      - name: Lint all workspaces
+        run: pnpm lint
+
+      - name: Typecheck all workspaces
+        run: pnpm typecheck
+
+      - name: Build applications and packages
+        run: pnpm build
+
+  test:
+    name: test
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
       postgres:
         image: postgres:16.4-alpine
-        env: { POSTGRES_DB: hellosmart, POSTGRES_USER: hs_owner, POSTGRES_PASSWORD: ci_only }
-        ports: ["5432:5432"]
-        options: --health-cmd "pg_isready -U hs_owner" --health-interval 5s --health-retries 10
+        env:
+          POSTGRES_DB: hellosmart
+          POSTGRES_USER: hs_owner
+          POSTGRES_PASSWORD: hs_owner_local
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hs_owner"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
       redis:
         image: redis:7.4-alpine
-        ports: ["6379:6379"]
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_ADMIN_URL: postgres://hs_owner:hs_owner_local@localhost:5432/hellosmart
+      DATABASE_MIGRATOR_URL: postgres://hs_migrator:hs_migrator_local@localhost:5432/hellosmart
+      DATABASE_URL: postgres://hs_app:hs_app_local@localhost:5432/hellosmart
+      DATABASE_PLATFORM_URL: postgres://hs_platform:hs_platform_local@localhost:5432/hellosmart
+      REDIS_URL: redis://localhost:6379
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with: { node-version-file: .nvmrc, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm contracts:check
-      - name: documentation sync check (AIDLC)
-        run: pnpm docs:sync-check
-      - run: pnpm typecheck
-      - run: pnpm lint
-      - run: pnpm test
-      - name: cross-tenant suite (BR-01)
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare local test environment
+        run: |
+          cp .env.example .env
+          sed -i 's|DATABASE_ADMIN_URL=.*|DATABASE_ADMIN_URL=postgres://hs_owner:hs_owner_local@localhost:5432/hellosmart|' .env
+          sed -i 's|DATABASE_MIGRATOR_URL=.*|DATABASE_MIGRATOR_URL=postgres://hs_migrator:hs_migrator_local@localhost:5432/hellosmart|' .env
+          sed -i 's|DATABASE_URL=.*|DATABASE_URL=postgres://hs_app:hs_app_local@localhost:5432/hellosmart|' .env
+          echo 'DATABASE_PLATFORM_URL=postgres://hs_platform:hs_platform_local@localhost:5432/hellosmart' >> .env
+          sed -i 's|REDIS_URL=.*|REDIS_URL=redis://localhost:6379|' .env
+
+      - name: Run database migrations
+        run: pnpm db:migrate
+
+      - name: Seed database fixtures
+        run: pnpm db:seed
+
+      - name: Run unit and integration tests
+        run: pnpm test
+
+      - name: Run tenancy and RLS isolation tests (BR-01)
         run: pnpm test:tenancy
 
+      - name: Run API stack E2E integration tests
+        run: pnpm --filter @hs/api test:stack
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers and dependencies
+        run: pnpm --filter @hs/e2e exec playwright install --with-deps chromium
+
+      - name: Run Playwright E2E suite
+        run: pnpm test:e2e
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
   python:
+    name: python
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       matrix:
         service: [ai-proxy, reviewer]
     defaults:
-      run: { working-directory: "services/${{ matrix.service }}" }
+      run:
+        working-directory: "services/${{ matrix.service }}"
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
-      - run: uv sync --frozen
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      - run: uv run mypy .
-      - run: uv run pytest -q
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Lint with ruff
+        run: uv run ruff check .
+
+      - name: Format check with ruff
+        run: uv run ruff format --check .
+
+      - name: Typecheck with mypy
+        run: uv run mypy .
+
+      - name: Run pytest
+        run: uv run pytest -q
 
   terraform:
+    name: terraform
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: 1.9.8 }
-      - run: terraform fmt -check -recursive infra/terraform
-      - name: validate modules
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive infra/terraform
+
+      - name: Validate Terraform modules
         run: |
           for d in infra/terraform/modules/*/; do
             terraform -chdir="$d" init -backend=false -input=false >/dev/null && terraform -chdir="$d" validate
           done
 
-  e2e-smoke:
-    if: github.event_name == 'pull_request'
-    needs: [node]
+  ci:
+    name: ci
+    needs: [security, quality, test, e2e, python, terraform]
+    if: always()
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with: { node-version-file: .nvmrc, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
-      - run: docker compose up -d --wait
-      - run: pnpm --filter @hs/e2e exec playwright install --with-deps chromium
-      - run: pnpm test:e2e -- --grep @smoke
+      - name: Evaluate CI Gate Status
+        run: |
+          echo "Security Gate:  ${{ needs.security.result }}"
+          echo "Quality Gate:   ${{ needs.quality.result }}"
+          echo "Test Gate:      ${{ needs.test.result }}"
+          echo "E2E Gate:       ${{ needs.e2e.result }}"
+          echo "Python Gate:    ${{ needs.python.result }}"
+          echo "Terraform Gate: ${{ needs.terraform.result }}"
+
+          failed=0
+          for res in \
+            "${{ needs.security.result }}" \
+            "${{ needs.quality.result }}" \
+            "${{ needs.test.result }}" \
+            "${{ needs.e2e.result }}" \
+            "${{ needs.python.result }}" \
+            "${{ needs.terraform.result }}"; do
+            if [ "$res" != "success" ]; then
+              echo "Error: Required check failed with status: $res"
+              failed=1
+            fi
+          done
+
+          if [ "$failed" -ne 0 ]; then
+            echo "CI pipeline failed"
+            exit 1
+          fi
+
+          echo "All CI quality, database, end-to-end, and security gates passed."

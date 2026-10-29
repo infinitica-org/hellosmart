@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type { AuditRecordInput } from './audit.types.js';
 
 function asInet(ip: string | null | undefined): string | null {
@@ -34,11 +34,11 @@ function canonicalPayload(input: AuditRecordInput): string {
 
 /** BR-31 append-only audit with hash chain (T-037). Must run in same DB transaction as the mutation. */
 export async function appendAuditEvent(
-  client: PoolClient,
+  client: PoolClient | Pool,
   input: AuditRecordInput,
 ): Promise<void> {
   const prev = await client.query<{ hash: Buffer }>(
-    'SELECT hash FROM audit.events ORDER BY id DESC LIMIT 1',
+    'SELECT audit.latest_event_hash() AS hash',
   );
   const prevHash: Buffer = prev.rows[0]?.hash ?? Buffer.alloc(0);
   const payload = canonicalPayload(input);

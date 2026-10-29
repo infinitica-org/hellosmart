@@ -29,6 +29,7 @@
     "docs:dev": "pnpm --dir apps/docs dev",
     "docs:build": "pnpm --dir apps/docs build",
     "docs:sync-check": "node scripts/aidlc-docs-check.mjs",
+    "matrix:verify": "node scripts/verify-traceability.mjs",
     "secrets:scan": "gitleaks detect --no-banner --redact",
     "format": "prettier --write ."
   },

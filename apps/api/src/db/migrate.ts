@@ -82,7 +82,7 @@ export async function runMigrations(): Promise<void> {
     );
   }
 
-  // Fix 4: Locate migrations directory via reliable repo root
+ // Fix 4: Locate migrations directory via reliable repo root
   const repoRoot = findRepoRoot();
   const migrationsDir = path.join(
     repoRoot,
@@ -96,6 +96,40 @@ export async function runMigrations(): Promise<void> {
   if (!fs.existsSync(migrationsDir) || !fs.statSync(migrationsDir).isDirectory()) {
     throw new Error(
       `[Migrate] Migrations directory does not exist or is not a directory: ${migrationsDir}`,
+
+  const { initRolesSql } = repoPaths();
+  const bootstrapSql = await fs.readFile(initRolesSql, 'utf8');
+  const adminPool = new pg.Pool({ connectionString: adminUrl });
+  const adminClient = await adminPool.connect();
+  try {
+    await adminClient.query(bootstrapSql);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes('already exists')) {
+      throw err;
+    }
+    // Roles may already exist; ensure schemas at minimum.
+    await adminClient.query(`
+      CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION hs_migrator;
+      CREATE SCHEMA IF NOT EXISTS audit AUTHORIZATION hs_migrator;
+      GRANT USAGE ON SCHEMA app, audit TO hs_app, hs_readonly, hs_platform;
+    `);
+  } finally {
+    adminClient.release();
+    await adminPool.end();
+  }
+}
+
+async function ensureExtensions(adminUrl: string): Promise<void> {
+  const adminPool = new pg.Pool({ connectionString: adminUrl });
+  const adminClient = await adminPool.connect();
+  try {
+    await adminClient.query('SET search_path TO public');
+    await adminClient.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+    await adminClient.query('CREATE EXTENSION IF NOT EXISTS citext');
+    await adminClient.query(
+      'GRANT USAGE ON SCHEMA public TO hs_migrator, hs_app, hs_readonly, hs_platform',
+
     );
   }
 
