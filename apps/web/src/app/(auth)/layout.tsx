@@ -6,12 +6,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <div className="w-full flex flex-col items-center justify-center">
-      <div className="mb-6 text-center">
-        <span className="text-xl font-black tracking-tight text-slate-900">
-          HelloSmart<span className="text-indigo-600">.ai</span>
-        </span>
-      </div>
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-canvas">
       {children}
     </div>
   );

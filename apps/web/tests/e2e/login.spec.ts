@@ -45,6 +45,13 @@ async function signIn(page: Page, email: string, password: string) {
   await page.getByLabel(/email/i).fill(email);
   await page.getByLabel(/password/i).fill(password);
   await page.getByRole("button", { name: /sign in|log in|login/i }).click();
+
+  // If MFA dialog opens (for platform_admin), complete TOTP step
+  const mfaDialog = page.getByTestId("mfa-dialog");
+  if (await mfaDialog.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await page.getByTestId("mfa-totp-input").fill("123456");
+    await page.getByTestId("mfa-submit-button").click();
+  }
 }
 
 test.describe("Master Login and Role-Based Routing (CO-001, CO-004)", () => {
