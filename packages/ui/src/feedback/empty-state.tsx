@@ -23,9 +23,9 @@ export function EmptyState({
 }: EmptyStateProps): React.JSX.Element {
   return (
     <div
-      className={`flex flex-col items-center justify-center p-8 sm:p-10 text-center rounded-md border border-dashed border-[#d8dee6] bg-white ${className}`}
+      className={`flex flex-col items-center justify-center p-8 sm:p-10 text-center rounded-md border border-dashed border-card-border bg-white ${className}`}
     >
-      <div className="w-12 h-12 rounded-sm bg-[#eaf3fb] border border-[#b7d4ee] flex items-center justify-center text-nav mb-4">
+      <div className="w-12 h-12 rounded-sm bg-info-muted border border-info-border flex items-center justify-center text-nav mb-4">
         {icon || (
           <svg
             className="w-7 h-7"

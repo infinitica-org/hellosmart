@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode } from 'react';
+import React, { useState, ReactNode } from 'react';
 import { BrandMark } from '../brand-mark';
 import { Avatar } from '../components/avatar';
 import { Input } from '../components/input';
@@ -37,6 +37,8 @@ export interface TopbarProps {
   leftContent?: ReactNode;
   /** Page title (used when no breadcrumbs or leftContent is provided) */
   title?: ReactNode;
+  /** Optional icon displayed alongside page title */
+  titleIcon?: ReactNode;
   /** Page subtitle (used with title in default variant) */
   subtitle?: ReactNode;
   /** Search placeholder text (used by search variant) */
@@ -98,6 +100,13 @@ export interface TopbarProps {
     className: string;
     onClick?: () => void;
   }) => ReactNode;
+  /** Navigation destinations for dropdown items */
+  accountHref?: string;
+  preferencesHref?: string;
+  billingHref?: string;
+  onAccountClick?: () => void;
+  onPreferencesClick?: () => void;
+  onBillingClick?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -126,8 +135,44 @@ function UserAvatar({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Internal: User profile dropdown (pill variant for topbar)
+// Internal: User profile dropdown matching screenshot
 // ─────────────────────────────────────────────────────────────────────────────
+
+export interface TopbarUserProfileDropdownProps {
+  userName?: string | undefined;
+  userEmail?: string | undefined;
+  userAvatar?: string | undefined;
+  userRole?: string | undefined;
+  companyName?: string | undefined;
+  onLogout?: (() => void) | undefined;
+  profileMenuItems?: ReactNode | undefined;
+  profileTriggerTestId?: string | undefined;
+  accountHref?: string | undefined;
+  preferencesHref?: string | undefined;
+  billingHref?: string | undefined;
+  onAccountClick?: (() => void) | undefined;
+  onPreferencesClick?: (() => void) | undefined;
+  onBillingClick?: (() => void) | undefined;
+  renderLink?: TopbarProps['renderLink'];
+}
+
+export interface TopbarUserProfileDropdownProps {
+  userName?: string | undefined;
+  userEmail?: string | undefined;
+  userAvatar?: string | undefined;
+  userRole?: string | undefined;
+  companyName?: string | undefined;
+  onLogout?: (() => void) | undefined;
+  profileMenuItems?: ReactNode | undefined;
+  profileTriggerTestId?: string | undefined;
+  accountHref?: string | undefined;
+  preferencesHref?: string | undefined;
+  billingHref?: string | undefined;
+  onAccountClick?: (() => void) | undefined;
+  onPreferencesClick?: (() => void) | undefined;
+  onBillingClick?: (() => void) | undefined;
+  renderLink?: TopbarProps['renderLink'];
+}
 
 function TopbarUserProfileDropdown({
   userName,
@@ -138,115 +183,215 @@ function TopbarUserProfileDropdown({
   onLogout,
   profileMenuItems,
   profileTriggerTestId = 'user-menu-trigger',
-}: {
-  userName?: string | undefined;
-  userEmail?: string | undefined;
-  userAvatar?: string | undefined;
-  userRole?: string | undefined;
-  companyName?: string | undefined;
-  onLogout?: (() => void) | undefined;
-  profileMenuItems?: ReactNode | undefined;
-  profileTriggerTestId?: string | undefined;
-}) {
+  accountHref,
+  preferencesHref,
+  billingHref,
+  onAccountClick,
+  onPreferencesClick,
+  onBillingClick,
+  renderLink,
+}: TopbarUserProfileDropdownProps) {
+  // Resolve link destinations based on role or fallback
+  const isCandidate = userRole?.toLowerCase().includes('candidate');
+  const isAdmin = userRole?.toLowerCase().includes('admin');
+
+  const defaultAccountHref = isCandidate
+    ? '/candidate/profile'
+    : isAdmin
+      ? '/admin/settings'
+      : '/company/settings';
+
+  const defaultPreferencesHref = isCandidate
+    ? '/candidate/profile'
+    : isAdmin
+      ? '/admin/settings'
+      : '/company/settings';
+
+  const defaultBillingHref = isAdmin
+    ? '/admin/settings'
+    : isCandidate
+      ? '/candidate'
+      : '/company/settings';
+
+  const resolvedAccountHref = accountHref ?? defaultAccountHref;
+  const resolvedPreferencesHref = preferencesHref ?? defaultPreferencesHref;
+  const resolvedBillingHref = billingHref ?? defaultBillingHref;
+
+  const renderDropdownLink = ({
+    label,
+    icon,
+    href,
+    onClick,
+    testId,
+  }: {
+    label: string;
+    icon: ReactNode;
+    href?: string | undefined;
+    onClick?: (() => void) | undefined;
+    testId?: string | undefined;
+  }) => {
+    const itemClasses =
+      'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-normal text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100/70 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer select-none text-left';
+
+    const itemContent = (
+      <>
+        <span className="w-4 h-4 text-neutral-600 dark:text-neutral-400 flex items-center justify-center shrink-0">
+          {icon}
+        </span>
+        <span className="flex-1 truncate">{label}</span>
+      </>
+    );
+
+    if (renderLink && href) {
+      return (
+        <React.Fragment key={label}>
+          {renderLink({
+            href,
+            className: itemClasses,
+            children: itemContent,
+            ...(onClick ? { onClick } : {}),
+          })}
+        </React.Fragment>
+      );
+    }
+
+    return (
+      <DropdownMenuItem
+        key={label}
+        href={href}
+        data-testid={testId}
+        onClick={onClick}
+        icon={icon}
+      >
+        {label}
+      </DropdownMenuItem>
+    );
+  };
+
   return (
     <DropdownMenu>
-      {/* Pill trigger: avatar with online dot + name + role subtitle + chevron */}
+      {/* Pill trigger: avatar + name + role subtitle with Active plan */}
       <DropdownMenuTrigger
         data-testid={profileTriggerTestId}
-        className="group flex items-center gap-1.5 sm:gap-2 h-8 pl-1 pr-2 rounded-sm bg-white border border-[#d8dee6] hover:bg-[#f4f6f8] transition-colors cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-nav-accent/30 shrink-0"
+        className="group flex items-center gap-2.5 p-1 sm:px-2 sm:py-1 rounded-xl hover:bg-neutral-100/70 dark:hover:bg-neutral-800 transition-colors cursor-pointer select-none focus:outline-none shrink-0"
         aria-label="User account menu"
       >
         <div className="relative shrink-0">
-          <UserAvatar src={userAvatar} name={userName} size="sm" />
+          <UserAvatar src={userAvatar} name={userName} size="md" />
         </div>
-        <div className="min-w-0 text-left hidden md:block">
-          <p className="text-xs font-semibold text-foreground leading-tight truncate max-w-[120px]">
+        <div className="min-w-0 text-left hidden sm:block">
+          <p className="text-sm font-semibold text-neutral-900 dark:text-white leading-tight truncate max-w-[140px]">
             {userName || 'Account'}
           </p>
-          {userRole && (
-            <p className="text-[10px] text-[#5b6775] font-medium leading-tight truncate max-w-[120px]">
-              {userRole}
-            </p>
-          )}
+          <p className="text-[11px] text-neutral-400 leading-tight truncate max-w-[160px] flex items-center gap-1.5 mt-0.5">
+            <span>{userRole || 'Admin'}</span>
+            <span className="text-neutral-300 dark:text-neutral-600">•</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-medium">Active plan</span>
+          </p>
         </div>
-        <svg
-          className="w-3.5 h-3.5 text-[#8a95a3] group-hover:text-nav transition-transform duration-200 shrink-0 hidden sm:block"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth="2"
-          aria-hidden="true"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
       </DropdownMenuTrigger>
 
-      {/* Dropdown content */}
-      <DropdownMenuContent align="right">
-        {/* User info header */}
-        <div className="px-3 py-2.5">
-          <div className="flex items-center gap-3">
+      {/* Dropdown content matching screenshot: clean rounded-2xl card */}
+      <DropdownMenuContent
+        align="right"
+        className="w-64 rounded-2xl border border-neutral-200/90 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-2 shadow-2xl shadow-black/10"
+      >
+        {/* User info header with avatar matching screenshot */}
+        <div className="px-3 py-2.5 flex items-center gap-3">
+          <div className="relative shrink-0">
             <UserAvatar src={userAvatar} name={userName} size="md" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-neutral-900 truncate">
-                {userName || 'User'}
-              </p>
-              {userEmail && (
-                <p className="text-xs text-neutral-500 truncate">{userEmail}</p>
-              )}
-              {userRole && (
-                <span className="inline-block mt-1 text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                  {userRole}
-                </span>
-              )}
-            </div>
           </div>
-          {companyName && (
-            <p className="mt-1.5 text-[11px] text-neutral-400 truncate">{companyName}</p>
-          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-neutral-900 dark:text-white leading-snug truncate">
+              {userName || 'User'}
+            </p>
+            {userEmail ? (
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-normal truncate mt-0.5">
+                {userEmail}
+              </p>
+            ) : companyName ? (
+              <p className="text-xs text-neutral-400 font-normal truncate mt-0.5">{companyName}</p>
+            ) : null}
+          </div>
         </div>
 
-        <DropdownMenuSeparator />
+        {/* Divider */}
+        <div className="h-px bg-neutral-100 dark:bg-neutral-800 -mx-1 my-1" role="separator" />
 
-        <DropdownMenuLabel>Account</DropdownMenuLabel>
-
-        <DropdownMenuItem
-          icon={
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          }
-        >
-          Profile
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          icon={
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          }
-        >
-          Settings
-        </DropdownMenuItem>
-
-        {profileMenuItems}
-
-        <DropdownMenuSeparator />
-
-        {onLogout && (
-          <DropdownMenuItem
-            variant="danger"
-            onClick={onLogout}
-            icon={
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        {/* Navigation links matching screenshot: Account, Preferences, Billing */}
+        <div className="py-0.5 space-y-0.5">
+          {renderDropdownLink({
+            label: 'Account',
+            icon: (
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
               </svg>
-            }
-          >
-            Sign out
-          </DropdownMenuItem>
+            ),
+            href: resolvedAccountHref,
+            onClick: onAccountClick,
+            testId: 'account-menu-item',
+          })}
+
+          {renderDropdownLink({
+            label: 'Preferences',
+            icon: (
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            ),
+            href: resolvedPreferencesHref,
+            onClick: onPreferencesClick,
+            testId: 'preferences-menu-item',
+          })}
+
+          {renderDropdownLink({
+            label: 'Billing',
+            icon: (
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                <rect width="20" height="14" x="2" y="5" rx="2" />
+                <line x1="2" x2="22" y1="10" y2="10" />
+              </svg>
+            ),
+            href: resolvedBillingHref,
+            onClick: onBillingClick,
+            testId: 'billing-menu-item',
+          })}
+
+          {profileMenuItems}
+        </div>
+
+        {/* Divider before Log out */}
+        {onLogout && <div className="h-px bg-neutral-100 dark:bg-neutral-800 -mx-1 my-1" role="separator" />}
+
+        {/* Log out button matching screenshot: soft red/salmon card, red exit icon, red text */}
+        {onLogout && (
+          <div className="pt-0.5">
+            <DropdownMenuItem
+              variant="danger"
+              onClick={onLogout}
+              data-testid="logout-menu-item"
+              icon={
+                <svg
+                  className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+              }
+            >
+              Log out
+            </DropdownMenuItem>
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -257,6 +402,14 @@ function TopbarUserProfileDropdown({
 // Internal: Notification bell button
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface TopbarNotificationItem {
+  id: string;
+  title: string;
+  description: string;
+  time: string;
+  read?: boolean;
+}
+
 function NotificationBell({
   count = 0,
   onClick,
@@ -264,26 +417,135 @@ function NotificationBell({
   count?: number | undefined;
   onClick?: (() => void) | undefined;
 }) {
+  const [items, setItems] = useState<TopbarNotificationItem[]>([
+    {
+      id: '1',
+      title: 'Assessment submitted',
+      description: 'Candidate submitted Senior Full Stack evaluation.',
+      time: '12m ago',
+      read: false,
+    },
+    {
+      id: '2',
+      title: 'AI review completed',
+      description: 'All 3 rubric evaluation agents generated scores.',
+      time: '45m ago',
+      read: false,
+    },
+    {
+      id: '3',
+      title: 'Candidate workspace active',
+      description: 'Cloud VM session initialized for evaluation.',
+      time: '2h ago',
+      read: true,
+    },
+  ]);
+
+  const unreadCount = count > 0 ? count : items.filter((i: TopbarNotificationItem) => !i.read).length;
+
+  const markAllAsRead = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setItems((prev: TopbarNotificationItem[]) => prev.map((item: TopbarNotificationItem) => ({ ...item, read: true })));
+  };
+
+  const markItemAsRead = (id: string) => {
+    setItems((prev: TopbarNotificationItem[]) =>
+      prev.map((item: TopbarNotificationItem) => (item.id === id ? { ...item, read: true } : item))
+    );
+  };
+
   return (
-    <button
-      type="button"
-      aria-label="Notifications"
-      onClick={onClick}
-      className="relative w-8 h-8 rounded-sm bg-white border border-[#d8dee6] hover:bg-[#f4f6f8] text-[#3d4754] hover:text-nav flex items-center justify-center transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-nav-accent/30"
-      title="Notifications"
-    >
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-        />
-      </svg>
-      {count > 0 && (
-        <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary ring-2 ring-white" />
-      )}
-    </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label="Notifications"
+          onClick={onClick}
+          className="relative w-9 h-9 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700/60 text-neutral-600 dark:text-neutral-300 flex items-center justify-center transition-colors cursor-pointer focus:outline-none shadow-2xs shrink-0"
+          title="Notifications"
+        >
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ width: 17, height: 17 }}
+          >
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+          </svg>
+          {unreadCount > 0 && (
+            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-neutral-800" />
+          )}
+        </button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent
+        align="right"
+        className="w-80 sm:w-88 rounded-2xl border border-neutral-200/90 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-0 shadow-2xl shadow-black/10 overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 dark:border-neutral-800">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Notifications</h3>
+            {unreadCount > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-primary/10 text-primary rounded-full">
+                {unreadCount} new
+              </span>
+            )}
+          </div>
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={markAllAsRead}
+              className="text-xs text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white font-medium transition-colors cursor-pointer"
+            >
+              Mark all read
+            </button>
+          )}
+        </div>
+
+        {/* Notifications list */}
+        <div className="max-h-72 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800/60">
+          {items.length === 0 ? (
+            <div className="py-8 text-center text-xs text-neutral-400">
+              No notifications
+            </div>
+          ) : (
+            items.map((item: TopbarNotificationItem) => (
+              <div
+                key={item.id}
+                onClick={() => markItemAsRead(item.id)}
+                className={`p-3.5 flex items-start gap-3 transition-colors cursor-pointer select-none hover:bg-neutral-50 dark:hover:bg-neutral-800/50 ${
+                  !item.read ? 'bg-neutral-50/60 dark:bg-neutral-800/30' : ''
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                    !item.read ? 'bg-primary' : 'bg-transparent'
+                  }`}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-neutral-900 dark:text-white leading-tight">
+                    {item.title}
+                  </p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-2">
+                    {item.description}
+                  </p>
+                  <span className="text-[10px] text-neutral-400 mt-1 inline-block">
+                    {item.time}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -348,6 +610,7 @@ export function Topbar({
   showProfile = true,
   leftContent,
   title,
+  titleIcon,
   subtitle,
   userName,
   userEmail,
@@ -376,6 +639,12 @@ export function Topbar({
   onMenuClick,
   className = '',
   renderLink,
+  accountHref,
+  preferencesHref,
+  billingHref,
+  onAccountClick,
+  onPreferencesClick,
+  onBillingClick,
 }: TopbarProps): React.JSX.Element {
   const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
   const defaultShortcut = isMac ? '⌘K' : 'Ctrl+K';
@@ -394,6 +663,13 @@ export function Topbar({
       onLogout={onLogout}
       profileMenuItems={profileMenuItems}
       profileTriggerTestId={profileTriggerTestId}
+      accountHref={accountHref}
+      preferencesHref={preferencesHref}
+      billingHref={billingHref}
+      onAccountClick={onAccountClick}
+      onPreferencesClick={onPreferencesClick}
+      onBillingClick={onBillingClick}
+      renderLink={renderLink}
     />
   ) : null;
 
@@ -401,7 +677,7 @@ export function Topbar({
   if (variant === 'minimal') {
     return (
       <header
-        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-6 bg-white border-b border-[#d8dee6] ${className}`}
+        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-6 bg-white border-b border-card-border ${className}`}
         role="banner"
       >
         {/* Left: logo */}
@@ -430,17 +706,17 @@ export function Topbar({
   if (variant === 'dashboard') {
     return (
       <header
-        className={`hs-chrome sticky top-0 z-30 flex items-center justify-between h-14 px-4 sm:px-6 text-white ${className}`}
+        className={`sticky top-0 z-30 flex items-center justify-between h-[70px] px-4 sm:px-6 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 transition-colors ${className}`}
         role="banner"
       >
-        {/* Left section: breadcrumbs, custom leftContent, or title */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
+        {/* Left section: breadcrumbs, custom leftContent, or title with home icon */}
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           {onMenuClick && (
             <button
               type="button"
               onClick={onMenuClick}
               aria-label="Open menu"
-              className="md:hidden shrink-0 rounded-sm p-2 text-white/90 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
+              className="md:hidden shrink-0 rounded-lg p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors focus:outline-none"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <line x1="4" y1="6" x2="20" y2="6" />
@@ -465,19 +741,67 @@ export function Topbar({
             <div className="hidden sm:block min-w-0 truncate">
               <Breadcrumbs items={breadcrumbItems} showHomeIcon />
             </div>
-          ) : title ? (
-            <div className="min-w-0 truncate text-[13px] font-medium text-white">{title}</div>
-          ) : null}
+          ) : (
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-5 h-5 flex items-center justify-center shrink-0 text-neutral-800 dark:text-neutral-200">
+                {titleIcon ? (
+                  <span className="w-5   h-5 flex items-center justify-center [&>svg]:w-[18px] [&>svg]:h-[18px] [&>svg]:max-w-[18px] [&>svg]:max-h-[18px]">
+                    {titleIcon}
+                  </span>
+                ) : (
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ width: '18px', height: '18px', maxWidth: '18px', maxHeight: '18px' }}
+                  >
+                    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                )}
+              </span>
+              <h1 className="text-sm sm:text-base font-normal text-neutral-900 dark:text-white truncate">
+                {title || 'Dashboard'}
+              </h1>
+            </div>
+          )}
         </div>
 
-        {/* Right section: search, help, notifications, profile, actions */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        {/* Right section: search input, help, notification bell, profile, actions */}
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+          {/* Search bar matching screenshot */}
+          <div className="relative hidden md:flex items-center bg-neutral-100/80 dark:bg-neutral-800/80 rounded-xl px-3.5 py-2 w-56 lg:w-72 h-10 transition-colors focus-within:bg-white dark:focus-within:bg-neutral-800 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-neutral-300 border border-transparent">
+            <svg
+              className="w-4 h-4 text-neutral-400 shrink-0 mr-2.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              value={searchValue}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              placeholder={searchPlaceholder || 'Search candidates, assessments, rubrics...'}
+              className="bg-transparent border-none text-xs text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none w-full"
+            />
+          </div>
+
           {onSearchClick && <SearchButton onClick={onSearchClick} />}
           {onHelpClick && <HelpButton onClick={onHelpClick} />}
           {showNotifications && (
-            <div className="hidden sm:flex">
-              <NotificationBell count={notificationCount} onClick={onNotificationsClick} />
-            </div>
+            <NotificationBell count={notificationCount} onClick={onNotificationsClick} />
           )}
           {profile}
           {actions && <div className="flex items-center gap-1 sm:gap-1.5 ml-1 sm:ml-1.5 shrink-0">{actions}</div>}
@@ -490,7 +814,7 @@ export function Topbar({
   if (variant === 'search') {
     return (
       <header
-        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white border-b border-[#d8dee6] ${className}`}
+        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white border-b border-card-border ${className}`}
         role="banner"
       >
         {/* Left section: Quick search bar without breadcrumbs */}
@@ -549,7 +873,7 @@ export function Topbar({
   if (variant === 'workspace') {
     return (
       <header
-        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white border-b border-[#d8dee6] ${className}`}
+        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white border-b border-card-border ${className}`}
         role="banner"
       >
         {/* Left: Brand logo + divider + assessment title */}
@@ -605,7 +929,7 @@ export function Topbar({
   // ── Variant: default ────────────────────────────────────────────────────
   return (
     <header
-      className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white border-b border-[#d8dee6] ${className}`}
+      className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white border-b border-card-border ${className}`}
       role="banner"
     >
       {/* Left section: logo + title/subtitle */}

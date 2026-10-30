@@ -20,7 +20,7 @@ interface DropdownContextValue {
 
 const DropdownContext = createContext<DropdownContextValue | null>(null);
 
-function useDropdown() {
+export function useDropdown() {
   const context = useContext(DropdownContext);
   if (!context) {
     throw new Error('DropdownMenu components must be used within DropdownMenu');
@@ -173,6 +173,8 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
     if (!open) return null;
 
     const alignClasses = align === 'right' ? 'right-0 origin-top-right' : 'left-0 origin-top-left';
+    const roundedClass = className.includes('rounded-') ? '' : 'rounded-xl';
+    const borderClass = className.includes('border-') ? '' : 'border-neutral-200/90 dark:border-neutral-800';
 
     return (
       <div
@@ -183,7 +185,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
         }}
         role="menu"
         aria-orientation="vertical"
-        className={`absolute z-50 mt-2 min-w-[12rem] rounded-md border border-[#d8dee6] bg-white p-1 shadow-lg focus:outline-none ${alignClasses} ${className}`}
+        className={`absolute z-50 mt-2 min-w-[12rem] bg-white dark:bg-neutral-900 p-1.5 shadow-xl shadow-black/8 focus:outline-none border ${borderClass} ${roundedClass} ${alignClasses} ${className}`}
         {...props}
       >
         {children}
@@ -197,22 +199,38 @@ export interface DropdownMenuItemProps extends ButtonHTMLAttributes<HTMLButtonEl
   children: ReactNode;
   icon?: ReactNode | undefined;
   variant?: ('default' | 'danger') | undefined;
+  href?: string | undefined;
 }
 
 export const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemProps>(
-  ({ children, icon, variant = 'default', className = '', onClick, disabled, ...props }, ref) => {
+  ({ children, icon, variant = 'default', className = '', onClick, disabled, href, ...props }, ref) => {
     const { setOpen } = useDropdown();
 
-    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => {
       if (disabled) return;
-      onClick?.(e);
+      onClick?.(e as React.MouseEvent<HTMLButtonElement>);
       setOpen(false);
     };
 
     const variantStyles =
       variant === 'danger'
-        ? 'text-danger hover:bg-danger-muted focus:bg-danger-muted'
-        : 'text-neutral-700 hover:text-neutral-900 hover:bg-primary/10 focus:bg-primary/10 focus:text-neutral-900';
+        ? 'text-red-600 dark:text-red-400 bg-red-50 hover:bg-red-100/80 dark:bg-red-950/40 dark:hover:bg-red-900/50 rounded-xl font-medium'
+        : 'text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100/70 dark:hover:bg-neutral-800 rounded-lg font-normal';
+
+    if (href) {
+      return (
+        <a
+          href={disabled ? undefined : href}
+          role="menuitem"
+          aria-disabled={disabled ? true : undefined}
+          onClick={handleClick}
+          className={`flex w-full items-center gap-3 px-3 py-2.5 text-sm transition-colors cursor-pointer select-none disabled:opacity-40 disabled:pointer-events-none focus:outline-none ${variantStyles} ${className}`}
+        >
+          {icon && <span className="flex-shrink-0 text-neutral-500 dark:text-neutral-400">{icon}</span>}
+          <span className="flex-1 text-left">{children}</span>
+        </a>
+      );
+    }
 
     return (
       <button
@@ -221,10 +239,10 @@ export const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemPr
         role="menuitem"
         disabled={disabled}
         onClick={handleClick}
-        className={`flex w-full items-center gap-2.5 rounded-sm px-2.5 py-2 text-xs font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none focus:outline-none ${variantStyles} ${className}`}
+        className={`flex w-full items-center gap-3 px-3 py-2.5 text-sm transition-colors cursor-pointer select-none disabled:opacity-40 disabled:pointer-events-none focus:outline-none ${variantStyles} ${className}`}
         {...props}
       >
-        {icon && <span className="flex-shrink-0 text-neutral-500">{icon}</span>}
+        {icon && <span className="flex-shrink-0 text-neutral-500 dark:text-neutral-400">{icon}</span>}
         <span className="flex-1 text-left">{children}</span>
       </button>
     );
