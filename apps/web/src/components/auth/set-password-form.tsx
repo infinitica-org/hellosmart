@@ -121,14 +121,25 @@ export function SetPasswordForm({
         }
       } else {
         // Default API request
-        const response = await fetch('/api/auth/set-password', {
+        const targetUrl = token
+          ? '/api/auth/invitations/accept'
+          : '/api/auth/password/change';
+
+        const payload = token
+          ? { token, password: newPassword }
+          : {
+              currentPassword: requireCurrentPassword ? currentPassword : undefined,
+              newPassword,
+            };
+
+        const response = await fetch(targetUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            token,
-            currentPassword: requireCurrentPassword ? currentPassword : undefined,
-            newPassword,
-          }),
+          headers: {
+            'Content-Type': 'application/json',
+            'X-HS-CSRF': '1',
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload),
         });
 
         const data = await response.json().catch(() => null);
