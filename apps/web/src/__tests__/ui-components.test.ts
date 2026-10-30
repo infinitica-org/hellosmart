@@ -141,4 +141,30 @@ describe('@hs/ui shared components export contract', () => {
     expect(typeof UI.cn).toBe('function');
     expect(UI.cn('px-4', undefined, 'py-2', false, 'text-sm')).toBe('px-4 py-2 text-sm');
   });
+
+  it('renders company dashboard with "Create Assessment" pointing to /company/assessments (BUG-10)', async () => {
+    const React = await import('react');
+    const { default: CompanyDashboardPage } = await import('../app/(company)/company/page');
+    const pageElement = CompanyDashboardPage();
+    expect(pageElement).toBeDefined();
+
+    const children = React.Children.toArray(pageElement.props.children);
+    const card = children.find(
+      (child: any) =>
+        child?.props?.children &&
+        React.Children.toArray(child.props.children).some(
+          (c: any) => c?.props?.title === 'No assessments created yet',
+        ),
+    ) as any;
+    expect(card).toBeDefined();
+
+    const emptyState = React.Children.toArray(card.props.children).find(
+      (c: any) => c?.props?.title === 'No assessments created yet',
+    ) as any;
+    expect(emptyState).toBeDefined();
+    expect(emptyState.props.action).toEqual({
+      label: 'Create Assessment',
+      href: '/company/assessments',
+    });
+  });
 });

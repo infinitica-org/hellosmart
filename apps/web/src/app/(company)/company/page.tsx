@@ -1,5 +1,6 @@
 import React from 'react';
-import { PageHeader, EmptyState, StatCard, Card, Alert } from '@hs/ui';
+import Link from 'next/link';
+import { PageHeader, EmptyState, StatCard, Card, Alert, Button } from '@hs/ui';
 
 export default function CompanyDashboardPage() {
   return (
@@ -37,11 +38,16 @@ export default function CompanyDashboardPage() {
       <Card className="p-6 sm:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-base font-medium text-neutral-900">Live Assessments</h2>
+            <h2 className="text-base font-semibold text-neutral-900">Live Assessments</h2>
             <p className="text-xs text-neutral-500 font-normal mt-0.5">
               Assigned templates are private to your organization (BR-02).
             </p>
           </div>
+          <Link href="/company/assessments">
+            <Button variant="outline" size="sm">
+              Manage Assessments →
+            </Button>
+          </Link>
         </div>
 
         {/* Clean Empty State */}
@@ -51,7 +57,7 @@ export default function CompanyDashboardPage() {
           data-testid="company-empty-state"
           action={{
             label: 'Create Assessment',
-            href: '/company',
+            href: '/company/assessments',
           }}
         />
       </Card>
