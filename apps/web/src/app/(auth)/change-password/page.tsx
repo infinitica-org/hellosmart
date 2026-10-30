@@ -65,14 +65,26 @@ function ChangePasswordContent() {
         />
 
         {/* Footer */}
-        <Footer
-          variant="auth"
-          showLogo={false}
-          showPoweredBy={false}
-          authPrompt="Remember your password?"
-          authActionText="Sign In"
-          authActionHref="/login"
-        />
+        <div className="text-center space-y-3">
+          <p className="text-xs text-neutral-500">
+            Forgot your current password?{' '}
+            <Link
+              href="/login?help=forgot-password"
+              className="text-primary hover:text-primary-hover font-medium underline underline-offset-2"
+            >
+              Get reset help
+            </Link>
+          </p>
+
+          <Footer
+            variant="auth"
+            showLogo={false}
+            showPoweredBy={false}
+            authPrompt="Remember your password?"
+            authActionText="Sign In"
+            authActionHref="/login"
+          />
+        </div>
       </div>
     </main>
   );

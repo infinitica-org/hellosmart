@@ -47,6 +47,11 @@ function LoginForm() {
   const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaError, setMfaError] = useState<string | null>(null);
 
+  // Forgot password modal state (BUG-06)
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(
+    () => searchParams?.get('help') === 'forgot-password'
+  );
+
   const executeRedirect = (role?: string, portal?: string) => {
     const dest = getSafeRedirectUrl(from, role || '', portal);
     window.location.href = dest;
@@ -435,12 +440,13 @@ function LoginForm() {
                   <label htmlFor="password" className="block text-xs font-medium text-neutral-700">
                     Password
                   </label>
-                  <Link
-                    href="/change-password"
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPasswordOpen(true)}
                     className="text-xs text-primary hover:text-primary-hover font-medium transition-colors"
                   >
                     Forgot password?
-                  </Link>
+                  </button>
                 </div>
                 <PasswordField
                   id="password"
@@ -640,6 +646,61 @@ function LoginForm() {
             </Button>
           </DialogFooter>
         </form>
+      </Dialog>
+
+      {/* Forgot Password Guidance Dialog (BUG-06) */}
+      <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
+        <DialogContent className="max-w-md w-full p-6 space-y-4">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-neutral-900">
+              Reset Your Password
+            </DialogTitle>
+            <DialogDescription className="text-xs text-neutral-500">
+              HelloSmart accounts are provisioned and secured by your organization.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 text-sm text-neutral-700 bg-neutral-50 p-4 rounded-xl border border-neutral-200/80">
+            {email && (
+              <p className="text-xs font-semibold text-neutral-900 pb-1 border-b border-neutral-200">
+                Account: <span className="font-mono text-primary font-normal">{email}</span>
+              </p>
+            )}
+            <div className="space-y-2 text-xs leading-relaxed">
+              <p>
+                <strong>For Candidates:</strong> Contact the hiring manager or company administrator who invited you. They can instantly resend your invitation with a fresh password setup link.
+              </p>
+              <p>
+                <strong>For Company Administrators:</strong> Reach out to your primary account owner or contact HelloSmart Support at{' '}
+                <a href="mailto:support@hellosmart.ai" className="text-primary underline font-medium">
+                  support@hellosmart.ai
+                </a>.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-primary/5 rounded-xl border border-primary/20 text-xs text-neutral-700 space-y-1">
+            <span className="font-semibold block text-primary">Already have an invitation or reset token?</span>
+            <Link
+              href={email ? `/accept-invite?email=${encodeURIComponent(email)}` : '/accept-invite'}
+              onClick={() => setIsForgotPasswordOpen(false)}
+              className="inline-flex items-center text-primary font-medium hover:underline pt-0.5"
+            >
+              Enter invitation token to set new password &rarr;
+            </Link>
+          </div>
+
+          <DialogFooter className="pt-2 flex justify-end">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => setIsForgotPasswordOpen(false)}
+              className="text-xs"
+            >
+              Back to Sign In
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </main>
   );
