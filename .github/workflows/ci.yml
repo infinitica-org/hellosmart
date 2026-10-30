@@ -119,6 +119,16 @@ jobs:
       DATABASE_URL: postgres://hs_app:hs_app_local@localhost:5432/hellosmart
       DATABASE_PLATFORM_URL: postgres://hs_platform:hs_platform_local@localhost:5432/hellosmart
       REDIS_URL: redis://localhost:6379
+      COOKIE_NAME: hs_session
+      COOKIE_SECRET: ci-only-not-a-secret-cookie-min-32chars!
+      SESSION_SECRET: ci-only-not-a-secret-session-min-32bytes!
+      PROXY_TOKEN_SIGNING_KEY: ci-only-not-a-secret-proxy-min-32chars!
+      SEED_DEFAULT_PASSWORD: ci-only-not-a-secret-SeedPassword123!
+      PLATFORM_ADMIN_MFA_SECRET: JBSWY3DPEHPK3PXP
+      SEED_PLATFORM_ADMIN_TOTP_SECRET: JBSWY3DPEHPK3PXP
+      MFA_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      MFA_ENCRYPTION_KEY_ID: k1
+      HIBP_FAIL_OPEN: 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
