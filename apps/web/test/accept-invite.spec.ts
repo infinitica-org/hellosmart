@@ -288,6 +288,18 @@ describe('S0-T08-2: Frontend Invitation Acceptance & Password Reset', () => {
 
       expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/accept-invite');
     });
+
+    it('persists and restores invite token across page reloads via session storage (BUG-13)', async () => {
+      const { getStoredInviteToken, setStoredInviteToken } = await import('../src/app/(auth)/accept-invite/page');
+
+      // Set token when arrived from invitation link
+      setStoredInviteToken('test_invite_token_reload_123');
+      expect(getStoredInviteToken()).toBe('test_invite_token_reload_123');
+
+      // Clear token upon successful completion
+      setStoredInviteToken(null);
+      expect(getStoredInviteToken()).toBeNull();
+    });
   });
 
   describe('6. API Client — Session Lifecycle (logout, changePassword, getMe)', () => {
