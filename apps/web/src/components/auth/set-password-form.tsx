@@ -51,7 +51,7 @@ export function SetPasswordForm({
   title = 'Set Your Password',
   subtitle = 'Choose a strong password to secure your HelloSmart account.',
   submitLabel = 'Save Password',
-  redirectTo = '/login',
+  redirectTo = '/login?message=password_set',
   onSubmitPassword,
   onSuccess,
   onError,

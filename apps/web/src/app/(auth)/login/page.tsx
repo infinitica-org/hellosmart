@@ -325,6 +325,29 @@ function LoginForm() {
           </p>
         </div>
 
+        {/* Password Set / Reset Confirmation Notice (BUG-14) */}
+        {(searchParams?.get('message') === 'password_set' ||
+          searchParams?.get('message') === 'password_changed') && (
+          <Alert
+            variant="success"
+            data-testid="password-set-success-alert"
+            className="text-xs animate-fadeIn"
+          >
+            Your password has been set successfully. Please sign in with your new password.
+          </Alert>
+        )}
+
+        {/* Logged Out Notice */}
+        {searchParams?.get('message') === 'logged_out' && (
+          <Alert
+            variant="info"
+            data-testid="logged-out-alert"
+            className="text-xs animate-fadeIn"
+          >
+            You have been successfully signed out.
+          </Alert>
+        )}
+
         {/* Session Expired Notice (S0-T16-2) */}
         {searchParams?.get('reason') === 'session-expired' && (
           <Alert

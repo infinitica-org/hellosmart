@@ -40,7 +40,7 @@ function ChangePasswordContent() {
               : 'Choose a strong password to protect your HelloSmart account.'
           }
           submitLabel={isRequired ? 'Set New Password' : 'Update Password'}
-          redirectTo="/login"
+          redirectTo="/login?message=password_set"
           onSubmitPassword={async ({ currentPassword, newPassword }) => {
             if (!currentPassword) {
               return { success: false, errorMessage: 'Please enter your current password.' };
