@@ -73,5 +73,15 @@ export async function proxyAuthedApiRequest(
 
   forwardApiSessionCookie(apiRes, res);
 
+  if (
+    apiRes.ok &&
+    (upstreamPath === '/auth/password/change' ||
+      upstreamPath.startsWith('/auth/invitations/accept') ||
+      upstreamPath === '/auth/logout' ||
+      upstreamPath === '/auth/logout-all')
+  ) {
+    res.cookies.delete('hs_must_reset');
+  }
+
   return res;
 }

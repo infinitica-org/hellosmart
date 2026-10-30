@@ -163,6 +163,12 @@ export function SetPasswordForm({
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+
+      // Clear forced password reset flag now that password has been set/changed
+      if (typeof document !== 'undefined') {
+        document.cookie = 'hs_must_reset=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax;';
+      }
+
       onSuccess?.();
 
       if (redirectTo) {

@@ -171,6 +171,13 @@ function LoginForm() {
         return;
       }
 
+      // If password reset required on first login (BR-24)
+      const mustReset = Boolean(data?.mustResetPassword || data?.user?.mustResetPassword);
+      if (mustReset) {
+        window.location.href = '/change-password?required=true';
+        return;
+      }
+
       // Successful login redirect based on role
       executeRedirect(data?.role, data?.portal);
     } catch (err) {
@@ -264,6 +271,14 @@ function LoginForm() {
       // Successful MFA completion
       setPreAuthToken(null);
       setIsMfaOpen(false);
+
+      // If password reset required on first login (BR-24)
+      const mustReset = Boolean(data?.mustResetPassword || data?.user?.mustResetPassword);
+      if (mustReset) {
+        window.location.href = '/change-password?required=true';
+        return;
+      }
+
       executeRedirect(data?.role, data?.portal);
     } catch {
       setMfaLoading(false);

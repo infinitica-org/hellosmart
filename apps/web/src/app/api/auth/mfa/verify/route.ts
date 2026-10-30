@@ -86,6 +86,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (apiRes.ok) {
         const res = NextResponse.json(data, { status: 200 });
         forwardApiSessionCookie(apiRes, res);
+
+        const mustReset = Boolean(data?.mustResetPassword || data?.user?.mustResetPassword);
+        if (mustReset) {
+          res.cookies.set('hs_must_reset', 'true', {
+            path: '/',
+            httpOnly: false,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+          });
+        } else {
+          res.cookies.delete('hs_must_reset');
+        }
+
         return res;
       }
 

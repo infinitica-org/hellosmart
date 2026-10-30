@@ -130,6 +130,19 @@ describe('Next.js Route Protection Middleware', () => {
     expect(res.status).toBe(200);
   });
 
+  it('enforces BR-24: forces password reset when hs_must_reset=true and redirects to /change-password', async () => {
+    const req = new NextRequest('http://localhost:3000/candidate', {
+      headers: {
+        cookie: 'hs_session=sess_123_candidate; hs_must_reset=true',
+      },
+    });
+
+    const res = await middleware(req);
+    expect(res.status).toBe(307);
+    const location = res.headers.get('location');
+    expect(location).toBe('http://localhost:3000/change-password?required=true');
+  });
+
   it('safety check: does not crash when backend is offline or restarting in dev', async () => {
     const req = new NextRequest('http://localhost:3000/candidate', {
       headers: {

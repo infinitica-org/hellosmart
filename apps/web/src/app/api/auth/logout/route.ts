@@ -14,5 +14,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   res.cookies.delete('hs_session');
   res.cookies.delete('hs_role');
+  res.cookies.delete('hs_must_reset');
   return res;
 }
