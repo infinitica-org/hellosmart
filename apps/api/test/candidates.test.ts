@@ -114,50 +114,6 @@ function createMockDbPool() {
           rowCount: 1,
         };
       }
-
-      if (q.includes('FROM app.users u') && q.includes('JOIN app.organizations o')) {
-        const userId = params?.[0] as string;
-        const user = users.get(userId);
-        if (user) {
-          return {
-            rows: [
-              {
-                id: user.id,
-                name: user.name,
-                status: user.status,
-                created_at: user.created_at,
-                org_name: 'Acme Simulation Academy',
-              },
-            ],
-            rowCount: 1,
-          };
-        }
-        return { rows: [], rowCount: 0 };
-      }
-
-      if (q.includes('UPDATE app.users') && q.includes("SET status = 'active'")) {
-        const userId = params?.[0] as string;
-        const user = users.get(userId);
-        if (user) {
-          user.status = 'active';
-        }
-        return { rows: [], rowCount: 1 };
-      }
-
-      if (q.includes('FROM audit.events') && q.includes('actor_id = $1')) {
-        const actorId = params?.[0] as string;
-        const matching = auditEvents.filter(
-          (e) => (Array.isArray(e) ? e[0] === actorId : e.actorId === actorId),
-        );
-        return {
-          rows: matching.map((e) => ({
-            action: Array.isArray(e) ? e[3] : e.action,
-            at: new Date(),
-          })),
-          rowCount: matching.length,
-        };
-      }
-
       if (q.includes('INSERT INTO app.users')) {
         const id = params?.[0] as string;
         const org_id = params?.[1] as string;
@@ -452,84 +408,7 @@ describe('Candidates API & Mailpit Integration', () => {
     expect(body.length).toBeGreaterThanOrEqual(1);
     expect(body.some((c: any) => c.email === 'candidate.listed@example.com')).toBe(true);
   });
-
-  it('6. Candidate assignments lifecycle: list, start with consent, and submit (BUG-08)', async () => {
-    const candidateUserId = crypto.randomUUID();
-    mockPool.users.set(candidateUserId, {
-      id: candidateUserId,
-      org_id: orgId,
-      email: 'student.portal@example.com',
-      name: 'Portal Candidate',
-      role: 'candidate',
-      password_hash: null,
-      must_reset_password: false,
-      status: 'invited',
-      created_at: new Date(),
-    });
-
-    const { rawToken } = await sessionService.createSession({
-      userId: candidateUserId,
-      orgId,
-      email: 'student.portal@example.com',
-      role: 'candidate',
-      portal: 'candidate',
-    });
-
-    // 1. GET /candidate/assignments
-    const listRes = await app.inject({
-      method: 'GET',
-      url: '/api/v1/candidate/assignments',
-      headers: {
-        cookie: `hs_session=${rawToken}`,
-      },
-    });
-
-    expect(listRes.statusCode).toBe(200);
-    const assignments = JSON.parse(listRes.body);
-    expect(Array.isArray(assignments)).toBe(true);
-    expect(assignments.length).toBe(1);
-    expect(assignments[0].status).toBe('ready');
-    expect(assignments[0].companyName).toBe('Acme Simulation Academy');
-
-    // 2. POST /candidate/assignments/:id/start (BR-12 consent required)
-    const startRes = await app.inject({
-      method: 'POST',
-      url: `/api/v1/candidate/assignments/${candidateUserId}/start`,
-      headers: {
-        cookie: `hs_session=${rawToken}`,
-        'x-hs-csrf': '1',
-        origin: 'http://localhost:3000',
-      },
-      payload: {
-        consent: {
-          textVersion: 'v1.0',
-          acceptedAt: new Date().toISOString(),
-        },
-      },
-    });
-
-    expect(startRes.statusCode).toBe(200);
-    const started = JSON.parse(startRes.body);
-    expect(started.status).toBe('in_progress');
-
-    // 3. POST /candidate/assignments/:id/submit
-    const submitRes = await app.inject({
-      method: 'POST',
-      url: `/api/v1/candidate/assignments/${candidateUserId}/submit`,
-      headers: {
-        cookie: `hs_session=${rawToken}`,
-        'x-hs-csrf': '1',
-        origin: 'http://localhost:3000',
-      },
-      payload: {},
-    });
-
-    expect(submitRes.statusCode).toBe(200);
-    const submitted = JSON.parse(submitRes.body);
-    expect(submitted.status).toBe('submitted');
-  });
-
-  it('7. GET /candidates/metrics returns real pipeline counts and quotas (BUG-11)', async () => {
+  it('6. GET /candidates/metrics returns real pipeline counts and quotas (BUG-11)', async () => {
     const { rawToken } = await sessionService.createSession({
       userId: companyAdminId,
       orgId,

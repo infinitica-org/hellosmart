@@ -56,28 +56,3 @@ export const CandidateDtoSchema = z.object({
   createdAt: z.string().datetime(),
 });
 export type CandidateDto = z.infer<typeof CandidateDtoSchema>;
-
-export const CandidateAssignmentDtoSchema = z.object({
-  id: z.string(),
-  assessmentId: z.string(),
-  title: z.string().min(1),
-  companyName: z.string().min(1),
-  status: z.enum(['ready', 'in_progress', 'submitted']),
-  durationMinutes: z.number().int().positive(),
-  mode: z.enum(['cloud', 'chat']).default('cloud'),
-  aiEnabled: z.boolean().default(true),
-  pauseTimerOnDisconnect: z.boolean().default(false),
-  invitedAt: z.string(),
-  startedAt: z.string().nullable().optional(),
-  submittedAt: z.string().nullable().optional(),
-});
-export type CandidateAssignmentDto = z.infer<typeof CandidateAssignmentDtoSchema>;
-
-export const StartAssignmentDtoSchema = z.object({
-  consent: z.object({
-    textVersion: z.string().min(1),
-    acceptedAt: z.string(),
-  }),
-});
-export type StartAssignmentDto = z.infer<typeof StartAssignmentDtoSchema>;
-

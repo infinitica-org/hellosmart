@@ -3,7 +3,6 @@ import type {
   AcceptInvitationResponse,
   ActiveSession,
   ActiveSessionsResponse,
-  CandidateAssignmentDto,
   CandidateDto,
   ChangePasswordRequest,
   CompanyMetricsDto,
@@ -149,17 +148,6 @@ export function resolveBrowserAuthUrl(apiV1Path: string): string {
   }
   if (path === '/candidates') {
     return '/api/company/candidates';
-  }
-  if (path === '/candidate/assignments') {
-    return '/api/candidate/assignments';
-  }
-  const candidateStartMatch = /^\/candidate\/assignments\/([^/]+)\/start$/.exec(path);
-  if (candidateStartMatch?.[1]) {
-    return `/api/candidate/assignments/${encodeURIComponent(candidateStartMatch[1])}/start`;
-  }
-  const candidateSubmitMatch = /^\/candidate\/assignments\/([^/]+)\/submit$/.exec(path);
-  if (candidateSubmitMatch?.[1]) {
-    return `/api/candidate/assignments/${encodeURIComponent(candidateSubmitMatch[1])}/submit`;
   }
   const invitationTokenMatch = /^\/auth\/invitations\/([^/]+)$/.exec(path);
   if (invitationTokenMatch?.[1]) {
@@ -640,126 +628,6 @@ export async function inviteCandidate(
 }
 
 /**
- * Lists assigned assessments for the currently logged-in candidate via GET /api/v1/candidate/assignments.
- */
-export async function listCandidateAssignments(
-  fetchFn: typeof fetch = fetch,
-): Promise<CandidateAssignmentDto[]> {
-  const url = resolveBrowserAuthUrl('/candidate/assignments');
-  const res = await fetchFn(url, {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-    },
-    credentials: 'include',
-  });
-
-  if (res.status === 401) {
-    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
-  }
-
-  if (res.status === 429) {
-    throw new RateLimitedError();
-  }
-
-  if (!res.ok) {
-    let errorDetail = 'Failed to fetch candidate assignments';
-    try {
-      const errJson = await res.json();
-      errorDetail = errJson.detail || errorDetail;
-    } catch {
-      // ignore
-    }
-    throw new ApiError(res.status, 'API_ERROR', errorDetail);
-  }
-
-  return (await res.json()) as CandidateAssignmentDto[];
-}
-
-/**
- * Starts an assessment after candidate accepts recording consent (BR-12) via POST /api/v1/candidate/assignments/:id/start.
- */
-export async function startCandidateAssignment(
-  id: string,
-  consent: { textVersion: string; acceptedAt: string },
-  fetchFn: typeof fetch = fetch,
-): Promise<CandidateAssignmentDto> {
-  const url = resolveBrowserAuthUrl(`/candidate/assignments/${encodeURIComponent(id)}/start`);
-  const res = await fetchFn(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE,
-    },
-    body: JSON.stringify({ consent }),
-    credentials: 'include',
-  });
-
-  if (res.status === 401) {
-    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
-  }
-
-  if (res.status === 429) {
-    throw new RateLimitedError();
-  }
-
-  if (!res.ok) {
-    let errorDetail = 'Failed to start assessment';
-    try {
-      const errJson = await res.json();
-      errorDetail = errJson.detail || errorDetail;
-    } catch {
-      // ignore
-    }
-    throw new ApiError(res.status, 'API_ERROR', errorDetail);
-  }
-
-  return (await res.json()) as CandidateAssignmentDto;
-}
-
-/**
- * Submits candidate assessment for AI review (BR-18, BR-20) via POST /api/v1/candidate/assignments/:id/submit.
- */
-export async function submitCandidateAssignment(
-  id: string,
-  fetchFn: typeof fetch = fetch,
-): Promise<CandidateAssignmentDto> {
-  const url = resolveBrowserAuthUrl(`/candidate/assignments/${encodeURIComponent(id)}/submit`);
-  const res = await fetchFn(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE,
-    },
-    body: JSON.stringify({}),
-    credentials: 'include',
-  });
-
-  if (res.status === 401) {
-    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
-  }
-
-  if (res.status === 429) {
-    throw new RateLimitedError();
-  }
-
-  if (!res.ok) {
-    let errorDetail = 'Failed to submit assessment';
-    try {
-      const errJson = await res.json();
-      errorDetail = errJson.detail || errorDetail;
-    } catch {
-      // ignore
-    }
-    throw new ApiError(res.status, 'API_ERROR', errorDetail);
-  }
-
-  return (await res.json()) as CandidateAssignmentDto;
-}
-
-/**
  * Fetches company assessment metrics via GET /api/v1/candidates/metrics.
  */
 export async function getCompanyMetrics(
@@ -795,6 +663,4 @@ export async function getCompanyMetrics(
 
   return (await res.json()) as CompanyMetricsDto;
 }
-
-
 
