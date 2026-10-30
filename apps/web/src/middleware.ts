@@ -30,6 +30,10 @@ export function buildCspDirectives(nonce: string): string {
   if (connectOrigins.size === 0) {
     connectOrigins.add('http://localhost:4000');
   }
+  if (isDev) {
+    connectOrigins.add('http://localhost:4000');
+    connectOrigins.add('http://127.0.0.1:4000');
+  }
 
   const originsString = Array.from(connectOrigins).join(' ');
 

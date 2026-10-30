@@ -81,9 +81,7 @@ function AcceptInviteContent(): React.JSX.Element {
   return (
     <>
       {/* Strict browser referrer policy for the invitation page */}
-      <head>
-        <meta name="referrer" content="no-referrer" />
-      </head>
+      <meta name="referrer" content="no-referrer" />
 
       <div className="w-full max-w-md mx-auto">
         <div className="bg-white px-6 py-8 shadow-xl ring-1 ring-slate-900/5 sm:rounded-2xl sm:px-10">

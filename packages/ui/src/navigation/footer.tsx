@@ -339,9 +339,9 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
           </div>
 
           <div className="flex items-center gap-4">
-            {links?.map((link) => (
+            {links?.map((link, idx) => (
               <a
-                key={link.href}
+                key={`${link.href}-${idx}`}
                 href={link.href}
                 target={link.external ? '_blank' : undefined}
                 rel={link.external ? 'noopener noreferrer' : undefined}
@@ -431,8 +431,8 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
                     {col.title}
                   </h4>
                   <ul className="space-y-2 text-sm">
-                    {col.links.map((link) => (
-                      <li key={link.href}>
+                    {col.links.map((link, linkIdx) => (
+                      <li key={`${col.title}-${link.href}-${link.label || linkIdx}`}>
                         <a
                           href={link.href}
                           target={link.external ? '_blank' : undefined}
@@ -453,9 +453,9 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
           <div className="pt-8 border-t border-neutral-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-400">
             <span>{finalCopyright}</span>
             <div className="flex items-center gap-4">
-              {links?.slice(0, 3).map((link) => (
+              {links?.slice(0, 3).map((link, idx) => (
                 <a
-                  key={link.href}
+                  key={`${link.href}-${idx}`}
                   href={link.href}
                   className="hover:text-neutral-700 transition-colors"
                 >

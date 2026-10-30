@@ -201,11 +201,12 @@ export class ProblemDetailsFilter implements ExceptionFilter {
         };
       }
     } else {
+      console.error('[ProblemDetailsFilter] Uncaught exception:', exception);
       problem = {
         type: 'https://hellosmart.ai/problems/internal_error',
         title: 'Internal Server Error',
         status: 500,
-        detail: 'An unexpected error occurred',
+        detail: 'An unexpected error occurred: ' + (exception instanceof Error ? exception.message : String(exception)),
         code: 'INTERNAL_ERROR',
         requestId,
       };

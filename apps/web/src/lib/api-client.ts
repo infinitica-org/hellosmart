@@ -105,8 +105,8 @@ export interface UserMe {
 export function getApiBaseUrl(): string {
   const raw =
     typeof window !== 'undefined'
-      ? process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000'
-      : process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000';
+      ? process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+      : process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const trimmed = raw.replace(/\/$/, '');
   return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
 }
@@ -137,6 +137,13 @@ export function resolveBrowserAuthUrl(apiV1Path: string): string {
   if (path === '/auth/password/change') {
     return '/api/auth/password/change';
   }
+  if (path === '/auth/invitations/accept') {
+    return '/api/auth/invitations/accept';
+  }
+  const invitationTokenMatch = /^\/auth\/invitations\/([^/]+)$/.exec(path);
+  if (invitationTokenMatch?.[1]) {
+    return `/api/auth/invitations/${encodeURIComponent(invitationTokenMatch[1])}`;
+  }
   if (path.startsWith('/auth/mfa/')) {
     return `/api/auth${path.slice('/auth'.length)}`;
   }
@@ -156,8 +163,7 @@ export async function validateInvitation(
   token: string,
   fetchFn: typeof fetch = fetch,
 ): Promise<InvitationDetailsResponse> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/auth/invitations/${encodeURIComponent(token)}`;
+  const url = resolveBrowserAuthUrl(`/auth/invitations/${encodeURIComponent(token)}`);
 
   const res = await fetchFn(url, {
     method: 'GET',
@@ -196,8 +202,7 @@ export async function acceptInvitation(
   data: AcceptInvitationRequest,
   fetchFn: typeof fetch = fetch,
 ): Promise<AcceptInvitationResponse> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/auth/invitations/accept`;
+  const url = resolveBrowserAuthUrl('/auth/invitations/accept');
 
   const res = await fetchFn(url, {
     method: 'POST',
