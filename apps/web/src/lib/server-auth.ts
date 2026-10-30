@@ -43,6 +43,33 @@ export async function requirePlatformAdmin(req: NextRequest): Promise<AuthCheckR
     };
   }
 
+  // Fast-path for testing & local development fixtures in DEV_SESSION_STORE
+  if (
+    (process.env.NODE_ENV === 'test' ||
+      (process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_ACCOUNTS === 'true')) &&
+    DEV_SESSION_STORE.has(sessionToken)
+  ) {
+    const devSession = DEV_SESSION_STORE.get(sessionToken)!;
+    if (devSession.role === 'platform_admin') {
+      return {
+        authorized: true,
+        session: { role: devSession.role, email: devSession.email, id: sessionToken },
+      };
+    }
+    return {
+      authorized: false,
+      errorResponse: NextResponse.json(
+        {
+          type: 'about:blank',
+          title: 'Forbidden',
+          status: 403,
+          detail: 'Platform Administrator role required to access this resource.',
+        },
+        { status: 403 }
+      ),
+    };
+  }
+
   const apiV1Base = resolveServerApiV1Base();
 
   // 1. Try real backend validation first
