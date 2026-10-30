@@ -131,4 +131,49 @@ export class CandidatesService {
 
     return candidate;
   }
+
+  async list(actor: UserContext): Promise<CandidateDto[]> {
+    const orgId = actor.orgId;
+    if (!orgId) {
+      throw problem({
+        title: 'Forbidden',
+        status: 403,
+        detail: 'User does not belong to an organization',
+        code: 'TENANT_REQUIRED',
+      });
+    }
+
+    const client = await this.pool.connect();
+    try {
+      return await withOrg(client, orgId, async (tx) => {
+        const res = await tx.query<{
+          id: string;
+          name: string;
+          email: string;
+          status: 'invited' | 'active' | 'deleted';
+          counted_against_cap_at: Date | null;
+          created_at: Date;
+        }>(
+          `SELECT id, name, email, status, counted_against_cap_at, created_at
+           FROM app.users
+           WHERE org_id = $1 AND role = 'candidate' AND status != 'deleted'
+           ORDER BY created_at DESC`,
+          [orgId],
+        );
+
+        return res.rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          email: row.email,
+          status: row.status,
+          countedAgainstCapAt: row.counted_against_cap_at
+            ? row.counted_against_cap_at.toISOString()
+            : null,
+          createdAt: row.created_at.toISOString(),
+        }));
+      });
+    } finally {
+      client.release();
+    }
+  }
 }

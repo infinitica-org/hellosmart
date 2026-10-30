@@ -3,7 +3,9 @@ import type {
   AcceptInvitationResponse,
   ActiveSession,
   ActiveSessionsResponse,
+  CandidateDto,
   ChangePasswordRequest,
+  CreateCandidateDto,
   InvitationDetailsResponse,
   SimpleSuccessResponse,
 } from '@hs/contracts';
@@ -139,6 +141,9 @@ export function resolveBrowserAuthUrl(apiV1Path: string): string {
   }
   if (path === '/auth/invitations/accept') {
     return '/api/auth/invitations/accept';
+  }
+  if (path === '/candidates') {
+    return '/api/company/candidates';
   }
   const invitationTokenMatch = /^\/auth\/invitations\/([^/]+)$/.exec(path);
   if (invitationTokenMatch?.[1]) {
@@ -535,3 +540,86 @@ export async function getMe(
 
   return (await res.json()) as UserMe;
 }
+
+/**
+ * Lists candidates for the current company organization via GET /api/v1/candidates.
+ */
+export async function listCandidates(
+  fetchFn: typeof fetch = fetch,
+): Promise<CandidateDto[]> {
+  const url = resolveBrowserAuthUrl('/candidates');
+  const res = await fetchFn(url, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+    credentials: 'include',
+  });
+
+  if (res.status === 401) {
+    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
+  }
+
+  if (res.status === 429) {
+    throw new RateLimitedError();
+  }
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to fetch candidates';
+    try {
+      const errJson = await res.json();
+      errorDetail = errJson.detail || errorDetail;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, 'API_ERROR', errorDetail);
+  }
+
+  return (await res.json()) as CandidateDto[];
+}
+
+/**
+ * Invites a new candidate via POST /api/v1/candidates (BR-24).
+ */
+export async function inviteCandidate(
+  input: CreateCandidateDto,
+  fetchFn: typeof fetch = fetch,
+): Promise<CandidateDto> {
+  const url = resolveBrowserAuthUrl('/candidates');
+  const res = await fetchFn(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE,
+    },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  });
+
+  if (res.status === 401) {
+    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
+  }
+
+  if (res.status === 409) {
+    throw new ApiError(409, 'CANDIDATE_ALREADY_EXISTS', 'A candidate with this email address has already been invited or registered.');
+  }
+
+  if (res.status === 429) {
+    throw new RateLimitedError();
+  }
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to invite candidate';
+    try {
+      const errJson = await res.json();
+      errorDetail = errJson.detail || errorDetail;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, 'API_ERROR', errorDetail);
+  }
+
+  return (await res.json()) as CandidateDto;
+}
+

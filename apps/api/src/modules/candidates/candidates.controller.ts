@@ -1,12 +1,13 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   Inject,
   Post,
   Req,
 } from '@nestjs/common';
-import { type CreateCandidateDto, CreateCandidateDtoSchema } from '@hs/contracts';
+import { type CreateCandidateDto, CreateCandidateDtoSchema, type CandidateDto } from '@hs/contracts';
 import type { FastifyRequest } from 'fastify';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
@@ -23,6 +24,12 @@ export class CandidatesController {
   constructor(
     @Inject(CandidatesService) private readonly candidatesService: CandidatesService,
   ) {}
+
+  @Get()
+  async list(@Req() request: AuthenticatedRequest): Promise<CandidateDto[]> {
+    const actor = request[REQUEST_USER_KEY];
+    return this.candidatesService.list(actor);
+  }
 
   @Post()
   @HttpCode(201)
