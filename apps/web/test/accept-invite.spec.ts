@@ -257,11 +257,25 @@ describe('S0-T08-2: Frontend Invitation Acceptance & Password Reset', () => {
   });
 
   describe('5. Browser Security & Invariants (Step 5)', () => {
-    it('redirects legacy /set-password route to canonical /accept-invite route', () => {
+    it('redirects legacy /set-password route to canonical /accept-invite route when token exists', async () => {
+      const { resolveSetPasswordRedirect } = await import('../src/app/(auth)/set-password/page');
+
       const searchParams = new URLSearchParams('token=my_secret_token_123');
-      const params = searchParams.toString();
-      const target = params ? `/accept-invite?${params}` : '/accept-invite';
+      const target = resolveSetPasswordRedirect(searchParams);
       expect(target).toBe('/accept-invite?token=my_secret_token_123');
+    });
+
+    it('redirects /set-password to /change-password when token is missing avoiding dead ends (BUG-15)', async () => {
+      const { resolveSetPasswordRedirect } = await import('../src/app/(auth)/set-password/page');
+
+      // Without token, regular
+      expect(resolveSetPasswordRedirect(new URLSearchParams(''))).toBe('/change-password');
+
+      // Without token, required query flag
+      expect(resolveSetPasswordRedirect(new URLSearchParams('required=true'))).toBe('/change-password?required=true');
+
+      // Without token, forced reset cookie flag
+      expect(resolveSetPasswordRedirect(new URLSearchParams(''), true)).toBe('/change-password?required=true');
     });
 
     it('never persists tokens or passwords to browser storage', () => {
