@@ -391,4 +391,49 @@ export class AdminOrganizationsService {
       client.release();
     }
   }
+
+  async listAuditLogs(limit = 100) {
+    const client = await this.pool.connect();
+    try {
+      return await withPlatform(client, async (tx) => {
+        const res = await tx.query<{
+          id: string | number;
+          actor_id: string;
+          actor_role: string;
+          org_id: string | null;
+          action: string;
+          entity: string;
+          entity_id: string | null;
+          before: unknown;
+          after: unknown;
+          ip: string | null;
+          created_at: Date;
+          hash: Buffer;
+        }>(
+          `SELECT id, actor_id, actor_role, org_id, action, entity, entity_id, before, after, ip, created_at, hash
+           FROM audit.events
+           ORDER BY created_at DESC
+           LIMIT $1`,
+          [limit],
+        );
+
+        return res.rows.map((r) => ({
+          id: String(r.id),
+          actorId: r.actor_id,
+          actorRole: r.actor_role,
+          orgId: r.org_id,
+          action: r.action,
+          entity: r.entity,
+          entityId: r.entity_id,
+          before: r.before,
+          after: r.after,
+          ip: r.ip,
+          createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+          hash: r.hash ? (Buffer.isBuffer(r.hash) ? r.hash.toString('hex') : String(r.hash)) : null,
+        }));
+      });
+    } finally {
+      client.release();
+    }
+  }
 }

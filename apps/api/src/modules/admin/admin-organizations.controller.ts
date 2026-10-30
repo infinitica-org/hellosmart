@@ -57,6 +57,11 @@ export class AdminOrganizationsController {
     return await this.orgs.listOrganizations(parsed.data);
   }
 
+  @Get('audit')
+  async listAudit() {
+    return await this.orgs.listAuditLogs();
+  }
+
   @Post()
   @HttpCode(201)
   async provision(
