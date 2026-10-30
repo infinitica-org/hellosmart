@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Pool } from 'pg';
-import type { CreateCandidateDto, CandidateDto, CandidateAssignmentDto } from '@hs/contracts';
+import type { CreateCandidateDto, CandidateDto, CandidateAssignmentDto, CompanyMetricsDto } from '@hs/contracts';
 import { MailService } from '../../common/services/mail.service.js';
 import { problem } from '../../common/errors/app-http.exception.js';
 import type { UserContext } from '../../common/types/user-context.js';
@@ -334,6 +334,69 @@ export class CandidatesService {
 
         const list = await this.listAssignments(actor);
         return list[0]!;
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  async getMetrics(actor: UserContext): Promise<CompanyMetricsDto> {
+    const orgId = actor.orgId;
+    if (!orgId) {
+      throw problem({
+        title: 'Forbidden',
+        status: 403,
+        detail: 'Organization context required',
+        code: 'TENANT_REQUIRED',
+      });
+    }
+
+    const client = await this.pool.connect();
+    try {
+      return await withOrg(client, orgId, async (tx) => {
+        const candidateCountsRes = await tx.query<{
+          total: string | number;
+          active: string | number;
+        }>(
+          `SELECT
+             count(*)::int AS total,
+             count(*) FILTER (WHERE status = 'active')::int AS active
+           FROM app.users
+           WHERE org_id = $1 AND role = 'candidate' AND status != 'deleted'`,
+          [orgId],
+        );
+
+        const invitedCandidates = Number(candidateCountsRes.rows[0]?.total ?? 0);
+        const activeCandidates = Number(candidateCountsRes.rows[0]?.active ?? 0);
+
+        const submissionsRes = await tx.query<{ count: string | number }>(
+          `SELECT count(*)::int AS count
+           FROM audit.events
+           WHERE org_id = $1 AND action = 'assignment.submitted'`,
+          [orgId],
+        );
+        const submissionsToReview = Number(submissionsRes.rows[0]?.count ?? 0);
+
+        const entitlementsRes = await tx.query<{
+          max_candidates: number;
+          max_templates: number;
+        }>(
+          `SELECT max_candidates, max_templates
+           FROM app.entitlements
+           WHERE org_id = $1`,
+          [orgId],
+        );
+        const maxCandidates = entitlementsRes.rows[0]?.max_candidates ?? 25;
+        const remainingQuota = Math.max(0, maxCandidates - invitedCandidates);
+
+        return {
+          configuredAssessments: 1,
+          invitedCandidates,
+          activeCandidates,
+          submissionsToReview,
+          maxCandidates,
+          remainingQuota,
+        };
       });
     } finally {
       client.release();

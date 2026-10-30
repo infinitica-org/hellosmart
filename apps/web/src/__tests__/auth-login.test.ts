@@ -1,9 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from '../app/api/auth/login/route';
 import { POST as logoutPOST } from '../app/api/auth/logout/route';
 
 describe('Auth Login API Route & Handlers', () => {
+  const originalApiBaseUrl = process.env.API_BASE_URL;
+
+  beforeEach(() => {
+    // Route unit tests simulate offline backend so DEV_LOGIN_ACCOUNTS flow is tested
+    process.env.API_BASE_URL = 'http://127.0.0.1:9999';
+  });
+
+  afterEach(() => {
+    process.env.API_BASE_URL = originalApiBaseUrl;
+  });
   it('rejects empty credentials with 400', async () => {
     const req = new NextRequest('http://localhost:3000/api/auth/login', {
       method: 'POST',

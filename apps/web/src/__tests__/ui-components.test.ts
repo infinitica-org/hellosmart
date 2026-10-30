@@ -144,8 +144,8 @@ describe('@hs/ui shared components export contract', () => {
 
   it('renders company dashboard with "Create Assessment" pointing to /company/assessments (BUG-10)', async () => {
     const React = await import('react');
-    const { default: CompanyDashboardPage } = await import('../app/(company)/company/page');
-    const pageElement = CompanyDashboardPage();
+    const { CompanyDashboardView } = await import('../app/(company)/company/page');
+    const pageElement = CompanyDashboardView({});
     expect(pageElement).toBeDefined();
 
     const children = React.Children.toArray(pageElement.props.children);

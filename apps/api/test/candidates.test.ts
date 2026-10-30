@@ -66,6 +66,18 @@ function createMockDbPool() {
         };
       }
 
+      if (q.includes('count(*)::int AS total')) {
+        const orgId = params?.[0] as string;
+        const matching = Array.from(users.values()).filter(
+          (u) => u.org_id === orgId && u.role === 'candidate' && u.status !== 'deleted',
+        );
+        const active = matching.filter((u) => u.status === 'active');
+        return {
+          rows: [{ total: matching.length, active: active.length }],
+          rowCount: 1,
+        };
+      }
+
       if (q.includes('FROM app.users') && q.includes("role = 'candidate'") && q.includes("status != 'deleted'")) {
         const orgId = params?.[0] as string;
         const matches = Array.from(users.values())
@@ -83,6 +95,24 @@ function createMockDbPool() {
 
       if (q.includes('SELECT name FROM app.organizations WHERE id = $1')) {
         return { rows: [{ name: 'Acme Simulation Academy' }], rowCount: 1 };
+      }
+
+      if (q.includes('FROM audit.events') && q.includes("action = 'assignment.submitted'")) {
+        const orgId = params?.[0] as string;
+        const matching = auditEvents.filter(
+          (e) => (Array.isArray(e) ? e[2] === orgId && e[3] === 'assignment.submitted' : false),
+        );
+        return {
+          rows: [{ count: matching.length }],
+          rowCount: 1,
+        };
+      }
+
+      if (q.includes('FROM app.entitlements WHERE org_id = $1')) {
+        return {
+          rows: [{ max_candidates: 25, max_templates: 5 }],
+          rowCount: 1,
+        };
       }
 
       if (q.includes('FROM app.users u') && q.includes('JOIN app.organizations o')) {
@@ -497,5 +527,56 @@ describe('Candidates API & Mailpit Integration', () => {
     expect(submitRes.statusCode).toBe(200);
     const submitted = JSON.parse(submitRes.body);
     expect(submitted.status).toBe('submitted');
+  });
+
+  it('7. GET /candidates/metrics returns real pipeline counts and quotas (BUG-11)', async () => {
+    const { rawToken } = await sessionService.createSession({
+      userId: companyAdminId,
+      orgId,
+      email: 'admin@acme.com',
+      role: 'company_admin',
+      portal: 'company',
+    });
+
+    // Seed 2 candidates
+    mockPool.users.set('metric-c1', {
+      id: crypto.randomUUID(),
+      org_id: orgId,
+      email: 'c1@example.com',
+      name: 'Candidate One',
+      role: 'candidate',
+      password_hash: null,
+      must_reset_password: true,
+      status: 'invited',
+      created_at: new Date(),
+    });
+    mockPool.users.set('metric-c2', {
+      id: crypto.randomUUID(),
+      org_id: orgId,
+      email: 'c2@example.com',
+      name: 'Candidate Two',
+      role: 'candidate',
+      password_hash: null,
+      must_reset_password: false,
+      status: 'active',
+      created_at: new Date(),
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/v1/candidates/metrics',
+      headers: {
+        cookie: `hs_session=${rawToken}`,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const metrics = JSON.parse(res.body);
+    expect(metrics).toMatchObject({
+      configuredAssessments: 1,
+      maxCandidates: 25,
+    });
+    expect(metrics.invitedCandidates).toBeGreaterThanOrEqual(2);
+    expect(metrics.remainingQuota).toBe(metrics.maxCandidates - metrics.invitedCandidates);
   });
 });

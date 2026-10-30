@@ -6,6 +6,7 @@ import type {
   CandidateAssignmentDto,
   CandidateDto,
   ChangePasswordRequest,
+  CompanyMetricsDto,
   CreateCandidateDto,
   InvitationDetailsResponse,
   SimpleSuccessResponse,
@@ -142,6 +143,9 @@ export function resolveBrowserAuthUrl(apiV1Path: string): string {
   }
   if (path === '/auth/invitations/accept') {
     return '/api/auth/invitations/accept';
+  }
+  if (path === '/candidates/metrics') {
+    return '/api/company/metrics';
   }
   if (path === '/candidates') {
     return '/api/company/candidates';
@@ -754,5 +758,43 @@ export async function submitCandidateAssignment(
 
   return (await res.json()) as CandidateAssignmentDto;
 }
+
+/**
+ * Fetches company assessment metrics via GET /api/v1/candidates/metrics.
+ */
+export async function getCompanyMetrics(
+  fetchFn: typeof fetch = fetch,
+): Promise<CompanyMetricsDto> {
+  const url = resolveBrowserAuthUrl('/candidates/metrics');
+  const res = await fetchFn(url, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+    credentials: 'include',
+  });
+
+  if (res.status === 401) {
+    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
+  }
+
+  if (res.status === 429) {
+    throw new RateLimitedError();
+  }
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to load company metrics';
+    try {
+      const errJson = await res.json();
+      errorDetail = errJson.detail || errorDetail;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, 'API_ERROR', errorDetail);
+  }
+
+  return (await res.json()) as CompanyMetricsDto;
+}
+
 
 

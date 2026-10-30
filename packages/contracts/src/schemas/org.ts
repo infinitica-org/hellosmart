@@ -86,3 +86,14 @@ export const AdminMetricsDtoSchema = z.object({
   totalCandidates: z.number().int().min(0, 'Total candidates cannot be negative'),
 });
 export type AdminMetricsDto = z.infer<typeof AdminMetricsDtoSchema>;
+
+export const CompanyMetricsDtoSchema = z.object({
+  configuredAssessments: z.number().int().min(0),
+  invitedCandidates: z.number().int().min(0),
+  activeCandidates: z.number().int().min(0),
+  submissionsToReview: z.number().int().min(0),
+  maxCandidates: z.number().int().min(0),
+  remainingQuota: z.number().int().min(0),
+});
+export type CompanyMetricsDto = z.infer<typeof CompanyMetricsDtoSchema>;
+

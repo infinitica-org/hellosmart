@@ -25,6 +25,12 @@ export class CandidatesController {
     @Inject(CandidatesService) private readonly candidatesService: CandidatesService,
   ) {}
 
+  @Get('metrics')
+  async metrics(@Req() request: AuthenticatedRequest) {
+    const actor = request[REQUEST_USER_KEY];
+    return this.candidatesService.getMetrics(actor);
+  }
+
   @Get()
   async list(@Req() request: AuthenticatedRequest): Promise<CandidateDto[]> {
     const actor = request[REQUEST_USER_KEY];
