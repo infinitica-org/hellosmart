@@ -7,11 +7,24 @@ not change the output, which is exactly what AD-014a AC9 tests.
 Also doubles as the harness for simulating failures: set `fail_mode` to
 exercise the router's fallback and error-taxonomy paths without a live
 provider.
+
+AD-014b: the canned reply is AgentScore-shaped (app/schemas.py), not the
+pre-AgentScore criteria-array placeholder this adapter originally returned
+-- nothing in AD-014a's own tests asserted that shape (only output_text
+*equality* across repeated calls, and generic "it ran" checks), so this is
+a compatible update, not a breaking one. `rubric_item_id` and one real
+evidence citation are extracted from the rendered prompt/system text
+(app/prompt.py's own format: `"rubric_item_id": "..."` in the system
+message, `### <ref>  source=...` headers in the user message) so the reply
+actually validates against whatever real EvidencePack produced that
+prompt, for any agent -- not hardcoded to one agent's evidence shape.
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -19,6 +32,35 @@ from ..errors import ProviderAuthError, ProviderUnavailableError
 from ..interface import ModelCompletionOptions, ModelCompletionResult, ProviderHealthResult
 
 FailMode = Literal["none", "unavailable", "auth", "circuit_open"]
+
+_RUBRIC_ID_RE = re.compile(r'"rubric_item_id":\s*"([^"]+)"')
+_ITEM_RE = re.compile(r"^### (\S+)  source=\S+\n(.*)$", re.MULTILINE)
+
+
+def _fake_agent_reply(options: ModelCompletionOptions) -> str:
+    rubric_match = _RUBRIC_ID_RE.search(options.system or "")
+    rubric_item_id = rubric_match.group(1) if rubric_match else "fake-rubric-item"
+
+    item_match = _ITEM_RE.search(options.prompt)
+    evidence: list[dict[str, str]] = []
+    if item_match:
+        ref, first_line = item_match.group(1), item_match.group(2).strip()
+        if first_line:
+            evidence = [{"ref": ref, "quote": first_line[:60]}]
+
+    digest = hashlib.sha256(f"{options.model}|{options.prompt}".encode()).hexdigest()
+    scale_min, scale_max = 1, 5  # matches every agents/<id>.yaml's `scale` today
+    score = scale_min + (int(digest[:4], 16) % (scale_max - scale_min + 1))
+    return json.dumps(
+        {
+            "rubric_item_id": rubric_item_id,
+            "score": score,
+            "confidence": 0.8,
+            "rationale": "deterministic fake rationale (LLM_PROVIDER=fake)",
+            "evidence": evidence,
+            "flags": [],
+        }
+    )
 
 
 @dataclass
@@ -48,13 +90,7 @@ class FakeAdapter:
 
         # Deterministic "score": a stable digest of (model, prompt), never a
         # clock or random source, so retries and repeated test runs agree.
-        digest = hashlib.sha256(f"{options.model}|{options.prompt}".encode()).hexdigest()
-        level = ["low", "medium", "high"][int(digest[:4], 16) % 3]
-        output = (
-            f'{{"criteria":[{{"id":"example","level":"{level}",'
-            f'"claims":[{{"text":"deterministic fake claim","ref":"term:00001",'
-            f'"quote":"fixture"}}]}}],"model_confidence":0.8}}'
-        )
+        output = _fake_agent_reply(options)
         return ModelCompletionResult(
             output_text=output,
             provider=self.provider,
