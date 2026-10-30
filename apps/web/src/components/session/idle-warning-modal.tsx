@@ -4,16 +4,42 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { sessionClient, type AuthBroadcastMessage } from '@/lib/session-client';
 
 export interface IdleWarningModalProps {
-  /** Total idle timeout in seconds (default 900 = 15 minutes) */
-  idleTimeoutSeconds?: number;
+  /** Total idle timeout in seconds (if omitted, automatically derived from user role) */
+  idleTimeoutSeconds?: number | undefined;
+  /** Role string (e.g. 'platform_admin', 'company_admin', 'candidate') to automatically resolve timeout */
+  userRole?: string | undefined;
   /** Warning threshold in seconds before timeout (default 120 = 2 minutes) */
-  warningThresholdSeconds?: number;
+  warningThresholdSeconds?: number | undefined;
+}
+
+/**
+ * Resolves the role-based idle timeout in seconds:
+ * - platform_admin (Super Admin): 15 minutes (900 seconds)
+ * - company_admin / candidate: 30 minutes (1800 seconds)
+ */
+export function resolveIdleTimeoutForRole(role?: string | null): number {
+  if (!role) return 1800; // default 30 minutes
+  const normalized = role.toLowerCase().trim();
+  if (
+    normalized === 'platform_admin' ||
+    normalized.includes('platform') ||
+    normalized.includes('super admin')
+  ) {
+    return 900; // 15 minutes for platform_admin
+  }
+  return 1800; // 30 minutes for company_admin, candidate, and others
 }
 
 export function IdleWarningModal({
-  idleTimeoutSeconds = 900,
+  idleTimeoutSeconds: propIdleTimeoutSeconds,
+  userRole,
   warningThresholdSeconds = 120,
 }: IdleWarningModalProps): React.JSX.Element | null {
+  const idleTimeoutSeconds =
+    propIdleTimeoutSeconds ??
+    (userRole
+      ? resolveIdleTimeoutForRole(userRole)
+      : resolveIdleTimeoutForRole(sessionClient.getCurrentUser()?.role));
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null);
   const [isExtending, setIsExtending] = useState<boolean>(false);
   const [extendError, setExtendError] = useState<string | null>(null);

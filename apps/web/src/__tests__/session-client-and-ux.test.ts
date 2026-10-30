@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { resolveIdleTimeoutForRole } from '../components/session/idle-warning-modal';
 import {
   isSafeRedirectPath,
   sanitizeRedirectPath,
@@ -112,8 +113,23 @@ describe('Session UX: Multi-Tab BroadcastChannel & Session Client', () => {
   });
 });
 
-describe('Session UX: Idle Warning Timing Calculations', () => {
-  it('correctly calculates warning threshold (2 minutes before timeout)', () => {
+describe('Session UX: Idle Warning Timing Calculations (BUG-09)', () => {
+  it('resolves correct role-based idle timeout (15m for platform_admin, 30m for company_admin/candidate)', () => {
+    expect(resolveIdleTimeoutForRole('platform_admin')).toBe(900);
+    expect(resolveIdleTimeoutForRole('Super Admin')).toBe(900);
+    expect(resolveIdleTimeoutForRole('Platform Administrator')).toBe(900);
+
+    expect(resolveIdleTimeoutForRole('company_admin')).toBe(1800);
+    expect(resolveIdleTimeoutForRole('Company Admin')).toBe(1800);
+    expect(resolveIdleTimeoutForRole('Company Administrator')).toBe(1800);
+
+    expect(resolveIdleTimeoutForRole('candidate')).toBe(1800);
+    expect(resolveIdleTimeoutForRole('Candidate')).toBe(1800);
+    expect(resolveIdleTimeoutForRole(null)).toBe(1800);
+    expect(resolveIdleTimeoutForRole(undefined)).toBe(1800);
+  });
+
+  it('correctly calculates warning threshold for 15-minute roles (platform_admin)', () => {
     const idleTimeoutSeconds = 900; // 15 mins
     const warningThresholdSeconds = 120; // 2 mins
 
@@ -131,6 +147,31 @@ describe('Session UX: Idle Warning Timing Calculations', () => {
     const elapsed3 = 900;
     const remaining3 = idleTimeoutSeconds - elapsed3;
     expect(remaining3 <= 0).toBe(true);
+  });
+
+  it('correctly calculates warning threshold for 30-minute roles (company_admin and candidate)', () => {
+    const idleTimeoutSeconds = 1800; // 30 mins
+    const warningThresholdSeconds = 120; // 2 mins
+
+    // 15 minutes elapsed (900s): remaining 900s -> Warning NOT active (prevents premature 15m modal)
+    const elapsed1 = 900;
+    const remaining1 = idleTimeoutSeconds - elapsed1;
+    expect(remaining1 > warningThresholdSeconds).toBe(true);
+
+    // 25 minutes elapsed (1500s): remaining 300s -> Warning NOT active
+    const elapsed2 = 1500;
+    const remaining2 = idleTimeoutSeconds - elapsed2;
+    expect(remaining2 > warningThresholdSeconds).toBe(true);
+
+    // 28 minutes and 30 seconds elapsed (1710s): remaining 90s -> Warning IS active
+    const elapsed3 = 1710;
+    const remaining3 = idleTimeoutSeconds - elapsed3;
+    expect(remaining3 <= warningThresholdSeconds && remaining3 > 0).toBe(true);
+
+    // 30 minutes elapsed (1800s): remaining 0s -> Expired
+    const elapsed4 = 1800;
+    const remaining4 = idleTimeoutSeconds - elapsed4;
+    expect(remaining4 <= 0).toBe(true);
   });
 });
 
