@@ -134,3 +134,53 @@ describe('Session UX: Idle Warning Timing Calculations', () => {
   });
 });
 
+describe('Session UX: Active Sessions API Mapping (BUG-04)', () => {
+  it('correctly normalizes backend SessionPublicDto shape to ActiveSession contract', async () => {
+    const mockBackendResponse = {
+      sessions: [
+        {
+          sessionId: 'sess_uuid_current',
+          device: 'MacBook Pro',
+          ip: '192.168.1.100',
+          createdAt: '2026-10-30T10:00:00.000Z',
+          lastSeenAt: '2026-10-30T12:00:00.000Z',
+          current: true,
+        },
+        {
+          sessionId: 'sess_uuid_other',
+          device: 'iPhone 15',
+          ip: '10.0.0.1',
+          createdAt: '2026-10-29T10:00:00.000Z',
+          lastSeenAt: '2026-10-29T15:00:00.000Z',
+          current: false,
+        },
+      ],
+    };
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockBackendResponse,
+    });
+
+    const { listSessions } = await import('../lib/api-client');
+    const result = await listSessions(mockFetch as unknown as typeof fetch);
+
+    expect(result.sessions).toHaveLength(2);
+
+    const currentSession = result.sessions[0]!;
+    expect(currentSession.id).toBe('sess_uuid_current');
+    expect(currentSession.sessionId).toBe('sess_uuid_current');
+    expect(currentSession.isCurrent).toBe(true);
+    expect(currentSession.ipAddress).toBe('192.168.1.100');
+    expect(currentSession.lastActiveAt).toBe('2026-10-30T12:00:00.000Z');
+
+    const otherSession = result.sessions[1]!;
+    expect(otherSession.id).toBe('sess_uuid_other');
+    expect(otherSession.sessionId).toBe('sess_uuid_other');
+    expect(otherSession.isCurrent).toBe(false);
+    expect(otherSession.ipAddress).toBe('10.0.0.1');
+    expect(otherSession.lastActiveAt).toBe('2026-10-29T15:00:00.000Z');
+  });
+});
+

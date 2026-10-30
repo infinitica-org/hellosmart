@@ -356,7 +356,24 @@ export async function listSessions(
     throw new ApiError(res.status, 'API_ERROR', errorDetail);
   }
 
-  return (await res.json()) as ActiveSessionsResponse;
+  const rawData = await res.json();
+  const rawList = Array.isArray(rawData?.sessions) ? rawData.sessions : [];
+
+  const sessions: ActiveSession[] = rawList.map((s: any) => ({
+    id: s.id || s.sessionId || '',
+    sessionId: s.sessionId || s.id || '',
+    device: s.device || s.userAgent || 'Web Browser',
+    userAgent: s.userAgent || s.device || 'Web Browser',
+    ipAddress: s.ipAddress || s.ip || '127.0.0.1',
+    ip: s.ip || s.ipAddress || '127.0.0.1',
+    createdAt: s.createdAt,
+    lastActiveAt: s.lastActiveAt || s.lastSeenAt || s.createdAt,
+    lastSeenAt: s.lastSeenAt || s.lastActiveAt || s.createdAt,
+    isCurrent: Boolean(s.isCurrent ?? s.current),
+    current: Boolean(s.current ?? s.isCurrent),
+  }));
+
+  return { sessions };
 }
 
 /**

@@ -196,12 +196,16 @@ export type SimpleSuccessResponse = z.infer<typeof SimpleSuccessResponseSchema>;
  */
 export const ActiveSessionSchema = z.object({
   id: z.string(),
+  sessionId: z.string().optional(),
   userAgent: z.string().optional(),
   device: z.string().optional(),
   ipAddress: z.string().optional(),
+  ip: z.string().optional(),
   createdAt: z.string(),
   lastActiveAt: z.string(),
+  lastSeenAt: z.string().optional(),
   isCurrent: z.boolean(),
+  current: z.boolean().optional(),
 });
 
 export type ActiveSession = z.infer<typeof ActiveSessionSchema>;
