@@ -338,13 +338,13 @@ function LoginForm() {
   };
 
   return (
-    <main className="min-h-screen w-full bg-white text-neutral-900 font-sans grid grid-cols-1 lg:grid-cols-2 overflow-x-hidden">
+    <main className="min-h-screen w-full bg-white text-neutral-900 font-sans flex flex-col lg:flex-row overflow-x-hidden">
       
       {/* ========================================================================= */}
       {/* LEFT COLUMN: Full Height Image Card (Equal 50% width)                     */}
       {/* ========================================================================= */}
-      <div className="hidden lg:flex relative h-screen sticky top-0 p-2 sm:p-3 lg:p-3 xl:p-3.5 items-center justify-center w-full">
-        <div className="relative w-full h-full rounded-[2.25rem] overflow-hidden shadow-2xl border border-neutral-800/80 bg-neutral-950">
+      <div className="hidden lg:flex lg:w-1/2 w-full h-screen sticky top-0 p-3 sm:p-4 lg:p-4 xl:p-4 items-center justify-center shrink-0 min-w-0">
+        <div className="relative w-full h-full rounded-[2rem] overflow-hidden shadow-2xl border border-neutral-800/80 bg-neutral-950">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/login-img.png"
@@ -366,7 +366,7 @@ function LoginForm() {
       {/* ========================================================================= */}
       {/* RIGHT COLUMN: Full Screen Form (Equal 50% width)                          */}
       {/* ========================================================================= */}
-      <div className="flex flex-col justify-between min-h-screen p-6 sm:p-10 md:p-12 lg:p-12 xl:p-16 bg-white w-full">
+      <div className="flex flex-col justify-between min-h-screen w-full lg:w-1/2 shrink-0 min-w-0 p-6 sm:p-8 md:p-10 lg:p-10 xl:p-12 bg-white">
         
         {/* Top bar (mobile logo) */}
         <div className="w-full flex items-center justify-between mb-6">
@@ -380,7 +380,7 @@ function LoginForm() {
         <div className="w-full max-w-sm sm:max-w-md mx-auto my-auto py-2">
           {/* Title & Subtitle */}
           <div className="mb-8">
-            <h1 className="text-4xl sm:text-5xl font-normaltracking-tight text-neutral-900 leading-[1.08]">
+            <h1 className="text-4xl sm:text-5xl font-normal tracking-tight text-neutral-900 leading-[1.08]">
              Let us Connect*
 <br />
             </h1>
