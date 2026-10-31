@@ -12,9 +12,11 @@ import {
 import {
   AssignTemplateDtoSchema,
   BulkAssignTemplateDtoSchema,
+  CloneTemplateDtoSchema,
   CreateTemplateDtoSchema,
   type AssignTemplateDto,
   type BulkAssignTemplateDto,
+  type CloneTemplateDto,
   type CreateTemplateDto,
 } from '@hs/contracts';
 import { Roles } from '../../common/decorators/roles.decorator.js';
@@ -114,5 +116,38 @@ export class AdminTemplatesController {
   ) {
     const actor = request[REQUEST_USER_KEY];
     return await this.templatesService.revokeTemplate(id, orgId, actor);
+  }
+
+  @Post(':id/clone')
+  @HttpCode(201)
+  async cloneVersion(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const actor = request[REQUEST_USER_KEY];
+    const parsed = CloneTemplateDtoSchema.safeParse(body || {});
+    if (!parsed.success) {
+      throw problem({
+        title: 'Unprocessable Entity',
+        status: 422,
+        detail: 'Invalid clone payload',
+        code: 'VALIDATION_ERROR',
+        errors: flattenZodErrors(parsed.error),
+      });
+    }
+
+    return await this.templatesService.cloneVersion(id, parsed.data, actor);
+  }
+
+  @Post(':id/versions/:version/publish')
+  @HttpCode(200)
+  async publishVersion(
+    @Param('id') id: string,
+    @Param('version') version: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const actor = request[REQUEST_USER_KEY];
+    return await this.templatesService.publishVersion(id, version, actor);
   }
 }

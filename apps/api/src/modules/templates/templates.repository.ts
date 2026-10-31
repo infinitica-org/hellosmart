@@ -294,7 +294,7 @@ export class TemplatesRepository {
     newVersion: string,
   ): Promise<{ id: string; templateId: string; version: string; status: string } | null> {
     const query = `
-      SELECT t.id, tv.manifest
+      SELECT t.id, tv.version, tv.manifest
       FROM app.templates t
       INNER JOIN app.template_versions tv ON tv.template_id = t.id
       WHERE (t.id::text = $1 OR t.slug = $1)
@@ -320,6 +320,25 @@ export class TemplatesRepository {
       JSON.stringify(clonedManifest),
     ]);
     return cloneRes.rows[0];
+  }
+
+  /**
+   * Get latest version string for a template.
+   */
+  async getLatestVersion(
+    client: PoolClient,
+    templateIdOrSlug: string,
+  ): Promise<string | null> {
+    const query = `
+      SELECT tv.version
+      FROM app.templates t
+      INNER JOIN app.template_versions tv ON tv.template_id = t.id
+      WHERE (t.id::text = $1 OR t.slug = $1)
+      ORDER BY tv.created_at DESC
+      LIMIT 1
+    `;
+    const res = await client.query(query, [templateIdOrSlug]);
+    return res.rows[0]?.version ?? null;
   }
 
   /**
