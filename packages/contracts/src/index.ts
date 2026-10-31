@@ -3,6 +3,8 @@ export * from './schemas/user.js';
 export * from './schemas/auth.js';
 export * from './schemas/session.js';
 export * from './schemas/org.js';
+export * from './schemas/manifest.js';
+export * from './schemas/template.js';
 export * from './password-policy.js';
 export * from './data/common-passwords.data.js';
 export * from './constants/index.js';

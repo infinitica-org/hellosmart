@@ -12,7 +12,7 @@
     "mock": "prism mock -p 4010 openapi/openapi.yaml",
     "lint": "redocly lint openapi/openapi.yaml",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --test test/schemas.test.ts test/password-policy.test.ts",
+    "test": "node --test test/schemas.test.ts test/password-policy.test.ts test/manifest.test.ts",
     "test:mock": "node test/prism-verify.mjs"
   },
   "dependencies": {
