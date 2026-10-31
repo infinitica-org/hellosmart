@@ -10,6 +10,7 @@ import {
   Settings,
   Terminal,
   User,
+  Layers,
 } from '@hs/ui';
 
 export interface NavigationItem {
@@ -106,6 +107,11 @@ export const companyNavigation: PortalNavigation = [
     icon: <LayoutDashboard className="w-4 h-4" strokeWidth={2} />,
   },
   {
+    label: 'Templates',
+    href: '/company/templates',
+    icon: <Layers className="w-4 h-4" strokeWidth={2} />,
+  },
+  {
     label: 'Assessments',
     href: '/company/assessments',
     icon: <ClipboardList className="w-4 h-4" strokeWidth={2} />,
@@ -135,6 +141,11 @@ export const companyGroups: NavigationGroup[] = [
         label: 'Dashboard',
         href: '/company',
         icon: <LayoutDashboard className="w-4 h-4" strokeWidth={2} />,
+      },
+      {
+        label: 'Templates',
+        href: '/company/templates',
+        icon: <Layers className="w-4 h-4" strokeWidth={2} />,
       },
       {
         label: 'Assessments',
