@@ -3,6 +3,7 @@
 import React from 'react';
 import { Badge, Card } from '@hs/ui';
 import { calculateWeightBalance, type RubricDimension } from './types';
+import { RUBRIC_WEIGHT_TOTAL } from '@/constants';
 
 export interface WeightBalanceBarProps {
   dimensions: RubricDimension[];
@@ -71,7 +72,7 @@ export function WeightBalanceBar({
           <span className={`text-2xl font-extrabold ${statusStyles.textColor}`}>
             {balance.totalWeight}%
           </span>
-          <span className="text-xs text-neutral-500 font-semibold">/ 100% Required</span>
+          <span className="text-xs text-neutral-500 font-semibold">/ {RUBRIC_WEIGHT_TOTAL}% Required</span>
         </div>
       </div>
 

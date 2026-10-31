@@ -10,6 +10,7 @@ import {
   type LoginIdentifyResult,
   type LoginPortal,
 } from '@/lib/login-portal-meta';
+import { ROUTES, LIMITS, ALERT_MESSAGES, PLACEHOLDERS, BRANDING } from '@/constants';
 import {
   BrandMark,
   PasswordField,
@@ -61,7 +62,7 @@ function LoginForm() {
           setShowSessionExpired(false);
         }, 300);
         return () => clearTimeout(removeTimer);
-      }, 3000);
+      }, LIMITS.TIMEOUTS.SESSION_BANNER_DISMISS_MS);
       return () => clearTimeout(timer);
     }
   }, [isSessionExpired]);
@@ -107,7 +108,7 @@ function LoginForm() {
 
     setIsIdentifying(true);
     try {
-      const response = await fetch('/api/auth/identify', {
+      const response = await fetch(ROUTES.API.AUTH_IDENTIFY, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -167,7 +168,7 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(ROUTES.API.AUTH_LOGIN, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -515,7 +516,7 @@ function LoginForm() {
                   disabled={isIdentifying}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="alex.costa@example.com"
+                  placeholder={PLACEHOLDERS.INPUTS.EMAIL}
                   data-testid="work-email-input"
                   className="h-11 text-sm bg-white border-neutral-200 rounded-lg focus:border-primary focus:ring-primary/20 transition-all"
                 />
@@ -596,7 +597,7 @@ function LoginForm() {
               <div className="text-center pt-6 text-xs text-neutral-500">
                 <span>Haven&apos;t joined yet? </span>
                 <a
-                  href="https://cal.com"
+                  href={BRANDING.CAL_BOOKING_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-neutral-900 font-semibold underline underline-offset-2 hover:text-primary"
@@ -648,7 +649,7 @@ function LoginForm() {
                   label={<span className="text-xs text-neutral-600 font-normal">Keep me signed in</span>}
                 />
                 <Link
-                  href="/change-password"
+                  href={ROUTES.AUTH.CHANGE_PASSWORD}
                   className="text-xs text-neutral-700 hover:text-neutral-900 hover:underline transition-colors"
                 >
                   Forgot password?
@@ -674,13 +675,13 @@ function LoginForm() {
         {/* Bottom Footer Links */}
         <div className="w-full flex items-center justify-between text-xs text-neutral-400 pt-6">
           <div className="flex items-center gap-2">
-            <span>© {new Date().getFullYear()} HelloSmart.ai</span>
+            <span>© {new Date().getFullYear()} {BRANDING.APP_NAME}</span>
             <span className="hidden sm:inline text-neutral-300">•</span>
             <span className="hidden sm:inline text-neutral-400">All rights reserved</span>
           </div>
           <div className="flex items-center gap-4 text-xs font-sans">
-            <Link href="/privacy" className="hover:text-neutral-600 transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-neutral-600 transition-colors">Terms</Link>
+            <Link href={ROUTES.PUBLIC.PRIVACY} className="hover:text-neutral-600 transition-colors">Privacy</Link>
+            <Link href={ROUTES.PUBLIC.TERMS} className="hover:text-neutral-600 transition-colors">Terms</Link>
             <Link href="/security" className="hover:text-neutral-600 transition-colors">Security</Link>
           </div>
         </div>

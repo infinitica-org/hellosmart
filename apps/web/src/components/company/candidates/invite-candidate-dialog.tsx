@@ -14,6 +14,7 @@ import {
 } from '@hs/ui';
 import { CreateCandidateDtoSchema, type CreateCandidateDto } from '@hs/contracts';
 import { ApiError } from '@/lib/api-client';
+import { PLACEHOLDERS, UI_LABELS } from '@/constants';
 
 export interface InviteCandidateDialogProps {
   open: boolean;
@@ -106,7 +107,7 @@ export function InviteCandidateDialog({
             onClick={handleClose}
             disabled={isSubmitting}
           >
-            Cancel
+            {UI_LABELS.BUTTONS.CANCEL}
           </Button>
           <Button
             type="button"
@@ -116,7 +117,7 @@ export function InviteCandidateDialog({
             className="flex items-center gap-2"
           >
             {isSubmitting && <Spinner size="sm" />}
-            <span>{isSubmitting ? 'Sending Invitation...' : 'Send Invitation'}</span>
+            <span>{isSubmitting ? 'Sending Invitation...' : UI_LABELS.BUTTONS.INVITE_CANDIDATE}</span>
           </Button>
         </div>
       }
@@ -142,7 +143,7 @@ export function InviteCandidateDialog({
           <div className="relative">
             <Input
               id="candidate-name"
-              placeholder="e.g. Jane Doe"
+              placeholder={PLACEHOLDERS.INPUTS.CANDIDATE_NAME}
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
@@ -175,7 +176,7 @@ export function InviteCandidateDialog({
             <Input
               id="candidate-email"
               type="email"
-              placeholder="jane.doe@example.com"
+              placeholder={PLACEHOLDERS.INPUTS.CANDIDATE_EMAIL}
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);

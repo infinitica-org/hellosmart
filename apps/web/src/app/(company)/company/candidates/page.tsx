@@ -23,14 +23,15 @@ import {
   useDeleteCandidate,
   useResendCandidateInvite,
 } from '@/hooks/company/use-candidates';
+import { UI_LABELS, ALERT_MESSAGES, LIMITS } from '@/constants';
 
 export default function CompanyCandidatesPage() {
   // Query Filters state
   const [filters, setFilters] = useState<CandidateFilters>({
     search: '',
     status: 'all',
-    page: 1,
-    limit: 10,
+    page: LIMITS.PAGINATION.DEFAULT_PAGE,
+    limit: LIMITS.PAGINATION.DEFAULT_LIMIT,
   });
 
   // Dialog states
@@ -89,8 +90,8 @@ export default function CompanyCandidatesPage() {
     setFilters({
       search: '',
       status: 'all',
-      page: 1,
-      limit: 10,
+      page: LIMITS.PAGINATION.DEFAULT_PAGE,
+      limit: LIMITS.PAGINATION.DEFAULT_LIMIT,
     });
   };
 
@@ -98,7 +99,7 @@ export default function CompanyCandidatesPage() {
     await inviteMutation.mutateAsync(dto);
     setNotification({
       type: 'success',
-      message: `Invitation email dispatched to ${dto.email} (expiring in 72 hours).`,
+      message: ALERT_MESSAGES.CANDIDATES.INVITE_SUCCESS,
     });
     void refetch();
   };
@@ -117,7 +118,7 @@ export default function CompanyCandidatesPage() {
     await updateMutation.mutateAsync({ candidateId, input });
     setNotification({
       type: 'success',
-      message: 'Candidate profile updated successfully.',
+      message: ALERT_MESSAGES.CANDIDATES.UPDATE_SUCCESS,
     });
     void refetch();
   };
@@ -126,7 +127,7 @@ export default function CompanyCandidatesPage() {
     await deleteMutation.mutateAsync(candidateId);
     setNotification({
       type: 'info',
-      message: 'Candidate soft-deleted and active sessions terminated.',
+      message: ALERT_MESSAGES.CANDIDATES.DELETE_SUCCESS,
     });
     void refetch();
   };
@@ -136,7 +137,7 @@ export default function CompanyCandidatesPage() {
       await resendMutation.mutateAsync(candidate.id);
       setNotification({
         type: 'success',
-        message: `Fresh invitation link sent to ${candidate.email}.`,
+        message: ALERT_MESSAGES.CANDIDATES.RESEND_SUCCESS,
       });
       void refetch();
     } catch {
@@ -150,8 +151,8 @@ export default function CompanyCandidatesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Candidate Hub"
-        description="Invite candidates, manage test assignments, monitor progress, and review scored submissions."
+        title={UI_LABELS.PAGE_HEADERS.CANDIDATE_HUB_TITLE}
+        description={UI_LABELS.PAGE_HEADERS.CANDIDATE_HUB_DESCRIPTION}
         badge={{ text: 'Candidate Pipeline', variant: 'info' }}
       />
 
@@ -168,7 +169,7 @@ export default function CompanyCandidatesPage() {
               onClick={() => setNotification(null)}
               className="ml-4 text-xs font-semibold underline hover:opacity-80"
             >
-              Dismiss
+              {UI_LABELS.BUTTONS.DISMISS}
             </button>
           </div>
         </Alert>
@@ -177,26 +178,26 @@ export default function CompanyCandidatesPage() {
       {/* Error Alert */}
       {error && (
         <Alert variant="error" title="Failed to Load Candidates">
-          {error.message || 'An error occurred while fetching organization candidates.'}
+          {error.message || ALERT_MESSAGES.NETWORK.FAILED_TO_LOAD}
         </Alert>
       )}
 
       {/* Metric Stat Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
-          label="Total Candidates"
+          label={UI_LABELS.SECTIONS.STAT_TOTAL_CANDIDATES}
           value={metrics.total.toString()}
           description="Organization candidate pool"
           icon={<Users className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />}
         />
         <StatCard
-          label="Invited Candidates"
+          label={UI_LABELS.SECTIONS.STAT_INVITED_CANDIDATES}
           value={metrics.invited.toString()}
           description="Pending account activation (BR-24)"
           icon={<Mail className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
         />
         <StatCard
-          label="Active Candidates"
+          label={UI_LABELS.SECTIONS.STAT_ACTIVE_CANDIDATES}
           value={metrics.active.toString()}
           description="Password set & test ready"
           icon={<Check className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}

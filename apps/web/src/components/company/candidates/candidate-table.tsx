@@ -18,6 +18,7 @@ import {
   Trash2,
 } from '@hs/ui';
 import type { CandidateDto, CandidateFilters } from './types';
+import { UI_LABELS } from '@/constants';
 
 export interface CandidateTableProps {
   candidates: CandidateDto[];
@@ -93,11 +94,11 @@ export function CandidateTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[30%]">Candidate</TableHead>
-              <TableHead className="w-[20%]">Status</TableHead>
+              <TableHead className="w-[30%]">{UI_LABELS.TABLE_COLUMNS.CANDIDATE}</TableHead>
+              <TableHead className="w-[20%]">{UI_LABELS.TABLE_COLUMNS.STATUS}</TableHead>
               <TableHead className="w-[20%]">Cap Allocation</TableHead>
-              <TableHead className="w-[15%]">Invited Date</TableHead>
-              <TableHead className="w-[15%] text-right">Actions</TableHead>
+              <TableHead className="w-[15%]">{UI_LABELS.TABLE_COLUMNS.DATE_ADDED}</TableHead>
+              <TableHead className="w-[15%] text-right">{UI_LABELS.TABLE_COLUMNS.ACTIONS}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

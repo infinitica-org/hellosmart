@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { PageHeader, Alert, Button, Skeleton, Card } from '@hs/ui';
 import { useTemplateDetail } from '@/hooks/company/use-assigned-templates';
 import { CreationWizard } from '@/components/company/assessments';
+import { ROUTES, UI_LABELS } from '@/constants';
 
 function NewAssessmentContent(): React.JSX.Element {
   const searchParams = useSearchParams();
@@ -20,8 +21,8 @@ function NewAssessmentContent(): React.JSX.Element {
     return (
       <div className="space-y-6 max-w-4xl mx-auto" data-testid="wizard-missing-template">
         <PageHeader
-          title="Create New Assessment"
-          description="Assessments are created by selecting an assigned role simulation blueprint (BR-02, BR-03)."
+          title={UI_LABELS.PAGE_HEADERS.NEW_ASSESSMENT_TITLE}
+          description={UI_LABELS.PAGE_HEADERS.NEW_ASSESSMENT_DESCRIPTION}
         />
 
         <Card className="p-8 sm:p-12 text-center rounded-2xl border border-neutral-200/80 bg-white space-y-4">
@@ -37,9 +38,9 @@ function NewAssessmentContent(): React.JSX.Element {
           </p>
 
           <div className="pt-2">
-            <Link href="/company/templates">
+            <Link href={ROUTES.COMPANY.TEMPLATES}>
               <Button variant="primary" size="md" className="rounded-xl px-5">
-                Browse Template Catalog →
+                {UI_LABELS.BUTTONS.BROWSE_TEMPLATES} →
               </Button>
             </Link>
           </div>

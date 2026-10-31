@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Card, Badge, FormField, FormLabel, FormError, FormDescription, Input } from '@hs/ui';
 import type { AssessmentFormValues } from '../types';
 import type { RoleTemplateDetail, RoleTemplateSummary } from '@/components/company/templates/types';
-import { DIFFICULTY_BADGE_CONFIG, WORKSPACE_MODE_CONFIG } from '@/constants/template-categories';
+import { DIFFICULTY_BADGE_CONFIG, WORKSPACE_MODE_CONFIG, ROUTES, PLACEHOLDERS } from '@/constants';
 
 export interface TemplateDetailsStepProps {
   template: RoleTemplateDetail | RoleTemplateSummary;
@@ -39,7 +39,7 @@ export function TemplateDetailsStep({
             Selected Blueprint (BR-03 Version Pinned)
           </span>
           <Link
-            href="/company/templates"
+            href={ROUTES.COMPANY.TEMPLATES}
             className="text-xs text-primary hover:underline font-medium"
           >
             Change Template
@@ -93,7 +93,7 @@ export function TemplateDetailsStep({
             id="assessment-name"
             value={values.name}
             onChange={(e) => onChange({ name: e.target.value })}
-            placeholder="e.g. Senior Backend Engineer - Q4 Cohort"
+            placeholder={PLACEHOLDERS.INPUTS.ASSESSMENT_TITLE}
             data-testid="assessment-name-input"
             className="h-11 rounded-xl text-sm border-neutral-200 focus:border-primary focus:ring-1 focus:ring-primary/20"
           />

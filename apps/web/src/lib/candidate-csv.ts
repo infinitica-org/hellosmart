@@ -1,8 +1,9 @@
 import { z } from 'zod';
+import { LIMITS } from '@/constants';
 import type { BulkCandidateError, CsvValidationPreview } from '../components/company/candidates/types';
 
-export const MAX_CSV_ROW_LIMIT = 500;
-export const MAX_CSV_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
+export const MAX_CSV_ROW_LIMIT = LIMITS.CSV.MAX_ROWS;
+export const MAX_CSV_FILE_SIZE_BYTES = LIMITS.CSV.MAX_SIZE_BYTES;
 
 const emailSchema = z.string().email().max(254);
 const nameSchema = z.string().min(1).max(120);

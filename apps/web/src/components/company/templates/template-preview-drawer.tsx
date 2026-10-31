@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Drawer, Badge, Button, Alert, Skeleton } from '@hs/ui';
 import { useTemplateDetail } from '@/hooks/company/use-assigned-templates';
 import type { RoleTemplateSummary } from './types';
-import { DIFFICULTY_BADGE_CONFIG, WORKSPACE_MODE_CONFIG } from '@/constants/template-categories';
+import { DIFFICULTY_BADGE_CONFIG, WORKSPACE_MODE_CONFIG, ROUTES, UI_LABELS } from '@/constants';
 
 export interface TemplatePreviewDrawerProps {
   templateId: string | null;
@@ -45,7 +45,7 @@ export function TemplatePreviewDrawer({
     if (!activeTemplate || isNavigating) return;
 
     setIsNavigating(true);
-    const targetUrl = `/company/assessments/new?templateId=${encodeURIComponent(
+    const targetUrl = `${ROUTES.COMPANY.NEW_ASSESSMENT}?templateId=${encodeURIComponent(
       activeTemplate.id
     )}&versionId=${encodeURIComponent(activeTemplate.versionId)}`;
 

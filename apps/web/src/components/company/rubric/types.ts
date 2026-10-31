@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { RUBRIC_WEIGHT_TOTAL } from '@/constants';
 
 /**
  * Rubric Customizer Types & Zod Schemas (Stream 8.3 - #123)
@@ -111,21 +112,21 @@ export function calculateWeightBalance(
   dimensions: Array<{ weight: number }>
 ): WeightBalanceResult {
   const totalWeight = dimensions.reduce((acc, dim) => acc + (Number(dim.weight) || 0), 0);
-  const remainingWeight = 100 - totalWeight;
+  const remainingWeight = RUBRIC_WEIGHT_TOTAL - totalWeight;
 
-  if (totalWeight === 100) {
+  if (totalWeight === RUBRIC_WEIGHT_TOTAL) {
     return {
       totalWeight,
       remainingWeight: 0,
       status: 'balanced',
       isBalanced: true,
       difference: 0,
-      message: 'Rubric is perfectly balanced (100%)',
+      message: `Rubric is perfectly balanced (${RUBRIC_WEIGHT_TOTAL}%)`,
     };
   }
 
-  if (totalWeight < 100) {
-    const diff = 100 - totalWeight;
+  if (totalWeight < RUBRIC_WEIGHT_TOTAL) {
+    const diff = RUBRIC_WEIGHT_TOTAL - totalWeight;
     return {
       totalWeight,
       remainingWeight,
@@ -136,14 +137,14 @@ export function calculateWeightBalance(
     };
   }
 
-  const diff = totalWeight - 100;
+  const diff = totalWeight - RUBRIC_WEIGHT_TOTAL;
   return {
     totalWeight,
     remainingWeight,
     status: 'over',
     isBalanced: false,
     difference: diff,
-    message: `${diff}% over allocated (must total 100%)`,
+    message: `${diff}% over allocated (must total ${RUBRIC_WEIGHT_TOTAL}%)`,
   };
 }
 

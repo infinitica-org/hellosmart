@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Input } from '@hs/ui';
+import { PLACEHOLDERS } from '@/constants';
 
 export interface TemplateSearchProps {
   value: string;
@@ -34,7 +35,7 @@ export function TemplateSearch({
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Search templates by role, title, or skill..."
+        placeholder={PLACEHOLDERS.SEARCH.TEMPLATES}
         aria-label="Search role simulation templates"
         data-testid="template-search-input"
         className="pl-9 pr-8 h-10 w-full text-sm rounded-xl border-neutral-200 focus:border-primary focus:ring-1 focus:ring-primary/20 bg-white"

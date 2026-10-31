@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Dialog, Button, Badge } from '@hs/ui';
+import { UI_LABELS } from '@/constants';
 import type { AssessmentFormValues } from './types';
 
 export interface ConfirmAssessmentDialogProps {
@@ -77,7 +78,7 @@ export function ConfirmAssessmentDialog({
           disabled={isSubmitting}
           className="rounded-xl border-neutral-200 text-neutral-700 hover:bg-neutral-50"
         >
-          Cancel
+          {UI_LABELS.BUTTONS.CANCEL}
         </Button>
 
         <Button
@@ -97,7 +98,7 @@ export function ConfirmAssessmentDialog({
               Creating Blueprint…
             </span>
           ) : (
-            'Confirm & Create'
+            UI_LABELS.BUTTONS.CREATE_ASSESSMENT
           )}
         </Button>
       </div>

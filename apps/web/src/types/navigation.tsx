@@ -12,6 +12,7 @@ import {
   User,
   Layers,
 } from '@hs/ui';
+import { ROUTES } from '@/constants';
 
 export interface NavigationItem {
   label: string;
@@ -34,27 +35,27 @@ export type PortalNavigation = NavigationItem[];
 export const adminNavigation: PortalNavigation = [
   {
     label: 'Dashboard',
-    href: '/admin',
+    href: ROUTES.ADMIN.DASHBOARD,
     icon: <LayoutDashboard className="w-4 h-4" strokeWidth={2} />,
   },
   {
     label: 'Companies',
-    href: '/admin/companies',
+    href: ROUTES.ADMIN.COMPANIES,
     icon: <Building2 className="w-4 h-4" strokeWidth={2} />,
   },
   {
     label: 'Audit Logs',
-    href: '/admin/audit',
+    href: ROUTES.ADMIN.AUDIT,
     icon: <ShieldCheck className="w-4 h-4" strokeWidth={2} />,
   },
   {
     label: 'Agents',
-    href: '/admin/agents',
+    href: ROUTES.ADMIN.AGENTS,
     icon: <Bot className="w-4 h-4" strokeWidth={2} />,
   },
   {
     label: 'Security',
-    href: '/admin/settings/security',
+    href: ROUTES.ADMIN.SECURITY,
     icon: <ShieldCheck className="w-4 h-4" strokeWidth={2} />,
   },
 ];
@@ -65,17 +66,17 @@ export const adminGroups: NavigationGroup[] = [
     items: [
       {
         label: 'Dashboard',
-        href: '/admin',
+        href: ROUTES.ADMIN.DASHBOARD,
         icon: <LayoutDashboard className="w-4 h-4" strokeWidth={2} />,
       },
       {
         label: 'Companies',
-        href: '/admin/companies',
+        href: ROUTES.ADMIN.COMPANIES,
         icon: <Building2 className="w-4 h-4" strokeWidth={2} />,
       },
       {
         label: 'Agents',
-        href: '/admin/agents',
+        href: ROUTES.ADMIN.AGENTS,
         icon: <Bot className="w-4 h-4" strokeWidth={2} />,
       },
     ],
@@ -85,12 +86,12 @@ export const adminGroups: NavigationGroup[] = [
     items: [
       {
         label: 'Audit Logs',
-        href: '/admin/audit',
+        href: ROUTES.ADMIN.AUDIT,
         icon: <ShieldCheck className="w-4 h-4" strokeWidth={2} />,
       },
       {
         label: 'Security',
-        href: '/admin/settings/security',
+        href: ROUTES.ADMIN.SECURITY,
         icon: <ShieldCheck className="w-4 h-4" strokeWidth={2} />,
       },
     ],
@@ -103,32 +104,32 @@ export const adminGroups: NavigationGroup[] = [
 export const companyNavigation: PortalNavigation = [
   {
     label: 'Dashboard',
-    href: '/company',
+    href: ROUTES.COMPANY.DASHBOARD,
     icon: <LayoutDashboard className="w-4 h-4" strokeWidth={2} />,
   },
   {
     label: 'Templates',
-    href: '/company/templates',
+    href: ROUTES.COMPANY.TEMPLATES,
     icon: <Layers className="w-4 h-4" strokeWidth={2} />,
   },
   {
     label: 'Assessments',
-    href: '/company/assessments',
+    href: ROUTES.COMPANY.ASSESSMENTS,
     icon: <ClipboardList className="w-4 h-4" strokeWidth={2} />,
   },
   {
     label: 'Candidates',
-    href: '/company/candidates',
+    href: ROUTES.COMPANY.CANDIDATES,
     icon: <Users className="w-4 h-4" strokeWidth={2} />,
   },
   {
     label: 'Analytics',
-    href: '/company/analytics',
+    href: ROUTES.COMPANY.ANALYTICS,
     icon: <BarChart3 className="w-4 h-4" strokeWidth={2} />,
   },
   {
     label: 'Settings',
-    href: '/company/settings',
+    href: ROUTES.COMPANY.SETTINGS,
     icon: <Settings className="w-4 h-4" strokeWidth={2} />,
   },
 ];
@@ -139,22 +140,22 @@ export const companyGroups: NavigationGroup[] = [
     items: [
       {
         label: 'Dashboard',
-        href: '/company',
+        href: ROUTES.COMPANY.DASHBOARD,
         icon: <LayoutDashboard className="w-4 h-4" strokeWidth={2} />,
       },
       {
         label: 'Templates',
-        href: '/company/templates',
+        href: ROUTES.COMPANY.TEMPLATES,
         icon: <Layers className="w-4 h-4" strokeWidth={2} />,
       },
       {
         label: 'Assessments',
-        href: '/company/assessments',
+        href: ROUTES.COMPANY.ASSESSMENTS,
         icon: <ClipboardList className="w-4 h-4" strokeWidth={2} />,
       },
       {
         label: 'Candidates',
-        href: '/company/candidates',
+        href: ROUTES.COMPANY.CANDIDATES,
         icon: <Users className="w-4 h-4" strokeWidth={2} />,
       },
     ],
@@ -164,12 +165,12 @@ export const companyGroups: NavigationGroup[] = [
     items: [
       {
         label: 'Analytics',
-        href: '/company/analytics',
+        href: ROUTES.COMPANY.ANALYTICS,
         icon: <BarChart3 className="w-4 h-4" strokeWidth={2} />,
       },
       {
         label: 'Settings',
-        href: '/company/settings',
+        href: ROUTES.COMPANY.SETTINGS,
         icon: <Settings className="w-4 h-4" strokeWidth={2} />,
       },
     ],
@@ -182,17 +183,17 @@ export const companyGroups: NavigationGroup[] = [
 export const candidateNavigation: PortalNavigation = [
   {
     label: 'Dashboard',
-    href: '/candidate',
+    href: ROUTES.CANDIDATE.DASHBOARD,
     icon: <LayoutDashboard className="w-4 h-4" strokeWidth={2} />,
   },
   {
     label: 'My Assessments',
-    href: '/candidate/assessments',
+    href: ROUTES.CANDIDATE.ASSESSMENTS,
     icon: <Terminal className="w-4 h-4" strokeWidth={2} />,
   },
   {
     label: 'My Profile',
-    href: '/candidate/profile',
+    href: ROUTES.CANDIDATE.PROFILE,
     icon: <User className="w-4 h-4" strokeWidth={2} />,
   },
 ];
@@ -203,12 +204,12 @@ export const candidateGroups: NavigationGroup[] = [
     items: [
       {
         label: 'Dashboard',
-        href: '/candidate',
+        href: ROUTES.CANDIDATE.DASHBOARD,
         icon: <LayoutDashboard className="w-4 h-4" strokeWidth={2} />,
       },
       {
         label: 'My Assessments',
-        href: '/candidate/assessments',
+        href: ROUTES.CANDIDATE.ASSESSMENTS,
         icon: <Terminal className="w-4 h-4" strokeWidth={2} />,
       },
     ],
@@ -218,7 +219,7 @@ export const candidateGroups: NavigationGroup[] = [
     items: [
       {
         label: 'My Profile',
-        href: '/candidate/profile',
+        href: ROUTES.CANDIDATE.PROFILE,
         icon: <User className="w-4 h-4" strokeWidth={2} />,
       },
     ],

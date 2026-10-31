@@ -15,6 +15,7 @@ import {
 } from '@hs/ui';
 import type { CandidateDto, UpdateCandidateInput } from './types';
 import { ApiError } from '@/lib/api-client';
+import { UI_LABELS } from '@/constants';
 
 export interface EditCandidateDialogProps {
   candidate: CandidateDto | null;
@@ -135,7 +136,7 @@ export function EditCandidateDialog({
             onClick={handleClose}
             disabled={isSubmitting}
           >
-            Cancel
+            {UI_LABELS.BUTTONS.CANCEL}
           </Button>
           <Button
             type="button"
@@ -145,7 +146,7 @@ export function EditCandidateDialog({
             className="flex items-center gap-2"
           >
             {isSubmitting && <Spinner size="sm" />}
-            <span>{isSubmitting ? 'Saving Changes...' : 'Save Changes'}</span>
+            <span>{isSubmitting ? 'Saving Changes...' : UI_LABELS.BUTTONS.SAVE_CHANGES}</span>
           </Button>
         </div>
       }

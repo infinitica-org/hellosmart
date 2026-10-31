@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Input, Button, TextureButton, Search, Plus, Upload } from '@hs/ui';
+import { PLACEHOLDERS, UI_LABELS } from '@/constants';
 import type { CandidateStatus } from './types';
 
 export interface CandidateToolbarProps {
@@ -15,9 +16,9 @@ export interface CandidateToolbarProps {
 }
 
 const statusOptions: Array<{ value: CandidateStatus | 'all'; label: string }> = [
-  { value: 'all', label: 'All Candidates' },
-  { value: 'invited', label: 'Invited' },
-  { value: 'active', label: 'Active' },
+  { value: 'all', label: UI_LABELS.STATUS.ALL_CANDIDATES },
+  { value: 'invited', label: UI_LABELS.STATUS.INVITED },
+  { value: 'active', label: UI_LABELS.STATUS.ACTIVE },
 ];
 
 export function CandidateToolbar({
@@ -36,7 +37,7 @@ export function CandidateToolbar({
         <div className="relative w-full sm:max-w-xs">
           <Input
             type="search"
-            placeholder="Search by name or email..."
+            placeholder={PLACEHOLDERS.SEARCH.CANDIDATES}
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             disabled={disabled}
@@ -80,7 +81,7 @@ export function CandidateToolbar({
           className="flex items-center gap-2 text-xs"
         >
           <Upload className="h-3.5 w-3.5" />
-          <span>Bulk Upload</span>
+          <span>{UI_LABELS.BUTTONS.BULK_UPLOAD}</span>
         </TextureButton>
 
         <Button
@@ -91,7 +92,7 @@ export function CandidateToolbar({
           className="flex items-center gap-2 text-xs"
         >
           <Plus className="h-3.5 w-3.5" />
-          <span>Invite Candidate</span>
+          <span>{UI_LABELS.BUTTONS.INVITE_CANDIDATE}</span>
         </Button>
       </div>
     </div>

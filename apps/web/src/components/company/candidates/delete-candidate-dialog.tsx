@@ -10,6 +10,7 @@ import {
 } from '@hs/ui';
 import type { CandidateDto } from './types';
 import { ApiError } from '@/lib/api-client';
+import { ALERT_MESSAGES, UI_LABELS } from '@/constants';
 
 export interface DeleteCandidateDialogProps {
   candidate: CandidateDto | null;
@@ -47,7 +48,7 @@ export function DeleteCandidateDialog({
       } else if (err instanceof Error) {
         setApiError(err.message);
       } else {
-        setApiError('Failed to delete candidate.');
+        setApiError(ALERT_MESSAGES.CANDIDATES.DELETE_FAILED);
       }
     }
   };
@@ -62,7 +63,7 @@ export function DeleteCandidateDialog({
           onOpenChange(true);
         }
       }}
-      title="Delete Candidate"
+      title={ALERT_MESSAGES.CANDIDATES.DELETE_CONFIRM_TITLE}
       description="Soft-delete candidate account and terminate active workspace sessions."
       size="md"
       footer={
@@ -73,7 +74,7 @@ export function DeleteCandidateDialog({
             onClick={handleClose}
             disabled={isDeleting}
           >
-            Cancel
+            {UI_LABELS.BUTTONS.CANCEL}
           </Button>
           <Button
             type="button"
@@ -84,7 +85,7 @@ export function DeleteCandidateDialog({
           >
             {isDeleting && <Spinner size="sm" />}
             <Trash2 className="h-4 w-4" />
-            <span>{isDeleting ? 'Deleting...' : 'Delete Candidate'}</span>
+            <span>{isDeleting ? 'Deleting...' : UI_LABELS.BUTTONS.DELETE}</span>
           </Button>
         </div>
       }

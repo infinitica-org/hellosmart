@@ -7,6 +7,7 @@ import { RubricDimensionCard } from './rubric-dimension-card';
 import { RubricDimensionForm } from './rubric-dimension-form';
 import { DeleteRubricDimensionDialog } from './delete-rubric-dimension-dialog';
 import { useUpdateAssessmentRubric } from '@/hooks/company/use-assessment-rubric';
+import { UI_LABELS, ALERT_MESSAGES, RUBRIC_WEIGHT_TOTAL } from '@/constants';
 import {
   calculateWeightBalance,
   type RubricDimension,
@@ -76,7 +77,7 @@ export function RubricEditor({
   // Save Rubric Configuration (Enforces 100% Invariant)
   const handleSaveRubric = () => {
     if (!balance.isBalanced) {
-      setSaveError(`Cannot save rubric: total weight is ${balance.totalWeight}%. It must equal exactly 100%.`);
+      setSaveError(`Cannot save rubric: total weight is ${balance.totalWeight}%. ${ALERT_MESSAGES.RUBRIC.TOTAL_WEIGHT_MUST_EQUAL_100}.`);
       return;
     }
 
@@ -109,7 +110,8 @@ export function RubricEditor({
       {/* ─── Save / Error Notification ─── */}
       {saveError && (
         <Alert variant="error" className="text-xs">
-          <div className="font-semibold">Validation Error</div>
+          <div className="font-semibold">Validation Er
+            ror</div>
           <p>{saveError}</p>
         </Alert>
       )}
@@ -205,7 +207,7 @@ export function RubricEditor({
                 Saving Rubric…
               </span>
             ) : (
-              'Save Rubric Configuration'
+              UI_LABELS.BUTTONS.SAVE_CHANGES
             )}
           </Button>
         </div>

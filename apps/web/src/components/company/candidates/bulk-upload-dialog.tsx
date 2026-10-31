@@ -29,6 +29,7 @@ import type {
   CsvValidationPreview,
 } from './types';
 import { ApiError } from '@/lib/api-client';
+import { ALERT_MESSAGES, UI_LABELS, LIMITS } from '@/constants';
 
 export interface BulkUploadDialogProps {
   open: boolean;
@@ -85,8 +86,8 @@ export function BulkUploadDialog({
       return;
     }
 
-    if (file.size > MAX_CSV_FILE_SIZE_BYTES) {
-      setFileError(`File size exceeds 2 MB limit (${(file.size / (1024 * 1024)).toFixed(2)} MB).`);
+    if (file.size > LIMITS.CSV.MAX_SIZE_BYTES) {
+      setFileError(`${ALERT_MESSAGES.CSV.FILE_TOO_LARGE} (${(file.size / (1024 * 1024)).toFixed(2)} MB).`);
       return;
     }
 
@@ -201,7 +202,7 @@ export function BulkUploadDialog({
                 <span>Download Sample CSV</span>
               </TextureButton>
               <Button variant="ghost" size="sm" onClick={handleClose}>
-                Cancel
+                {UI_LABELS.BUTTONS.CANCEL}
               </Button>
             </>
           )}

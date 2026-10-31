@@ -230,3 +230,4 @@ export const DEFAULT_ROLE_TEMPLATES_DETAIL: Record<string, RoleTemplateDetail> =
     },
   },
 };
+
