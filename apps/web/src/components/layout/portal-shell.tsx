@@ -8,6 +8,7 @@ import { Topbar } from '@/components/layout/topbar';
 import { IdleWarningModal } from '@/components/session/idle-warning-modal';
 import { ActiveSessionsDialog } from '@/components/session/active-sessions-dialog';
 import { sessionClient } from '@/lib/session-client';
+import { ROUTES, PLACEHOLDERS } from '@/constants';
 import type { SidebarItem, SidebarGroup } from '@hs/ui';
 import type { NavigationItem } from '@/types/navigation';
 
@@ -50,7 +51,12 @@ export function PortalShell({
   const activeNavItem = allNavItems.find((item) => {
     if (!item.href || !pathname) return false;
     if (pathname === item.href || pathname === `${item.href}/`) return true;
-    if (item.href === '/admin' || item.href === '/company' || item.href === '/candidate' || item.href === '/') {
+    if (
+      item.href === ROUTES.ADMIN.DASHBOARD ||
+      item.href === ROUTES.COMPANY.DASHBOARD ||
+      item.href === ROUTES.CANDIDATE.DASHBOARD ||
+      item.href === ROUTES.PUBLIC.HOME
+    ) {
       return pathname === item.href;
     }
     return pathname.startsWith(`${item.href}/`);
@@ -61,28 +67,28 @@ export function PortalShell({
 
   const roleLower = userRole?.toLowerCase() || '';
   const searchPlaceholder = roleLower.includes('candidate')
-    ? 'Search assessments, tasks, submissions...'
+    ? PLACEHOLDERS.SEARCH.GLOBAL_CANDIDATE
     : roleLower.includes('admin')
-      ? 'Search organizations, templates, audits...'
-      : 'Search candidates, assessments, rubrics...';
+      ? PLACEHOLDERS.SEARCH.GLOBAL_ADMIN
+      : PLACEHOLDERS.SEARCH.GLOBAL_COMPANY;
 
   const accountHref = roleLower.includes('candidate')
-    ? '/candidate/profile'
+    ? ROUTES.CANDIDATE.PROFILE
     : roleLower.includes('admin')
-      ? '/admin/settings'
-      : '/company/settings';
+      ? ROUTES.ADMIN.SETTINGS
+      : ROUTES.COMPANY.SETTINGS;
 
   const preferencesHref = roleLower.includes('candidate')
-    ? '/candidate/profile'
+    ? ROUTES.CANDIDATE.PROFILE
     : roleLower.includes('admin')
-      ? '/admin/settings'
-      : '/company/settings';
+      ? ROUTES.ADMIN.SETTINGS
+      : ROUTES.COMPANY.SETTINGS;
 
   const billingHref = roleLower.includes('admin')
-    ? '/admin/settings'
+    ? ROUTES.ADMIN.SETTINGS
     : roleLower.includes('candidate')
-      ? '/candidate'
-      : '/company/settings';
+      ? ROUTES.CANDIDATE.DASHBOARD
+      : ROUTES.COMPANY.SETTINGS;
 
   const profileMenuItems = (
     <>
@@ -115,7 +121,7 @@ export function PortalShell({
   );
 
   return (
-    <div className="min-h-screen flex bg-canvas text-neutral-900 font-sans">
+    <div className="min-h-screen flex bg-white text-neutral-900 font-sans">
       <IdleWarningModal />
 
       <Sidebar
@@ -137,7 +143,7 @@ export function PortalShell({
         onMobileOpenChange={setMobileOpen}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-white">
         <Topbar
           variant="dashboard"
           showLogo={false}

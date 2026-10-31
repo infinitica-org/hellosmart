@@ -14,6 +14,7 @@ import {
   useToast,
 } from '@hs/ui';
 import { Organization, OrganizationStatus } from '@/types/organization';
+import { UI_LABELS } from '@/constants';
 
 export interface TenantTableProps {
   organizations: Organization[];
@@ -139,10 +140,10 @@ export function TenantTable({
             <TableRow className="border-b border-neutral-200 bg-neutral-50/70">
               <TableHead className="font-semibold text-neutral-800">Company Name</TableHead>
               <TableHead className="font-semibold text-neutral-800">Slug</TableHead>
-              <TableHead className="font-semibold text-neutral-800">Status</TableHead>
+              <TableHead className="font-semibold text-neutral-800">{UI_LABELS.TABLE_COLUMNS.STATUS}</TableHead>
               <TableHead className="font-semibold text-neutral-800 text-center">Candidates</TableHead>
-              <TableHead className="font-semibold text-neutral-800">Created Date</TableHead>
-              <TableHead className="font-semibold text-neutral-800 text-right">Actions</TableHead>
+              <TableHead className="font-semibold text-neutral-800">{UI_LABELS.TABLE_COLUMNS.CREATED_AT}</TableHead>
+              <TableHead className="font-semibold text-neutral-800 text-right">{UI_LABELS.TABLE_COLUMNS.ACTIONS}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

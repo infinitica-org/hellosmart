@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import '@hs/ui/styles/fonts.css';
 import '@hs/ui/styles/tokens.css';
 import './globals.css';
-
+import { QueryProvider } from '@/components/providers';
 
 export const metadata: Metadata = {
   title: 'HelloSmart.ai — Hire by Doing',
@@ -29,7 +29,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className="min-h-screen  bg-canvas text-neutral-900 font-sans font-normal antialiased selection:bg-primary/20 selection:text-primary m-0 p-0"
       >
-        {children}
+        <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
   );

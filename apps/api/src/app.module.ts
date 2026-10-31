@@ -17,6 +17,7 @@ import { DevTestController } from './modules/dev/dev-test.controller.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CandidatesModule } from './modules/candidates/candidates.module.js';
+import { TemplatesModule } from './modules/templates/templates.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { ObservabilityModule } from './modules/observability/observability.module.js';
 import { RedisModule } from './modules/redis/redis.module.js';
@@ -32,14 +33,14 @@ const devControllers =
     CommonDatabaseModule,
     ObservabilityModule,
     ThrottlerModule.forRoot(
-      process.env.NODE_ENV === 'test'
+      process.env.NODE_ENV === 'production'
         ? [
-            { name: 'default', ttl: 60_000, limit: 1_000_000 },
-            { name: 'login', ttl: 60_000, limit: 1_000_000 },
-          ]
-        : [
             { name: 'default', ttl: 60_000, limit: 100 },
             { name: 'login', ttl: 60_000, limit: 5 },
+          ]
+        : [
+            { name: 'default', ttl: 60_000, limit: 1_000_000 },
+            { name: 'login', ttl: 60_000, limit: 1_000_000 },
           ],
     ),
     RedisModule,
@@ -49,6 +50,7 @@ const devControllers =
     AuthModule,
     AdminModule,
     CandidatesModule,
+    TemplatesModule,
     HealthModule,
   ],
   controllers: [...devControllers],
