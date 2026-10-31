@@ -13,6 +13,18 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from './dropdown-menu';
+import {
+  User,
+  Settings,
+  CreditCard,
+  LogOut,
+  Bell,
+  Search,
+  HelpCircle,
+  Menu,
+  Clock,
+  Home,
+} from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -322,12 +334,7 @@ function TopbarUserProfileDropdown({
         <div className="py-0.5 space-y-0.5">
           {renderDropdownLink({
             label: 'Account',
-            icon: (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            ),
+            icon: <User className="w-4 h-4 shrink-0" />,
             href: resolvedAccountHref,
             onClick: onAccountClick,
             testId: 'account-menu-item',
@@ -335,12 +342,7 @@ function TopbarUserProfileDropdown({
 
           {renderDropdownLink({
             label: 'Preferences',
-            icon: (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-            ),
+            icon: <Settings className="w-4 h-4 shrink-0" />,
             href: resolvedPreferencesHref,
             onClick: onPreferencesClick,
             testId: 'preferences-menu-item',
@@ -348,12 +350,7 @@ function TopbarUserProfileDropdown({
 
           {renderDropdownLink({
             label: 'Billing',
-            icon: (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                <rect width="20" height="14" x="2" y="5" rx="2" />
-                <line x1="2" x2="22" y1="10" y2="10" />
-              </svg>
-            ),
+            icon: <CreditCard className="w-4 h-4 shrink-0" />,
             href: resolvedBillingHref,
             onClick: onBillingClick,
             testId: 'billing-menu-item',
@@ -373,21 +370,13 @@ function TopbarUserProfileDropdown({
               onClick={onLogout}
               data-testid="logout-menu-item"
               icon={
-                <svg
+                <LogOut
                   className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.8}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
                   aria-hidden="true"
-                >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
+                />
               }
+            
+          
             >
               Log out
             </DropdownMenuItem>
@@ -464,20 +453,7 @@ function NotificationBell({
           className="relative w-9 h-9 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700/60 text-neutral-600 dark:text-neutral-300 flex items-center justify-center transition-colors cursor-pointer focus:outline-none shadow-2xs shrink-0"
           title="Notifications"
         >
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ width: 17, height: 17 }}
-          >
-            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-          </svg>
+          <Bell className="w-[17px] h-[17px]" />
           {unreadCount > 0 && (
             <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-neutral-800" />
           )}
@@ -562,9 +538,7 @@ function SearchButton({ onClick }: { onClick?: () => void }) {
       className="w-8 h-8 rounded-sm flex items-center justify-center text-inherit opacity-80 hover:opacity-100 hover:bg-black/10 transition-colors cursor-pointer"
       title="Search"
     >
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-      </svg>
+      <Search className="w-5 h-5" />
     </button>
   );
 }
@@ -582,9 +556,7 @@ function HelpButton({ onClick }: { onClick?: () => void }) {
       className="w-8 h-8 rounded-sm flex items-center justify-center text-inherit opacity-80 hover:opacity-100 hover:bg-black/10 transition-colors cursor-pointer"
       title="Help"
     >
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
+      <HelpCircle className="w-5 h-5" />
     </button>
   );
 }
@@ -718,11 +690,7 @@ export function Topbar({
               aria-label="Open menu"
               className="md:hidden shrink-0 rounded-lg p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors focus:outline-none"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <line x1="4" y1="6" x2="20" y2="6" />
-                <line x1="4" y1="12" x2="20" y2="12" />
-                <line x1="4" y1="18" x2="20" y2="18" />
-              </svg>
+              <Menu className="w-5 h-5" aria-hidden="true" />
             </button>
           )}
           {shouldShowLogo && (
@@ -749,20 +717,7 @@ export function Topbar({
                     {titleIcon}
                   </span>
                 ) : (
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={{ width: '18px', height: '18px', maxWidth: '18px', maxHeight: '18px' }}
-                  >
-                    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                    <polyline points="9 22 9 12 15 12 15 22" />
-                  </svg>
+                  <Home className="w-[18px] h-[18px]" />
                 )}
               </span>
               <h1 className="text-sm sm:text-base font-normal text-neutral-900 dark:text-white truncate">
@@ -776,19 +731,7 @@ export function Topbar({
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           {/* Search bar matching screenshot */}
           <div className="relative hidden md:flex items-center bg-neutral-100/80 dark:bg-neutral-800/80 rounded-xl px-3.5 py-2 w-56 lg:w-72 h-10 transition-colors focus-within:bg-white dark:focus-within:bg-neutral-800 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-neutral-300 border border-transparent">
-            <svg
-              className="w-4 h-4 text-neutral-400 shrink-0 mr-2.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.35-4.35" />
-            </svg>
+            <Search className="w-4 h-4 text-neutral-400 shrink-0 mr-2.5" aria-hidden="true" />
             <input
               type="text"
               value={searchValue}
@@ -835,17 +778,7 @@ export function Topbar({
               value={searchValue}
               onChange={(e) => onSearchChange?.(e.target.value)}
               placeholder={searchPlaceholder || 'Search candidates, assessments...'}
-              leftIcon={
-                <svg
-                  className="w-4 h-4 text-neutral-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              }
+              leftIcon={<Search className="w-4 h-4 text-neutral-400" />}
               rightIcon={
                 <kbd className="text-[10px] font-mono text-neutral-400 bg-white border border-neutral-200 rounded px-1.5 py-0.5 shadow-2xs">
                   {effectiveShortcut}
@@ -898,10 +831,7 @@ export function Topbar({
         <div className="flex items-center gap-3 flex-shrink-0">
           {/* Live countdown timer badge */}
           <div className="flex items-center gap-1.5 px-3 py-1 bg-warning-muted text-warning-foreground border border-warning-border rounded-full text-xs font-mono font-medium shadow-2xs">
-            <svg className="w-3.5 h-3.5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
+            <Clock className="w-3.5 h-3.5 text-warning" />
             <span>{timerText || '48:15 remaining'}</span>
           </div>
 

@@ -1,4 +1,5 @@
 import React, { InputHTMLAttributes, forwardRef, ReactNode } from 'react';
+import { Loader2, X } from 'lucide-react';
 
 export type InputSize = 'sm' | 'md' | 'lg';
 
@@ -54,26 +55,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         />
         {isLoading ? (
           <div className="absolute right-3 flex items-center pointer-events-none">
-            <svg
-              className="w-4 h-4 text-primary animate-spin"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
+            <Loader2 className="w-4 h-4 text-primary animate-spin" />
           </div>
         ) : onClear && props.value ? (
           <button
@@ -82,13 +64,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-label="Clear input"
             className="absolute right-2.5 flex items-center justify-center w-5 h-5 rounded-full text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
           >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fillRule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
+            <X className="w-3.5 h-3.5" />
           </button>
         ) : rightIcon ? (
           <div className="absolute right-3 flex items-center text-neutral-400">

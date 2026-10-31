@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, forwardRef, ReactNode, HTMLAttributes } from 'react';
+import { ChevronDown } from 'lucide-react';
 
 interface AccordionContextType {
   openItems: string[];
@@ -122,17 +123,7 @@ export const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerPr
         {...props}
       >
         <span>{children}</span>
-        <svg
-          className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
- isOpen ? 'rotate-180' : ''
- }`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDown className={"h-4 w-4 shrink-0 transition-transform duration-200 "} />
       </button>
     );
   }

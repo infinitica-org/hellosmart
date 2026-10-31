@@ -1,6 +1,22 @@
 import React, { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import {
+  LayoutGrid,
+  BarChart2,
+  FileText,
+  Users,
+  ClipboardCheck,
+  HelpCircle,
+  Bot,
+  GraduationCap,
+  ShieldCheck,
+  Building2,
+  Key,
+  CreditCard,
+  Settings,
+  ExternalLink,
+} from 'lucide-react';
+import {
   Sidebar,
   type SidebarItem,
   type SidebarGroup,
@@ -10,118 +26,20 @@ import {
 // ── Icons for diverse navigation links ───────────────────────────────────────
 const ICON_CLS = 'w-5 h-5 shrink-0';
 
-const GridIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="7" height="7" rx="1.5" />
-    <rect x="14" y="3" width="7" height="7" rx="1.5" />
-    <rect x="3" y="14" width="7" height="7" rx="1.5" />
-    <rect x="14" y="14" width="7" height="7" rx="1.5" />
-  </svg>
-);
-
-const ChartIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="20" x2="18" y2="10" />
-    <line x1="12" y1="20" x2="12" y2="4" />
-    <line x1="6" y1="20" x2="6" y2="14" />
-  </svg>
-);
-
-const DocumentReportIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <polyline points="14 2 14 8 20 8" />
-    <line x1="16" y1="13" x2="8" y2="13" />
-    <line x1="16" y1="17" x2="8" y2="17" />
-  </svg>
-);
-
-const UsersIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-  </svg>
-);
-
-const ClipboardCheckIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-    <path d="M9 14l2 2 4-4" />
-  </svg>
-);
-
-const QuestionIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-    <line x1="12" y1="17" x2="12.01" y2="17" />
-  </svg>
-);
-
-const BotAgentIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="11" width="18" height="10" rx="2" />
-    <circle cx="12" cy="5" r="2" />
-    <path d="M12 7v4" />
-    <line x1="8" y1="16" x2="8.01" y2="16" />
-    <line x1="16" y1="16" x2="16.01" y2="16" />
-  </svg>
-);
-
-const GraduationCapIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-    <path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5" />
-  </svg>
-);
-
-const ShieldCheckIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    <path d="M9 12l2 2 4-4" />
-  </svg>
-);
-
-const BuildingIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <rect x="4" y="2" width="16" height="20" rx="2" />
-    <path d="M9 22v-4h6v4" />
-    <path d="M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01" />
-  </svg>
-);
-
-const KeyIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="7.5" cy="15.5" r="5.5" />
-    <path d="M21 2l-9.6 9.6" />
-    <path d="M15.5 7.5l3 3L22 7l-3-3" />
-  </svg>
-);
-
-const CreditCardIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-    <line x1="1" y1="10" x2="23" y2="10" />
-  </svg>
-);
-
-const SettingsIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-  </svg>
-);
-
-const ExternalLinkIcon = () => (
-  <svg className={ICON_CLS} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-    <polyline points="15 3 21 3 21 9" />
-    <line x1="10" y1="14" x2="21" y2="3" />
-  </svg>
-);
+const GridIcon = () => <LayoutGrid className={ICON_CLS} strokeWidth={1.8} />;
+const ChartIcon = () => <BarChart2 className={ICON_CLS} strokeWidth={1.8} />;
+const DocumentReportIcon = () => <FileText className={ICON_CLS} strokeWidth={1.8} />;
+const UsersIcon = () => <Users className={ICON_CLS} strokeWidth={1.8} />;
+const ClipboardCheckIcon = () => <ClipboardCheck className={ICON_CLS} strokeWidth={1.8} />;
+const QuestionIcon = () => <HelpCircle className={ICON_CLS} strokeWidth={1.8} />;
+const BotAgentIcon = () => <Bot className={ICON_CLS} strokeWidth={1.8} />;
+const GraduationCapIcon = () => <GraduationCap className={ICON_CLS} strokeWidth={1.8} />;
+const ShieldCheckIcon = () => <ShieldCheck className={ICON_CLS} strokeWidth={1.8} />;
+const BuildingIcon = () => <Building2 className={ICON_CLS} strokeWidth={1.8} />;
+const KeyIcon = () => <Key className={ICON_CLS} strokeWidth={1.8} />;
+const CreditCardIcon = () => <CreditCard className={ICON_CLS} strokeWidth={1.8} />;
+const SettingsIcon = () => <Settings className={ICON_CLS} strokeWidth={1.8} />;
+const ExternalLinkIcon = () => <ExternalLink className={ICON_CLS} strokeWidth={1.8} />;
 
 // ── Rich 18+ Navigation Links for testing scrolling ──────────────────────────
 const EXTENDED_DASHBOARD_GROUPS: SidebarGroup[] = [

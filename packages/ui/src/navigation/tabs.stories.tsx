@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { expect, userEvent, within } from '@storybook/test';
+import { Terminal, Code, Zap } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';
 import { Badge } from '../components/badge';
 
@@ -106,31 +107,19 @@ export const FittedPillTabsWithIcons: Story = {
         <TabsList>
           <TabsTrigger
             value="terminal"
-            icon={
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            }
+            icon={<Terminal className="w-3.5 h-3.5" />}
           >
             Terminal
           </TabsTrigger>
           <TabsTrigger
             value="code"
-            icon={
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-              </svg>
-            }
+            icon={<Code className="w-3.5 h-3.5" />}
           >
             IDE Editor
           </TabsTrigger>
           <TabsTrigger
             value="ai"
-            icon={
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            }
+            icon={<Zap className="w-3.5 h-3.5" />}
           >
             AI Assistant
           </TabsTrigger>

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Badge, Card } from '@hs/ui';
+import { Check, AlertCircle } from 'lucide-react';
 import { calculateWeightBalance, type RubricDimension } from './types';
 import { RUBRIC_WEIGHT_TOTAL } from '@/constants';
 
@@ -96,18 +97,12 @@ export function WeightBalanceBar({
         <div className={`font-medium ${statusStyles.textColor}`}>
           {balance.isBalanced ? (
             <span className="flex items-center gap-1.5 text-emerald-700">
-              <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
+              <Check className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
               {balance.message}
             </span>
           ) : (
             <span className="flex items-center gap-1.5">
-              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
+              <AlertCircle className="w-4 h-4 shrink-0" />
               {balance.message}
             </span>
           )}

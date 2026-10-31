@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { expect, userEvent, within } from '@storybook/test';
+import { Search } from 'lucide-react';
 import { Input } from './input';
 
 const meta: Meta<typeof Input> = {
@@ -44,11 +45,7 @@ export const WithIcons: Story = {
     <div className="space-y-4 max-w-sm">
       <Input
         placeholder="Search candidates or tasks..."
-        leftIcon={
-          <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        }
+        leftIcon={<Search className="w-4 h-4 text-neutral-400" />}
       />
       <Input
         placeholder="Annual quota budget"

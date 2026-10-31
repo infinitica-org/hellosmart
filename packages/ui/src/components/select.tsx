@@ -1,6 +1,7 @@
 'use client';
 
 import React, { SelectHTMLAttributes, forwardRef } from 'react';
+import { ChevronDown, X, Check } from 'lucide-react';
 
 export interface SelectOption {
   label: string;
@@ -48,9 +49,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             : children}
         </select>
         <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-          </svg>
+          <ChevronDown className="w-4 h-4" />
         </div>
       </div>
     );
@@ -178,9 +177,7 @@ export function MultiSelect({
                   aria-label={`Remove ${opt.label}`}
                   className="hover:text-primary-hover focus:outline-none p-0.5 rounded-sm"
                 >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="w-3 h-3" />
                 </button>
               </span>
             ))
@@ -195,19 +192,12 @@ export function MultiSelect({
               aria-label="Clear all selected"
               className="p-1 hover:text-neutral-600 rounded-md"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
-          <svg
+          <ChevronDown
             className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-          </svg>
+          />
         </div>
       </div>
 
@@ -253,11 +243,7 @@ export function MultiSelect({
                             : 'border-neutral-300 bg-white'
                         }`}
                       >
-                        {isSelected && (
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
+                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                       </div>
                       <span>{opt.label}</span>
                     </div>

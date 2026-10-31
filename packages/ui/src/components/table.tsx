@@ -16,6 +16,7 @@ import React, {
 import { Badge } from './badge';
 import { Avatar } from './avatar';
 import { Button } from './button';
+import { ChevronUp, ChevronDown, ArrowUpDown, MoreVertical, Inbox, Search } from 'lucide-react';
 
 export type TableDensity = 'compact' | 'normal' | 'relaxed';
 export type TableVariant = 'default' | 'card' | 'bordered' | 'striped' | 'minimal' | 'bento' | 'candidate';
@@ -318,22 +319,11 @@ export const TableSortableHead = forwardRef<HTMLTableCellElement, TableSortableH
           <span>{children}</span>
           <span className="inline-flex items-center">
             {sortDirection === 'asc' ? (
-              <svg className="w-3.5 h-3.5 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
-              </svg>
+              <ChevronUp className="w-3.5 h-3.5 text-primary shrink-0" strokeWidth={2.5} />
             ) : sortDirection === 'desc' ? (
-              <svg className="w-3.5 h-3.5 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-              </svg>
+              <ChevronDown className="w-3.5 h-3.5 text-primary shrink-0" strokeWidth={2.5} />
             ) : (
-              <svg
-                className="w-3.5 h-3.5 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-              </svg>
+              <ArrowUpDown className="w-3.5 h-3.5 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
             )}
             {sortPriority !== undefined && sortDirection && (
               <span className="ml-0.5 text-[9px] font-bold text-primary bg-primary/10 rounded-full w-3.5 h-3.5 flex items-center justify-center">
@@ -406,9 +396,7 @@ export function TableRowActions({
             aria-label="Row actions"
             className="w-8 h-8 rounded-sm border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-nav-accent/20 shadow-2xs"
           >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-            </svg>
+            <MoreVertical className="w-4 h-4" />
           </button>
         )}
       </div>
@@ -503,16 +491,7 @@ export function TableEmptyState({
   return (
     <div className={`flex flex-col items-center justify-center p-12 text-center ${className}`}>
       <div className="w-12 h-12 rounded-full bg-neutral-100 text-neutral-400 flex items-center justify-center mb-3">
-        {icon || (
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.5"
-              d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-            />
-          </svg>
-        )}
+        {icon || <Inbox className="w-6 h-6 stroke-[1.5]" />}
       </div>
       <h3 className="text-sm font-semibold text-neutral-900 mb-1">{title}</h3>
       <p className="text-xs text-neutral-500 max-w-sm mb-4">{description}</p>
@@ -823,14 +802,7 @@ export function SimpleTable<T extends Record<string, any>>({
                 placeholder={searchPlaceholder}
                 className="w-full rounded-sm border border-neutral-300 bg-white pl-8 pr-3 py-1.5 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-nav-accent/20"
               />
-              <svg
-                className="w-4 h-4 text-neutral-400 absolute left-2.5 top-2 pointer-events-none"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <Search className="w-4 h-4 text-neutral-400 absolute left-2.5 top-2 pointer-events-none" />
             </div>
           )}
 

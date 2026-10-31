@@ -4,6 +4,7 @@
 import React, { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Lock } from 'lucide-react';
 import { getSafeRedirectUrl } from '@/lib/safe-redirect';
 import {
   describeSignInStep,
@@ -704,14 +705,7 @@ function LoginForm() {
         <form onSubmit={handleMfaSubmit}>
           <DialogHeader>
             <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center mb-2 text-primary">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
-              </svg>
+              <Lock className="w-5 h-5" strokeWidth={2} />
             </div>
             <DialogTitle className="!text-neutral-900 font-medium">Two-Factor Authentication</DialogTitle>
             <DialogDescription className="text-neutral-500 font-light">

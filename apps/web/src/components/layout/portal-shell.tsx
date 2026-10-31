@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AlertDialog, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@hs/ui';
+import { Laptop, ShieldAlert } from 'lucide-react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { IdleWarningModal } from '@/components/session/idle-warning-modal';
@@ -97,23 +98,14 @@ export function PortalShell({
       <DropdownMenuItem
         data-testid="active-sessions-menu-item"
         onClick={() => setShowSessions(true)}
-        icon={
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <rect x="2" y="3" width="20" height="14" rx="2" />
-            <path d="M8 21h8M12 17v4" />
-          </svg>
-        }
+        icon={<Laptop className="w-4 h-4" aria-hidden="true" />}
       >
         Active Sessions
       </DropdownMenuItem>
       <DropdownMenuItem
         variant="danger"
         onClick={() => setShowLogoutAll(true)}
-        icon={
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-        }
+        icon={<ShieldAlert className="w-4 h-4" aria-hidden="true" />}
       >
         Sign out of all devices
       </DropdownMenuItem>

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, forwardRef, ReactNode, HTMLAttributes } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 
 export type DrawerPosition = 'left' | 'right' | 'bottom' | 'top';
 
@@ -160,9 +161,7 @@ export function Drawer({
             aria-label="Close drawer"
             className="absolute right-4 top-4 rounded-sm p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-400 transition-colors z-20"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
         )}
 
@@ -293,11 +292,7 @@ export const DrawerClose = forwardRef<HTMLButtonElement, DrawerCloseProps>(
       className={`rounded-sm p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors ${className}`}
       {...props}
     >
-      {children ?? (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      )}
+      {children ?? <X className="w-5 h-5" />}
     </button>
   )
 );

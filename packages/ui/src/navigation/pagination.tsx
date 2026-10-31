@@ -1,6 +1,7 @@
 'use client';
 
 import React, { forwardRef, HTMLAttributes } from 'react';
+import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
 
 export interface PaginationProps extends Omit<HTMLAttributes<HTMLElement>, 'onChange'> {
   page: number;
@@ -92,16 +93,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
             onClick={() => onPageChange(1)}
             className={`${buttonBase} text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100`}
           >
-            <svg
-              className="w-3.5 h-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polyline points="11 17 6 12 11 7" />
-              <polyline points="18 17 13 12 18 7" />
-            </svg>
+            <ChevronsLeft className="w-3.5 h-3.5" />
           </button>
         )}
 
@@ -113,15 +105,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
           onClick={() => onPageChange(page - 1)}
           className={`${buttonBase} text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100`}
         >
-          <svg
-            className="w-3.5 h-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
+          <ChevronLeft className="w-3.5 h-3.5" />
         </button>
 
         {/* Page numbers */}
@@ -168,15 +152,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
           onClick={() => onPageChange(page + 1)}
           className={`${buttonBase} text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100`}
         >
-          <svg
-            className="w-3.5 h-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
+          <ChevronRight className="w-3.5 h-3.5" />
         </button>
 
         {/* Last Page */}
@@ -188,16 +164,7 @@ export const Pagination = forwardRef<HTMLElement, PaginationProps>(
             onClick={() => onPageChange(totalPages)}
             className={`${buttonBase} text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100`}
           >
-            <svg
-              className="w-3.5 h-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polyline points="13 17 18 12 13 7" />
-              <polyline points="6 17 11 12 6 7" />
-            </svg>
+            <ChevronsRight className="w-3.5 h-3.5" />
           </button>
         )}
       </nav>
