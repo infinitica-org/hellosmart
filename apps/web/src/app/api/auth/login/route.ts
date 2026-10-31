@@ -84,6 +84,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           email: normalizedEmail,
           body: data,
         });
+        if (devFallbackEnabled) {
+          // In local dev with fallback enabled, fall through to dev login accounts when backend returns 5xx
+          throw new Error('Backend returned 5xx, falling back to local dev mock accounts');
+        }
       }
       return NextResponse.json(
         data || {

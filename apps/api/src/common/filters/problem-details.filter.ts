@@ -205,7 +205,10 @@ export class ProblemDetailsFilter implements ExceptionFilter {
         type: 'https://hellosmart.ai/problems/internal_error',
         title: 'Internal Server Error',
         status: 500,
-        detail: 'An unexpected error occurred',
+        detail:
+          process.env.NODE_ENV === 'development' && exception instanceof Error
+            ? `${exception.name}: ${exception.message}`
+            : 'An unexpected error occurred',
         code: 'INTERNAL_ERROR',
         requestId,
       };

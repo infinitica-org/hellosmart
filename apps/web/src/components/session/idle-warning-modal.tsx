@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { sessionClient, type AuthBroadcastMessage } from '@/lib/session-client';
+import { LIMITS } from '@/constants';
 
 export interface IdleWarningModalProps {
   /** Total idle timeout in seconds (default 900 = 15 minutes) */
@@ -11,7 +12,7 @@ export interface IdleWarningModalProps {
 }
 
 export function IdleWarningModal({
-  idleTimeoutSeconds = 900,
+  idleTimeoutSeconds = LIMITS.TIMEOUTS.IDLE_TIMEOUT_MS / 1000,
   warningThresholdSeconds = 120,
 }: IdleWarningModalProps): React.JSX.Element | null {
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null);

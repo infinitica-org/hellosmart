@@ -109,7 +109,7 @@ export function Dialog({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-[#0b1f3a]/50 transition-opacity animate-fade-in"
+        className="fixed inset-0 bg-chrome/50 transition-opacity animate-fade-in"
         onClick={() => {
           if (closeOnBackdropClick) {
             handleOpenChange(false);
@@ -124,7 +124,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         data-testid={testId}
-        className={`relative z-10 w-full ${sizeClasses[size]} rounded-md border border-[#d8dee6] bg-white p-5 shadow-lg focus:outline-none transition-all animate-scale-in ${className}`}
+        className={`relative z-10 w-full ${sizeClasses[size]} rounded-md border border-card-border bg-white p-5 shadow-lg focus:outline-none transition-all animate-scale-in ${className}`}
       >
         {/* Accessible Top-Right Close Button */}
         {showCloseButton && (

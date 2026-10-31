@@ -29,6 +29,200 @@ export const DEFAULT_MAIL_CONFIG: Config = {
   MFA_ENCRYPTION_KEY_ID: 'k1',
 };
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+export function buildInvitationEmailHtml(input: SendInvitationInput, inviteUrl: string): string {
+  const isCandidate = input.role === 'candidate';
+  const roleName = isCandidate ? 'Candidate' : 'Company Administrator';
+  const roleBadgeBg = isCandidate ? '#fff7ed' : '#f0fdf4';
+  const roleBadgeText = isCandidate ? '#c2410c' : '#15803d';
+  const roleBadgeBorder = isCandidate ? '#fed7aa' : '#bbf7d0';
+
+  const headline = isCandidate
+    ? `You're invited to complete an assessment for ${escapeHtml(input.orgName)}`
+    : `You're invited to join ${escapeHtml(input.orgName)} on HelloSmart`;
+
+  const description = isCandidate
+    ? `<strong>${escapeHtml(input.orgName)}</strong> has invited you to complete a practical work simulation on HelloSmart.ai. You will work in a realistic workspace environment with AI tools to solve real challenges.`
+    : `You have been invited to join <strong>${escapeHtml(input.orgName)}</strong> as a <strong>Company Administrator</strong> on HelloSmart.ai. You'll be able to create assessments, review candidate work, and manage your team's rubrics.`;
+
+  const buttonText = isCandidate
+    ? 'Start Candidate Assessment &rarr;'
+    : 'Activate Account &amp; Set Password &rarr;';
+
+  const subtitle = isCandidate
+    ? 'Practical Work Simulation &bull; Controlled Workspace'
+    : 'Company Portal &bull; Assessment Platform';
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(headline)}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f6f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #1c2430;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f6f8; padding: 40px 16px;">
+    <tr>
+      <td align="center">
+        <!-- Main Card Container -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; border: 1px solid #d8dee6; box-shadow: 0 4px 12px rgba(11, 31, 58, 0.05); overflow: hidden; text-align: left;">
+          
+          <!-- Brand Header -->
+          <tr>
+            <td style="padding: 32px 36px 24px 36px; border-bottom: 1px solid #f1f5f9;">
+              <table cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="vertical-align: middle; padding-right: 12px;">
+                    <!-- HelloSmart Logo Mark -->
+                    <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #fe7330 0%, #ea580c 100%); text-align: center; line-height: 40px; box-shadow: 0 2px 6px rgba(254, 115, 48, 0.3);">
+                      <span style="font-size: 20px; color: #ffffff; font-weight: bold; line-height: 40px; display: inline-block;">✦</span>
+                    </div>
+                  </td>
+                  <td style="vertical-align: middle;">
+                    <div style="font-size: 22px; font-weight: 800; color: #0b1f3a; letter-spacing: -0.5px; line-height: 1.2;">
+                      HelloSmart<span style="color: #fe7330;">.ai</span>
+                    </div>
+                    <div style="font-size: 11px; font-weight: 600; color: #8a95a3; letter-spacing: 0.5px; text-transform: uppercase;">
+                      Hire by doing
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Main Body Content -->
+          <tr>
+            <td style="padding: 32px 36px;">
+              <!-- Role Badge -->
+              <div style="display: inline-block; padding: 4px 12px; font-size: 12px; font-weight: 600; color: ${roleBadgeText}; background-color: ${roleBadgeBg}; border: 1px solid ${roleBadgeBorder}; border-radius: 9999px; margin-bottom: 16px;">
+                ${escapeHtml(roleName)}
+              </div>
+
+              <!-- Headline -->
+              <h1 style="font-size: 22px; font-weight: 700; color: #0b1f3a; margin: 0 0 12px 0; line-height: 1.3; letter-spacing: -0.3px;">
+                ${escapeHtml(headline)}
+              </h1>
+
+              <!-- Subtitle / Meta -->
+              <div style="font-size: 13px; color: #8a95a3; margin-bottom: 20px; font-weight: 500;">
+                ${subtitle}
+              </div>
+
+              <!-- Description Paragraph -->
+              <p style="font-size: 14px; line-height: 1.6; color: #3d4754; margin: 0 0 24px 0;">
+                ${description}
+              </p>
+
+              <!-- Metadata Summary Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f7f9fb; border-radius: 12px; border: 1px solid #eef1f4; margin-bottom: 28px;">
+                <tr>
+                  <td style="padding: 16px 20px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size: 13px; line-height: 1.8;">
+                      <tr>
+                        <td style="color: #8a95a3; width: 120px; padding: 2px 0;">Organization:</td>
+                        <td style="color: #0b1f3a; font-weight: 600; padding: 2px 0;">${escapeHtml(input.orgName)}</td>
+                      </tr>
+                      <tr>
+                        <td style="color: #8a95a3; padding: 2px 0;">Assigned Role:</td>
+                        <td style="color: #0b1f3a; font-weight: 600; padding: 2px 0;">${escapeHtml(roleName)}</td>
+                      </tr>
+                      <tr>
+                        <td style="color: #8a95a3; padding: 2px 0;">Recipient:</td>
+                        <td style="color: #0b1f3a; font-weight: 600; padding: 2px 0;">${escapeHtml(input.to)}</td>
+                      </tr>
+                      <tr>
+                        <td style="color: #8a95a3; padding: 2px 0;">Link Security:</td>
+                        <td style="color: #0b1f3a; font-weight: 500; padding: 2px 0;">Single-use &bull; Expires in 72 hours</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Primary Call To Action Button -->
+              <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 28px;">
+                <tr>
+                  <td align="center" style="border-radius: 10px; background-color: #fe7330;">
+                    <a href="${inviteUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 10px; background: linear-gradient(180deg, #fe7330 0%, #ea580c 100%); box-shadow: 0 4px 10px rgba(254, 115, 48, 0.35); text-align: center; border: 1px solid #c2410c;">
+                      ${buttonText}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Fallback Direct URL Box -->
+              <div style="font-size: 12px; color: #5b6775; margin-bottom: 8px;">
+                If the button above does not work, copy and paste this link into your browser:
+              </div>
+              <div style="background-color: #f4f6f8; border: 1px solid #d8dee6; border-radius: 8px; padding: 12px; font-size: 12px; color: #1b6bba; word-break: break-all; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1.4;">
+                ${inviteUrl}
+              </div>
+            </td>
+          </tr>
+
+          <!-- Security Notice & Legal Footer -->
+          <tr>
+            <td style="padding: 24px 36px; background-color: #f7f9fb; border-top: 1px solid #eef1f4; font-size: 12px; line-height: 1.6; color: #8a95a3;">
+              <p style="margin: 0 0 8px 0;">
+                <strong style="color: #5b6775;">Security Note:</strong> This invitation is single-use and valid for 72 hours. Do not forward or share this link. On first sign-in, you will be prompted to set a secure password.
+              </p>
+              <p style="margin: 0 0 16px 0;">
+                If you were not expecting this invitation from ${escapeHtml(input.orgName)}, you can safely ignore this email.
+              </p>
+              <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 11px; color: #94a3b8;">
+                &copy; ${new Date().getFullYear()} HelloSmart.ai. All rights reserved. &bull; Hire by doing
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+export function buildInvitationEmailText(input: SendInvitationInput, inviteUrl: string): string {
+  const isCandidate = input.role === 'candidate';
+  const roleName = isCandidate ? 'Candidate' : 'Company Administrator';
+
+  return `
+HelloSmart.ai — Hire by doing
+=========================================
+
+You're invited to join ${input.orgName}
+
+${isCandidate
+  ? `${input.orgName} has invited you to complete a practical work simulation on HelloSmart.ai.`
+  : `You have been invited to join ${input.orgName} on HelloSmart.ai as a Company Administrator.`}
+
+Invitation Details:
+• Organization: ${input.orgName}
+• Role: ${roleName}
+• Recipient: ${input.to}
+• Expiration: 72 hours (Single-use)
+
+Activate your account and get started by visiting:
+${inviteUrl}
+
+Note: For your security, this invitation is single-use and expires in 72 hours.
+If you were not expecting this invitation, you can safely ignore this email.
+
+© ${new Date().getFullYear()} HelloSmart.ai. All rights reserved.
+  `.trim();
+}
+
 @Injectable()
 export class MailService implements EmailSender {
   private readonly logger = new Logger(MailService.name);
@@ -90,35 +284,19 @@ export class MailService implements EmailSender {
         // Await delivery so the invitation is visible in Mailpit before this method returns.
         const mailpitUrl = this.config.MAILPIT_URL ?? 'http://127.0.0.1:8025';
         try {
+          const subject = input.role === 'candidate'
+            ? `You have been invited to complete an assessment for ${input.orgName} on HelloSmart.ai`
+            : `You have been invited to join ${input.orgName} on HelloSmart.ai`;
+
           const response = await fetch(`${mailpitUrl}/api/v1/send`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              From: { Email: 'no-reply@hellosmart.ai', Name: 'HelloSmart.ai Notification' },
+              From: { Email: 'no-reply@hellosmart.ai', Name: 'HelloSmart.ai' },
               To: [{ Email: input.to }],
-              Subject: `You have been invited to join ${input.orgName} on HelloSmart.ai`,
-              HTML: `
-                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; padding: 36px 20px;">
-                  <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0;">
-                    <div style="margin-bottom: 20px;">
-                      <span style="font-size: 20px; font-weight: 900; color: #0f172a;">HelloSmart<span style="color: #4f46e5;">.ai</span></span>
-                    </div>
-                    <h1 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 0;">You're Invited to ${input.orgName}</h1>
-                    <p style="font-size: 14px; line-height: 1.6; color: #475569;">
-                      You have been invited to join <strong>${input.orgName}</strong> on HelloSmart.ai as a <strong>${input.role}</strong>.
-                    </p>
-                    <div style="margin: 28px 0;">
-                      <a href="${inviteUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #4f46e5; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 8px;">
-                        Activate Account &amp; Set Password &rarr;
-                      </a>
-                    </div>
-                    <p style="font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 16px;">
-                      This link is single-use and expires in 72 hours.
-                    </p>
-                  </div>
-                </div>
-              `,
-              Text: `Welcome to ${input.orgName}! Activate your account: ${inviteUrl}`,
+              Subject: subject,
+              HTML: buildInvitationEmailHtml(input, inviteUrl),
+              Text: buildInvitationEmailText(input, inviteUrl),
             }),
             signal: AbortSignal.timeout(3_000),
           });

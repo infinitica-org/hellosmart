@@ -107,7 +107,7 @@ export default function HomePage() {
 
       {/* Footer subtle brandmark */}
       <footer className="relative z-10 w-full py-6 text-center text-xs text-[#9ca3af]/60 font-mono tracking-wider">
-        HelloSmart.ai • AI-Native Work Simulation Platform
+        HelloSmart.ai • AI-Native Hiring Platform
       </footer>
     </div>
   );

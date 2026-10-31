@@ -14,6 +14,7 @@ import {
   useToast,
 } from '@hs/ui';
 import { CreateOrganizationInput } from '@/types/organization';
+import { PLACEHOLDERS, UI_LABELS } from '@/constants';
 
 export interface ProvisionModalProps {
   open: boolean;
@@ -162,7 +163,7 @@ export function ProvisionModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <TextField
               label="Company Name"
-              placeholder="Acme Global Inc."
+              placeholder={PLACEHOLDERS.INPUTS.COMPANY_NAME}
               value={formData.name}
               onChange={handleNameChange}
               required
@@ -171,7 +172,7 @@ export function ProvisionModal({
 
             <TextField
               label="Organization Slug"
-              placeholder="acme-global"
+              placeholder={PLACEHOLDERS.INPUTS.COMPANY_SLUG}
               value={formData.slug}
               onChange={handleSlugChange}
               helperText="Unique subpath identifier (a-z, 0-9, hyphens)"
@@ -278,7 +279,7 @@ export function ProvisionModal({
             disabled={isSubmitting}
             data-testid="provision-cancel-btn"
           >
-            Cancel
+            {UI_LABELS.BUTTONS.CANCEL}
           </Button>
           <Button
             type="submit"
