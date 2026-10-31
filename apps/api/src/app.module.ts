@@ -18,6 +18,7 @@ import { AdminModule } from './modules/admin/admin.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CandidatesModule } from './modules/candidates/candidates.module.js';
 import { TemplatesModule } from './modules/templates/templates.module.js';
+import { AssessmentsModule } from './modules/assessments/assessments.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { ObservabilityModule } from './modules/observability/observability.module.js';
 import { RedisModule } from './modules/redis/redis.module.js';
@@ -51,6 +52,7 @@ const devControllers =
     AdminModule,
     CandidatesModule,
     TemplatesModule,
+    AssessmentsModule,
     HealthModule,
   ],
   controllers: [...devControllers],
