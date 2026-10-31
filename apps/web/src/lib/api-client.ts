@@ -476,40 +476,55 @@ export async function changePassword(
   return (await res.json()) as SimpleSuccessResponse;
 }
 
+let inFlightMePromise: Promise<UserMe> | null = null;
+
 /**
  * Retrieves the currently authenticated user profile via GET /api/v1/me.
+ * Deduplicates in-flight calls to prevent concurrent 429 request stampedes.
  */
 export async function getMe(
   fetchFn: typeof fetch = fetch,
 ): Promise<UserMe> {
-  const url = resolveBrowserAuthUrl('/me');
-
-  const res = await fetchFn(url, {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-    },
-    credentials: 'include',
-  });
-
-  if (res.status === 401) {
-    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
+  if (inFlightMePromise) {
+    return inFlightMePromise;
   }
 
-  if (res.status === 429) {
-    throw new RateLimitedError();
-  }
-
-  if (!res.ok) {
-    let errorDetail = 'Failed to fetch current user profile';
+  inFlightMePromise = (async () => {
     try {
-      const errorJson = await res.json();
-      errorDetail = errorJson.detail || errorDetail;
-    } catch {
-      // ignore
-    }
-    throw new ApiError(res.status, 'API_ERROR', errorDetail);
-  }
+      const url = resolveBrowserAuthUrl('/me');
 
-  return (await res.json()) as UserMe;
+      const res = await fetchFn(url, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (res.status === 401) {
+        throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
+      }
+
+      if (res.status === 429) {
+        throw new RateLimitedError();
+      }
+
+      if (!res.ok) {
+        let errorDetail = 'Failed to fetch current user profile';
+        try {
+          const errorJson = await res.json();
+          errorDetail = errorJson.detail || errorDetail;
+        } catch {
+          // ignore
+        }
+        throw new ApiError(res.status, 'API_ERROR', errorDetail);
+      }
+
+      return (await res.json()) as UserMe;
+    } finally {
+      inFlightMePromise = null;
+    }
+  })();
+
+  return inFlightMePromise;
 }
