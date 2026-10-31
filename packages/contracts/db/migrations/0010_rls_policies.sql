@@ -50,3 +50,4 @@ DO $$ BEGIN
     GRANT SELECT, INSERT, UPDATE, DELETE ON app.mfa_backup_codes TO hs_platform;
   END IF;
 END $$;
+
