@@ -3,6 +3,7 @@ import type { Pool } from 'pg';
 import type {
   AssignTemplateDto,
   BulkAssignTemplateDto,
+  CloneTemplateDto,
   CreateTemplateDto,
   TemplateDetailDto,
   TemplateSummaryDto,
@@ -315,6 +316,113 @@ export class TemplatesService {
     }
   }
 
+  /**
+   * Platform Admin clones a template version to create a new draft (BR-03).
+   * Generates a new semver version and preserves version history.
+   */
+  async cloneVersion(
+    templateId: string,
+    dto: CloneTemplateDto,
+    actor: UserContext,
+  ): Promise<{ id: string; templateId: string; version: string; status: string }> {
+    this.assertPlatformAdmin(actor);
+
+    const targetPool = this.platformPool || this.pool;
+    if (!targetPool) {
+      return {
+        id: 'cloned_ver_01',
+        templateId,
+        version: dto.newVersion || '1.1.0',
+        status: 'draft',
+      };
+    }
+
+    const client = await targetPool.connect();
+    try {
+      return await withPlatform(client, async (tx) => {
+        let versionToCreate = dto.newVersion;
+        if (!versionToCreate) {
+          const currentVersion = await this.repo.getLatestVersion(tx, templateId);
+          versionToCreate = bumpSemver(currentVersion || '1.0.0', dto.versionType);
+        }
+
+        const cloned = await this.repo.cloneTemplateVersion(tx, templateId, versionToCreate);
+        if (!cloned) {
+          throw problem({
+            title: 'Not Found',
+            status: 404,
+            detail: `Template ${templateId} not found`,
+            code: 'TEMPLATE_NOT_FOUND',
+          });
+        }
+
+        await appendAuditEvent(tx, {
+          actorId: actor.userId,
+          actorRole: actor.role,
+          orgId: null,
+          action: 'template.version_cloned',
+          entity: 'template_version',
+          entityId: cloned.id,
+          after: {
+            templateId: cloned.templateId,
+            version: cloned.version,
+            status: cloned.status,
+          },
+        });
+
+        return cloned;
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Platform Admin publishes a draft template version (BR-03).
+   * Once published, the version becomes immutable.
+   */
+  async publishVersion(
+    templateId: string,
+    versionOrId: string,
+    actor: UserContext,
+  ): Promise<{ published: boolean; templateId: string; version: string }> {
+    this.assertPlatformAdmin(actor);
+
+    const targetPool = this.platformPool || this.pool;
+    if (!targetPool) {
+      return { published: true, templateId, version: versionOrId };
+    }
+
+    const client = await targetPool.connect();
+    try {
+      return await withPlatform(client, async (tx) => {
+        const ok = await this.repo.publishTemplateVersion(tx, templateId, versionOrId);
+        if (!ok) {
+          throw problem({
+            title: 'Not Found',
+            status: 404,
+            detail: `Template ${templateId} or draft version ${versionOrId} not found`,
+            code: 'VERSION_NOT_FOUND',
+          });
+        }
+
+        await appendAuditEvent(tx, {
+          actorId: actor.userId,
+          actorRole: actor.role,
+          orgId: null,
+          action: 'template.version_published',
+          entity: 'template_version',
+          entityId: versionOrId,
+          after: { templateId, version: versionOrId, status: 'published' },
+        });
+
+        return { published: true, templateId, version: versionOrId };
+      });
+    } finally {
+      client.release();
+    }
+  }
+
   private assertPlatformAdmin(actor: UserContext): void {
     if (actor.role !== 'platform_admin') {
       throw problem({
@@ -325,4 +433,30 @@ export class TemplatesService {
       });
     }
   }
+}
+
+export function bumpSemver(
+  current: string,
+  type: 'patch' | 'minor' | 'major' = 'minor',
+): string {
+  const match = current.match(/^(\d+)\.(\d+)\.(\d+)$/);
+  if (!match || !match[1] || !match[2] || !match[3]) {
+    return '1.1.0';
+  }
+  let major = parseInt(match[1], 10);
+  let minor = parseInt(match[2], 10);
+  let patch = parseInt(match[3], 10);
+
+  if (type === 'major') {
+    major += 1;
+    minor = 0;
+    patch = 0;
+  } else if (type === 'minor') {
+    minor += 1;
+    patch = 0;
+  } else {
+    patch += 1;
+  }
+
+  return `${major}.${minor}.${patch}`;
 }
