@@ -3,7 +3,7 @@
 import React, { useState, ReactNode } from 'react';
 import { BrandMark } from '../brand-mark';
 import { Avatar } from '../components/avatar';
-import { Input } from '../components/input';
+import { Input, SearchInput } from '../components/input';
 import { Breadcrumbs, BreadcrumbItemData } from './breadcrumbs';
 import {
   DropdownMenu,
@@ -85,6 +85,8 @@ export interface TopbarProps {
   whiteLabel?: boolean;
   /** Number of unread notifications (shows dot when > 0) */
   notificationCount?: number;
+  /** Custom notification items (defaults to empty list, no dummy data) */
+  notifications?: TopbarNotificationItem[];
   /** Callback when the notification bell is clicked */
   onNotificationsClick?: () => void;
   /** Callback when the search icon is clicked (shows search button if provided) */
@@ -401,34 +403,21 @@ export interface TopbarNotificationItem {
 
 function NotificationBell({
   count = 0,
+  notifications,
   onClick,
 }: {
   count?: number | undefined;
+  notifications?: TopbarNotificationItem[] | undefined;
   onClick?: (() => void) | undefined;
 }) {
-  const [items, setItems] = useState<TopbarNotificationItem[]>([
-    {
-      id: '1',
-      title: 'Assessment submitted',
-      description: 'Candidate submitted Senior Full Stack evaluation.',
-      time: '12m ago',
-      read: false,
-    },
-    {
-      id: '2',
-      title: 'AI review completed',
-      description: 'All 3 rubric evaluation agents generated scores.',
-      time: '45m ago',
-      read: false,
-    },
-    {
-      id: '3',
-      title: 'Candidate workspace active',
-      description: 'Cloud VM session initialized for evaluation.',
-      time: '2h ago',
-      read: true,
-    },
-  ]);
+  const [items, setItems] = useState<TopbarNotificationItem[]>(notifications ?? []);
+
+  // Sync if external notifications prop changes
+  React.useEffect(() => {
+    if (notifications !== undefined) {
+      setItems(notifications);
+    }
+  }, [notifications]);
 
   const unreadCount = count > 0 ? count : items.filter((i: TopbarNotificationItem) => !i.read).length;
 
@@ -599,6 +588,7 @@ export function Topbar({
   logoSrc,
   whiteLabel = false,
   notificationCount = 0,
+  notifications,
   onNotificationsClick,
   onSearchClick,
   onHelpClick,
@@ -649,7 +639,7 @@ export function Topbar({
   if (variant === 'minimal') {
     return (
       <header
-        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-6 bg-white border-b border-card-border ${className}`}
+        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-6 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 ${className}`}
         role="banner"
       >
         {/* Left: logo */}
@@ -678,7 +668,7 @@ export function Topbar({
   if (variant === 'dashboard') {
     return (
       <header
-        className={`sticky top-0 z-30 flex items-center justify-between h-[70px] px-4 sm:px-6 bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800 transition-colors ${className}`}
+        className={`sticky top-0 z-30 flex items-center justify-between h-[70px] px-4 sm:px-6 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 transition-colors ${className}`}
         role="banner"
       >
         {/* Left section: breadcrumbs, custom leftContent, or title with home icon */}
@@ -729,22 +719,24 @@ export function Topbar({
 
         {/* Right section: search input, help, notification bell, profile, actions */}
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-          {/* Search bar matching screenshot */}
-          <div className="relative hidden md:flex items-center bg-neutral-100/80 dark:bg-neutral-800/80 rounded-xl px-3.5 py-2 w-56 lg:w-72 h-10 transition-colors focus-within:bg-white dark:focus-within:bg-neutral-800 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-neutral-300 border border-transparent">
-            <Search className="w-4 h-4 text-neutral-400 shrink-0 mr-2.5" aria-hidden="true" />
-            <input
-              type="text"
+          {/* Topbar Search Input */}
+          <div className="hidden md:flex w-56 lg:w-72">
+            <SearchInput
+              size="md"
+              rounded="md"
               value={searchValue}
               onChange={(e) => onSearchChange?.(e.target.value)}
+              onClear={() => onSearchChange?.('')}
               placeholder={searchPlaceholder || 'Search candidates, assessments, rubrics...'}
-              className="bg-transparent border-none text-xs text-neutral-800 dark:text-neutral-200 placeholder:text-neutral-400 focus:outline-none w-full"
+              shortcutKey={false}
+              autoShortcut={false}
             />
           </div>
 
           {onSearchClick && <SearchButton onClick={onSearchClick} />}
           {onHelpClick && <HelpButton onClick={onHelpClick} />}
           {showNotifications && (
-            <NotificationBell count={notificationCount} onClick={onNotificationsClick} />
+            <NotificationBell count={notificationCount} notifications={notifications} onClick={onNotificationsClick} />
           )}
           {profile}
           {actions && <div className="flex items-center gap-1 sm:gap-1.5 ml-1 sm:ml-1.5 shrink-0">{actions}</div>}
@@ -757,7 +749,7 @@ export function Topbar({
   if (variant === 'search') {
     return (
       <header
-        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white border-b border-card-border ${className}`}
+        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 ${className}`}
         role="banner"
       >
         {/* Left section: Quick search bar without breadcrumbs */}
@@ -773,18 +765,15 @@ export function Topbar({
             />
           )}
           <div className="w-full max-w-sm">
-            <Input
-              type="text"
+            <SearchInput
+              size="sm"
+              rounded="md"
               value={searchValue}
               onChange={(e) => onSearchChange?.(e.target.value)}
+              onClear={() => onSearchChange?.('')}
               placeholder={searchPlaceholder || 'Search candidates, assessments...'}
-              leftIcon={<Search className="w-4 h-4 text-neutral-400" />}
-              rightIcon={
-                <kbd className="text-[10px] font-mono text-neutral-400 bg-white border border-neutral-200 rounded px-1.5 py-0.5 shadow-2xs">
-                  {effectiveShortcut}
-                </kbd>
-              }
-              className="py-1.5 text-xs bg-neutral-100/80 hover:bg-neutral-100 border-neutral-200/80 rounded-full focus:bg-white placeholder:text-neutral-400"
+              shortcutKey={effectiveShortcut}
+              autoShortcut={false}
             />
           </div>
         </div>
@@ -793,7 +782,7 @@ export function Topbar({
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {onHelpClick && <HelpButton onClick={onHelpClick} />}
           {showNotifications && (
-            <NotificationBell count={notificationCount} onClick={onNotificationsClick} />
+            <NotificationBell count={notificationCount} notifications={notifications} onClick={onNotificationsClick} />
           )}
           {profile}
           {actions && <div className="flex items-center gap-1.5 ml-1.5">{actions}</div>}
@@ -806,7 +795,7 @@ export function Topbar({
   if (variant === 'workspace') {
     return (
       <header
-        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white border-b border-card-border ${className}`}
+        className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 ${className}`}
         role="banner"
       >
         {/* Left: Brand logo + divider + assessment title */}
@@ -859,7 +848,7 @@ export function Topbar({
   // ── Variant: default ────────────────────────────────────────────────────
   return (
     <header
-      className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white border-b border-card-border ${className}`}
+      className={`sticky top-0 z-40 flex items-center justify-between h-14 px-4 sm:px-6 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 ${className}`}
       role="banner"
     >
       {/* Left section: logo + title/subtitle */}
@@ -892,7 +881,7 @@ export function Topbar({
         {onSearchClick && <SearchButton onClick={onSearchClick} />}
         {onHelpClick && <HelpButton onClick={onHelpClick} />}
         {showNotifications && (
-          <NotificationBell count={notificationCount} onClick={onNotificationsClick} />
+          <NotificationBell count={notificationCount} notifications={notifications} onClick={onNotificationsClick} />
         )}
         {profile}
         {actions && <div className="flex items-center gap-1.5 ml-1.5">{actions}</div>}
