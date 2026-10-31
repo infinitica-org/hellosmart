@@ -41,13 +41,17 @@ CREATE POLICY tenant_isolation ON app.mfa_backup_codes
     )
   );
 
--- 5. Explicit table grants
-GRANT SELECT, INSERT, UPDATE, DELETE ON app.mfa_backup_codes TO hs_app;
+-- 5. Least-privilege table grants
+-- Direct table access is revoked from hs_app and hs_platform because backup codes
+-- must exclusively be accessed via SECURITY DEFINER functions (insert_mfa_backup_code_hash,
+-- consume_mfa_backup_code, count_unused_mfa_backup_codes, delete_mfa_backup_codes_for_user)
+-- owned by hs_migrator.
+REVOKE ALL ON app.mfa_backup_codes FROM hs_app;
 GRANT SELECT ON app.mfa_backup_codes TO hs_readonly;
+GRANT ALL ON app.mfa_backup_codes TO hs_migrator;
 
 DO $$ BEGIN
   IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'hs_platform') THEN
-    GRANT SELECT, INSERT, UPDATE, DELETE ON app.mfa_backup_codes TO hs_platform;
+    REVOKE ALL ON app.mfa_backup_codes FROM hs_platform;
   END IF;
 END $$;
-
