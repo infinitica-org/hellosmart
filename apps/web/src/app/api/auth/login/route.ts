@@ -84,16 +84,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           email: normalizedEmail,
           body: data,
         });
+        if (devFallbackEnabled) {
+          // In local dev with fallback enabled, fall through to dev login accounts when backend returns 5xx
+          throw new Error('Backend returned 5xx, falling back to local dev mock accounts');
+        }
       }
-      return NextResponse.json(
-        data || {
-          type: 'about:blank',
-          title: 'Authentication Failed',
-          status: apiRes.status,
-          detail: 'Invalid credentials or authentication error.',
-        },
-        { status: apiRes.status },
-      );
+      // if (apiRes.status === 401 && devFallbackEnabled && DEV_LOGIN_ACCOUNTS[normalizedEmail]) {
+      //   // In local development, fall through to dev login accounts when using convenience dev aliases
+      // } else {
+      //   return NextResponse.json(
+      //     data || {
+      //       type: 'about:blank',
+      //       title: 'Authentication Failed',
+      //       status: apiRes.status,
+      //       detail: 'Invalid credentials or authentication error.',
+      //     },
+      //     { status: apiRes.status },
+      //   );
+      // }
     } catch (backendError) {
       logDevError('auth/login:backend-fetch', backendError, {
         loginUrl: `${apiBaseUrl}/auth/login`,

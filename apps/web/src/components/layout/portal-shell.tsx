@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { AlertDialog, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@hs/ui';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { IdleWarningModal } from '@/components/session/idle-warning-modal';
 import { ActiveSessionsDialog } from '@/components/session/active-sessions-dialog';
 import { sessionClient } from '@/lib/session-client';
-import type { SidebarItem } from '@hs/ui';
+import type { SidebarItem, SidebarGroup } from '@hs/ui';
 import type { NavigationItem } from '@/types/navigation';
 
 export interface PortalShellProps {
@@ -16,7 +17,8 @@ export interface PortalShellProps {
   userName: string;
   userEmail?: string | undefined;
   companyName?: string | undefined;
-  items: (SidebarItem | NavigationItem)[];
+  items?: (SidebarItem | NavigationItem)[];
+  groups?: SidebarGroup[];
   onLogout: () => void | Promise<void>;
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -31,6 +33,7 @@ export function PortalShell({
   userEmail,
   companyName,
   items,
+  groups,
   onLogout,
   children,
   footer,
@@ -41,6 +44,45 @@ export function PortalShell({
   const [showSessions, setShowSessions] = useState(false);
   const [showLogoutAll, setShowLogoutAll] = useState(false);
   const [loggingOutAll, setLoggingOutAll] = useState(false);
+  const pathname = usePathname();
+
+  const allNavItems = groups ? groups.flatMap((g) => g.items) : (items || []);
+  const activeNavItem = allNavItems.find((item) => {
+    if (!item.href || !pathname) return false;
+    if (pathname === item.href || pathname === `${item.href}/`) return true;
+    if (item.href === '/admin' || item.href === '/company' || item.href === '/candidate' || item.href === '/') {
+      return pathname === item.href;
+    }
+    return pathname.startsWith(`${item.href}/`);
+  });
+
+  const pageTitle = topbarTitle ?? activeNavItem?.label ?? 'Dashboard';
+  const pageIcon = activeNavItem?.icon;
+
+  const roleLower = userRole?.toLowerCase() || '';
+  const searchPlaceholder = roleLower.includes('candidate')
+    ? 'Search assessments, tasks, submissions...'
+    : roleLower.includes('admin')
+      ? 'Search organizations, templates, audits...'
+      : 'Search candidates, assessments, rubrics...';
+
+  const accountHref = roleLower.includes('candidate')
+    ? '/candidate/profile'
+    : roleLower.includes('admin')
+      ? '/admin/settings'
+      : '/company/settings';
+
+  const preferencesHref = roleLower.includes('candidate')
+    ? '/candidate/profile'
+    : roleLower.includes('admin')
+      ? '/admin/settings'
+      : '/company/settings';
+
+  const billingHref = roleLower.includes('admin')
+    ? '/admin/settings'
+    : roleLower.includes('candidate')
+      ? '/candidate'
+      : '/company/settings';
 
   const profileMenuItems = (
     <>
@@ -84,6 +126,7 @@ export function PortalShell({
         portalRole={userRole}
         {...(companyName ? { companyName } : {})}
         items={items}
+        groups={groups}
         userName={userName}
         {...(userEmail ? { userEmail } : {})}
         onLogout={() => {
@@ -98,8 +141,13 @@ export function PortalShell({
         <Topbar
           variant="dashboard"
           showLogo={false}
-          showNotifications={false}
-          title={topbarTitle ?? portalTitle}
+          showNotifications={true}
+          searchPlaceholder={searchPlaceholder}
+          accountHref={accountHref}
+          preferencesHref={preferencesHref}
+          billingHref={billingHref}
+          title={pageTitle}
+          titleIcon={pageIcon}
           userName={userName}
           {...(userEmail ? { userEmail } : {})}
           userRole={userRole}

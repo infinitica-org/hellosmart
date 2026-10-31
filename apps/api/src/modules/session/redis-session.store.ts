@@ -135,10 +135,9 @@ export class RedisSessionStore implements SessionStore {
         SESSION_PREFIX,
       ],
     });
-
     const evictedRawList: string[] = JSON.parse(resultJson as string);
     const evictedRecords: SessionRecord[] = evictedRawList.map((raw) => JSON.parse(raw));
-
+    
     return { evictedRecords };
   }
 

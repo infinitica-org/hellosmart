@@ -3,7 +3,7 @@
 import React from 'react';
 import { PortalShell } from '@/components/layout/portal-shell';
 import { usePortalAuth } from '@/hooks/use-portal-auth';
-import { companyNavigation } from '@/types/navigation';
+import { companyGroups } from '@/types/navigation';
 
 export default function CompanyLayout({
   children,
@@ -19,7 +19,7 @@ export default function CompanyLayout({
       userName={user?.name ?? (loading ? 'Loading…' : 'Company Admin')}
       {...(user?.email ? { userEmail: user.email } : {})}
       companyName={user?.org?.name ?? 'Company Portal'}
-      items={companyNavigation}
+      groups={companyGroups}
       onLogout={signOut}
     >
       {children}

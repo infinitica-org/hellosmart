@@ -250,9 +250,9 @@ export default function HomePage() {
             title: 'Platform',
             links: [
               { label: 'Cloud Workspaces', href: '#product' },
-              { label: 'Governed AI Proxy', href: '#product' },
-              { label: 'Reviewer Agents', href: '#product' },
-              { label: 'Rubric Evaluator', href: '#product' },
+              { label: 'Governed AI Proxy', href: '#proxy' },
+              { label: 'Reviewer Agents', href: '#reviewers' },
+              { label: 'Rubric Evaluator', href: '#rubric' },
             ],
           },
           {
@@ -260,7 +260,7 @@ export default function HomePage() {
             links: [
               { label: 'Engineering Hiring', href: '#solutions' },
               { label: 'Bootcamp Certification', href: '#institutions' },
-              { label: 'University Verification', href: '#institutions' },
+              { label: 'University Verification', href: '#universities' },
               { label: 'Book a Demo (Cal.com)', href: 'https://cal.com', external: true },
             ],
           },
@@ -279,7 +279,7 @@ export default function HomePage() {
               { label: 'Privacy Policy', href: '/privacy' },
               { label: 'Terms of Service', href: '/terms' },
               { label: 'Security & Tenancy', href: '/security' },
-              { label: 'Compliance (BR-01)', href: '/security' },
+              { label: 'Compliance (BR-01)', href: '/security#compliance' },
             ],
           },
         ]}
