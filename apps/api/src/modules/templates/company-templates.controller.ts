@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Inject,
   Param,
   Req,
 } from '@nestjs/common';
@@ -10,20 +11,12 @@ import {
   type AuthenticatedRequest,
 } from '../../common/guards/session.guard.js';
 import { problem } from '../../common/errors/app-http.exception.js';
+import type { TemplateSummaryDto } from '@hs/contracts';
+import { TemplatesService } from './templates.service.js';
 
-export interface RoleTemplateSummary {
-  id: string;
-  versionId: string;
-  name: string;
-  category: string;
-  difficulty: string;
-  durationMinutes: number;
-  workspaceMode: string;
-  description: string;
-  tags: string[];
-}
+export type RoleTemplateSummary = TemplateSummaryDto;
 
-export const STANDARD_ROLE_TEMPLATES: RoleTemplateSummary[] = [
+export const STANDARD_ROLE_TEMPLATES: TemplateSummaryDto[] = [
   {
     id: 'tpl_fs_01',
     versionId: '1.2.0',
@@ -34,6 +27,8 @@ export const STANDARD_ROLE_TEMPLATES: RoleTemplateSummary[] = [
     workspaceMode: 'cloud',
     description: 'Build a secure multi-tenant dashboard feature with optimistic updates, server actions, and PostgreSQL indexes.',
     tags: ['React', 'Next.js', 'PostgreSQL', 'Tailwind'],
+    status: 'published',
+    isAssigned: true,
   },
   {
     id: 'tpl_be_01',
@@ -45,6 +40,8 @@ export const STANDARD_ROLE_TEMPLATES: RoleTemplateSummary[] = [
     workspaceMode: 'cloud',
     description: 'Refactor an event-driven worker queue with distributed locks, idempotency keys, and graceful shutdown handling.',
     tags: ['Node.js', 'Fastify', 'Redis', 'Docker'],
+    status: 'published',
+    isAssigned: true,
   },
   {
     id: 'tpl_fe_01',
@@ -56,6 +53,8 @@ export const STANDARD_ROLE_TEMPLATES: RoleTemplateSummary[] = [
     workspaceMode: 'cloud',
     description: 'Implement an accessible, keyboard-navigable combobox and data grid adhering to WAI-ARIA authoring practices.',
     tags: ['React', 'TypeScript', 'ARIA', 'Tailwind'],
+    status: 'published',
+    isAssigned: true,
   },
   {
     id: 'tpl_data_01',
@@ -67,6 +66,8 @@ export const STANDARD_ROLE_TEMPLATES: RoleTemplateSummary[] = [
     workspaceMode: 'cloud',
     description: 'Analyze slow query logs, resolve N+1 patterns, create composite indexes, and implement partitioned rollups.',
     tags: ['PostgreSQL', 'SQL', 'Performance', 'Database'],
+    status: 'published',
+    isAssigned: true,
   },
   {
     id: 'tpl_chat_01',
@@ -78,6 +79,8 @@ export const STANDARD_ROLE_TEMPLATES: RoleTemplateSummary[] = [
     workspaceMode: 'chat',
     description: 'Design robust system prompts, structured tool calling schemas, and guardrails for customer support agents.',
     tags: ['LLM', 'Prompting', 'Guardrails', 'Architecture'],
+    status: 'published',
+    isAssigned: true,
   },
 ];
 
@@ -310,11 +313,16 @@ export const STANDARD_ROLE_TEMPLATES_DETAIL: Record<string, any> = {
 @Controller('company/templates')
 @Roles('company_admin')
 export class CompanyTemplatesController {
+  constructor(
+    @Inject(TemplatesService)
+    private readonly templatesService: TemplatesService,
+  ) {}
+
   @Get()
   async getAssignedTemplates(@Req() request: AuthenticatedRequest): Promise<RoleTemplateSummary[]> {
     const actor = request[REQUEST_USER_KEY];
     // Returns private blueprints assigned to caller's company (BR-02)
-    return STANDARD_ROLE_TEMPLATES;
+    return (await this.templatesService.listAssignedForCompany(actor)) as RoleTemplateSummary[];
   }
 
   @Get(':id')
@@ -323,15 +331,6 @@ export class CompanyTemplatesController {
     @Req() request: AuthenticatedRequest,
   ) {
     const actor = request[REQUEST_USER_KEY];
-    const template = STANDARD_ROLE_TEMPLATES_DETAIL[id];
-    if (!template) {
-      throw problem({
-        title: 'Not Found',
-        status: 404,
-        detail: `Template ${id} is not assigned to your organization or does not exist.`,
-        code: 'TEMPLATE_NOT_FOUND',
-      });
-    }
-    return template;
+    return await this.templatesService.getAssignedByIdForCompany(id, actor);
   }
 }

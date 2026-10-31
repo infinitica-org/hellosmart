@@ -7,7 +7,7 @@ import { QueryProvider } from '@/components/providers';
 export const metadata: Metadata = {
   title: 'HelloSmart.ai — Hire by Doing',
   description:
-    'AI-native work simulation for hiring. Real work, real AI tools, controlled cloud workspaces.',
+    'AI-native hiring platform. Real work, real AI tools, controlled cloud workspaces.',
   icons: {
     icon: '/favicon.ico',
   },
