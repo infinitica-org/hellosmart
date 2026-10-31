@@ -16,8 +16,12 @@ __pycache__/
 # secrets: never commit
 .env
 .env.*
+.env*.local
 !.env.example
 !.env.local.example
+!**/.env.example
+!**/.env.*.example
+!**/*.example
 .seed-tokens.local.json
 *.pem
 *.key

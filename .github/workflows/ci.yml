@@ -139,10 +139,10 @@ jobs:
       TEST_DATABASE_URL: postgres://hs_migrator:hs_migrator_local@localhost:5432/hellosmart_test
       REDIS_URL: redis://localhost:6379
       COOKIE_NAME: hs_session
-      COOKIE_SECRET: ci-test-cookie-secret-32-chars-minimum!
-      SESSION_SECRET: ci-test-session-secret-32-bytes-long!
-      PROXY_TOKEN_SIGNING_KEY: ci-test-proxy-signing-key-32-chars!
-      SEED_DEFAULT_PASSWORD: TestSeedPassword123!
+      COOKIE_SECRET: ci-only-not-a-secret-cookie-min-32chars!
+      SESSION_SECRET: ci-only-not-a-secret-session-min-32bytes!
+      PROXY_TOKEN_SIGNING_KEY: ci-only-not-a-secret-proxy-min-32chars!
+      SEED_DEFAULT_PASSWORD: ci-only-not-a-secret-SeedPassword123!
       PLATFORM_ADMIN_MFA_SECRET: JBSWY3DPEHPK3PXP
       SEED_PLATFORM_ADMIN_TOTP_SECRET: JBSWY3DPEHPK3PXP
       MFA_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
