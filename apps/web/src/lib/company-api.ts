@@ -1,5 +1,53 @@
 import { apiFetch, getApiBaseUrl, ApiError } from './api-client';
 import type { RoleTemplateSummary, RoleTemplateDetail } from '@/components/company/templates/types';
+import type { CreateAssessmentDto, AssessmentDto } from '@/components/company/assessments/types';
+
+/**
+ * Creates a new assessment blueprint based on a selected role template version.
+ * Enforces BR-01 (Tenant Isolation) & BR-03 (Template Version Pinning).
+ * Initial status: 'draft'.
+ *
+ * Endpoint: POST /api/v1/company/assessments
+ * (Tracked Backend Dependency - throws ApiError on failure)
+ */
+export async function createAssessment(
+  dto: CreateAssessmentDto,
+  fetchFn: typeof fetch = fetch
+): Promise<AssessmentDto> {
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/company/assessments`;
+
+  const res = await apiFetch(
+    url,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(dto),
+      credentials: 'include',
+    },
+    fetchFn
+  );
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to create assessment';
+    let errorCode = 'ASSESSMENT_CREATION_FAILED';
+
+    try {
+      const errorJson = await res.json();
+      errorDetail = errorJson.detail || errorDetail;
+      errorCode = errorJson.code || errorCode;
+    } catch {
+      // ignore JSON parse error
+    }
+
+    throw new ApiError(res.status, errorCode, errorDetail);
+  }
+
+  return (await res.json()) as AssessmentDto;
+}
 
 /**
  * Fetches the list of role simulation templates privately assigned to the caller's organization.
