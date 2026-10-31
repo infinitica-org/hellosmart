@@ -4,7 +4,7 @@ export const BRANDING = deepFreeze({
   APP_NAME: 'HelloSmart.ai',
   SHORT_NAME: 'HelloSmart',
   TAGLINE: 'Hire by doing.',
-  SUBTITLE: 'AI-Native Work Simulation Platform',
+  SUBTITLE: 'AI-Native Hiring Platform',
   MISSION: 'Assess candidates by having them do real work with AI tools in controlled workspaces.',
   COPYRIGHT: '© 2026 HelloSmart.ai. All rights reserved.',
   SUPPORT_EMAIL: 'support@hellosmart.ai',
