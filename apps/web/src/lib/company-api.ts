@@ -1,6 +1,5 @@
 import { apiFetch, getApiBaseUrl, ApiError } from './api-client';
 import type { RoleTemplateSummary, RoleTemplateDetail } from '@/components/company/templates/types';
-import { DEFAULT_ROLE_TEMPLATES, DEFAULT_ROLE_TEMPLATES_DETAIL } from './templates-data';
 import type { CreateAssessmentDto, AssessmentDto } from '@/components/company/assessments/types';
 import type { AssessmentRubric } from '@/components/company/rubric/types';
 import type {
@@ -185,7 +184,7 @@ export async function fetchAssignedTemplates(
 
   if (!res.ok) {
     if (res.status === 404) {
-      return DEFAULT_ROLE_TEMPLATES;
+      return [];
     }
 
     let errorDetail = 'Failed to fetch assigned templates';
@@ -238,10 +237,6 @@ export async function fetchTemplateById(
   );
 
   if (!res.ok) {
-    if (res.status === 404 && DEFAULT_ROLE_TEMPLATES_DETAIL[templateId]) {
-      return DEFAULT_ROLE_TEMPLATES_DETAIL[templateId]!;
-    }
-
     let errorDetail = 'Failed to fetch template specification';
     let errorCode = 'TEMPLATE_NOT_FOUND';
 

@@ -121,7 +121,7 @@ export function PortalShell({
   );
 
   return (
-    <div className="min-h-screen flex bg-canvas text-neutral-900 font-sans">
+    <div className="min-h-screen flex bg-white text-neutral-900 font-sans">
       <IdleWarningModal />
 
       <Sidebar
@@ -143,7 +143,7 @@ export function PortalShell({
         onMobileOpenChange={setMobileOpen}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-white">
         <Topbar
           variant="dashboard"
           showLogo={false}

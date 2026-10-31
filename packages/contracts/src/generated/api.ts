@@ -13,7 +13,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sign in with email and password or SSO */
+        /** Authenticate user with email and password */
         post: operations["authLogin"];
         delete?: never;
         options?: never;
@@ -72,6 +72,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/logout-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke all active sessions for the authenticated user */
+        post: operations["authLogoutAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all active sessions for the authenticated user */
+        get: operations["listSessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke a specific active session owned by the authenticated user */
+        delete: operations["revokeSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/invitations/{token}": {
         parameters: {
             query?: never;
@@ -100,6 +151,23 @@ export interface paths {
         put?: never;
         /** Accept an invitation and set user password */
         post: operations["acceptInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change authenticated user password and revoke other sessions */
+        post: operations["authChangePassword"];
         delete?: never;
         options?: never;
         head?: never;
@@ -355,6 +423,34 @@ export interface components {
             deadlineAt: string;
             requireFullscreen?: boolean;
         };
+        SessionPublic: {
+            /** Format: uuid */
+            sessionId: string;
+            /** @example Chrome on Windows */
+            device: string;
+            /** @example 127.0.0.xxx */
+            ip: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            current: boolean;
+        };
+        SessionListResponse: {
+            sessions: components["schemas"]["SessionPublic"][];
+        };
+        RevokeSessionResponse: {
+            /** @example true */
+            success: boolean;
+            /** @example Session revoked successfully */
+            message: string;
+        };
+        LogoutAllResponse: {
+            /** @example true */
+            success: boolean;
+            /** @example All sessions revoked successfully */
+            message: string;
+        };
     };
     responses: {
         /** @description RFC 9457 problem details. Never includes stack traces, SQL or secrets. */
@@ -493,6 +589,76 @@ export interface operations {
             };
         };
     };
+    authLogoutAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All sessions revoked and cookie cleared. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogoutAllResponse"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            503: components["responses"]["Problem"];
+        };
+    };
+    listSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active sessions list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionListResponse"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            503: components["responses"]["Problem"];
+        };
+    };
+    revokeSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The public session ID to revoke */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session revoked successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevokeSessionResponse"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            503: components["responses"]["Problem"];
+        };
+    };
     validateInvitation: {
         parameters: {
             query?: never;
@@ -543,6 +709,41 @@ export interface operations {
             404: components["responses"]["Problem"];
             422: components["responses"]["Problem"];
             429: components["responses"]["Problem"];
+        };
+    };
+    authChangePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    currentPassword: string;
+                    newPassword: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Password changed successfully; other sessions revoked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example true */
+                        success: boolean;
+                        /** @example Password changed successfully. */
+                        message: string;
+                    };
+                };
+            };
+            400: components["responses"]["Problem"];
+            401: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
         };
     };
     getMe: {

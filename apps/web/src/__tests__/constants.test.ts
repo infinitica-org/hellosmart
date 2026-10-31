@@ -204,7 +204,7 @@ describe('Centralized Platform Constants & Variable Architecture (Stream 8.5)', 
 
   describe('UI Labels & Headers (UI_LABELS)', () => {
     it('provides standard page titles and headers', () => {
-      expect(UI_LABELS.PAGE_HEADERS.CANDIDATE_HUB_TITLE).toBe('Candidate Hub');
+      expect(UI_LABELS.PAGE_HEADERS.CANDIDATE_HUB_TITLE).toBe('Candidates');
       expect(UI_LABELS.PAGE_HEADERS.TEMPLATE_CATALOG_TITLE).toBe('Template Catalog');
       expect(UI_LABELS.PAGE_HEADERS.ASSESSMENT_HUB_TITLE).toBe('Assessments');
       expect(UI_LABELS.PAGE_HEADERS.NEW_ASSESSMENT_TITLE).toBe('Create New Assessment');

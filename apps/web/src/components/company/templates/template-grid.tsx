@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, Button, Skeleton } from '@hs/ui';
+import { Search } from 'lucide-react';
 import { TemplateCard } from './template-card';
 import type { RoleTemplateSummary } from './types';
 
@@ -64,10 +65,7 @@ export function TemplateGrid({
         className="flex flex-col items-center justify-center p-8 sm:p-12 text-center bg-white rounded-2xl border border-neutral-200/80 my-4"
       >
         <div className="w-12 h-12 rounded-2xl bg-neutral-100 text-neutral-400 flex items-center justify-center mb-3">
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+          <Search className="w-6 h-6 text-neutral-400" />
         </div>
         <h4 className="text-base font-semibold text-neutral-900">No matching templates</h4>
         <p className="mt-1 text-xs text-neutral-500 max-w-sm">

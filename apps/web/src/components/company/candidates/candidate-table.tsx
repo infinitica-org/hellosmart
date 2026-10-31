@@ -9,14 +9,19 @@ import {
   TableHead,
   TableCell,
   Badge,
-  IconButton,
   EmptyState,
   Spinner,
   Pagination,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   Mail,
   Edit,
   Trash2,
 } from '@hs/ui';
+import { MoreHorizontal } from 'lucide-react';
 import type { CandidateDto, CandidateFilters } from './types';
 import { UI_LABELS } from '@/constants';
 
@@ -160,54 +165,69 @@ export function CandidateTable({
                     </span>
                   </TableCell>
 
-                  {/* Row Actions */}
+                  {/* Row Actions: 3-Dot Dropdown Menu */}
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {/* Resend Invite (Eligible only if invited) */}
-                      {isInvited && !isDeleted && (
-                        <IconButton
-                          variant="ghost"
-                          size="sm"
-                          title="Resend invitation email"
-                          aria-label="Resend invitation"
-                          icon={
-                            isResending ? (
-                              <Spinner size="sm" className="h-4 w-4" />
-                            ) : (
-                              <Mail className="h-4 w-4" />
-                            )
-                          }
-                          onClick={() => onResendInvite(candidate)}
-                          disabled={isResending}
-                          className="text-neutral-600 hover:text-primary-600 dark:text-neutral-400"
-                        />
-                      )}
+                    <div className="flex items-center justify-end">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={`Actions for ${candidate.name}`}
+                            className="h-8 w-8 rounded-md border border-neutral-200 bg-white hover:bg-neutral-50 hover:border-neutral-300 text-neutral-600 hover:text-neutral-900 shadow-xs flex items-center justify-center transition-all cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-neutral-200"
+                          >
+                            <MoreHorizontal className="w-4 h-4 pointer-events-none" />
+                          </button>
+                        </DropdownMenuTrigger>
 
-                      {/* Edit Candidate */}
-                      {!isDeleted && (
-                        <IconButton
-                          variant="ghost"
-                          size="sm"
-                          title="Edit candidate"
-                          aria-label="Edit candidate"
-                          icon={<Edit className="h-4 w-4" />}
-                          onClick={() => onEdit(candidate)}
-                          className="text-neutral-600 hover:text-neutral-900 dark:text-neutral-400"
-                        />
-                      )}
+                        <DropdownMenuContent
+                          align="right"
+                          className="w-44 p-1 shadow-lg rounded-xl border border-neutral-200 bg-white dark:bg-neutral-900"
+                        >
+                          {/* Resend Invite (Eligible only if invited) */}
+                          {isInvited && !isDeleted && (
+                            <DropdownMenuItem
+                              icon={
+                                isResending ? (
+                                  <Spinner size="sm" className="h-4 w-4" />
+                                ) : (
+                                  <Mail className="h-4 w-4" />
+                                )
+                              }
+                              onClick={() => onResendInvite(candidate)}
+                              disabled={isResending}
+                              className="text-xs"
+                            >
+                              Resend Invite
+                            </DropdownMenuItem>
+                          )}
 
-                      {/* Delete Candidate */}
-                      {!isDeleted && (
-                        <IconButton
-                          variant="ghost"
-                          size="sm"
-                          title="Delete candidate"
-                          aria-label="Delete candidate"
-                          icon={<Trash2 className="h-4 w-4" />}
-                          onClick={() => onDelete(candidate)}
-                          className="text-neutral-400 hover:text-red-600 dark:hover:text-red-400"
-                        />
-                      )}
+                          {/* Edit Candidate */}
+                          {!isDeleted && (
+                            <DropdownMenuItem
+                              icon={<Edit className="h-4 w-4" />}
+                              onClick={() => onEdit(candidate)}
+                              className="text-xs"
+                            >
+                              Edit Details
+                            </DropdownMenuItem>
+                          )}
+
+                          {/* Delete Candidate */}
+                          {!isDeleted && (
+                            <>
+                              <DropdownMenuSeparator className="my-1" />
+                              <DropdownMenuItem
+                                variant="danger"
+                                icon={<Trash2 className="h-4 w-4" />}
+                                onClick={() => onDelete(candidate)}
+                                className="text-xs"
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </TableCell>
                 </TableRow>

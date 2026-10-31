@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Drawer, Badge, Button, Alert, Skeleton } from '@hs/ui';
+import { Clock, ArrowRight, Loader2 } from 'lucide-react';
 import { useTemplateDetail } from '@/hooks/company/use-assigned-templates';
 import type { RoleTemplateSummary } from './types';
 import { DIFFICULTY_BADGE_CONFIG, WORKSPACE_MODE_CONFIG, ROUTES, UI_LABELS } from '@/constants';
@@ -61,24 +62,25 @@ export function TemplatePreviewDrawer({
       }}
       position="right"
       size="xl"
+      showCloseButton={false}
       data-testid="template-preview-drawer"
       className="bg-white flex flex-col h-full shadow-2xl"
     >
       {/* ─── Drawer Header ─── */}
-      <div className="p-6 border-b border-neutral-200 bg-neutral-50/50">
-        <div className="flex items-center justify-between gap-3 mb-2">
+      <div className="p-6 border-b border-neutral-200/80 bg-neutral-50/50">
+        <div className="flex items-center justify-between gap-3 mb-2.5">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-neutral-500 font-semibold">
+            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
               {activeTemplate?.category || 'Role Template'}
             </span>
             {activeTemplate?.versionId && (
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-200 text-neutral-700">
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-neutral-200/80 text-neutral-700">
                 v{activeTemplate.versionId}
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {modeCfg && (
               <Badge variant={modeCfg.badgeVariant} size="sm">
                 {modeCfg.label}
@@ -97,22 +99,19 @@ export function TemplatePreviewDrawer({
         </h2>
 
         {activeTemplate && (
-          <div className="mt-2 flex items-center gap-4 text-xs text-neutral-500">
-            <span className="flex items-center gap-1">
-              <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
+          <div className="mt-2.5 flex items-center gap-3 text-xs text-neutral-500">
+            <span className="flex items-center gap-1.5 font-medium">
+              <Clock className="w-4 h-4 text-neutral-400" />
               {activeTemplate.durationMinutes} mins allocation
             </span>
-            <span>•</span>
+            <span>&bull;</span>
             <span>Private Organization Template (BR-02)</span>
           </div>
         )}
       </div>
 
       {/* ─── Drawer Content Body (Scrollable) ─── */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-8">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Error / Unauthorized State */}
         {isError && (
           <Alert variant="error" className="text-xs">
@@ -150,32 +149,32 @@ export function TemplatePreviewDrawer({
           <>
             {/* Scenario Overview */}
             <section className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                 Simulation Scenario
               </h3>
-              <p className="text-sm text-neutral-700 leading-relaxed bg-neutral-50 p-4 rounded-xl border border-neutral-100">
+              <p className="text-sm text-neutral-700 leading-relaxed bg-neutral-50 p-4 rounded-xl border border-neutral-200/70">
                 {detail.scenario || detail.description}
               </p>
             </section>
 
             {/* Candidate Brief */}
             <section className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                 Candidate Task Brief
               </h3>
-              <div className="text-sm text-neutral-700 leading-relaxed whitespace-pre-line p-4 rounded-xl border border-neutral-200/80 bg-white">
+              <div className="text-sm text-neutral-700 leading-relaxed whitespace-pre-line p-4 rounded-xl border border-neutral-200/80 bg-white shadow-2xs">
                 {detail.candidateBrief}
               </div>
             </section>
 
             {/* Environment & Developer Tools */}
             {detail.environment && (
-              <section className="space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">
+              <section className="space-y-2.5">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                   Environment &amp; Stack
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-xl border border-neutral-200/80 bg-neutral-50/50">
+                  <div className="p-4 rounded-xl border border-neutral-200/80 bg-neutral-50/50">
                     <span className="text-xs font-semibold text-neutral-900 block mb-2">
                       Runtimes &amp; DBs
                     </span>
@@ -183,7 +182,7 @@ export function TemplatePreviewDrawer({
                       {detail.environment.runtime.map((rt) => (
                         <span
                           key={rt}
-                          className="text-[11px] font-mono px-2 py-0.5 rounded bg-white border border-neutral-200 text-neutral-800"
+                          className="text-xs font-medium px-2.5 py-1 rounded-lg bg-white border border-neutral-200/80 text-neutral-800 shadow-2xs"
                         >
                           {rt}
                         </span>
@@ -191,7 +190,7 @@ export function TemplatePreviewDrawer({
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-neutral-200/80 bg-neutral-50/50">
+                  <div className="p-4 rounded-xl border border-neutral-200/80 bg-neutral-50/50">
                     <span className="text-xs font-semibold text-neutral-900 block mb-2">
                       Pre-installed Tools
                     </span>
@@ -199,7 +198,7 @@ export function TemplatePreviewDrawer({
                       {detail.environment.tools.map((tool) => (
                         <span
                           key={tool}
-                          className="text-[11px] font-mono px-2 py-0.5 rounded bg-white border border-neutral-200 text-neutral-800"
+                          className="text-xs font-medium px-2.5 py-1 rounded-lg bg-white border border-neutral-200/80 text-neutral-800 shadow-2xs"
                         >
                           {tool}
                         </span>
@@ -214,20 +213,21 @@ export function TemplatePreviewDrawer({
             {detail.starterRepository && (
               <section className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                     Starter Repository
                   </h3>
-                  <span className="text-[11px] font-mono text-neutral-500">
+                  <span className="text-xs text-neutral-500 font-medium">
                     branch: {detail.starterRepository.branch || 'main'}
                   </span>
                 </div>
-                <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-950 text-neutral-200 font-mono text-xs overflow-x-auto">
-                  <div className="text-neutral-400 mb-2 font-semibold">
-                    📁 {detail.starterRepository.name}
+                <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-950 text-neutral-200 text-xs overflow-x-auto">
+                  <div className="text-neutral-300 mb-2 font-semibold flex items-center gap-2">
+                    <span>📁</span>
+                    <span>{detail.starterRepository.name}</span>
                   </div>
-                  <ul className="space-y-1 pl-4 border-l border-neutral-800">
+                  <ul className="space-y-1.5 pl-4 border-l border-neutral-800">
                     {detail.starterRepository.fileStructure.map((file) => (
-                      <li key={file} className="flex items-center gap-1.5 text-neutral-300">
+                      <li key={file} className="flex items-center gap-2 text-neutral-300">
                         <span className="text-neutral-600">├─</span> {file}
                       </li>
                     ))}
@@ -238,12 +238,12 @@ export function TemplatePreviewDrawer({
 
             {/* Rubric Dimensions Preview */}
             {detail.rubric && detail.rubric.length > 0 && (
-              <section className="space-y-3">
+              <section className="space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                     Evaluation Rubric (AI Agents)
                   </h3>
-                  <span className="text-xs font-mono text-primary font-semibold">
+                  <span className="text-xs text-primary font-semibold">
                     Total: {detail.rubric.reduce((sum, r) => sum + r.weight, 0)}%
                   </span>
                 </div>
@@ -252,15 +252,15 @@ export function TemplatePreviewDrawer({
                   {detail.rubric.map((item) => (
                     <div
                       key={item.id}
-                      className="p-3.5 rounded-xl border border-neutral-200 bg-white shadow-xs space-y-1"
+                      className="p-4 rounded-xl border border-neutral-200/80 bg-white shadow-2xs space-y-1.5"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-xs font-bold text-neutral-900">{item.name}</h4>
-                        <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary">
+                        <h4 className="text-sm font-semibold text-neutral-900">{item.name}</h4>
+                        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary">
                           {item.weight}% weight
                         </span>
                       </div>
-                      <p className="text-xs text-neutral-600 leading-normal">{item.goal}</p>
+                      <p className="text-xs text-neutral-600 leading-relaxed">{item.goal}</p>
                     </div>
                   ))}
                 </div>
@@ -269,9 +269,9 @@ export function TemplatePreviewDrawer({
 
             {/* AI Assistance Policy Defaults */}
             {detail.aiDefaults && (
-              <section className="p-4 rounded-xl border border-neutral-200 bg-neutral-50/60 space-y-2">
+              <section className="p-4 rounded-xl border border-neutral-200/80 bg-neutral-50/60 space-y-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-600 font-mono">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-600">
                     AI Assistance Policy (Defaults)
                   </h3>
                   <Badge variant={detail.aiDefaults.enabled ? 'success' : 'default'} size="sm">
@@ -280,7 +280,7 @@ export function TemplatePreviewDrawer({
                 </div>
                 {detail.aiDefaults.allowedModels && detail.aiDefaults.allowedModels.length > 0 && (
                   <div className="text-xs text-neutral-600 pt-1">
-                    Allowed models: <span className="font-mono text-neutral-800">{detail.aiDefaults.allowedModels.join(', ')}</span>
+                    Allowed models: <span className="font-medium text-neutral-800">{detail.aiDefaults.allowedModels.join(', ')}</span>
                   </div>
                 )}
               </section>
@@ -313,14 +313,14 @@ export function TemplatePreviewDrawer({
         >
           {isNavigating ? (
             <span className="flex items-center gap-2">
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
+              <Loader2 className="w-4 h-4 animate-spin" />
               Opening Wizard…
             </span>
           ) : (
-            'Use This Template →'
+            <span className="flex items-center gap-1.5">
+              <span>Use This Template</span>
+              <ArrowRight className="w-4 h-4" />
+            </span>
           )}
         </Button>
       </div>

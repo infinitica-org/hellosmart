@@ -2,7 +2,7 @@ import { deepFreeze } from './deep-freeze';
 
 export const UI_LABELS = deepFreeze({
   PAGE_HEADERS: {
-    CANDIDATE_HUB_TITLE: 'Candidate Hub',
+    CANDIDATE_HUB_TITLE: 'Candidates',
     CANDIDATE_HUB_DESCRIPTION: 'Invite candidates, manage test assignments, monitor progress, and review scored submissions.',
     TEMPLATE_CATALOG_TITLE: 'Template Catalog',
     TEMPLATE_CATALOG_DESCRIPTION: 'Explore and deploy battle-tested role templates assigned privately to your organization.',

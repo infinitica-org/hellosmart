@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { PageHeader, Alert, EmptyState, Button } from '@hs/ui';
+import { X } from 'lucide-react';
 import { useAssignedTemplates } from '@/hooks/company/use-assigned-templates';
 import {
   TemplateSearch,
@@ -127,7 +128,6 @@ function TemplateCatalogContent(): React.JSX.Element {
       <PageHeader
         title="Role Template Catalog"
         description="Browse and preview organization-assigned role simulation blueprints to create standardized candidate assessments."
-        badge={{ text: 'Private Templates (BR-02)', variant: 'info' }}
         data-testid="templates-page-header"
       />
 
@@ -169,24 +169,74 @@ function TemplateCatalogContent(): React.JSX.Element {
         </div>
       )}
 
-      {/* Search & Filters Toolbar */}
+      {/* ─── Sleek Toolbar: Search (Left) + Dropdown Filters (Right) ─── */}
       {(isLoading || templates.length > 0) && (
-        <div className="space-y-4 bg-white p-5 sm:p-6 rounded-2xl border border-card-border shadow-xs">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        <div className="bg-white p-3.5 sm:px-4 sm:py-3 border border-neutral-200/80 shadow-2xs space-y-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            {/* Left: Sleek Search Bar with Cmd+K */}
             <TemplateSearch value={searchQuery} onChange={setSearchQuery} />
-            <div className="text-xs text-neutral-500 font-medium self-end sm:self-center">
-              Showing <span className="font-semibold text-neutral-900">{filteredTemplates.length}</span>{' '}
-              of {templates.length} blueprints
-            </div>
+
+            {/* Right: Modern Dropdown Buttons (Select Category + Filters) */}
+            <TemplateFilters
+              selectedCategory={selectedCategory}
+              selectedDifficulty={selectedDifficulty}
+              onCategoryChange={handleCategoryChange}
+              onDifficultyChange={setSelectedDifficulty}
+              categoryCounts={categoryCounts}
+            />
           </div>
 
-          <TemplateFilters
-            selectedCategory={selectedCategory}
-            selectedDifficulty={selectedDifficulty}
-            onCategoryChange={handleCategoryChange}
-            onDifficultyChange={setSelectedDifficulty}
-            categoryCounts={categoryCounts}
-          />
+          {/* Active Filter Chips & Counter (Displayed if filtered) */}
+          {isFiltered && (
+            <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-neutral-100 text-xs text-neutral-500">
+              <span className="font-medium">Active:</span>
+
+              {selectedCategory !== 'All' && (
+                <button
+                  type="button"
+                  onClick={() => handleCategoryChange('All')}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-700 hover:bg-neutral-200/80 transition-colors font-medium"
+                >
+                  <span>Role: {selectedCategory}</span>
+                  <X className="w-3 h-3 text-neutral-400 hover:text-neutral-700" />
+                </button>
+              )}
+
+              {selectedDifficulty !== 'All' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDifficulty('All')}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-700 hover:bg-neutral-200/80 transition-colors font-medium"
+                >
+                  <span>Difficulty: {selectedDifficulty}</span>
+                  <X className="w-3 h-3 text-neutral-400 hover:text-neutral-700" />
+                </button>
+              )}
+
+              {searchQuery.trim().length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-700 hover:bg-neutral-200/80 transition-colors font-medium"
+                >
+                  <span>&ldquo;{searchQuery}&rdquo;</span>
+                  <X className="w-3 h-3 text-neutral-400 hover:text-neutral-700" />
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="text-neutral-500 hover:text-neutral-900 underline font-medium ml-1 text-xs"
+              >
+                Clear all
+              </button>
+
+              <span className="ml-auto text-xs text-neutral-400 font-medium hidden sm:inline">
+                Showing <span className="font-semibold text-neutral-800">{filteredTemplates.length}</span> of {templates.length} blueprints
+              </span>
+            </div>
+          )}
         </div>
       )}
 

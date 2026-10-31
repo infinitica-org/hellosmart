@@ -11,7 +11,7 @@ import { candidateKeys } from '../hooks/company/use-candidates';
 import { CreateCandidateDtoSchema } from '@hs/contracts';
 import { ApiError } from '../lib/api-client';
 
-describe('Candidate Hub API & Contracts (Ticket #124)', () => {
+describe('Candidates API & Contracts (Ticket #124)', () => {
   const mockOrgIdA = '11111111-1111-1111-1111-111111111111';
   const mockOrgIdB = '22222222-2222-2222-2222-222222222222';
 
