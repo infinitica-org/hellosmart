@@ -1,4 +1,4 @@
-import { apiFetch, getApiBaseUrl, ApiError } from './api-client';
+import { apiFetch, getApiBaseUrl, resolveBrowserAuthUrl, ApiError } from './api-client';
 import type { RoleTemplateSummary, RoleTemplateDetail } from '@/components/company/templates/types';
 import type { CreateAssessmentDto, AssessmentDto } from '@/components/company/assessments/types';
 import type { AssessmentRubric } from '@/components/company/rubric/types';
@@ -27,8 +27,9 @@ export async function fetchAssessmentRubric(
     throw new Error('Assessment ID is required');
   }
 
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/company/assessments/${encodeURIComponent(assessmentId)}/rubric`;
+  const url = resolveBrowserAuthUrl(
+    `/company/assessments/${encodeURIComponent(assessmentId)}/rubric`,
+  );
 
   const res = await apiFetch(
     url,
@@ -75,8 +76,9 @@ export async function updateAssessmentRubric(
     throw new Error('Assessment ID is required');
   }
 
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/company/assessments/${encodeURIComponent(assessmentId)}/rubric`;
+  const url = resolveBrowserAuthUrl(
+    `/company/assessments/${encodeURIComponent(assessmentId)}/rubric`,
+  );
 
   const res = await apiFetch(
     url,
@@ -123,8 +125,7 @@ export async function createAssessment(
   dto: CreateAssessmentDto,
   fetchFn: typeof fetch = fetch
 ): Promise<AssessmentDto> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/company/assessments`;
+  const url = resolveBrowserAuthUrl('/company/assessments');
 
   const res = await apiFetch(
     url,
@@ -167,8 +168,7 @@ export async function createAssessment(
 export async function fetchAssignedTemplates(
   fetchFn: typeof fetch = fetch
 ): Promise<RoleTemplateSummary[]> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/company/templates`;
+  const url = resolveBrowserAuthUrl('/company/templates');
 
   const res = await apiFetch(
     url,
@@ -221,8 +221,7 @@ export async function fetchTemplateById(
     throw new Error('Template ID is required');
   }
 
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/company/templates/${encodeURIComponent(templateId)}`;
+  const url = resolveBrowserAuthUrl(`/company/templates/${encodeURIComponent(templateId)}`);
 
   const res = await apiFetch(
     url,

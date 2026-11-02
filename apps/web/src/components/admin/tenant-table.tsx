@@ -15,6 +15,7 @@ import {
 } from '@hs/ui';
 import { Organization, OrganizationStatus } from '@/types/organization';
 import { UI_LABELS } from '@/constants';
+import { useUpdateOrganizationStatusMutation } from '@/store/admin/adminApi';
 
 export interface TenantTableProps {
   organizations: Organization[];
@@ -39,7 +40,7 @@ export function TenantTable({
     org: null,
     targetStatus: 'suspended',
   });
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateStatus, { isLoading: isUpdating }] = useUpdateOrganizationStatusMutation();
 
   const handleOpenConfirm = (org: Organization, targetStatus: OrganizationStatus) => {
     setConfirmDialog({
@@ -53,19 +54,8 @@ export function TenantTable({
     const { org, targetStatus } = confirmDialog;
     if (!org) return;
 
-    setIsUpdating(true);
     try {
-      const res = await fetch('/api/admin/organizations', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: org.id, status: targetStatus }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.detail || data?.message || 'Failed to update organization status');
-      }
+      await updateStatus({ id: org.id, status: targetStatus }).unwrap();
 
       toast({
         title: targetStatus === 'suspended' ? 'Company Suspended' : 'Company Reinstated',
@@ -78,11 +68,9 @@ export function TenantTable({
     } catch (err: any) {
       toast({
         title: 'Status Update Failed',
-        description: err.message || 'An unexpected error occurred.',
+        description: err?.data?.message || err?.message || 'An unexpected error occurred.',
         variant: 'error',
       });
-    } finally {
-      setIsUpdating(false);
     }
   };
 

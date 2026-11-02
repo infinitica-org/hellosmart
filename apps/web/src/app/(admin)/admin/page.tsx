@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Plus, Search } from 'lucide-react';
 import {
   PageHeader,
@@ -16,50 +16,20 @@ import {
 import { TenantTable } from '../../../components/admin/tenant-table';
 import { ProvisionModal } from '../../../components/admin/provision-modal';
 import { Organization, AdminMetrics, OrganizationStatus } from '@/types/organization';
+import { useGetOrganizationsQuery } from '@/store/admin/adminApi';
 
 function AdminDashboardContent() {
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [metrics, setMetrics] = useState<AdminMetrics>({
-    totalCompanies: 0,
-    activeTrials: 0,
-    totalCandidates: 0,
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const { data, isLoading, error, refetch } = useGetOrganizationsQuery();
   const [isProvisionModalOpen, setIsProvisionModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | OrganizationStatus>('all');
 
-  const fetchOrganizations = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/admin/organizations', {
-        headers: { 'Cache-Control': 'no-cache' },
-      });
-      const data = await res.json();
-
-      if (res.ok && data?.organizations) {
-        setOrganizations(data.organizations);
-        if (data.metrics) {
-          setMetrics(data.metrics);
-        } else {
-          // Fallback calculation
-          setMetrics({
-            totalCompanies: data.organizations.length,
-            activeTrials: data.organizations.filter((o: Organization) => o.status === 'trial').length,
-            totalCandidates: data.organizations.reduce((sum: number, o: Organization) => sum + (o.candidatesCount || 0), 0),
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch organizations:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchOrganizations();
-  }, [fetchOrganizations]);
+  const organizations = data?.organizations ?? [];
+  const metrics: AdminMetrics = data?.metrics ?? {
+    totalCompanies: organizations.length,
+    activeTrials: organizations.filter((o: Organization) => o.status === 'trial').length,
+    totalCandidates: organizations.reduce((sum: number, o: Organization) => sum + (o.candidatesCount || 0), 0),
+  };
 
   // Filter organizations by search query and status
   const filteredOrganizations = organizations.filter((org) => {
@@ -114,6 +84,23 @@ function AdminDashboardContent() {
           data-testid="metric-total-candidates"
         />
       </div>
+
+      {/* Error State Banner */}
+      {error && (
+        <Alert variant="error" className="flex items-center justify-between text-xs" data-testid="admin-error-alert">
+          <div className="flex items-center justify-between w-full">
+            <span>Failed to load platform organizations. Please try again.</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              data-testid="admin-retry-btn"
+            >
+              Retry
+            </Button>
+          </div>
+        </Alert>
+      )}
 
       {/* Customer Companies Table Section */}
       <Card className="p-6 sm:p-8 space-y-6">
@@ -182,7 +169,7 @@ function AdminDashboardContent() {
           <TenantTable
             organizations={filteredOrganizations}
             isLoading={isLoading}
-            onRefresh={fetchOrganizations}
+            onRefresh={() => void refetch()}
             data-testid="tenant-table"
           />
         )}
@@ -192,7 +179,7 @@ function AdminDashboardContent() {
       <ProvisionModal
         open={isProvisionModalOpen}
         onClose={() => setIsProvisionModalOpen(false)}
-        onSuccess={fetchOrganizations}
+        onSuccess={() => void refetch()}
         data-testid="provision-modal"
       />
 
