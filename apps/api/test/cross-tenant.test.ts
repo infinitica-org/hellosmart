@@ -4,12 +4,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { appendAuditEvent } from '../src/modules/audit/audit-writer.js';
 
 const DATABASE_URL =
-  process.env.DATABASE_URL ?? 'postgres://hs_app:hs_app_local@127.0.0.1:5432/hellosmart';
+  process.env.DATABASE_URL ?? 'postgres://hs_app:hs_app_local@127.0.0.1:5432/hellosmart_test';
 const DATABASE_PLATFORM_URL =
   process.env.DATABASE_PLATFORM_URL ??
-  'postgres://hs_platform:hs_platform_local@127.0.0.1:5432/hellosmart';
+  'postgres://hs_platform:hs_platform_local@127.0.0.1:5432/hellosmart_test';
 const DATABASE_ADMIN_URL =
-  process.env.DATABASE_ADMIN_URL ?? 'postgres://hs_owner:hs_owner_local@127.0.0.1:5432/hellosmart';
+  process.env.DATABASE_ADMIN_URL ??
+  'postgres://hs_owner:hs_owner_local@127.0.0.1:5432/hellosmart_test';
 
 interface TestContext {
   orgAlphaId: string;
@@ -290,6 +291,7 @@ describe
       if (adminPool && ctx) {
         const adminClient = await adminPool.connect();
         try {
+          await adminClient.query('BEGIN');
           await adminClient.query('DELETE FROM app.assessments WHERE org_id IN ($1, $2)', [
             ctx.orgAlphaId,
             ctx.orgBetaId,
@@ -298,6 +300,9 @@ describe
             ctx.orgAlphaId,
             ctx.orgBetaId,
           ]);
+
+          // template_versions and templates require replica session role to bypass BR-03 trigger on published versions
+          await adminClient.query('SET LOCAL session_replication_role = replica');
           await adminClient.query('DELETE FROM app.template_versions WHERE id IN ($1, $2)', [
             ctx.versionAlphaId,
             ctx.versionBetaId,
@@ -306,6 +311,8 @@ describe
             ctx.templateAlphaId,
             ctx.templateBetaId,
           ]);
+          await adminClient.query('SET LOCAL session_replication_role = origin');
+
           await adminClient.query('DELETE FROM app.mfa_backup_codes WHERE user_id IN ($1, $2)', [
             ctx.userAlphaId,
             ctx.userBetaId,
@@ -318,7 +325,7 @@ describe
             ctx.orgAlphaId,
             ctx.orgBetaId,
           ]);
-          await adminClient.query('DELETE FROM audit.events WHERE org_id IN ($1, $2)');
+          // Note: audit.events is strictly append-only per BR-31; do not delete from audit.events.
           await adminClient.query('DELETE FROM app.users WHERE org_id IN ($1, $2)', [
             ctx.orgAlphaId,
             ctx.orgBetaId,
@@ -331,8 +338,58 @@ describe
             ctx.orgAlphaId,
             ctx.orgBetaId,
           ]);
-        } catch {
-          // Best-effort cleanup
+
+          await adminClient.query('COMMIT');
+
+          // Post-cleanup assertions: verify 0 rows remain across all affected tables
+          const verifyOrgTables = [
+            'app.assessments',
+            'app.template_assignments',
+            'app.invitations',
+            'app.users',
+            'app.entitlements',
+            'app.organizations',
+          ];
+          for (const table of verifyOrgTables) {
+            const col = table === 'app.organizations' ? 'id' : 'org_id';
+            const res = await adminClient.query(
+              `SELECT COUNT(*)::int AS cnt FROM ${table} WHERE ${col} IN ($1, $2)`,
+              [ctx.orgAlphaId, ctx.orgBetaId],
+            );
+            expect(res.rows[0].cnt).toBe(0);
+          }
+
+          const resTpl = await adminClient.query(
+            'SELECT COUNT(*)::int AS cnt FROM app.templates WHERE id IN ($1, $2)',
+            [ctx.templateAlphaId, ctx.templateBetaId],
+          );
+          expect(resTpl.rows[0].cnt).toBe(0);
+
+          const resVer = await adminClient.query(
+            'SELECT COUNT(*)::int AS cnt FROM app.template_versions WHERE id IN ($1, $2)',
+            [ctx.versionAlphaId, ctx.versionBetaId],
+          );
+          expect(resVer.rows[0].cnt).toBe(0);
+
+          const userIds = [ctx.userAlphaId, ctx.userBetaId];
+          const resMfa = await adminClient.query(
+            'SELECT COUNT(*)::int AS cnt FROM app.mfa_backup_codes WHERE user_id IN ($1, $2)',
+            userIds,
+          );
+          expect(resMfa.rows[0].cnt).toBe(0);
+
+          const resPwd = await adminClient.query(
+            'SELECT COUNT(*)::int AS cnt FROM app.password_history WHERE user_id IN ($1, $2)',
+            userIds,
+          );
+          expect(resPwd.rows[0].cnt).toBe(0);
+        } catch (err) {
+          await adminClient.query('ROLLBACK').catch(() => {});
+          throw new Error(
+            `cross-tenant.test.ts afterAll cleanup failed for orgs [${ctx.orgAlphaId}, ${ctx.orgBetaId}]: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
         } finally {
           adminClient.release();
         }
