@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, Button, Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@hs/ui';
-import { Building2, Clock, CheckCircle2, AlertCircle, Calendar, ArrowRight, Play, RotateCcw, FileText, Lock } from 'lucide-react';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter, Button } from '@hs/ui';
+import { Building2, Clock, CheckCircle2, AlertCircle, Play, RotateCcw, FileText, Lock, Terminal, ShieldCheck } from 'lucide-react';
 import { WindowCountdown } from './window-countdown';
 
 export type AssessmentStatus = 'window_not_open' | 'ready' | 'in_progress' | 'submitted' | 'expired';
@@ -80,9 +80,9 @@ export function AssessmentCard({
         return (
           <span
             data-testid="status-badge-window_not_open"
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-cyan-50 text-cyan-800 border border-cyan-200 dark:bg-cyan-950/50 dark:text-cyan-300 dark:border-cyan-800/80"
+            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200/80 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800/80"
           >
-            <Clock className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" aria-hidden="true" />
+            <Clock className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" aria-hidden="true" />
             Window Not Open
           </span>
         );
@@ -90,7 +90,7 @@ export function AssessmentCard({
         return (
           <span
             data-testid="status-badge-ready"
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/80"
+            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/80"
           >
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
             Ready to Start
@@ -100,7 +100,7 @@ export function AssessmentCard({
         return (
           <span
             data-testid="status-badge-in_progress"
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/80"
+            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/80"
           >
             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" aria-hidden="true" />
             In Progress
@@ -110,7 +110,7 @@ export function AssessmentCard({
         return (
           <span
             data-testid="status-badge-submitted"
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-800 border border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800/80"
+            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200/80 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800/80"
           >
             <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" aria-hidden="true" />
             Submitted {submittedAt ? `• ${formatSubmittedDate(submittedAt)}` : ''}
@@ -121,7 +121,7 @@ export function AssessmentCard({
         return (
           <span
             data-testid="status-badge-expired"
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600 border border-neutral-300 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700"
+            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600 border border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700"
           >
             <AlertCircle className="w-3.5 h-3.5 text-neutral-500" aria-hidden="true" />
             Window Closed
@@ -130,67 +130,61 @@ export function AssessmentCard({
     }
   };
 
-  // Render Action Button
+  // Render Action Button: clean horizontal row with exactly one icon
   const renderActionButton = () => {
     switch (status) {
       case 'window_not_open':
         return (
-          <Button
+          <button
             type="button"
-            variant="secondary"
             disabled={true}
             aria-disabled="true"
             title="Start will become available when the opening window begins"
             data-testid="btn-start-disabled"
-            className="w-full sm:w-auto opacity-50 cursor-not-allowed font-medium"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-200 dark:border-neutral-700 cursor-not-allowed whitespace-nowrap select-none"
           >
-            <Lock className="w-4 h-4 mr-1.5 text-neutral-400" aria-hidden="true" />
-            Start Assessment
-          </Button>
+            <Lock className="w-4 h-4 text-neutral-400 shrink-0" aria-hidden="true" />
+            <span>Start Assessment</span>
+          </button>
         );
 
       case 'ready':
         return (
-          <Button
+          <button
             type="button"
-            variant="primary"
             onClick={() => onStartAssessment?.(assessment)}
             data-testid="btn-start-assessment"
-            className="w-full sm:w-auto bg-primary hover:bg-primary-hover text-white font-medium shadow-xs"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-primary hover:bg-primary-hover shadow-xs hover:shadow active:scale-[0.99] transition-all whitespace-nowrap cursor-pointer"
           >
-            <Play className="w-4 h-4 mr-1.5" aria-hidden="true" />
-            Start Assessment
-            <ArrowRight className="w-4 h-4 ml-1.5" aria-hidden="true" />
-          </Button>
+            <Play className="w-3.5 h-3.5 fill-current shrink-0" aria-hidden="true" />
+            <span>Start Assessment</span>
+          </button>
         );
 
       case 'in_progress':
         return (
-          <Button
+          <button
             type="button"
-            variant="primary"
             onClick={() => onResumeAssessment?.(assessment)}
             data-testid="btn-resume-assessment"
-            className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-medium shadow-xs"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 shadow-xs hover:shadow active:scale-[0.99] transition-all whitespace-nowrap cursor-pointer"
           >
-            <RotateCcw className="w-4 h-4 mr-1.5" aria-hidden="true" />
-            Resume Assessment
-            <ArrowRight className="w-4 h-4 ml-1.5" aria-hidden="true" />
-          </Button>
+            <RotateCcw className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <span>Resume Assessment</span>
+          </button>
         );
 
       case 'submitted':
         return (
-          <Button
+          <button
             type="button"
-            variant="secondary"
             onClick={() => setShowReceiptDialog(true)}
             data-testid="btn-view-receipt"
-            className="w-full sm:w-auto font-medium"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800 transition-colors whitespace-nowrap cursor-pointer"
           >
-            <FileText className="w-4 h-4 mr-1.5 text-purple-600 dark:text-purple-400" aria-hidden="true" />
-            View Receipt
-          </Button>
+            <FileText className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" aria-hidden="true" />
+            <span>View Submission </span>
+          </button>
         );
 
       case 'expired':
@@ -201,46 +195,46 @@ export function AssessmentCard({
 
   return (
     <>
-      <Card
-        className={`p-6 sm:p-7 border border-neutral-200/90 dark:border-neutral-800 shadow-xs hover:border-neutral-300 dark:hover:border-neutral-700 transition-all ${className}`}
+      <div
+        className={`rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xs hover:border-neutral-300 dark:hover:border-neutral-700 transition-all p-5 sm:p-6 ${className}`}
         data-testid={`assessment-card-${id}`}
       >
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
           {/* Top Section: Title, Company, Status, and Action Button */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-neutral-100 dark:border-neutral-800/80">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-neutral-100 dark:border-neutral-800">
             <div className="space-y-1.5 min-w-0">
-              <div className="flex items-center gap-3 flex-wrap">
-                <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 truncate" data-testid="assessment-title">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-base sm:text-lg font-semibold text-neutral-900 dark:text-neutral-100 truncate" data-testid="assessment-title">
                   {title}
                 </h2>
                 {renderStatusBadge()}
               </div>
 
-              {/* Company Name & Metadata */}
-              <div className="flex items-center gap-4 text-xs text-neutral-500 dark:text-neutral-400 flex-wrap">
+              {/* Company Name & Metadata Row */}
+              <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400 flex-wrap">
                 <span className="flex items-center gap-1.5" data-testid="company-name">
-                  <Building2 className="w-3.5 h-3.5 text-neutral-400" aria-hidden="true" />
+                  <Building2 className="w-3.5 h-3.5 text-neutral-400 shrink-0" aria-hidden="true" />
                   <span className="font-medium text-neutral-700 dark:text-neutral-300">{companyName}</span>
                 </span>
-                <span>&bull;</span>
+                <span className="text-neutral-300 dark:text-neutral-700 select-none">&bull;</span>
                 <span className="flex items-center gap-1.5" data-testid="assessment-duration">
-                  <Clock className="w-3.5 h-3.5 text-neutral-400" aria-hidden="true" />
+                  <Clock className="w-3.5 h-3.5 text-neutral-400 shrink-0" aria-hidden="true" />
                   <span>{durationMinutes} Minutes Duration</span>
                 </span>
-                <span>&bull;</span>
+                <span className="text-neutral-300 dark:text-neutral-700 select-none">&bull;</span>
                 <span className="capitalize text-neutral-600 dark:text-neutral-400">
                   {workspaceMode} Workspace
                 </span>
               </div>
             </div>
 
-            {/* Action button aligned top right */}
-            <div className="shrink-0">{renderActionButton()}</div>
+            {/* Action button aligned horizontally on the right */}
+            <div className="shrink-0 self-start sm:self-auto">{renderActionButton()}</div>
           </div>
 
           {/* Conditional Middle Section: Live Window Countdown if window is not yet open */}
           {status === 'window_not_open' && windowStartUtc && (
-            <div className="pt-1">
+            <div>
               <WindowCountdown
                 targetDateUtc={windowStartUtc}
                 onZero={() => onCountdownZero?.(assessment)}
@@ -248,33 +242,42 @@ export function AssessmentCard({
             </div>
           )}
 
-          {/* Bottom Info Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
-            <div className="p-3.5 rounded-lg bg-neutral-50/80 dark:bg-neutral-800/40 border border-neutral-200/70 dark:border-neutral-800">
-              <span className="text-neutral-500 dark:text-neutral-400 block mb-0.5 font-normal">Environment</span>
-              <span className="text-neutral-800 dark:text-neutral-200 font-semibold uppercase tracking-wider text-[11px]">
+          {/* Bottom Telemetry Strip: 3 clean columns */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+            <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200/70 dark:border-neutral-800">
+              <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500 mb-0.5">
+                <Terminal className="w-3.5 h-3.5" />
+                <span className="font-medium text-[11px]">Environment</span>
+              </div>
+              <span className="text-neutral-800 dark:text-neutral-200 font-semibold text-xs block">
                 {workspaceMode === 'cloud' ? 'Cloud VM (Browser IDE)' : 'Guided AI Chat'}
               </span>
             </div>
 
-            <div className="p-3.5 rounded-lg bg-neutral-50/80 dark:bg-neutral-800/40 border border-neutral-200/70 dark:border-neutral-800">
-              <span className="text-neutral-500 dark:text-neutral-400 block mb-0.5 font-normal">Time Allowance</span>
-              <span className="text-neutral-800 dark:text-neutral-200 font-semibold text-[11px]">
+            <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200/70 dark:border-neutral-800">
+              <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500 mb-0.5">
+                <Clock className="w-3.5 h-3.5" />
+                <span className="font-medium text-[11px]">Time Allowance</span>
+              </div>
+              <span className="text-neutral-800 dark:text-neutral-200 font-semibold text-xs block">
                 {durationMinutes} minutes once started
               </span>
             </div>
 
-            <div className="p-3.5 rounded-lg bg-neutral-50/80 dark:bg-neutral-800/40 border border-neutral-200/70 dark:border-neutral-800">
-              <span className="text-neutral-500 dark:text-neutral-400 block mb-0.5 font-normal">Integrity Policy</span>
-              <span className="text-neutral-800 dark:text-neutral-200 font-semibold text-[11px]">
+            <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200/70 dark:border-neutral-800">
+              <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500 mb-0.5">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span className="font-medium text-[11px]">Integrity Policy</span>
+              </div>
+              <span className="text-neutral-800 dark:text-neutral-200 font-semibold text-xs block">
                 Continuous Autosave (RPO ≤ 30s)
               </span>
             </div>
           </div>
         </div>
-      </Card>
+      </div>
 
-      {/* Submission Receipt Dialog (Requirement #5: No invented verification codes, show real submission metadata) */}
+      {/* Submission Receipt Dialog */}
       <Dialog open={showReceiptDialog} onClose={() => setShowReceiptDialog(false)}>
         <DialogHeader>
           <div className="flex items-center gap-2.5">
@@ -326,4 +329,3 @@ export function AssessmentCard({
     </>
   );
 }
-

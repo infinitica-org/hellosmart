@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader, EmptyState, Button, Card } from '@hs/ui';
 import { AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { AssessmentCard, type CandidateAssessment } from '@/components/candidate/assessment-card';
-import { SystemDiagnosticsModal } from '@/components/candidate/diagnostics/diagnostics-modal';
-import { AssessmentConsentModal } from '@/components/candidate/assessment-consent-modal';
 import { useCandidateAssessments } from '@/hooks/candidate/use-candidate-assessments';
 import { ROUTES } from '@/constants/routes';
 import { ALERT_MESSAGES } from '@/constants/messages';
@@ -14,22 +12,9 @@ import { ALERT_MESSAGES } from '@/constants/messages';
 export default function CandidateDashboardPage() {
   const router = useRouter();
   const { data, isLoading, isRefetching, error, refetch } = useCandidateAssessments();
-  const [selectedAssessmentForDiagnostics, setSelectedAssessmentForDiagnostics] = useState<CandidateAssessment | null>(null);
-  const [selectedAssessmentForConsent, setSelectedAssessmentForConsent] = useState<CandidateAssessment | null>(null);
 
   const handleStart = (assessment: CandidateAssessment) => {
-    setSelectedAssessmentForDiagnostics(assessment);
-  };
-
-  const handleContinueToConsent = (assessment: CandidateAssessment) => {
-    setSelectedAssessmentForDiagnostics(null);
-    setSelectedAssessmentForConsent(assessment);
-  };
-
-  const handleConsentSuccess = (assessment: CandidateAssessment) => {
-    setSelectedAssessmentForConsent(null);
-    const targetId = assessment.workspaceId || assessment.id;
-    router.push(ROUTES.CANDIDATE.WORKSPACE(targetId));
+    router.push(ROUTES.CANDIDATE.DIAGNOSTICS(assessment.id));
   };
 
   const handleResume = (assessment: CandidateAssessment) => {
@@ -42,30 +27,29 @@ export default function CandidateDashboardPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <PageHeader
-          title="Candidate Assessment Workspace"
-          description="Complete practical work simulation tasks in a controlled cloud environment with real developer tools."
-          badge={{ text: 'Candidate Portal', variant: 'info' }}
-          data-testid="candidate-page-header"
-        />
-
-        {data && data.length > 0 && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void refetch()}
-            disabled={isLoading || isRefetching}
-            className="self-start sm:self-auto flex items-center gap-2 text-xs border-neutral-200"
-            aria-label="Refresh assessments"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        )}
-      </div>
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <PageHeader
+        title="Candidate Assessment Workspace"
+        description="Complete practical work simulation tasks in a controlled cloud environment with real developer tools."
+        badge={{ text: 'Candidate Portal', variant: 'info' }}
+        data-testid="candidate-page-header"
+        actions={
+          data && data.length > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              disabled={isLoading || isRefetching}
+              className="flex items-center gap-2 text-xs border-neutral-200 hover:bg-neutral-50"
+              aria-label="Refresh assessments"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* Loading State */}
       {isLoading && (
@@ -150,22 +134,6 @@ export default function CandidateDashboardPage() {
           ))}
         </div>
       )}
-
-      {/* Pre-Test System Diagnostics Modal (#118) */}
-      <SystemDiagnosticsModal
-        isOpen={Boolean(selectedAssessmentForDiagnostics)}
-        assessment={selectedAssessmentForDiagnostics}
-        onClose={() => setSelectedAssessmentForDiagnostics(null)}
-        onContinueToConsent={handleContinueToConsent}
-      />
-
-      {/* Pre-Assessment Legal Agreement & Consent Modal (#119, BR-12) */}
-      <AssessmentConsentModal
-        isOpen={Boolean(selectedAssessmentForConsent)}
-        assessment={selectedAssessmentForConsent}
-        onClose={() => setSelectedAssessmentForConsent(null)}
-        onConsentSuccess={handleConsentSuccess}
-      />
     </div>
   );
 }

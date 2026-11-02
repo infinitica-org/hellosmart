@@ -87,62 +87,62 @@ export function WindowCountdown({
 
   return (
     <div
-      className={`rounded-xl bg-neutral-50/90 dark:bg-neutral-800/50 border border-neutral-200/90 dark:border-neutral-700/80 p-4 sm:p-5 ${className}`}
+      className={`rounded-lg bg-neutral-50/80 dark:bg-neutral-800/40 border border-neutral-200/80 dark:border-neutral-700/80 p-3 sm:p-3.5 ${className}`}
       role="timer"
       aria-live="polite"
       aria-label="Assessment opening countdown"
     >
-      <div className="flex items-center justify-between mb-3.5 flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" aria-hidden="true" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+      <div className="flex items-center justify-between mb-2.5 flex-wrap gap-2">
+        <div className="flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" aria-hidden="true" />
+          <span className="text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
             Assessment opens in
           </span>
         </div>
-        <span className="text-[11px] font-medium text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/50 border border-cyan-200 dark:border-cyan-800/80 px-2 py-0.5 rounded-full">
+        <span className="text-[11px] font-medium text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 border border-sky-200/80 dark:border-sky-800/80 px-2 py-0.5 rounded-full">
           Not yet open
         </span>
       </div>
 
       {/* Countdown digit tiles */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 sm:gap-3" data-testid="countdown-blocks">
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-2.5" data-testid="countdown-blocks">
         {/* Days */}
-        <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200/90 dark:border-neutral-800 shadow-2xs">
-          <span className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-neutral-900 dark:text-neutral-100" data-testid="countdown-days">
+        <div className="flex flex-col items-center justify-center py-2 px-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 shadow-2xs">
+          <span className="text-lg sm:text-xl font-bold font-mono tracking-tight text-neutral-900 dark:text-neutral-100" data-testid="countdown-days">
             {padZero(timeLeft.days)}
           </span>
-          <span className="text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mt-0.5 font-medium">
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mt-0.5 font-medium">
             Days
           </span>
         </div>
 
         {/* Hours */}
-        <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200/90 dark:border-neutral-800 shadow-2xs">
-          <span className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-neutral-900 dark:text-neutral-100" data-testid="countdown-hours">
+        <div className="flex flex-col items-center justify-center py-2 px-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 shadow-2xs">
+          <span className="text-lg sm:text-xl font-bold font-mono tracking-tight text-neutral-900 dark:text-neutral-100" data-testid="countdown-hours">
             {padZero(timeLeft.hours)}
           </span>
-          <span className="text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mt-0.5 font-medium">
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mt-0.5 font-medium">
             Hours
           </span>
         </div>
 
         {/* Minutes */}
-        <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200/90 dark:border-neutral-800 shadow-2xs">
-          <span className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-neutral-900 dark:text-neutral-100" data-testid="countdown-minutes">
+        <div className="flex flex-col items-center justify-center py-2 px-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 shadow-2xs">
+          <span className="text-lg sm:text-xl font-bold font-mono tracking-tight text-neutral-900 dark:text-neutral-100" data-testid="countdown-minutes">
             {padZero(timeLeft.minutes)}
           </span>
-          <span className="text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mt-0.5 font-medium">
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mt-0.5 font-medium">
             Minutes
           </span>
         </div>
 
         {/* Seconds (shown on sm+ or when showSeconds is true) */}
         {showSeconds && (
-          <div className="hidden sm:flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200/90 dark:border-neutral-800 shadow-2xs">
-            <span className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-neutral-900 dark:text-neutral-100" data-testid="countdown-seconds">
+          <div className="hidden sm:flex flex-col items-center justify-center py-2 px-3 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 shadow-2xs">
+            <span className="text-lg sm:text-xl font-bold font-mono tracking-tight text-neutral-900 dark:text-neutral-100" data-testid="countdown-seconds">
               {padZero(timeLeft.seconds)}
             </span>
-            <span className="text-[11px] uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mt-0.5 font-medium">
+            <span className="text-[10px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mt-0.5 font-medium">
               Seconds
             </span>
           </div>

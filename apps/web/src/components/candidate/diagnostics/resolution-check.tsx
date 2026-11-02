@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Card, Badge } from '@hs/ui';
+import { Badge } from '@hs/ui';
 import { Monitor, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import type { ResolutionCheckResult } from '@/hooks/candidate/use-system-diagnostics';
 
@@ -14,62 +14,53 @@ export function ResolutionCheck({ result, isRunning = false }: ResolutionCheckPr
   const isPass = result.status === 'pass';
 
   return (
-    <Card className="p-4 sm:p-5 border-neutral-200/80 bg-white shadow-2xs hover:border-neutral-300 transition-colors">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+    <div className="p-3.5 sm:p-4 rounded-xl border border-neutral-200/80 bg-white dark:bg-neutral-900 transition-colors">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-              isPass ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+            className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+              isPass
+                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
+                : 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'
             }`}
           >
-            <Monitor className="w-5 h-5" />
+            <Monitor className="w-4 h-4" />
           </div>
-          <div>
-            <h4 className="text-sm font-semibold text-neutral-900">Screen Resolution</h4>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Minimum required: <span className="font-medium text-neutral-700">{result.minWidth} × {result.minHeight}</span>
-            </p>
+          <div className="min-w-0">
+            <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Screen Resolution</h4>
+            <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 flex-wrap mt-0.5">
+              <span>
+                Detected: <strong className="font-semibold text-neutral-800 dark:text-neutral-200">{result.screenWidth > 0 ? `${result.screenWidth} × ${result.screenHeight}` : 'Measuring...'}</strong>
+              </span>
+              <span>&bull;</span>
+              <span>Min. required: {result.minWidth} × {result.minHeight}</span>
+            </div>
           </div>
         </div>
 
         {isRunning ? (
-          <Badge variant="default" dot className="shrink-0">
+          <Badge variant="default" dot className="shrink-0 text-xs">
             <Loader2 className="w-3 h-3 animate-spin mr-1" />
             Checking
           </Badge>
         ) : isPass ? (
-          <Badge variant="success" dot className="shrink-0 bg-emerald-50 text-emerald-700 border-emerald-200">
-            <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shrink-0">
+            <CheckCircle2 className="w-3.5 h-3.5" />
             Pass
-          </Badge>
+          </span>
         ) : (
-          <Badge variant="warning" dot className="shrink-0 bg-amber-50 text-amber-800 border-amber-200">
-            <AlertTriangle className="w-3.5 h-3.5 mr-1" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 shrink-0">
+            <AlertTriangle className="w-3.5 h-3.5" />
             Warning
-          </Badge>
+          </span>
         )}
       </div>
 
-      <div className="mt-4 pt-3.5 border-t border-neutral-100 grid grid-cols-2 gap-2 text-xs">
-        <div className="bg-neutral-50 rounded-lg p-2.5 border border-neutral-200/60">
-          <span className="text-[11px] text-neutral-400 block font-light">Detected Resolution</span>
-          <span className="font-semibold text-neutral-800 text-sm">
-            {result.screenWidth > 0 ? `${result.screenWidth} × ${result.screenHeight}` : 'Measuring...'}
-          </span>
-        </div>
-        <div className="bg-neutral-50 rounded-lg p-2.5 border border-neutral-200/60">
-          <span className="text-[11px] text-neutral-400 block font-light">Active Viewport</span>
-          <span className="font-semibold text-neutral-800 text-sm">
-            {result.viewportWidth > 0 ? `${result.viewportWidth} × ${result.viewportHeight}` : 'Measuring...'}
-          </span>
-        </div>
-      </div>
-
       {!isRunning && result.message && (
-        <p className={`mt-3 text-xs leading-relaxed ${isPass ? 'text-neutral-500' : 'text-amber-700 font-normal'}`}>
+        <p className={`mt-2 text-xs leading-relaxed ${isPass ? 'text-neutral-500' : 'text-amber-700'}`}>
           {result.message}
         </p>
       )}
-    </Card>
+    </div>
   );
 }
