@@ -1,5 +1,6 @@
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module.js';
@@ -45,6 +46,14 @@ async function bootstrap(): Promise<void> {
 
   await app.register(helmet, createHelmetOptions(config));
   await app.register(cookie, { secret: config.SESSION_SECRET });
+  await app.register(multipart, {
+    limits: {
+      fileSize: 52_428_800, // 50 MB
+      files: 1,
+      fields: 10,
+    },
+    attachFieldsToBody: false,
+  });
 
   app.enableCors(createCorsOptions(config));
   app.setGlobalPrefix('api/v1');
@@ -52,7 +61,10 @@ async function bootstrap(): Promise<void> {
 
   appLogger.log('Starting HelloSmart API...', 'Bootstrap');
   await app.listen(config.PORT, '0.0.0.0');
-  appLogger.log(`HelloSmart API listening on port ${config.PORT} [${config.NODE_ENV}]`, 'Bootstrap');
+  appLogger.log(
+    `HelloSmart API listening on port ${config.PORT} [${config.NODE_ENV}]`,
+    'Bootstrap',
+  );
 }
 
 void bootstrap();

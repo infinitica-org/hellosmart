@@ -1,0 +1,3 @@
+export const STORAGE_PORT = Symbol('STORAGE_PORT');
+export const ASSIGNMENT_OWNERSHIP_PORT = Symbol('ASSIGNMENT_OWNERSHIP_PORT');
+export const STORAGE_CONFIG = Symbol('STORAGE_CONFIG');

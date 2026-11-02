@@ -31,12 +31,12 @@ import { CandidatesModule } from './modules/candidates/candidates.module.js';
 import { TemplatesModule } from './modules/templates/templates.module.js';
 import { AssessmentsModule } from './modules/assessments/assessments.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { StorageModule } from './common/storage/storage.module.js';
 import { ObservabilityModule } from './modules/observability/observability.module.js';
 import { RedisModule } from './modules/redis/redis.module.js';
 import { SessionModule } from './modules/session/session.module.js';
 
-const devControllers =
-  process.env.NODE_ENV === 'production' ? [] : [DevTestController];
+const devControllers = process.env.NODE_ENV === 'production' ? [] : [DevTestController];
 
 @Module({
   imports: [
@@ -65,6 +65,7 @@ const devControllers =
     TemplatesModule,
     AssessmentsModule,
     HealthModule,
+    StorageModule,
   ],
   controllers: [...devControllers],
   providers: [

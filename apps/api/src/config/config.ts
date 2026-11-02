@@ -19,6 +19,15 @@ const ConfigSchema = z
     PAYMENT_GATEWAY: z.enum(['fake', 'razorpay']).default('fake'),
     EMAIL_PROVIDER: z.enum(['fake', 'ses']).default('fake'),
     WORKSPACE_RUNTIME: z.enum(['fake', 'sysbox']).default('fake'),
+    STORAGE_DRIVER: z.enum(['local', 's3', 'fake']).default('local'),
+    STORAGE_LOCAL_ROOT: z.string().default('.storage'),
+    STORAGE_SIGNING_SECRET: z.string().min(32).optional(),
+    STORAGE_S3_BUCKET: z.string().default('hs-local-artifacts'),
+    STORAGE_S3_REGION: z.string().default('us-east-1'),
+    STORAGE_S3_ENDPOINT: z.string().url().optional(),
+    STORAGE_S3_ACCESS_KEY_ID: z.string().optional(),
+    STORAGE_S3_SECRET_ACCESS_KEY: z.string().optional(),
+    STORAGE_S3_FORCE_PATH_STYLE: z.coerce.boolean().optional(),
     APP_BASE_URL: z.string().url().default('http://localhost:3000'),
     /** Base32 TOTP secret for platform admin MFA (dev/test). Production uses vault via mfa_secret_ref. */
     PLATFORM_ADMIN_MFA_SECRET: z.string().min(16).optional(),
@@ -51,7 +60,9 @@ const ConfigSchema = z
     }
     for (const origin of corsList) {
       if (origin === '*' || origin.includes('*')) {
-        throw new Error(`Wildcard CORS origin '${origin}' is not permitted with credentialed requests`);
+        throw new Error(
+          `Wildcard CORS origin '${origin}' is not permitted with credentialed requests`,
+        );
       }
       try {
         // eslint-disable-next-line no-new
@@ -67,7 +78,10 @@ const ConfigSchema = z
         raw.DATABASE_MIGRATOR_URL ?? raw.DATABASE_URL.replace('hs_app:', 'hs_migrator:'),
       DATABASE_PLATFORM_URL:
         raw.DATABASE_PLATFORM_URL ??
-        raw.DATABASE_URL.replace('hs_app:hs_app_local', 'hs_platform:hs_platform_local').replace('hs_app:', 'hs_platform:'),
+        raw.DATABASE_URL.replace('hs_app:hs_app_local', 'hs_platform:hs_platform_local').replace(
+          'hs_app:',
+          'hs_platform:',
+        ),
     };
   });
 
@@ -132,11 +146,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         throw new Error('Invalid MFA_PREVIOUS_ENCRYPTION_KEYS JSON format');
       }
     } else {
-      const pairs = raw.split(',').map((p) => p.trim()).filter(Boolean);
+      const pairs = raw
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean);
       for (const pair of pairs) {
         const [kid, kstr] = pair.split(':');
         if (!kid || !kstr) {
-          throw new Error('Invalid MFA_PREVIOUS_ENCRYPTION_KEYS format. Expected keyId:keyValue,...');
+          throw new Error(
+            'Invalid MFA_PREVIOUS_ENCRYPTION_KEYS format. Expected keyId:keyValue,...',
+          );
         }
         parseCryptoKey(kstr.trim(), kid.trim());
       }
@@ -156,7 +175,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (parsed.data.DATABASE_URL) {
     try {
       const appUrl = new URL(parsed.data.DATABASE_URL);
-      if (appUrl.username === 'hs_platform' || appUrl.username === 'postgres' || appUrl.username === 'hs_migrator') {
+      if (
+        appUrl.username === 'hs_platform' ||
+        appUrl.username === 'postgres' ||
+        appUrl.username === 'hs_migrator'
+      ) {
         throw new Error('DATABASE_URL must connect as restricted runtime role (hs_app)');
       }
     } catch (e: any) {
@@ -165,11 +188,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     }
   }
   if (nodeEnv === 'production') {
-    const { PAYMENT_GATEWAY, EMAIL_PROVIDER, WORKSPACE_RUNTIME } = parsed.data;
+    const { PAYMENT_GATEWAY, EMAIL_PROVIDER, WORKSPACE_RUNTIME, STORAGE_DRIVER } = parsed.data;
     if (
       PAYMENT_GATEWAY === 'fake' ||
       EMAIL_PROVIDER === 'fake' ||
-      WORKSPACE_RUNTIME === 'fake'
+      WORKSPACE_RUNTIME === 'fake' ||
+      STORAGE_DRIVER === 'fake' ||
+      STORAGE_DRIVER === 'local'
     ) {
       throw new Error('Fake adapters are not allowed in production');
     }
