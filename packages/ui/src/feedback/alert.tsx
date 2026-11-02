@@ -12,26 +12,30 @@ export interface AlertProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'
   children?: ReactNode | undefined;
 }
 
-const variantStyles: Record<AlertVariant, { container: string; icon: string; title: string }> = {
+const variantStyles: Record<AlertVariant, { container: string; icon: string; title: string; closeBtn: string }> = {
   info: {
-    container: 'bg-[#eaf3fb] border-[#b7d4ee] text-[#0b2f5c]',
+    container: 'bg-info-muted border-info-border text-info-foreground',
     icon: 'text-nav-accent',
     title: 'text-nav',
+    closeBtn: 'text-info-foreground/60 hover:text-info-foreground hover:bg-info-foreground/10',
   },
   success: {
     container: 'bg-success-muted border-success-border text-success-foreground',
     icon: 'text-success',
     title: 'text-success-foreground',
+    closeBtn: 'text-success/70 hover:text-success-foreground hover:bg-success/10',
   },
   warning: {
     container: 'bg-warning-muted border-warning-border text-warning-foreground',
     icon: 'text-warning',
     title: 'text-warning-foreground',
+    closeBtn: 'text-warning-foreground/60 hover:text-warning-foreground hover:bg-warning-foreground/10',
   },
   error: {
     container: 'bg-danger-muted border-danger-border text-danger-foreground',
     icon: 'text-danger',
     title: 'text-danger-foreground',
+    closeBtn: 'text-danger/70 hover:text-danger-foreground hover:bg-danger/10',
   },
 };
 
@@ -81,7 +85,7 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(
             type="button"
             onClick={onClose}
             aria-label="Close alert"
-            className="p-1 rounded-sm text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+            className={`p-1 -mr-1 -mt-0.5 rounded-md transition-colors cursor-pointer shrink-0 ${cfg.closeBtn}`}
           >
             <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
               <path

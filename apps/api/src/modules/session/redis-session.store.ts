@@ -15,6 +15,7 @@ const IDEM_PREFIX = 'hs:idem:';
  * Performs pruning of expired sessions, oldest-session eviction, and index updates atomically.
  */
 const REGISTER_AND_ENFORCE_CAP_LUA = `
+pcall(cjson.encode_empty_table_as_object, false)
 local userKey = KEYS[1]
 local now = tonumber(ARGV[1])
 local maxSessions = tonumber(ARGV[2])
@@ -135,13 +136,26 @@ export class RedisSessionStore implements SessionStore {
         SESSION_PREFIX,
       ],
     });
-
-    const parsed = typeof resultJson === 'string' ? JSON.parse(resultJson) : resultJson;
-    const evictedRawList: string[] = Array.isArray(parsed) ? parsed : [];
-    const evictedRecords: SessionRecord[] = evictedRawList.map((raw) =>
-      typeof raw === 'string' ? JSON.parse(raw) : raw,
-    );
-
+    let evictedRawList: unknown[] = [];
+    if (resultJson) {
+      try {
+        const parsed = typeof resultJson === 'string' ? JSON.parse(resultJson) : resultJson;
+        if (Array.isArray(parsed)) {
+          evictedRawList = parsed;
+        }
+      } catch {
+        evictedRawList = [];
+      }
+    }
+    const evictedRecords: SessionRecord[] = evictedRawList
+      .map((raw) => {
+        try {
+          return typeof raw === 'string' ? (JSON.parse(raw) as SessionRecord) : (raw as SessionRecord);
+        } catch {
+          return null;
+        }
+      })
+      .filter((rec): rec is SessionRecord => Boolean(rec));
     return { evictedRecords };
   }
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { TextureButton, BrandMark, Badge, Card, Footer } from '@hs/ui';
+import { ROUTES, BRANDING, UI_LABELS } from '@/constants';
 
 export default function HomePage() {
   return (
@@ -43,11 +44,11 @@ export default function HomePage() {
 
         {/* Right CTA Actions */}
         <div className="flex items-center gap-3">
-          <TextureButton href="/login" variant="minimal" size="pill">
-            Sign In
+          <TextureButton href={ROUTES.AUTH.LOGIN} variant="minimal" size="pill">
+            {UI_LABELS.BUTTONS.SIGN_IN}
           </TextureButton>
-          <TextureButton href="/login" variant="brand" size="pill">
-            Get Started
+          <TextureButton href={ROUTES.AUTH.LOGIN} variant="brand" size="pill">
+            {UI_LABELS.BUTTONS.GET_STARTED}
           </TextureButton>
         </div>
       </header>
@@ -242,17 +243,17 @@ export default function HomePage() {
       {/* ========================================================================= */}
       <Footer
         variant="marketing"
-        brandName="HelloSmart.ai"
-        tagline="Hire by doing. Controlled simulation environments and multi-agent rubric scoring for AI-native engineering teams."
+        brandName={BRANDING.APP_NAME}
+        tagline={`${BRANDING.TAGLINE} Controlled simulation environments and multi-agent rubric scoring for AI-native engineering teams.`}
         showPoweredBy={true}
         columns={[
           {
             title: 'Platform',
             links: [
               { label: 'Cloud Workspaces', href: '#product' },
-              { label: 'Governed AI Proxy', href: '#product' },
-              { label: 'Reviewer Agents', href: '#product' },
-              { label: 'Rubric Evaluator', href: '#product' },
+              { label: 'Governed AI Proxy', href: '#proxy' },
+              { label: 'Reviewer Agents', href: '#reviewers' },
+              { label: 'Rubric Evaluator', href: '#rubric' },
             ],
           },
           {
@@ -260,26 +261,26 @@ export default function HomePage() {
             links: [
               { label: 'Engineering Hiring', href: '#solutions' },
               { label: 'Bootcamp Certification', href: '#institutions' },
-              { label: 'University Verification', href: '#institutions' },
-              { label: 'Book a Demo (Cal.com)', href: 'https://cal.com', external: true },
+              { label: 'University Verification', href: '#universities' },
+              { label: 'Book a Demo (Cal.com)', href: BRANDING.CAL_BOOKING_URL, external: true },
             ],
           },
           {
             title: 'Portals',
             links: [
-              { label: 'Master Sign In', href: '/login' },
-              { label: 'Company Portal', href: '/company' },
-              { label: 'Candidate Workspace', href: '/candidate' },
-              { label: 'Admin Console', href: '/admin' },
+              { label: 'Master Sign In', href: ROUTES.AUTH.LOGIN },
+              { label: 'Company Portal', href: ROUTES.COMPANY.DASHBOARD },
+              { label: 'Candidate Workspace', href: ROUTES.CANDIDATE.DASHBOARD },
+              { label: 'Admin Console', href: ROUTES.ADMIN.DASHBOARD },
             ],
           },
           {
             title: 'Legal',
             links: [
-              { label: 'Privacy Policy', href: '/privacy' },
-              { label: 'Terms of Service', href: '/terms' },
+              { label: 'Privacy Policy', href: ROUTES.PUBLIC.PRIVACY },
+              { label: 'Terms of Service', href: ROUTES.PUBLIC.TERMS },
               { label: 'Security & Tenancy', href: '/security' },
-              { label: 'Compliance (BR-01)', href: '/security' },
+              { label: 'Compliance (BR-01)', href: '/security#compliance' },
             ],
           },
         ]}

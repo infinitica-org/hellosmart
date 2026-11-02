@@ -98,6 +98,9 @@ export interface SidebarProps {
   /** Controlled mobile drawer */
   mobileOpen?: boolean | undefined;
   onMobileOpenChange?: ((open: boolean) => void) | undefined;
+  /** Footer action handlers */
+  onHelpClick?: (() => void) | undefined;
+  onToggleTheme?: (() => void) | undefined;
 }
 
 export interface UserProfileDropdownProps {
@@ -143,8 +146,8 @@ const EllipsisVerticalIcon = () => (
 );
 
 /** User/profile icon */
-const UserIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+const UserIcon = ({ className = 'w-4 h-4' }: { className?: string } = {}) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
     <circle cx="12" cy="7" r="4" />
   </svg>
@@ -214,6 +217,39 @@ const PanelLeftCloseIcon = () => (
   </svg>
 );
 
+/** Sidebar Collapse Arrow icon matching screenshot (|←) */
+const ArrowLeftToLineIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 19V5" />
+    <path d="m14 7-5 5 5 5" />
+    <path d="M9 12h11" />
+  </svg>
+);
+
+const ArrowRightToLineIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 19V5" />
+    <path d="m10 7 5 5-5 5" />
+    <path d="M15 12H4" />
+  </svg>
+);
+
+/** Help circle icon (?) */
+const HelpCircleIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+
+/** Toggle icon (pill switch) */
+const ToggleSwitchIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="12" x="2" y="6" rx="6" ry="6" />
+    <circle cx="8" cy="12" r="2" />
+  </svg>
+);
 
 // ---------------------------------------------------------------------------
 // Active style helpers
@@ -221,20 +257,20 @@ const PanelLeftCloseIcon = () => (
 
 const activeStyleClasses: Record<NonNullable<SidebarProps['activeStyle']>, { active: string; inactive: string }> = {
   light: {
-    active: 'bg-[rgba(11,47,92,0.06)] text-nav font-semibold border-l-[3px] border-l-primary rounded-none',
-    inactive: 'text-[#5b6775] hover:text-nav hover:bg-[#f4f6f8] border-l-[3px] border-l-transparent rounded-none',
+    active: 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white font-medium border border-neutral-200/90 dark:border-neutral-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] rounded-lg',
+    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 border border-transparent rounded-lg font-normal',
   },
   brand: {
-    active: 'bg-[rgba(11,47,92,0.06)] text-nav font-semibold border-l-[3px] border-l-primary rounded-none',
-    inactive: 'text-[#5b6775] hover:text-nav hover:bg-[#f4f6f8] border-l-[3px] border-l-transparent rounded-none',
+    active: 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white font-medium border border-neutral-200/90 dark:border-neutral-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] rounded-lg',
+    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 border border-transparent rounded-lg font-normal',
   },
   subtle: {
-    active: 'bg-[#f4f6f8] text-foreground font-semibold border-l-[3px] border-l-[#c3ccd6] rounded-none',
-    inactive: 'text-[#5b6775] hover:text-nav hover:bg-[#f4f6f8] border-l-[3px] border-l-transparent rounded-none',
+    active: 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white font-medium border border-neutral-200/90 dark:border-neutral-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] rounded-lg',
+    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 border border-transparent rounded-lg font-normal',
   },
   dark: {
-    active: 'bg-chrome text-white font-semibold border-l-[3px] border-l-primary rounded-none',
-    inactive: 'text-[#5b6775] hover:text-nav hover:bg-[#f4f6f8] border-l-[3px] border-l-transparent rounded-none',
+    active: 'bg-neutral-800 text-white font-medium border border-neutral-700/80 shadow-[0_1px_3px_rgba(0,0,0,0.25)] rounded-lg',
+    inactive: 'text-neutral-400 hover:text-white hover:bg-neutral-800/50 border border-transparent rounded-lg font-normal',
   },
 };
 
@@ -448,9 +484,9 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
           className="relative"
         >
           <div
-            className={`w-full flex items-center gap-2.5 rounded-md border border-neutral-200/90 bg-neutral-50/80 px-3 py-2.5 shadow-2xs hover:bg-neutral-100/60 transition-colors ${
- compact ? 'justify-center' : ''
- }`}
+            className={`w-full flex items-center gap-2.5 rounded-xl border border-neutral-200/80 dark:border-neutral-700/60 bg-neutral-50/60 dark:bg-neutral-800/60 px-3 py-2 shadow-2xs hover:bg-neutral-100/60 dark:hover:bg-neutral-700/40 transition-colors ${
+              compact ? 'justify-center' : ''
+            }`}
           >
             <Avatar
               src={userAvatar}
@@ -462,11 +498,11 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
 
             {!compact && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-neutral-900 truncate leading-tight">
+                <p className="text-sm font-medium text-neutral-900 dark:text-white truncate leading-tight">
                   {userName}
                 </p>
                 {userEmail && (
-                  <p className="text-[11px] text-neutral-500 truncate leading-tight mt-0.5">
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate leading-tight mt-0.5">
                     {userEmail}
                   </p>
                 )}
@@ -479,7 +515,7 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
               aria-label="User menu"
               aria-haspopup="menu"
               aria-expanded={open}
-              className="shrink-0 rounded-sm p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200/60 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-300"
+              className="shrink-0 rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200/60 dark:hover:bg-neutral-700 dark:hover:text-neutral-200 transition-colors focus:outline-none cursor-pointer"
             >
               <EllipsisVerticalIcon />
             </button>
@@ -582,34 +618,31 @@ function SidebarNavItemRow({
     item.onClick?.();
   };
 
-  const classes = `flex items-center justify-between gap-2 w-full rounded-none transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-nav-accent/30 px-3 py-2 text-[13px] ${
+  const classes = `group flex items-center justify-between gap-3 w-full h-10 px-3 text-sm transition-all duration-150 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-200 ${
     active ? styleConfig.active : styleConfig.inactive
   } ${item.className || ''} ${item.disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`;
 
-  const paddingLeft = depth > 0 ? { paddingLeft: `${12 + depth * 16}px` } : undefined;
+  const paddingLeft = depth > 0 ? { paddingLeft: `${14 + depth * 16}px` } : undefined;
   const dataAttrs = extractDataAttributes(item);
 
   const content = (
     <>
-      <span className="flex items-center gap-3 min-w-0">
+      <span className="flex items-center gap-3 min-w-0" style={paddingLeft}>
         {item.icon ? (
-          <span className={`w-5 h-5 flex items-center justify-center shrink-0 transition-colors ${active ? 'text-nav' : 'text-[#8a95a3] group-hover:text-nav'}`}>
+          <span className={`w-5 h-5 flex items-center justify-center shrink-0 transition-colors ${active ? 'text-neutral-900 dark:text-white' : 'text-neutral-500 group-hover:text-neutral-900 dark:text-neutral-400 dark:group-hover:text-white'}`}>
             {item.icon}
           </span>
         ) : (
-          <span className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-orange-600' : 'bg-neutral-300'}`} />
+          <span className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-primary' : 'bg-neutral-300 dark:bg-neutral-600'}`} />
         )}
         <span className="truncate">{item.label}</span>
       </span>
 
       <span className="flex items-center gap-1.5 shrink-0">
         {item.badge !== undefined && (
-          <Badge
-            variant={badgeVariantMap[item.badgeVariant || 'default']}
-            size="sm"
-          >
+          <span className="ml-auto inline-flex items-center px-2 py-0.5 text-xs font-normal text-neutral-600 dark:text-neutral-300 bg-neutral-100/90 dark:bg-neutral-800 rounded-md border border-neutral-200/50 dark:border-neutral-700/50 shrink-0">
             {item.badge}
-          </Badge>
+          </span>
         )}
         {hasSubItems && (
           <ChevronRightIcon
@@ -727,9 +760,9 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       logoSrc,
       whiteLabel = false,
       collapsed,
-      collapsible = false,
+      collapsible = true,
       onToggleCollapse,
-      showCollapseButton = false,
+      showCollapseButton = true,
       railExpanded,
       onToggleRailExpand,
       activeStyle = 'light',
@@ -743,6 +776,8 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       width = 'w-60',
       className = '',
       renderLink,
+      onHelpClick,
+      onToggleTheme,
     },
     ref
   ) => {
@@ -768,9 +803,12 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
     } | null>(null);
 
     const isRail = variant === 'rail' || variant === 'carousel';
+    const isCollapsed = collapsed !== undefined ? collapsed : uncontrolledCollapsed;
 
     const [internalRailExpanded, setInternalRailExpanded] = useState(false);
     const isRailExpanded = railExpanded !== undefined ? railExpanded : internalRailExpanded;
+    const effectiveExpanded = isRail ? isRailExpanded : !isCollapsed;
+
     const toggleRailExpand = () => {
       const next = !isRailExpanded;
       if (railExpanded === undefined) {
@@ -779,17 +817,42 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       onToggleRailExpand?.(next);
     };
 
-    const effectiveWidth = isRail
-      ? (isRailExpanded ? (width !== 'w-20' ? width : 'w-64') : 'w-20')
-      : width;
-    const isCollapsed = collapsed !== undefined ? collapsed : uncontrolledCollapsed;
+    const effectiveWidth = effectiveExpanded
+      ? (width !== 'w-20' && width !== 'w-[70px]' ? width : 'w-64')
+      : 'w-[70px]';
 
     const handleToggleCollapse = () => {
-      if (collapsed === undefined) {
-        setUncontrolledCollapsed((prev) => !prev);
+      if (isRail) {
+        toggleRailExpand();
+      } else {
+        if (collapsed === undefined) {
+          setUncontrolledCollapsed((prev) => !prev);
+        }
+        onToggleCollapse?.();
       }
-      onToggleCollapse?.();
     };
+
+    const [isDarkMode, setIsDarkMode] = useState(false);
+    useEffect(() => {
+      if (typeof document !== 'undefined') {
+        setIsDarkMode(document.documentElement.classList.contains('dark'));
+      }
+    }, []);
+
+    const handleToggleDarkMode = () => {
+      if (typeof document !== 'undefined') {
+        const next = !document.documentElement.classList.contains('dark');
+        document.documentElement.classList.toggle('dark', next);
+        setIsDarkMode(next);
+        try {
+          localStorage.setItem('theme', next ? 'dark' : 'light');
+        } catch {
+          // ignore
+        }
+      }
+      onToggleTheme?.();
+    };
+
 
     const styleConfig = activeStyleClasses[activeStyle] || activeStyleClasses.subtle;
 
@@ -799,7 +862,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
     const resolvedGroups: SidebarGroup[] = groups
       ? groups
       : navItems
-        ? [{ items: navItems }]
+        ? [{ title: 'Overview', items: navItems }]
         : [];
 
     // Lock body scroll when mobile drawer is open
@@ -823,7 +886,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
           <div key={group.id || gIdx} className="space-y-1">
             {/* Group title */}
             {group.title && (
-              <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-neutral-400 uppercase tracking-widest select-none">
+              <p className="px-3.5 pt-3 pb-1.5 text-sm font-medium text-neutral-400 dark:text-neutral-500 select-none">
                 {group.title}
               </p>
             )}
@@ -848,16 +911,19 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
     // ---- Render rail / carousel icon-only nav items ----
     const renderRailNavItems = () => {
-      const allItems = resolvedGroups.flatMap((g) => g.items);
-
       return (
         <nav
           onScroll={() => setHoveredRailItem(null)}
-          className={`flex-1 min-h-0 py-3 space-y-1.5 flex flex-col w-full transition-all duration-300 overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgba(212,212,216,0.8)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-200 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full ${
- isRailExpanded ? 'px-3' : 'px-2 items-center'
- }`}
+          className={`flex-1 min-h-0 py-3 space-y-3 flex flex-col w-full transition-all duration-300 overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgba(212,212,216,0.8)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-200 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full ${
+            effectiveExpanded ? 'px-3' : 'px-2 items-center'
+          }`}
         >
-          {allItems.map((item, idx) => {
+          {resolvedGroups.map((group, gIdx) => (
+            <div key={group.id || gIdx} className="space-y-1.5 flex flex-col items-center w-full">
+              {gIdx > 0 && (
+                <div className="w-8 h-px bg-neutral-200/80 dark:bg-neutral-700/60 my-1 shrink-0" role="separator" />
+              )}
+              {group.items.map((item, idx) => {
             const active = isItemActive(item, currentPath, activeId);
             const dataAttrs = extractDataAttributes(item);
 
@@ -870,7 +936,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             };
 
             const handleItemMouseEnter = (e: React.MouseEvent<HTMLElement>) => {
-              if (isRailExpanded) return;
+              if (effectiveExpanded) return;
               const rect = e.currentTarget.getBoundingClientRect();
               setHoveredRailItem({
                 label: item.label,
@@ -887,23 +953,20 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
             const isDark = activeStyle === 'dark';
 
-            // Light active style (soft light brand orange tint with crisp border and gentle depth)
             const activeBgClass = isDark
-              ? 'bg-chrome text-white border border-chrome-muted'
-              : activeStyle === 'subtle'
-                ? 'bg-canvas text-foreground border border-card-border'
-                : 'bg-[rgba(11,47,92,0.06)] text-nav border-l-[3px] border-l-primary border-y border-r border-transparent';
+              ? 'bg-neutral-800 text-white border border-neutral-700/80 shadow-[0_1px_3px_rgba(0,0,0,0.25)] rounded-lg'
+              : 'bg-white text-neutral-900 border border-neutral-200/90 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] rounded-lg font-medium';
 
-            const activeIconColor = isDark ? 'text-primary' : 'text-nav';
+            const inactiveBgClass = 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 border border-transparent rounded-lg font-normal';
 
-            const baseClasses = `group relative flex items-center transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-nav-accent/25 select-none ${
-              isRailExpanded
-                ? 'w-full px-3 py-2.5 gap-3 rounded-md'
-                : 'w-12 h-12 justify-center mx-auto rounded-md'
+            const activeIconColor = isDark ? 'text-white' : 'text-neutral-900 dark:text-white';
+
+            const baseClasses = `group relative flex items-center transition-all duration-150 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-200 select-none ${
+              effectiveExpanded
+                ? 'w-full h-10 px-3 gap-3 rounded-lg text-sm'
+                : 'w-10 h-10 justify-center mx-auto rounded-lg text-sm'
             } ${
-              active
-                ? activeBgClass
-                : 'text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100/80 border border-transparent rounded-md'
+              active ? activeBgClass : inactiveBgClass
             } ${item.className || ''} ${item.disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`;
 
             const isTextBadge = typeof item.badge === 'string' && isNaN(Number(item.badge));
@@ -921,7 +984,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
                 </span>
 
                 {/* Text label when maximized */}
-                {isRailExpanded && (
+                {effectiveExpanded && (
                   <span className={`text-sm font-medium truncate flex-1 text-left ${active ? (isDark ? 'text-white' : 'text-neutral-900 font-semibold') : 'text-neutral-800'}`}>
                     {item.label}
                   </span>
@@ -929,7 +992,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
                 {/* Badge count / status indicator dot */}
                 {item.badge !== undefined && (
-                  isRailExpanded ? (
+                  effectiveExpanded ? (
                     <Badge variant={badgeVariantMap[item.badgeVariant || 'default']} size="sm">
                       {item.badge}
                     </Badge>
@@ -1042,35 +1105,38 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
               </button>
             );
           })}
-        </nav>
-      );
-    };
+        </div>
+      ))}
+    </nav>
+  );
+};
 
     // ---- Header (logo + brand + optional collapse toggle) ----
     const renderHeader = () => {
       if (hideHeader) return null;
 
       return (
-        <div className="flex items-center justify-between shrink-0 h-14 px-4 border-b border-[#d8dee6]">
+        <div className="flex items-center justify-between shrink-0 h-[70px] px-4 border-b border-neutral-100 dark:border-neutral-800">
           <BrandMark
             showLogo={showLogo}
             logoSrc={logoSrc}
             whiteLabel={whiteLabel}
             showSubtitle={false}
-            size="md"
+            size="lg"
+            logoSize="md"
             customTitle={resolvedBrandTitle}
           />
 
-          {/* Collapse button (only when explicitly enabled via collapsible && showCollapseButton) */}
-          {collapsible && showCollapseButton && (
+          {/* Collapse button (matching |← from screenshot, visible unless explicitly false) */}
+          {collapsible !== false && showCollapseButton !== false && (
             <button
               type="button"
               onClick={handleToggleCollapse}
               aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="rounded-sm p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors focus:outline-none cursor-pointer"
+              className="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 transition-colors focus:outline-none cursor-pointer"
             >
-              <PanelLeftIcon />
+              <ArrowLeftToLineIcon className="w-5 h-5 text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200" />
             </button>
           )}
         </div>
@@ -1081,65 +1147,83 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
     const renderRailHeader = () => {
       if (hideHeader) return null;
 
-      if (isRailExpanded) {
+      if (effectiveExpanded) {
         return (
-          <div className="flex items-center shrink-0 h-16 px-4 border-b border-neutral-200 w-full overflow-hidden">
+          <div className="flex items-center justify-between shrink-0 h-[70px] px-4 border-b border-neutral-100 dark:border-neutral-800 w-full overflow-hidden">
             <BrandMark
               showLogo={showLogo}
               logoSrc={logoSrc}
               whiteLabel={whiteLabel}
               showSubtitle={false}
-              size="md"
+              size="lg"
+              logoSize="md"
               fullText={true}
               customTitle={resolvedBrandTitle}
             />
+            <button
+              type="button"
+              onClick={handleToggleCollapse}
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+              className="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 transition-colors focus:outline-none cursor-pointer"
+            >
+              <ArrowLeftToLineIcon className="w-5 h-5 text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200" />
+            </button>
           </div>
         );
       }
 
       return (
-        <div className="flex items-center justify-center shrink-0 h-16 w-full border-b border-neutral-200">
-          <BrandMark
-            showLogo={showLogo}
-            logoSrc={logoSrc}
-            whiteLabel={whiteLabel}
-            showSubtitle={false}
-            size="md"
-            logoSize="md"
-            fullText={false}
-            customTitle={resolvedBrandTitle}
-          />
+        <div className="flex items-center justify-center shrink-0 h-[70px] w-full border-b border-neutral-100 dark:border-neutral-800">
+          <button
+            type="button"
+            onClick={handleToggleCollapse}
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+            className="group relative flex items-center justify-center w-11 h-11 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors focus:outline-none cursor-pointer"
+          >
+            {/* Default state: Show Brand Logo when not hovering */}
+            <span className="flex items-center justify-center transition-all duration-200 group-hover:opacity-0 group-hover:scale-75 absolute inset-0 pointer-events-none">
+              <BrandMark
+                showLogo={showLogo}
+                logoSrc={logoSrc}
+                whiteLabel={whiteLabel}
+                showSubtitle={false}
+                size="lg"
+                logoSize="md"
+                fullText={false}
+                customTitle={resolvedBrandTitle}
+              />
+            </span>
+
+            {/* Hover state: Show Expand Arrow (→|) when hovering */}
+            <span className="flex items-center justify-center transition-all duration-200 opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white absolute inset-0 pointer-events-none">
+              <ArrowRightToLineIcon className="w-5 h-5" />
+            </span>
+          </button>
         </div>
       );
     };
 
-    // ---- Footer (user profile with three dots) ----
+    // ---- Footer (Help, Profile) ----
     const renderFooter = () => {
-      if (!userName && !userEmail) return null;
-
       return (
-        <div className="shrink-0 border-t border-neutral-200/80 p-3 bg-white">
-          <UserProfileDropdown
-            userName={userName}
-            userEmail={userEmail}
-            userAvatar={userAvatar}
-            portalRole={portalRole}
-            onLogout={onLogout}
-            extraMenuItems={profileMenuItems}
-            variant="card"
-            placement="top"
-          />
-        </div>
-      );
-    };
+        <div className="shrink-0 border-t border-neutral-100 dark:border-neutral-800/80 p-3 space-y-1 bg-white dark:bg-neutral-900">
+          {/* Help */}
+          <button
+            type="button"
+            onClick={() => {
+              if (onHelpClick) onHelpClick();
+              else window.open('/docs', '_blank');
+            }}
+            className="group flex items-center gap-3 w-full h-10 px-3 text-sm text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 rounded-lg transition-colors cursor-pointer select-none"
+          >
+            <HelpCircleIcon className="w-5 h-5 text-neutral-500 dark:text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white shrink-0 transition-colors" />
+            <span className="truncate">Help</span>
+          </button>
 
-    // ---- Rail / Carousel Footer ----
-    const renderRailFooter = () => {
-      if (!userName && !userEmail) return null;
-
-      if (isRailExpanded) {
-        return (
-          <div className="shrink-0 border-t border-neutral-100 p-3 bg-white w-full">
+          {/* Profile */}
+          {userName || userEmail ? (
             <UserProfileDropdown
               userName={userName}
               userEmail={userEmail}
@@ -1150,34 +1234,58 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
               variant="card"
               placement="top"
             />
-          </div>
-        );
+          ) : (
+            <div className="flex items-center gap-3 w-full h-10 px-3 text-sm text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 rounded-lg transition-colors select-none">
+              <UserIcon className="w-5 h-5 text-neutral-500 shrink-0" />
+              <span>Profile</span>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // ---- Rail / Carousel Footer ----
+    const renderRailFooter = () => {
+      if (isRailExpanded) {
+        return renderFooter();
       }
 
       return (
-        <div className="shrink-0 p-3 border-t border-neutral-100 flex items-center justify-center w-full bg-white">
-          <UserProfileDropdown
-            userName={userName}
-            userEmail={userEmail}
-            userAvatar={userAvatar}
-            portalRole={portalRole}
-            onLogout={onLogout}
-            extraMenuItems={profileMenuItems}
-            variant="avatar"
-            placement="right"
-          />
+        <div className="shrink-0 p-2 border-t border-neutral-100 dark:border-neutral-800/80 flex flex-col items-center gap-2 w-full bg-white dark:bg-neutral-900">
+          <button
+            type="button"
+            onClick={() => {
+              if (onHelpClick) onHelpClick();
+              else window.open('/docs', '_blank');
+            }}
+            title="Help"
+            aria-label="Help"
+            className="w-10 h-10 flex items-center justify-center rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+          >
+            <HelpCircleIcon className="w-5 h-5" />
+          </button>
+          {userName || userEmail ? (
+            <UserProfileDropdown
+              userName={userName}
+              userEmail={userEmail}
+              userAvatar={userAvatar}
+              portalRole={portalRole}
+              onLogout={onLogout}
+              extraMenuItems={profileMenuItems}
+              variant="avatar"
+              placement="right"
+            />
+          ) : null}
         </div>
       );
     };
 
     // ---- Full sidebar panel (shared between desktop & mobile drawer) ----
     const sidebarPanel = (sidebarWidth: string) => {
-      if (isRail) {
+      if (!effectiveExpanded) {
         return (
           <aside
-            className={`flex flex-col bg-white w-full h-full shrink-0 border-r border-neutral-200 transition-all duration-300 ${className} ${
- !isRailExpanded ? 'items-center' : ''
- }`}
+            className={`flex flex-col bg-white dark:bg-neutral-900 w-full h-full shrink-0 border-r border-neutral-200/80 dark:border-neutral-800 transition-all duration-300 ${className} items-center`}
           >
             {renderRailHeader()}
             {renderRailNavItems()}
@@ -1188,7 +1296,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
       return (
         <aside
-          className={`flex flex-col bg-white w-full h-full shrink-0 border-r border-neutral-200 transition-all duration-300 ${className}`}
+          className={`flex flex-col bg-white dark:bg-neutral-900 w-full h-full shrink-0 border-r border-neutral-200/80 dark:border-neutral-800 transition-all duration-300 ${className}`}
         >
           {renderHeader()}
           {renderNavItems()}
@@ -1199,54 +1307,14 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
     return (
       <>
-        {/* ── Floating expand button when collapsed with smooth animation ── */}
-        {collapsible && isCollapsed && (
-          <button
-            type="button"
-            onClick={handleToggleCollapse}
-            aria-label="Expand sidebar"
-            title="Expand sidebar"
-            className="fixed top-3 left-3 z-40 p-2 rounded-md bg-white border border-neutral-200 shadow-md hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 transition-all duration-300 cursor-pointer animate-fade-in"
-          >
-            <PanelLeftIcon />
-          </button>
-        )}
-
-        {/* ── Desktop sidebar with smooth collapse & slide animation ── */}
+        {/* ── Desktop sidebar ── */}
         <div
           ref={ref}
-          className={`hidden md:flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out shrink-0 z-30 bg-white border-r border-[#d8dee6] ${
- isRail ? 'overflow-visible' : ''
- } ${
-            isCollapsed
-              ? 'w-0 opacity-0 -translate-x-full border-r-0 pointer-events-none'
-              : `${effectiveWidth} opacity-100 translate-x-0`
+          className={`hidden md:flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out shrink-0 z-30 bg-white dark:bg-neutral-900 border-r border-neutral-200/80 dark:border-neutral-800 ${
+            effectiveWidth
           }`}
         >
-          {/* Maximize / Minimize button positioned on the border near the logo */}
-          {isRail && (
-            <button
-              type="button"
-              onClick={toggleRailExpand}
-              aria-label={isRailExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
-              title={isRailExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
-              className="absolute -right-3.5 top-[66px] z-40 w-7 h-7 rounded-full bg-white border border-neutral-200/90 shadow-2xs hover:shadow-md text-neutral-500 hover:text-neutral-900 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer focus:outline-none focus:ring-2 focus:ring-nav-accent/20"
-            >
-              {isRailExpanded ? (
-                <ChevronLeftIcon className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRightIcon className="w-3.5 h-3.5" />
-              )}
-            </button>
-          )}
-
-          <div
-            className={`flex flex-col h-full ${effectiveWidth} transition-all duration-300 ease-in-out ${
- isRail && !isRailExpanded ? 'overflow-visible' : ''
- } ${
-              isCollapsed ? 'opacity-0' : 'opacity-100'
-            }`}
-          >
+          <div className={`flex flex-col h-full ${effectiveWidth} transition-all duration-300 ease-in-out`}>
             {sidebarPanel(effectiveWidth)}
           </div>
         </div>

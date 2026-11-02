@@ -3,7 +3,7 @@
 import React from 'react';
 import { PortalShell } from '@/components/layout/portal-shell';
 import { usePortalAuth } from '@/hooks/use-portal-auth';
-import { adminNavigation } from '@/types/navigation';
+import { adminGroups } from '@/types/navigation';
 
 export default function AdminLayout({
   children,
@@ -19,7 +19,7 @@ export default function AdminLayout({
       userName={user?.name ?? (loading ? 'Loading…' : 'Platform Admin')}
       {...(user?.email ? { userEmail: user.email } : {})}
       companyName="HelloSmart Platform"
-      items={adminNavigation}
+      groups={adminGroups}
       onLogout={signOut}
     >
       {children}

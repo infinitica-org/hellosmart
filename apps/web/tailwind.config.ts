@@ -33,6 +33,11 @@ const config: Config = {
           DEFAULT: '#ffffff',
           border: '#d8dee6',
         },
+        border: {
+          DEFAULT: '#d8dee6',
+          subtle: '#eef1f4',
+          strong: '#c3ccd6',
+        },
         primary: {
           50: '#fff7ed',
           100: '#ffedd5',

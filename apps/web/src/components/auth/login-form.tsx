@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { login, type UserMe } from '@/lib/api-client';
 import { getSafeRedirectUrl } from '@/lib/safe-redirect';
@@ -22,6 +22,32 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [forcedResetNotice, setForcedResetNotice] = useState<string | null>(null);
+
+  const isSessionExpired = reasonParam === 'session-expired';
+  const [showSessionExpired, setShowSessionExpired] = useState(isSessionExpired);
+  const [isSessionExpiredDismissing, setIsSessionExpiredDismissing] = useState(false);
+
+  useEffect(() => {
+    if (isSessionExpired) {
+      setShowSessionExpired(true);
+      setIsSessionExpiredDismissing(false);
+      const timer = setTimeout(() => {
+        setIsSessionExpiredDismissing(true);
+        const removeTimer = setTimeout(() => {
+          setShowSessionExpired(false);
+        }, 300);
+        return () => clearTimeout(removeTimer);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSessionExpired]);
+
+  const handleDismissSessionExpired = () => {
+    setIsSessionExpiredDismissing(true);
+    setTimeout(() => {
+      setShowSessionExpired(false);
+    }, 300);
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -81,16 +107,34 @@ export function LoginForm({ onSuccess }: LoginFormProps): React.JSX.Element {
         </div>
       )}
 
-      {/* Session Expired Banner (S0-T16-2) */}
-      {reasonParam === 'session-expired' && (
+      {/* Session Expired Banner (S0-T16-2) with 3s auto-dismiss & close button */}
+      {showSessionExpired && (
         <div
           role="alert"
-          className="rounded-lg bg-amber-50 p-4 text-sm text-amber-900 border border-amber-200"
+          className={`flex items-center justify-between rounded-lg bg-amber-50 p-4 text-sm text-amber-900 border border-amber-200 transition-all duration-300 ease-in-out ${
+            isSessionExpiredDismissing
+              ? 'opacity-0 -translate-y-2 max-h-0 mb-0 p-0 overflow-hidden border-0'
+              : 'opacity-100 max-h-24'
+          }`}
         >
           <div className="flex items-center gap-2">
             <span aria-hidden="true" className="font-bold">⏱</span>
             <span className="font-medium">Your session expired. Please sign in again.</span>
           </div>
+          <button
+            type="button"
+            onClick={handleDismissSessionExpired}
+            aria-label="Close alert"
+            className="p-1 rounded-md text-amber-900/60 hover:text-amber-950 hover:bg-amber-100 transition-colors cursor-pointer shrink-0"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+              <path
+                fillRule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
         </div>
       )}
 

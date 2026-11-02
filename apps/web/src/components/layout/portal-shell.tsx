@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { AlertDialog, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@hs/ui';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { IdleWarningModal } from '@/components/session/idle-warning-modal';
 import { ActiveSessionsDialog } from '@/components/session/active-sessions-dialog';
 import { sessionClient } from '@/lib/session-client';
-import type { SidebarItem } from '@hs/ui';
+import { ROUTES, PLACEHOLDERS } from '@/constants';
+import type { SidebarItem, SidebarGroup } from '@hs/ui';
 import type { NavigationItem } from '@/types/navigation';
 
 export interface PortalShellProps {
@@ -16,7 +18,8 @@ export interface PortalShellProps {
   userName: string;
   userEmail?: string | undefined;
   companyName?: string | undefined;
-  items: (SidebarItem | NavigationItem)[];
+  items?: (SidebarItem | NavigationItem)[];
+  groups?: SidebarGroup[];
   onLogout: () => void | Promise<void>;
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -32,6 +35,7 @@ export function PortalShell({
   userEmail,
   companyName,
   items,
+  groups,
   onLogout,
   children,
   footer,
@@ -43,6 +47,50 @@ export function PortalShell({
   const [showSessions, setShowSessions] = useState(false);
   const [showLogoutAll, setShowLogoutAll] = useState(false);
   const [loggingOutAll, setLoggingOutAll] = useState(false);
+  const pathname = usePathname();
+
+  const allNavItems = groups ? groups.flatMap((g) => g.items) : (items || []);
+  const activeNavItem = allNavItems.find((item) => {
+    if (!item.href || !pathname) return false;
+    if (pathname === item.href || pathname === `${item.href}/`) return true;
+    if (
+      item.href === ROUTES.ADMIN.DASHBOARD ||
+      item.href === ROUTES.COMPANY.DASHBOARD ||
+      item.href === ROUTES.CANDIDATE.DASHBOARD ||
+      item.href === ROUTES.PUBLIC.HOME
+    ) {
+      return pathname === item.href;
+    }
+    return pathname.startsWith(`${item.href}/`);
+  });
+
+  const pageTitle = topbarTitle ?? activeNavItem?.label ?? 'Dashboard';
+  const pageIcon = activeNavItem?.icon;
+
+  const roleLower = userRole?.toLowerCase() || '';
+  const searchPlaceholder = roleLower.includes('candidate')
+    ? PLACEHOLDERS.SEARCH.GLOBAL_CANDIDATE
+    : roleLower.includes('admin')
+      ? PLACEHOLDERS.SEARCH.GLOBAL_ADMIN
+      : PLACEHOLDERS.SEARCH.GLOBAL_COMPANY;
+
+  const accountHref = roleLower.includes('candidate')
+    ? ROUTES.CANDIDATE.PROFILE
+    : roleLower.includes('admin')
+      ? ROUTES.ADMIN.SETTINGS
+      : ROUTES.COMPANY.SETTINGS;
+
+  const preferencesHref = roleLower.includes('candidate')
+    ? ROUTES.CANDIDATE.PROFILE
+    : roleLower.includes('admin')
+      ? ROUTES.ADMIN.SETTINGS
+      : ROUTES.COMPANY.SETTINGS;
+
+  const billingHref = roleLower.includes('admin')
+    ? ROUTES.ADMIN.SETTINGS
+    : roleLower.includes('candidate')
+      ? ROUTES.CANDIDATE.DASHBOARD
+      : ROUTES.COMPANY.SETTINGS;
 
   const profileMenuItems = (
     <>
@@ -75,7 +123,7 @@ export function PortalShell({
   );
 
   return (
-    <div className="min-h-screen flex bg-canvas text-neutral-900 font-sans">
+    <div className="min-h-screen flex bg-white text-neutral-900 font-sans">
       <IdleWarningModal userRole={userRole} idleTimeoutSeconds={idleTimeoutSeconds} />
 
       <Sidebar
@@ -86,6 +134,7 @@ export function PortalShell({
         portalRole={userRole}
         {...(companyName ? { companyName } : {})}
         items={items}
+        groups={groups}
         userName={userName}
         {...(userEmail ? { userEmail } : {})}
         onLogout={() => {
@@ -96,12 +145,17 @@ export function PortalShell({
         onMobileOpenChange={setMobileOpen}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-white">
         <Topbar
           variant="dashboard"
           showLogo={false}
-          showNotifications={false}
-          title={topbarTitle ?? portalTitle}
+          showNotifications={true}
+          searchPlaceholder={searchPlaceholder}
+          accountHref={accountHref}
+          preferencesHref={preferencesHref}
+          billingHref={billingHref}
+          title={pageTitle}
+          titleIcon={pageIcon}
           userName={userName}
           {...(userEmail ? { userEmail } : {})}
           userRole={userRole}

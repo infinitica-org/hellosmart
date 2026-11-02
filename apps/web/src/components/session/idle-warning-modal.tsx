@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { sessionClient, type AuthBroadcastMessage } from '@/lib/session-client';
+import { LIMITS } from '@/constants';
 
 export interface IdleWarningModalProps {
   /** Total idle timeout in seconds (if omitted, automatically derived from user role) */
