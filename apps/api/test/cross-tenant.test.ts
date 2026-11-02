@@ -28,6 +28,12 @@ interface TestContext {
   pwdBetaId: string;
   codeAlphaId: string;
   codeBetaId: string;
+  templateAlphaId: string;
+  templateBetaId: string;
+  versionAlphaId: string;
+  versionBetaId: string;
+  assessmentAlphaId: string;
+  assessmentBetaId: string;
 }
 
 let appPool: pg.Pool;
@@ -197,6 +203,60 @@ describe
           [userBetaId],
         );
 
+        // 7. Seed templates, versions, assignments, and assessments for new tables audit
+        const tAlphaRes = await adminClient.query(
+          `INSERT INTO app.templates (slug, name, category, difficulty, workspace_mode, description)
+           VALUES ($1, 'Template Alpha', 'Engineering', 'Intermediate', 'chat', 'Test Template Alpha')
+           RETURNING id`,
+          [`template-alpha-${crypto.randomBytes(4).toString('hex')}`],
+        );
+        const templateAlphaId = tAlphaRes.rows[0].id;
+
+        const tBetaRes = await adminClient.query(
+          `INSERT INTO app.templates (slug, name, category, difficulty, workspace_mode, description)
+           VALUES ($1, 'Template Beta', 'Design', 'Beginner', 'chat', 'Test Template Beta')
+           RETURNING id`,
+          [`template-beta-${crypto.randomBytes(4).toString('hex')}`],
+        );
+        const templateBetaId = tBetaRes.rows[0].id;
+
+        const vAlphaRes = await adminClient.query(
+          `INSERT INTO app.template_versions (template_id, version, status, manifest)
+           VALUES ($1, '1.0.0', 'published', '{"title": "Alpha"}'::jsonb)
+           RETURNING id`,
+          [templateAlphaId],
+        );
+        const versionAlphaId = vAlphaRes.rows[0].id;
+
+        const vBetaRes = await adminClient.query(
+          `INSERT INTO app.template_versions (template_id, version, status, manifest)
+           VALUES ($1, '1.0.0', 'published', '{"title": "Beta"}'::jsonb)
+           RETURNING id`,
+          [templateBetaId],
+        );
+        const versionBetaId = vBetaRes.rows[0].id;
+
+        await adminClient.query(
+          `INSERT INTO app.template_assignments (template_id, org_id) VALUES ($1, $2), ($3, $4)`,
+          [templateAlphaId, orgAlphaId, templateBetaId, orgBetaId],
+        );
+
+        const aAlphaRes = await adminClient.query(
+          `INSERT INTO app.assessments (org_id, template_version_id, name, workspace_mode, status)
+           VALUES ($1, $2, 'Assessment Alpha', 'chat', 'draft')
+           RETURNING id`,
+          [orgAlphaId, versionAlphaId],
+        );
+        const assessmentAlphaId = aAlphaRes.rows[0].id;
+
+        const aBetaRes = await adminClient.query(
+          `INSERT INTO app.assessments (org_id, template_version_id, name, workspace_mode, status)
+           VALUES ($1, $2, 'Assessment Beta', 'chat', 'draft')
+           RETURNING id`,
+          [orgBetaId, versionBetaId],
+        );
+        const assessmentBetaId = aBetaRes.rows[0].id;
+
         ctx = {
           orgAlphaId,
           orgBetaId,
@@ -214,6 +274,12 @@ describe
           pwdBetaId: pwdBetaRes.rows[0].id,
           codeAlphaId: codeAlphaRes.rows[0].id,
           codeBetaId: codeBetaRes.rows[0].id,
+          templateAlphaId,
+          templateBetaId,
+          versionAlphaId,
+          versionBetaId,
+          assessmentAlphaId,
+          assessmentBetaId,
         };
       } finally {
         adminClient.release();
@@ -224,6 +290,22 @@ describe
       if (adminPool && ctx) {
         const adminClient = await adminPool.connect();
         try {
+          await adminClient.query('DELETE FROM app.assessments WHERE org_id IN ($1, $2)', [
+            ctx.orgAlphaId,
+            ctx.orgBetaId,
+          ]);
+          await adminClient.query('DELETE FROM app.template_assignments WHERE org_id IN ($1, $2)', [
+            ctx.orgAlphaId,
+            ctx.orgBetaId,
+          ]);
+          await adminClient.query('DELETE FROM app.template_versions WHERE id IN ($1, $2)', [
+            ctx.versionAlphaId,
+            ctx.versionBetaId,
+          ]);
+          await adminClient.query('DELETE FROM app.templates WHERE id IN ($1, $2)', [
+            ctx.templateAlphaId,
+            ctx.templateBetaId,
+          ]);
           await adminClient.query('DELETE FROM app.mfa_backup_codes WHERE user_id IN ($1, $2)', [
             ctx.userAlphaId,
             ctx.userBetaId,
@@ -763,6 +845,29 @@ describe
         expect(audits.rows.length).toBeGreaterThanOrEqual(1);
         expect(audits.rows.every((r) => r.org_id === ctx.orgAlphaId)).toBe(true);
 
+        // app.template_assignments
+        const assigns = await client.query(
+          'SELECT template_id, org_id FROM app.template_assignments',
+        );
+        expect(assigns.rows.length).toBeGreaterThanOrEqual(1);
+        expect(assigns.rows.every((r) => r.org_id === ctx.orgAlphaId)).toBe(true);
+
+        // app.templates (scoped via assignment boundary)
+        const tpls = await client.query('SELECT id FROM app.templates');
+        expect(tpls.rows.some((r) => r.id === ctx.templateAlphaId)).toBe(true);
+        expect(tpls.rows.some((r) => r.id === ctx.templateBetaId)).toBe(false);
+
+        // app.template_versions (scoped via template assignment boundary)
+        const tplVersions = await client.query('SELECT id FROM app.template_versions');
+        expect(tplVersions.rows.some((r) => r.id === ctx.versionAlphaId)).toBe(true);
+        expect(tplVersions.rows.some((r) => r.id === ctx.versionBetaId)).toBe(false);
+
+        // app.assessments
+        const assessments = await client.query('SELECT id, org_id FROM app.assessments');
+        expect(assessments.rows.length).toBeGreaterThanOrEqual(1);
+        expect(assessments.rows.every((r) => r.org_id === ctx.orgAlphaId)).toBe(true);
+        expect(assessments.rows.some((r) => r.id === ctx.assessmentBetaId)).toBe(false);
+
         await client.query('ROLLBACK');
       } finally {
         await client.query('ROLLBACK').catch(() => {});
@@ -795,12 +900,38 @@ describe
         const pwds = await client.query('SELECT * FROM app.password_history');
         expect(pwds.rows).toHaveLength(0);
 
+        const unauthAssignments = await client.query('SELECT * FROM app.template_assignments');
+        expect(unauthAssignments.rows).toHaveLength(0);
+
+        const unauthTemplates = await client.query('SELECT * FROM app.templates');
+        expect(unauthTemplates.rows).toHaveLength(0);
+
+        const unauthVersions = await client.query('SELECT * FROM app.template_versions');
+        expect(unauthVersions.rows).toHaveLength(0);
+
+        const unauthAssessments = await client.query('SELECT * FROM app.assessments');
+        expect(unauthAssessments.rows).toHaveLength(0);
+
         // Direct query to mfa_backup_codes as hs_app fails with privilege error (least privilege)
+        await client.query('SAVEPOINT sp_mfa_neg');
         await expect(client.query('SELECT * FROM app.mfa_backup_codes')).rejects.toThrow(
           /permission denied for table mfa_backup_codes/i,
         );
+        await client.query('ROLLBACK TO SAVEPOINT sp_mfa_neg');
+
+        // Unauthenticated assessment INSERT attempt fails closed
+        await client.query('SAVEPOINT sp_unauth_assess');
+        await expect(
+          client.query(
+            `INSERT INTO app.assessments (org_id, template_version_id, name, workspace_mode)
+             VALUES ($1, $2, 'Unauth Assessment', 'chat')`,
+            [ctx.orgAlphaId, ctx.versionAlphaId],
+          ),
+        ).rejects.toThrow();
+        await client.query('ROLLBACK TO SAVEPOINT sp_unauth_assess');
 
         // Unauthenticated INSERT attempt fails closed
+        await client.query('SAVEPOINT sp_unauth_user');
         await expect(
           client.query(
             `INSERT INTO app.users (id, org_id, email, name, role, status)
@@ -808,6 +939,7 @@ describe
             [ctx.orgAlphaId],
           ),
         ).rejects.toThrow();
+        await client.query('ROLLBACK TO SAVEPOINT sp_unauth_user');
 
         await client.query('ROLLBACK');
       } finally {
@@ -857,6 +989,41 @@ describe
         ]);
         expect(blindDelete.rowCount).toBe(0);
 
+        // 5. Cross-tenant assessment INSERT fails WITH CHECK
+        await client.query('SAVEPOINT sp_insert_assessment');
+        await expect(
+          client.query(
+            `INSERT INTO app.assessments (org_id, template_version_id, name, workspace_mode)
+             VALUES ($1, $2, 'Forged Assessment', 'chat')`,
+            [ctx.orgBetaId, ctx.versionAlphaId],
+          ),
+        ).rejects.toThrow();
+        await client.query('ROLLBACK TO SAVEPOINT sp_insert_assessment');
+
+        // 6. Cross-tenant assessment UPDATE fails WITH CHECK
+        await client.query('SAVEPOINT sp_update_assessment');
+        await expect(
+          client.query('UPDATE app.assessments SET org_id = $1 WHERE id = $2', [
+            ctx.orgBetaId,
+            ctx.assessmentAlphaId,
+          ]),
+        ).rejects.toThrow();
+        await client.query('ROLLBACK TO SAVEPOINT sp_update_assessment');
+
+        // 7. Blind UPDATE on Org Beta assessment affects 0 rows
+        const blindAssessmentUpdate = await client.query(
+          "UPDATE app.assessments SET name = 'Attacked Assessment' WHERE id = $1",
+          [ctx.assessmentBetaId],
+        );
+        expect(blindAssessmentUpdate.rowCount).toBe(0);
+
+        // 8. Blind DELETE on Org Beta assessment affects 0 rows
+        const blindAssessmentDelete = await client.query(
+          'DELETE FROM app.assessments WHERE id = $1',
+          [ctx.assessmentBetaId],
+        );
+        expect(blindAssessmentDelete.rowCount).toBe(0);
+
         await client.query('ROLLBACK');
       } finally {
         await client.query('ROLLBACK').catch(() => {});
@@ -881,11 +1048,17 @@ describe
         expect(tx1Check.rows[0].org).toBe(ctx.orgAlphaId);
         const tx1Users = await client.query('SELECT id FROM app.users');
         expect(tx1Users.rows.length).toBeGreaterThanOrEqual(1);
+        const tx1Assessments = await client.query('SELECT id FROM app.assessments WHERE id = $1', [
+          ctx.assessmentAlphaId,
+        ]);
+        expect(tx1Assessments.rows).toHaveLength(1);
         await client.query('COMMIT');
 
         // Assert: Outside transaction on the same connection, app.org_id is reset to NULL
         const postCommitCheck = await client.query('SELECT app.current_org_id() AS org');
         expect(postCommitCheck.rows[0].org).toBeNull();
+        const postCommitAssessments = await client.query('SELECT * FROM app.assessments');
+        expect(postCommitAssessments.rows).toHaveLength(0);
 
         // Transaction 2: Execute as Org Beta on the SAME physical connection
         await client.query('BEGIN');
@@ -904,6 +1077,17 @@ describe
           ctx.userBetaId,
         ]);
         expect(tx2BetaQuery.rows).toHaveLength(1);
+
+        // Verify Org Alpha assessment invisible, Org Beta assessment visible
+        const tx2AlphaAssess = await client.query('SELECT * FROM app.assessments WHERE id = $1', [
+          ctx.assessmentAlphaId,
+        ]);
+        expect(tx2AlphaAssess.rows).toHaveLength(0);
+        const tx2BetaAssess = await client.query('SELECT * FROM app.assessments WHERE id = $1', [
+          ctx.assessmentBetaId,
+        ]);
+        expect(tx2BetaAssess.rows).toHaveLength(1);
+
         await client.query('ROLLBACK');
 
         // Assert: After rollback on the same connection, app.org_id is reset to NULL
@@ -1082,6 +1266,113 @@ describe
       } finally {
         await appClient.query('ROLLBACK').catch(() => {});
         appClient.release();
+      }
+    });
+
+    // 21. Template Privacy and Assignment Boundary (BR-02, AD-011)
+    it('21. app.templates and app.template_assignments strictly enforce private company boundary (BR-02)', async () => {
+      const client = await appPool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query("SELECT set_config('app.org_id', $1, true)", [ctx.orgAlphaId]);
+
+        // Org Alpha only sees templateAlpha, not templateBeta
+        const alphaTemplates = await client.query('SELECT id, name FROM app.templates');
+        expect(alphaTemplates.rows.some((r) => r.id === ctx.templateAlphaId)).toBe(true);
+        expect(alphaTemplates.rows.some((r) => r.id === ctx.templateBetaId)).toBe(false);
+
+        // Tenant cannot directly assign templates (WITH CHECK enforces app.is_platform())
+        await client.query('SAVEPOINT sp_tpl_assign');
+        await expect(
+          client.query(
+            'INSERT INTO app.template_assignments (template_id, org_id) VALUES ($1, $2)',
+            [ctx.templateBetaId, ctx.orgAlphaId],
+          ),
+        ).rejects.toThrow();
+        await client.query('ROLLBACK TO SAVEPOINT sp_tpl_assign');
+
+        // Switch to Org Beta
+        await client.query("SELECT set_config('app.org_id', $1, true)", [ctx.orgBetaId]);
+        const betaTemplates = await client.query('SELECT id, name FROM app.templates');
+        expect(betaTemplates.rows.some((r) => r.id === ctx.templateBetaId)).toBe(true);
+        expect(betaTemplates.rows.some((r) => r.id === ctx.templateAlphaId)).toBe(false);
+
+        await client.query('ROLLBACK');
+      } finally {
+        await client.query('ROLLBACK').catch(() => {});
+        client.release();
+      }
+    });
+
+    // 22. Assessment GUC Escalation Hardening (BR-01, Task 4.1 Gap Fix)
+    it('22. app.assessments strictly enforces tenant scoping and rejects forged app.is_platform GUC under hs_app (BR-01)', async () => {
+      const client = await appPool.connect();
+      try {
+        await client.query('BEGIN');
+        // Attack: hs_app attempts to forge app.is_platform = true
+        await client.query("SELECT set_config('app.is_platform', 'true', true)");
+        await client.query("SELECT set_config('app.org_id', $1, true)", [ctx.orgAlphaId]);
+
+        // Querying for Org Beta assessment must return 0 rows (hardened against forged GUC)
+        const crossAssessQuery = await client.query('SELECT * FROM app.assessments WHERE id = $1', [
+          ctx.assessmentBetaId,
+        ]);
+        expect(crossAssessQuery.rows).toHaveLength(0);
+
+        // Attempting to cross-insert into Org Beta under forged is_platform flag fails WITH CHECK
+        await expect(
+          client.query(
+            `INSERT INTO app.assessments (org_id, template_version_id, name, workspace_mode)
+             VALUES ($1, $2, 'Forged GUC Assessment', 'chat')`,
+            [ctx.orgBetaId, ctx.versionAlphaId],
+          ),
+        ).rejects.toThrow();
+
+        await client.query('ROLLBACK');
+      } finally {
+        await client.query('ROLLBACK').catch(() => {});
+        client.release();
+      }
+
+      // Legitimate platform role with app.is_platform = true can query both
+      const platformClient = await platformPool.connect();
+      try {
+        await platformClient.query('BEGIN');
+        await platformClient.query("SELECT set_config('app.is_platform', 'true', true)");
+        const platAssessments = await platformClient.query(
+          'SELECT id FROM app.assessments WHERE id IN ($1, $2)',
+          [ctx.assessmentAlphaId, ctx.assessmentBetaId],
+        );
+        expect(platAssessments.rows).toHaveLength(2);
+        await platformClient.query('ROLLBACK');
+      } finally {
+        await platformClient.query('ROLLBACK').catch(() => {});
+        platformClient.release();
+      }
+    });
+
+    // 23. Published Template Version Immutability (BR-03)
+    it('23. Template version immutability trigger prevents modification or deletion of published template versions (BR-03)', async () => {
+      const adminClient = await adminPool.connect();
+      try {
+        // Attempting to update manifest of published version must be rejected by trigger
+        await expect(
+          adminClient.query(
+            `UPDATE app.template_versions
+             SET manifest = '{"title": "Tampered"}'::jsonb
+             WHERE id = $1`,
+            [ctx.versionAlphaId],
+          ),
+        ).rejects.toThrow(/Published template manifests are immutable/i);
+
+        // Attempting to delete published version must be rejected by trigger
+        await expect(
+          adminClient.query('DELETE FROM app.template_versions WHERE id = $1', [
+            ctx.versionAlphaId,
+          ]),
+        ).rejects.toThrow(/Published template versions are immutable/i);
+      } finally {
+        adminClient.release();
       }
     });
   });
