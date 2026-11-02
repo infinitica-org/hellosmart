@@ -319,3 +319,53 @@ All 27 test cases are automated and verified against live PostgreSQL:
      - `app.get_mfa_enrollment_pending(user_id)`
   3. Under `FORCE ROW LEVEL SECURITY`, `hs_migrator` satisfies `migrator_policy` (`USING (true) WITH CHECK (true)`), enabling reliable pre-login operation.
   4. Direct queries by `hs_app` fail closed with PostgreSQL error `42501` (`permission denied for table mfa_backup_codes`).
+
+---
+
+## 10. Test Environment & Database Isolation
+
+### 10.1 Dedicated Test Database (`hellosmart_test`)
+
+To ensure complete isolation between local development state and automated tests:
+
+- All API and multi-tenancy tests run against `hellosmart_test` (configured as default in `apps/api/test/setup.ts` and `apps/api/test/cross-tenant.test.ts`).
+- Running tests never touches or pollutes the development database (`hellosmart`).
+- How to run:
+  ```bash
+  pnpm test:tenancy
+  # or directly:
+  pnpm --filter @hs/api test
+  ```
+
+### 10.2 Role Grants & Fresh Database Provisioning
+
+In PostgreSQL, `ALTER DEFAULT PRIVILEGES` is scoped **per database**. When a new database (such as `hellosmart_test`) is created after `packages/contracts/db/init/001_roles.sql` was executed on the default database, it does **not** automatically inherit default privileges for roles `hs_app`, `hs_platform`, or `hs_readonly`.
+
+Furthermore, migrations `0001` through `0013` define table schemas but do not include explicit table-level grants. Therefore, any fresh database must be provisioned with both schema migrations and role grants:
+
+#### Exact Preparation Steps for a Fresh Database:
+
+1. Create the database:
+   ```sql
+   CREATE DATABASE hellosmart_test OWNER hs_owner;
+   ```
+2. Apply migrations:
+   ```bash
+   pnpm db:migrate
+   # (with DATABASE_URL pointed to hellosmart_test as hs_migrator)
+   ```
+3. Apply role grants from `packages/contracts/db/init/001_roles.sql`:
+   - Connect to `hellosmart_test` as `hs_owner`.
+   - Execute the grant sections of `001_roles.sql` to grant `SELECT, INSERT, UPDATE, DELETE` on `app.*` and `audit.*` to `hs_app`, `hs_platform`, and `SELECT` to `hs_readonly`.
+4. Apply seed data (if needed):
+   ```bash
+   pnpm db:seed
+   ```
+
+### 10.3 Open Architecture Question for Vishal V
+
+- **Question:** Should the test database (`hellosmart_test`) and any future ephemeral/CI database environments be automatically provisioned with role grants by:
+  1. The migration runner (`apps/api/src/db/migrate.ts`),
+  2. A dedicated test provisioning script (`pnpm db:setup-test`), or
+  3. The Docker container initialization scripts (`packages/contracts/db/init/`)?
+- **Current Status:** In local development, Docker init runs `001_roles.sql` on the primary database, while `hellosmart_test` required explicit application of `001_roles.sql` grants to enable `hs_app` test access. Automating this in CI / RDS pipeline will prevent 'permission denied' errors during test execution.
