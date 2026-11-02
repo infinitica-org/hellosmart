@@ -182,14 +182,9 @@ export const companyGroups: NavigationGroup[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 export const candidateNavigation: PortalNavigation = [
   {
-    label: 'Dashboard',
+    label: 'My Workspace',
     href: ROUTES.CANDIDATE.DASHBOARD,
     icon: <LayoutDashboard className="w-4 h-4" strokeWidth={2} />,
-  },
-  {
-    label: 'My Assessments',
-    href: ROUTES.CANDIDATE.ASSESSMENTS,
-    icon: <Terminal className="w-4 h-4" strokeWidth={2} />,
   },
   {
     label: 'My Profile',
@@ -200,23 +195,12 @@ export const candidateNavigation: PortalNavigation = [
 
 export const candidateGroups: NavigationGroup[] = [
   {
-    title: 'Overview',
     items: [
       {
-        label: 'Dashboard',
+        label: 'My Workspace',
         href: ROUTES.CANDIDATE.DASHBOARD,
         icon: <LayoutDashboard className="w-4 h-4" strokeWidth={2} />,
       },
-      {
-        label: 'My Assessments',
-        href: ROUTES.CANDIDATE.ASSESSMENTS,
-        icon: <Terminal className="w-4 h-4" strokeWidth={2} />,
-      },
-    ],
-  },
-  {
-    title: 'Insights',
-    items: [
       {
         label: 'My Profile',
         href: ROUTES.CANDIDATE.PROFILE,

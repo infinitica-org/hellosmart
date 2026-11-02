@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PageHeader, Card, Alert, Badge, Button } from '@hs/ui';
 import { usePortalAuth } from '@/hooks/use-portal-auth';
+import { ROUTES } from '@/constants/routes';
 import type { UserMe } from '@/lib/api-client';
 
 export interface CandidateProfileViewProps {
@@ -173,7 +174,7 @@ export function CandidateProfileView({
               Launch assigned technical evaluations in the governed cloud workspace with continuous autosave (BR-11).
             </p>
           </div>
-          <Link href="/candidate/assessments">
+          <Link href={ROUTES.CANDIDATE.DASHBOARD}>
             <Button variant="primary" size="sm">
               View My Assessments →
             </Button>

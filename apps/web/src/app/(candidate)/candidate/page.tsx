@@ -29,8 +29,8 @@ export default function CandidateDashboardPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <PageHeader
-        title="Candidate Assessment Workspace"
-        description="Complete practical work simulation tasks in a controlled cloud environment with real developer tools."
+        title="My Assessments"
+        description="Complete practical work simulation tasks and technical evaluations in a controlled cloud environment."
         badge={{ text: 'Candidate Portal', variant: 'info' }}
         data-testid="candidate-page-header"
         actions={

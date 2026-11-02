@@ -7,6 +7,7 @@ export * from './schemas/manifest.js';
 export * from './schemas/template.js';
 export * from './schemas/assessment.js';
 export * from './schemas/consent.js';
+export * from './schemas/workspace-submission.js';
 export * from './password-policy.js';
 export * from './data/common-passwords.data.js';
 export * from './constants/index.js';

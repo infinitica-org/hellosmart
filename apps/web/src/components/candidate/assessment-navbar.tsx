@@ -18,7 +18,7 @@ export function AssessmentNavbar({ userName, onExit }: AssessmentNavbarProps): R
 
   const isDiagnostics = Boolean(pathname?.includes('/diagnostics'));
   const isConsent = Boolean(pathname?.includes('/consent'));
-  const isWorkspace = Boolean(pathname?.includes('/workspaces/'));
+  const isWorkspace = Boolean(pathname?.includes('/workspaces/') || pathname?.includes('/workspace/'));
 
   const handleExit = () => {
     if (onExit) {
@@ -36,8 +36,15 @@ export function AssessmentNavbar({ userName, onExit }: AssessmentNavbarProps): R
           <BrandMark size="sm" showSubtitle={false} logoVariant="image" />
         </Link>
         <span className="text-neutral-300 dark:text-neutral-700 select-none hidden sm:inline">|</span>
-        <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400 hidden sm:inline">
-          Assessment Pre-Flight
+        <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400 hidden sm:inline flex items-center gap-1.5">
+          {isWorkspace ? (
+            <>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Assessment Workspace</span>
+            </>
+          ) : (
+            'Assessment Pre-Flight'
+          )}
         </span>
       </div>
 
