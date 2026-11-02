@@ -27,6 +27,10 @@ export const DEFAULT_MAIL_CONFIG: Config = {
   MAILPIT_URL: 'http://127.0.0.1:8025',
   HIBP_FAIL_OPEN: true,
   MFA_ENCRYPTION_KEY_ID: 'k1',
+  STORAGE_DRIVER: 'local',
+  STORAGE_LOCAL_ROOT: '.storage',
+  STORAGE_S3_BUCKET: 'hs-local-artifacts',
+  STORAGE_S3_REGION: 'us-east-1',
 };
 
 function escapeHtml(str: string): string {
@@ -203,9 +207,11 @@ HelloSmart.ai — Hire by doing
 
 You're invited to join ${input.orgName}
 
-${isCandidate
-  ? `${input.orgName} has invited you to complete a practical work simulation on HelloSmart.ai.`
-  : `You have been invited to join ${input.orgName} on HelloSmart.ai as a Company Administrator.`}
+${
+  isCandidate
+    ? `${input.orgName} has invited you to complete a practical work simulation on HelloSmart.ai.`
+    : `You have been invited to join ${input.orgName} on HelloSmart.ai as a Company Administrator.`
+}
 
 Invitation Details:
 • Organization: ${input.orgName}
@@ -257,7 +263,9 @@ export class MailService implements EmailSender {
     if (this.config.EMAIL_PROVIDER === 'fake') {
       const providerId = `fake_mail_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       if (this.config.NODE_ENV === 'development' || this.config.NODE_ENV === 'test') {
-        this.logger.debug(`[FakeMail] Template: ${input.template} To: ${input.to} Vars: ${JSON.stringify(input.vars)}`);
+        this.logger.debug(
+          `[FakeMail] Template: ${input.template} To: ${input.to} Vars: ${JSON.stringify(input.vars)}`,
+        );
       }
       return { providerId };
     }
@@ -269,7 +277,9 @@ export class MailService implements EmailSender {
    * High-level method to send invitation links.
    * Must be called ONLY after the organization/invitation database transaction commits.
    */
-  async sendInvitationEmail(input: SendInvitationInput): Promise<{ providerId: string; inviteUrl?: string }> {
+  async sendInvitationEmail(
+    input: SendInvitationInput,
+  ): Promise<{ providerId: string; inviteUrl?: string }> {
     const inviteUrl = `${this.config.APP_BASE_URL}/accept-invite?token=${encodeURIComponent(input.token)}`;
 
     if (this.config.EMAIL_PROVIDER === 'fake') {
@@ -284,9 +294,10 @@ export class MailService implements EmailSender {
         // Await delivery so the invitation is visible in Mailpit before this method returns.
         const mailpitUrl = this.config.MAILPIT_URL ?? 'http://127.0.0.1:8025';
         try {
-          const subject = input.role === 'candidate'
-            ? `You have been invited to complete an assessment for ${input.orgName} on HelloSmart.ai`
-            : `You have been invited to join ${input.orgName} on HelloSmart.ai`;
+          const subject =
+            input.role === 'candidate'
+              ? `You have been invited to complete an assessment for ${input.orgName} on HelloSmart.ai`
+              : `You have been invited to join ${input.orgName} on HelloSmart.ai`;
 
           const response = await fetch(`${mailpitUrl}/api/v1/send`, {
             method: 'POST',
@@ -301,11 +312,15 @@ export class MailService implements EmailSender {
             signal: AbortSignal.timeout(3_000),
           });
           if (!response.ok) {
-            this.logger.warn(`[Mailpit] Invitation email was not captured (HTTP ${response.status}); ensure Mailpit is running at ${mailpitUrl}`);
+            this.logger.warn(
+              `[Mailpit] Invitation email was not captured (HTTP ${response.status}); ensure Mailpit is running at ${mailpitUrl}`,
+            );
           }
         } catch (err) {
           // Keep local invitation creation usable when Mailpit is not running.
-          this.logger.warn(`[Mailpit] Could not capture invitation email (${(err as Error).message}); ensure Mailpit is running at ${mailpitUrl}`);
+          this.logger.warn(
+            `[Mailpit] Could not capture invitation email (${(err as Error).message}); ensure Mailpit is running at ${mailpitUrl}`,
+          );
         }
       }
 
