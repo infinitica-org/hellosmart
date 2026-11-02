@@ -1,23 +1,44 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createAssessment } from '@/lib/company-api';
-import { usePortalAuth } from '@/hooks/use-portal-auth';
+import { useCreateAssessmentMutation } from '@/store/company/companyApi';
 import type { CreateAssessmentDto, AssessmentDto } from '@/components/company/assessments/types';
 
+/**
+ * Mutation hook for creating a new assessment blueprint from a role template version.
+ * Routed through centralized RTK Query companyApi slice.
+ */
 export function useCreateAssessment() {
-  const queryClient = useQueryClient();
-  const { user } = usePortalAuth();
-  const orgId = user?.org?.id ?? 'current';
+  const [createAssessmentMutation, { isLoading: isPending }] = useCreateAssessmentMutation();
 
-  return useMutation<AssessmentDto, Error, CreateAssessmentDto>({
-    mutationFn: (dto) => createAssessment(dto),
-    onSuccess: () => {
-      // Invalidate company assessments list so fresh state is fetched
-      queryClient.invalidateQueries({
-        queryKey: ['company', orgId, 'assessments'],
-      });
+  const mutate = (
+    dto: CreateAssessmentDto,
+    options?: {
+      onSuccess?: (data: AssessmentDto) => void;
+      onError?: (err: Error) => void;
     },
-  });
-}
+  ) => {
+    createAssessmentMutation(dto)
+      .unwrap()
+      .then((data) => options?.onSuccess?.(data))
+      .catch((err) => {
+        const error =
+          err instanceof Error
+            ? err
+            : new Error(
+                err?.data?.message ||
+                  err?.data?.detail ||
+                  err?.message ||
+                  'Failed to create assessment.',
+              );
+        options?.onError?.(error);
+      });
+  };
 
+  return {
+    isPending,
+    mutate,
+    mutateAsync: async (dto: CreateAssessmentDto): Promise<AssessmentDto> => {
+      return await createAssessmentMutation(dto).unwrap();
+    },
+  };
+}

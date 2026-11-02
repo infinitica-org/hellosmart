@@ -55,6 +55,7 @@ class SessionClient {
   private currentUser: UserMe | null = null;
   private listeners: Set<(event: AuthBroadcastMessage) => void> = new Set();
   private isInitialized = false;
+  private isSigningOut = false;
 
   constructor() {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
@@ -81,8 +82,7 @@ class SessionClient {
     };
   }
 
-  private handleBroadcast(data: AuthBroadcastMessage): void {
-    // Notify all local subscribers
+  private notifyListeners(data: AuthBroadcastMessage): void {
     this.listeners.forEach((listener) => {
       try {
         listener(data);
@@ -90,6 +90,11 @@ class SessionClient {
         console.error('[SessionClient] Listener error:', err);
       }
     });
+  }
+
+  private handleBroadcast(data: AuthBroadcastMessage): void {
+    // Notify all local subscribers
+    this.notifyListeners(data);
 
     if (data.type === 'LOGOUT') {
       this.currentUser = null;
@@ -99,7 +104,11 @@ class SessionClient {
         const target = `/login?reason=${encodeURIComponent(data.reason || 'session-expired')}${
           isSafeRedirectPath(from) && from !== '/' ? `&from=${encodeURIComponent(from)}` : ''
         }`;
-        window.location.href = target;
+        try {
+          window.location.href = target;
+        } catch {
+          // Safe handling in test environments
+        }
       }
     } else if (data.type === 'LOGIN') {
       // Refresh current user profile in other open tabs
@@ -141,23 +150,37 @@ class SessionClient {
 
   /**
    * Handles user sign-out and notifies all open tabs via BroadcastChannel.
+   * Re-entrancy guard ensures concurrent calls do not generate duplicate logout requests or broadcasts.
    */
   public async signOut(reason = 'user-logout'): Promise<void> {
+    if (this.isSigningOut) {
+      return;
+    }
+    this.isSigningOut = true;
     this.currentUser = null;
+
     try {
       await logout();
     } catch {
       // ignore network errors on sign-out
+    } finally {
+      this.isSigningOut = false;
     }
 
-    this.broadcast({ type: 'LOGOUT', reason });
+    const message: AuthBroadcastMessage = { type: 'LOGOUT', reason };
+    this.notifyListeners(message);
+    this.broadcast(message);
 
     if (typeof window !== 'undefined') {
       const target =
         reason === 'session-expired'
           ? `/login?reason=session-expired`
           : `/login`;
-      window.location.href = target;
+      try {
+        window.location.href = target;
+      } catch {
+        // Safe handling in test environments
+      }
     }
   }
 
@@ -165,17 +188,30 @@ class SessionClient {
    * Revokes all active sessions across all devices for this user.
    */
   public async signOutAllDevices(): Promise<void> {
+    if (this.isSigningOut) {
+      return;
+    }
+    this.isSigningOut = true;
     this.currentUser = null;
+
     try {
       await logoutAllSessions();
     } catch {
       // ignore
+    } finally {
+      this.isSigningOut = false;
     }
 
-    this.broadcast({ type: 'LOGOUT', reason: 'session-expired' });
+    const message: AuthBroadcastMessage = { type: 'LOGOUT', reason: 'session-expired' };
+    this.notifyListeners(message);
+    this.broadcast(message);
 
     if (typeof window !== 'undefined') {
-      window.location.href = '/login?reason=session-expired';
+      try {
+        window.location.href = '/login?reason=session-expired';
+      } catch {
+        // Safe handling in test environments
+      }
     }
   }
 
