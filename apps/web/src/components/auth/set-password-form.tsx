@@ -51,7 +51,7 @@ export function SetPasswordForm({
   title = 'Set Your Password',
   subtitle = 'Choose a strong password to secure your HelloSmart account.',
   submitLabel = 'Save Password',
-  redirectTo = '/login',
+  redirectTo = '/login?message=password_set',
   onSubmitPassword,
   onSuccess,
   onError,
@@ -121,14 +121,25 @@ export function SetPasswordForm({
         }
       } else {
         // Default API request
-        const response = await fetch('/api/auth/set-password', {
+        const targetUrl = token
+          ? '/api/auth/invitations/accept'
+          : '/api/auth/password/change';
+
+        const payload = token
+          ? { token, password: newPassword }
+          : {
+              currentPassword: requireCurrentPassword ? currentPassword : undefined,
+              newPassword,
+            };
+
+        const response = await fetch(targetUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            token,
-            currentPassword: requireCurrentPassword ? currentPassword : undefined,
-            newPassword,
-          }),
+          headers: {
+            'Content-Type': 'application/json',
+            'X-HS-CSRF': '1',
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload),
         });
 
         const data = await response.json().catch(() => null);
@@ -152,6 +163,12 @@ export function SetPasswordForm({
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+
+      // Clear forced password reset flag now that password has been set/changed
+      if (typeof document !== 'undefined') {
+        document.cookie = 'hs_must_reset=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax;';
+      }
+
       onSuccess?.();
 
       if (redirectTo) {

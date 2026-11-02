@@ -30,6 +30,10 @@ export function buildCspDirectives(nonce: string): string {
   if (connectOrigins.size === 0) {
     connectOrigins.add('http://localhost:4000');
   }
+  if (isDev) {
+    connectOrigins.add('http://localhost:4000');
+    connectOrigins.add('http://127.0.0.1:4000');
+  }
 
   const originsString = Array.from(connectOrigins).join(' ');
 
@@ -137,6 +141,18 @@ async function lookupSessionRole(
   sessionToken: string,
   apiV1Base: string,
 ): Promise<SessionRoleLookup> {
+  // Fast-path for testing & local development fixtures in DEV_SESSION_STORE
+  if (
+    (process.env.NODE_ENV === 'test' ||
+      (process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_ACCOUNTS === 'true')) &&
+    DEV_SESSION_STORE.has(sessionToken)
+  ) {
+    const devSession = DEV_SESSION_STORE.get(sessionToken);
+    if (devSession) {
+      return { kind: 'authenticated', role: devSession.role };
+    }
+  }
+
   const timeoutsMs = [3_000, 6_000];
 
   for (const timeoutMs of timeoutsMs) {

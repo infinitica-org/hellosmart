@@ -3,7 +3,10 @@ import type {
   AcceptInvitationResponse,
   ActiveSession,
   ActiveSessionsResponse,
+  CandidateDto,
   ChangePasswordRequest,
+  CompanyMetricsDto,
+  CreateCandidateDto,
   InvitationDetailsResponse,
   SimpleSuccessResponse,
 } from '@hs/contracts';
@@ -105,8 +108,8 @@ export interface UserMe {
 export function getApiBaseUrl(): string {
   const raw =
     typeof window !== 'undefined'
-      ? process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000'
-      : process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000';
+      ? process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+      : process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const trimmed = raw.replace(/\/$/, '');
   return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
 }
@@ -137,6 +140,19 @@ export function resolveBrowserAuthUrl(apiV1Path: string): string {
   if (path === '/auth/password/change') {
     return '/api/auth/password/change';
   }
+  if (path === '/auth/invitations/accept') {
+    return '/api/auth/invitations/accept';
+  }
+  if (path === '/candidates/metrics') {
+    return '/api/company/metrics';
+  }
+  if (path === '/candidates') {
+    return '/api/company/candidates';
+  }
+  const invitationTokenMatch = /^\/auth\/invitations\/([^/]+)$/.exec(path);
+  if (invitationTokenMatch?.[1]) {
+    return `/api/auth/invitations/${encodeURIComponent(invitationTokenMatch[1])}`;
+  }
   if (path.startsWith('/auth/mfa/')) {
     return `/api/auth${path.slice('/auth'.length)}`;
   }
@@ -156,8 +172,7 @@ export async function validateInvitation(
   token: string,
   fetchFn: typeof fetch = fetch,
 ): Promise<InvitationDetailsResponse> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/auth/invitations/${encodeURIComponent(token)}`;
+  const url = resolveBrowserAuthUrl(`/auth/invitations/${encodeURIComponent(token)}`);
 
   const res = await fetchFn(url, {
     method: 'GET',
@@ -196,8 +211,7 @@ export async function acceptInvitation(
   data: AcceptInvitationRequest,
   fetchFn: typeof fetch = fetch,
 ): Promise<AcceptInvitationResponse> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/auth/invitations/accept`;
+  const url = resolveBrowserAuthUrl('/auth/invitations/accept');
 
   const res = await fetchFn(url, {
     method: 'POST',
@@ -351,7 +365,24 @@ export async function listSessions(
     throw new ApiError(res.status, 'API_ERROR', errorDetail);
   }
 
-  return (await res.json()) as ActiveSessionsResponse;
+  const rawData = await res.json();
+  const rawList = Array.isArray(rawData?.sessions) ? rawData.sessions : [];
+
+  const sessions: ActiveSession[] = rawList.map((s: any) => ({
+    id: s.id || s.sessionId || '',
+    sessionId: s.sessionId || s.id || '',
+    device: s.device || s.userAgent || 'Web Browser',
+    userAgent: s.userAgent || s.device || 'Web Browser',
+    ipAddress: s.ipAddress || s.ip || '127.0.0.1',
+    ip: s.ip || s.ipAddress || '127.0.0.1',
+    createdAt: s.createdAt,
+    lastActiveAt: s.lastActiveAt || s.lastSeenAt || s.createdAt,
+    lastSeenAt: s.lastSeenAt || s.lastActiveAt || s.createdAt,
+    isCurrent: Boolean(s.isCurrent ?? s.current),
+    current: Boolean(s.current ?? s.isCurrent),
+  }));
+
+  return { sessions };
 }
 
 /**
@@ -528,3 +559,123 @@ export async function getMe(
 
   return inFlightMePromise;
 }
+
+/**
+ * Lists candidates for the current company organization via GET /api/v1/candidates.
+ */
+export async function listCandidates(
+  fetchFn: typeof fetch = fetch,
+): Promise<CandidateDto[]> {
+  const url = resolveBrowserAuthUrl('/candidates');
+  const res = await fetchFn(url, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+    credentials: 'include',
+  });
+
+  if (res.status === 401) {
+    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
+  }
+
+  if (res.status === 429) {
+    throw new RateLimitedError();
+  }
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to fetch candidates';
+    try {
+      const errJson = await res.json();
+      errorDetail = errJson.detail || errorDetail;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, 'API_ERROR', errorDetail);
+  }
+
+  return (await res.json()) as CandidateDto[];
+}
+
+/**
+ * Invites a new candidate via POST /api/v1/candidates (BR-24).
+ */
+export async function inviteCandidate(
+  input: CreateCandidateDto,
+  fetchFn: typeof fetch = fetch,
+): Promise<CandidateDto> {
+  const url = resolveBrowserAuthUrl('/candidates');
+  const res = await fetchFn(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE,
+    },
+    body: JSON.stringify(input),
+    credentials: 'include',
+  });
+
+  if (res.status === 401) {
+    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
+  }
+
+  if (res.status === 409) {
+    throw new ApiError(409, 'CANDIDATE_ALREADY_EXISTS', 'A candidate with this email address has already been invited or registered.');
+  }
+
+  if (res.status === 429) {
+    throw new RateLimitedError();
+  }
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to invite candidate';
+    try {
+      const errJson = await res.json();
+      errorDetail = errJson.detail || errorDetail;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, 'API_ERROR', errorDetail);
+  }
+
+  return (await res.json()) as CandidateDto;
+}
+
+/**
+ * Fetches company assessment metrics via GET /api/v1/candidates/metrics.
+ */
+export async function getCompanyMetrics(
+  fetchFn: typeof fetch = fetch,
+): Promise<CompanyMetricsDto> {
+  const url = resolveBrowserAuthUrl('/candidates/metrics');
+  const res = await fetchFn(url, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+    credentials: 'include',
+  });
+
+  if (res.status === 401) {
+    throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
+  }
+
+  if (res.status === 429) {
+    throw new RateLimitedError();
+  }
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to load company metrics';
+    try {
+      const errJson = await res.json();
+      errorDetail = errJson.detail || errorDetail;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, 'API_ERROR', errorDetail);
+  }
+
+  return (await res.json()) as CompanyMetricsDto;
+}
+

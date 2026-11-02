@@ -1,6 +1,17 @@
 import { type DynamicModule, Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, Reflector } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ExecutionContext, Injectable } from '@nestjs/common';
+
+@Injectable()
+export class DevAwareThrottlerGuard extends ThrottlerGuard {
+  protected override async shouldSkip(context: ExecutionContext): Promise<boolean> {
+    if (process.env.NODE_ENV === 'development') {
+      return true;
+    }
+    return super.shouldSkip(context);
+  }
+}
 import type { Logger } from 'pino';
 import { ProblemDetailsFilter } from './common/filters/problem-details.filter.js';
 import { CsrfOriginGuard } from './common/guards/csrf-origin.guard.js';
@@ -65,7 +76,7 @@ const devControllers =
     OrgScopeGuard,
     IdempotencyInterceptor,
     { provide: APP_FILTER, useExisting: ProblemDetailsFilter },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: DevAwareThrottlerGuard },
     { provide: APP_GUARD, useExisting: CsrfOriginGuard },
     { provide: APP_GUARD, useExisting: SessionGuard },
     { provide: APP_GUARD, useExisting: RolesGuard },

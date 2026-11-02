@@ -8,11 +8,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   });
 
   const res =
-    proxied.status === 503
-      ? NextResponse.json({ success: true, message: 'Logged out locally.' }, { status: 200 })
+    proxied.status === 503 || proxied.status === 401
+      ? NextResponse.json({ success: true, message: 'Logged out.' }, { status: 200 })
       : proxied;
 
   res.cookies.delete('hs_session');
   res.cookies.delete('hs_role');
+  res.cookies.delete('hs_must_reset');
   return res;
 }

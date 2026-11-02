@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { resolveIdleTimeoutForRole } from '../components/session/idle-warning-modal';
 import {
   isSafeRedirectPath,
   sanitizeRedirectPath,
@@ -112,8 +113,23 @@ describe('Session UX: Multi-Tab BroadcastChannel & Session Client', () => {
   });
 });
 
-describe('Session UX: Idle Warning Timing Calculations', () => {
-  it('correctly calculates warning threshold (2 minutes before timeout)', () => {
+describe('Session UX: Idle Warning Timing Calculations (BUG-09)', () => {
+  it('resolves correct role-based idle timeout (15m for platform_admin, 30m for company_admin/candidate)', () => {
+    expect(resolveIdleTimeoutForRole('platform_admin')).toBe(900);
+    expect(resolveIdleTimeoutForRole('Super Admin')).toBe(900);
+    expect(resolveIdleTimeoutForRole('Platform Administrator')).toBe(900);
+
+    expect(resolveIdleTimeoutForRole('company_admin')).toBe(1800);
+    expect(resolveIdleTimeoutForRole('Company Admin')).toBe(1800);
+    expect(resolveIdleTimeoutForRole('Company Administrator')).toBe(1800);
+
+    expect(resolveIdleTimeoutForRole('candidate')).toBe(1800);
+    expect(resolveIdleTimeoutForRole('Candidate')).toBe(1800);
+    expect(resolveIdleTimeoutForRole(null)).toBe(1800);
+    expect(resolveIdleTimeoutForRole(undefined)).toBe(1800);
+  });
+
+  it('correctly calculates warning threshold for 15-minute roles (platform_admin)', () => {
     const idleTimeoutSeconds = 900; // 15 mins
     const warningThresholdSeconds = 120; // 2 mins
 
@@ -131,6 +147,81 @@ describe('Session UX: Idle Warning Timing Calculations', () => {
     const elapsed3 = 900;
     const remaining3 = idleTimeoutSeconds - elapsed3;
     expect(remaining3 <= 0).toBe(true);
+  });
+
+  it('correctly calculates warning threshold for 30-minute roles (company_admin and candidate)', () => {
+    const idleTimeoutSeconds = 1800; // 30 mins
+    const warningThresholdSeconds = 120; // 2 mins
+
+    // 15 minutes elapsed (900s): remaining 900s -> Warning NOT active (prevents premature 15m modal)
+    const elapsed1 = 900;
+    const remaining1 = idleTimeoutSeconds - elapsed1;
+    expect(remaining1 > warningThresholdSeconds).toBe(true);
+
+    // 25 minutes elapsed (1500s): remaining 300s -> Warning NOT active
+    const elapsed2 = 1500;
+    const remaining2 = idleTimeoutSeconds - elapsed2;
+    expect(remaining2 > warningThresholdSeconds).toBe(true);
+
+    // 28 minutes and 30 seconds elapsed (1710s): remaining 90s -> Warning IS active
+    const elapsed3 = 1710;
+    const remaining3 = idleTimeoutSeconds - elapsed3;
+    expect(remaining3 <= warningThresholdSeconds && remaining3 > 0).toBe(true);
+
+    // 30 minutes elapsed (1800s): remaining 0s -> Expired
+    const elapsed4 = 1800;
+    const remaining4 = idleTimeoutSeconds - elapsed4;
+    expect(remaining4 <= 0).toBe(true);
+  });
+});
+
+describe('Session UX: Active Sessions API Mapping (BUG-04)', () => {
+  it('correctly normalizes backend SessionPublicDto shape to ActiveSession contract', async () => {
+    const mockBackendResponse = {
+      sessions: [
+        {
+          sessionId: 'sess_uuid_current',
+          device: 'MacBook Pro',
+          ip: '192.168.1.100',
+          createdAt: '2026-10-30T10:00:00.000Z',
+          lastSeenAt: '2026-10-30T12:00:00.000Z',
+          current: true,
+        },
+        {
+          sessionId: 'sess_uuid_other',
+          device: 'iPhone 15',
+          ip: '10.0.0.1',
+          createdAt: '2026-10-29T10:00:00.000Z',
+          lastSeenAt: '2026-10-29T15:00:00.000Z',
+          current: false,
+        },
+      ],
+    };
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockBackendResponse,
+    });
+
+    const { listSessions } = await import('../lib/api-client');
+    const result = await listSessions(mockFetch as unknown as typeof fetch);
+
+    expect(result.sessions).toHaveLength(2);
+
+    const currentSession = result.sessions[0]!;
+    expect(currentSession.id).toBe('sess_uuid_current');
+    expect(currentSession.sessionId).toBe('sess_uuid_current');
+    expect(currentSession.isCurrent).toBe(true);
+    expect(currentSession.ipAddress).toBe('192.168.1.100');
+    expect(currentSession.lastActiveAt).toBe('2026-10-30T12:00:00.000Z');
+
+    const otherSession = result.sessions[1]!;
+    expect(otherSession.id).toBe('sess_uuid_other');
+    expect(otherSession.sessionId).toBe('sess_uuid_other');
+    expect(otherSession.isCurrent).toBe(false);
+    expect(otherSession.ipAddress).toBe('10.0.0.1');
+    expect(otherSession.lastActiveAt).toBe('2026-10-29T15:00:00.000Z');
   });
 });
 

@@ -45,19 +45,19 @@ for _, hash in ipairs(hashes) do
           idleTimeoutMs = 1800000
         end
       end
-      local absExpired = (now >= rec.absoluteExpiresAt)
-      local idleExpired = ((now - rec.lastSeenAt) >= idleTimeoutMs)
-      if absExpired or idleExpired then
+      local absExpired = (rec.absoluteExpiresAt and now >= rec.absoluteExpiresAt)
+      local idleExpired = (rec.lastSeenAt and (now - rec.lastSeenAt) >= idleTimeoutMs)
+      if absExpired or idleExpired or not rec.absoluteExpiresAt or not rec.lastSeenAt then
         redis.call('DEL', sessionPrefix .. hash)
         redis.call('SREM', userKey, hash)
       else
-        table.insert(valid, { hash = hash, createdAt = rec.createdAt, raw = raw })
+        table.insert(valid, { hash = hash, createdAt = rec.createdAt or 0, raw = raw })
       end
     end
   end
 end
 
-table.sort(valid, function(a, b) return a.createdAt < b.createdAt end)
+table.sort(valid, function(a, b) return (a.createdAt or 0) < (b.createdAt or 0) end)
 
 local evicted = {}
 if #valid >= maxSessions then
@@ -156,7 +156,6 @@ export class RedisSessionStore implements SessionStore {
         }
       })
       .filter((rec): rec is SessionRecord => Boolean(rec));
-    
     return { evictedRecords };
   }
 

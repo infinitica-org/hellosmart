@@ -6,14 +6,38 @@ import type { InvitationDetailsResponse } from '@hs/contracts';
 import { RateLimitedError, validateInvitation, acceptInvitation } from '@/lib/api-client';
 import { SetPasswordForm } from '@/components/auth/set-password-form';
 
-// In-memory token storage (never written to localStorage or sessionStorage)
+// In-memory token storage fallback
 let inMemoryToken: string | null = null;
+const INVITE_TOKEN_STORAGE_KEY = 'hs_invite_token';
+
+export function getStoredInviteToken(): string | null {
+  if (typeof window === 'undefined') return inMemoryToken;
+  try {
+    return sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY) || inMemoryToken;
+  } catch {
+    return inMemoryToken;
+  }
+}
+
+export function setStoredInviteToken(token: string | null): void {
+  inMemoryToken = token;
+  if (typeof window === 'undefined') return;
+  try {
+    if (token) {
+      sessionStorage.setItem(INVITE_TOKEN_STORAGE_KEY, token);
+    } else {
+      sessionStorage.removeItem(INVITE_TOKEN_STORAGE_KEY);
+    }
+  } catch {
+    // sessionStorage unavailable or restricted
+  }
+}
 
 function AcceptInviteContent(): React.JSX.Element {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [token, setToken] = useState<string | null>(() => inMemoryToken);
+  const [token, setToken] = useState<string | null>(() => getStoredInviteToken());
   const [invitation, setInvitation] = useState<InvitationDetailsResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isInvalid, setIsInvalid] = useState<boolean>(false);
@@ -26,12 +50,12 @@ function AcceptInviteContent(): React.JSX.Element {
       return;
     }
 
-    // Step 2: Read token from query parameter or in-memory fallback
+    // Step 2: Read token from query parameter or sessionStorage / in-memory fallback
     const queryToken = searchParams.get('token');
     if (queryToken) {
-      inMemoryToken = queryToken;
+      setStoredInviteToken(queryToken);
     }
-    const rawToken = queryToken || inMemoryToken || token;
+    const rawToken = queryToken || getStoredInviteToken() || token;
 
     if (!rawToken) {
       setIsInvalid(true);
@@ -48,7 +72,7 @@ function AcceptInviteContent(): React.JSX.Element {
         setIsLoading(false);
 
         // Strip token from address bar via history.replaceState (Step 2 & Step 5)
-        // after successful validation so token is safely preserved in memory
+        // after successful validation so token is safely preserved in sessionStorage
         if (typeof window !== 'undefined' && window.history?.replaceState) {
           window.history.replaceState({}, '', window.location.pathname);
         }
@@ -58,6 +82,8 @@ function AcceptInviteContent(): React.JSX.Element {
         if (err instanceof RateLimitedError) {
           setIsRateLimited(true);
         } else {
+          // Token is invalid/expired: clear stored token so stale token is not re-attempted
+          setStoredInviteToken(null);
           setIsInvalid(true);
         }
         setIsLoading(false);
@@ -65,7 +91,7 @@ function AcceptInviteContent(): React.JSX.Element {
   }, [searchParams, invitation, isInvalid, isRateLimited, token]);
 
   const handleSuccess = () => {
-    inMemoryToken = null;
+    setStoredInviteToken(null);
     setIsSuccess(true);
     // On successful acceptance, redirect to /login with banner parameter
     router.push('/login?message=password_set');
@@ -81,9 +107,7 @@ function AcceptInviteContent(): React.JSX.Element {
   return (
     <>
       {/* Strict browser referrer policy for the invitation page */}
-      <head>
-        <meta name="referrer" content="no-referrer" />
-      </head>
+      <meta name="referrer" content="no-referrer" />
 
       <div className="w-full max-w-md mx-auto">
         <div className="bg-white px-6 py-8 shadow-xl ring-1 ring-slate-900/5 sm:rounded-2xl sm:px-10">

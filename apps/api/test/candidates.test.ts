@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from '../src/app.module.js';
+import { DatabaseService } from '../src/common/database/database.service.js';
 import { MailService } from '../src/common/services/mail.service.js';
 import { CandidatesService } from '../src/modules/candidates/candidates.service.js';
 import { PG_POOL } from '../src/modules/database/database.tokens.js';
@@ -58,10 +59,61 @@ function createMockDbPool() {
         return { rows: match ? [{ id: match.id }] : [], rowCount: match ? 1 : 0 };
       }
 
+      if (q.includes('find_user_by_id')) {
+        return {
+          rows: [{ user_status: 'active', org_status: 'trial_active' }],
+          rowCount: 1,
+        };
+      }
+
+      if (q.includes('count(*)::int AS total')) {
+        const orgId = params?.[0] as string;
+        const matching = Array.from(users.values()).filter(
+          (u) => u.org_id === orgId && u.role === 'candidate' && u.status !== 'deleted',
+        );
+        const active = matching.filter((u) => u.status === 'active');
+        return {
+          rows: [{ total: matching.length, active: active.length }],
+          rowCount: 1,
+        };
+      }
+
+      if (q.includes('FROM app.users') && q.includes("role = 'candidate'") && q.includes("status != 'deleted'")) {
+        const orgId = params?.[0] as string;
+        const matches = Array.from(users.values())
+          .filter((u) => u.org_id === orgId && u.role === 'candidate' && u.status !== 'deleted')
+          .map((u) => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            status: u.status,
+            counted_against_cap_at: null,
+            created_at: u.created_at,
+          }));
+        return { rows: matches, rowCount: matches.length };
+      }
+
       if (q.includes('SELECT name FROM app.organizations WHERE id = $1')) {
         return { rows: [{ name: 'Acme Simulation Academy' }], rowCount: 1 };
       }
 
+      if (q.includes('FROM audit.events') && q.includes("action = 'assignment.submitted'")) {
+        const orgId = params?.[0] as string;
+        const matching = auditEvents.filter(
+          (e) => (Array.isArray(e) ? e[2] === orgId && e[3] === 'assignment.submitted' : false),
+        );
+        return {
+          rows: [{ count: matching.length }],
+          rowCount: 1,
+        };
+      }
+
+      if (q.includes('FROM app.entitlements WHERE org_id = $1')) {
+        return {
+          rows: [{ max_candidates: 25, max_templates: 5 }],
+          rowCount: 1,
+        };
+      }
       if (q.includes('INSERT INTO app.users')) {
         const id = params?.[0] as string;
         const org_id = params?.[1] as string;
@@ -113,6 +165,7 @@ function createMockDbPool() {
 
   return {
     connect: vi.fn(async () => client),
+    query: client.query,
     end: vi.fn(),
     users,
     invitations,
@@ -151,6 +204,14 @@ describe('Candidates API & Mailpit Integration', () => {
     })
       .overrideProvider(PG_POOL)
       .useValue(mockPool)
+      .overrideProvider(DatabaseService)
+      .useValue({
+        checkAccountStatus: vi.fn(async () => ({ userStatus: 'active', orgStatus: 'trial_active' })),
+        setStatusChecker: vi.fn(),
+        setPool: vi.fn(),
+        getPool: vi.fn(),
+        getClient: vi.fn(),
+      })
       .overrideProvider(APP_CONFIG)
       .useValue(testConfig)
       .compile();
@@ -185,16 +246,13 @@ describe('Candidates API & Mailpit Integration', () => {
 
   it('2. Successfully invites candidate, records invitation, and returns 201 Created', async () => {
     // Create company_admin session
-    const { sessionId } = await sessionService.createSession(
-      {
-        userId: companyAdminId,
-        orgId,
-        email: 'admin@acme.com',
-        role: 'company_admin',
-        portal: 'company',
-      },
-      86400,
-    );
+    const { rawToken } = await sessionService.createSession({
+      userId: companyAdminId,
+      orgId,
+      email: 'admin@acme.com',
+      role: 'company_admin',
+      portal: 'company',
+    });
 
     const sendEmailSpy = vi.spyOn(mailService, 'sendInvitationEmail');
 
@@ -202,7 +260,9 @@ describe('Candidates API & Mailpit Integration', () => {
       method: 'POST',
       url: '/api/v1/candidates',
       headers: {
-        authorization: `Bearer ${sessionId}`,
+        cookie: `hs_session=${rawToken}`,
+        'x-hs-csrf': '1',
+        origin: 'http://localhost:3000',
       },
       payload: {
         name: 'Alex Student',
@@ -240,16 +300,13 @@ describe('Candidates API & Mailpit Integration', () => {
   });
 
   it('3. Rejects duplicate candidate invitation with 409 Conflict', async () => {
-    const { sessionId } = await sessionService.createSession(
-      {
-        userId: companyAdminId,
-        orgId,
-        email: 'admin@acme.com',
-        role: 'company_admin',
-        portal: 'company',
-      },
-      86400,
-    );
+    const { rawToken } = await sessionService.createSession({
+      userId: companyAdminId,
+      orgId,
+      email: 'admin@acme.com',
+      role: 'company_admin',
+      portal: 'company',
+    });
 
     // Seed existing candidate
     mockPool.users.set('existing-user', {
@@ -268,7 +325,9 @@ describe('Candidates API & Mailpit Integration', () => {
       method: 'POST',
       url: '/api/v1/candidates',
       headers: {
-        authorization: `Bearer ${sessionId}`,
+        cookie: `hs_session=${rawToken}`,
+        'x-hs-csrf': '1',
+        origin: 'http://localhost:3000',
       },
       payload: {
         name: 'Another Alex',
@@ -312,5 +371,91 @@ describe('Candidates API & Mailpit Integration', () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it('5. GET /candidates returns list of invited candidates for the organization (BUG-07)', async () => {
+    const { rawToken } = await sessionService.createSession({
+      userId: companyAdminId,
+      orgId,
+      email: 'admin@acme.com',
+      role: 'company_admin',
+      portal: 'company',
+    });
+
+    mockPool.users.set('candidate-list-test', {
+      id: crypto.randomUUID(),
+      org_id: orgId,
+      email: 'candidate.listed@example.com',
+      name: 'Listed Candidate',
+      role: 'candidate',
+      password_hash: null,
+      must_reset_password: true,
+      status: 'invited',
+      created_at: new Date(),
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/v1/candidates',
+      headers: {
+        cookie: `hs_session=${rawToken}`,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBeGreaterThanOrEqual(1);
+    expect(body.some((c: any) => c.email === 'candidate.listed@example.com')).toBe(true);
+  });
+  it('6. GET /candidates/metrics returns real pipeline counts and quotas (BUG-11)', async () => {
+    const { rawToken } = await sessionService.createSession({
+      userId: companyAdminId,
+      orgId,
+      email: 'admin@acme.com',
+      role: 'company_admin',
+      portal: 'company',
+    });
+
+    // Seed 2 candidates
+    mockPool.users.set('metric-c1', {
+      id: crypto.randomUUID(),
+      org_id: orgId,
+      email: 'c1@example.com',
+      name: 'Candidate One',
+      role: 'candidate',
+      password_hash: null,
+      must_reset_password: true,
+      status: 'invited',
+      created_at: new Date(),
+    });
+    mockPool.users.set('metric-c2', {
+      id: crypto.randomUUID(),
+      org_id: orgId,
+      email: 'c2@example.com',
+      name: 'Candidate Two',
+      role: 'candidate',
+      password_hash: null,
+      must_reset_password: false,
+      status: 'active',
+      created_at: new Date(),
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/v1/candidates/metrics',
+      headers: {
+        cookie: `hs_session=${rawToken}`,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const metrics = JSON.parse(res.body);
+    expect(metrics).toMatchObject({
+      configuredAssessments: 1,
+      maxCandidates: 25,
+    });
+    expect(metrics.invitedCandidates).toBeGreaterThanOrEqual(2);
+    expect(metrics.remainingQuota).toBe(metrics.maxCandidates - metrics.invitedCandidates);
   });
 });

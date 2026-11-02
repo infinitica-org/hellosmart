@@ -25,6 +25,7 @@ export interface PortalShellProps {
   footer?: React.ReactNode;
   mainClassName?: string;
   topbarTitle?: React.ReactNode;
+  idleTimeoutSeconds?: number;
 }
 
 export function PortalShell({
@@ -40,6 +41,7 @@ export function PortalShell({
   footer,
   mainClassName = 'flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto',
   topbarTitle,
+  idleTimeoutSeconds,
 }: PortalShellProps): React.JSX.Element {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
@@ -122,7 +124,7 @@ export function PortalShell({
 
   return (
     <div className="min-h-screen flex bg-white text-neutral-900 font-sans">
-      <IdleWarningModal />
+      <IdleWarningModal userRole={userRole} idleTimeoutSeconds={idleTimeoutSeconds} />
 
       <Sidebar
         variant="dashboard"

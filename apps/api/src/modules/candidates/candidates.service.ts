@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Pool } from 'pg';
-import type { CreateCandidateDto, CandidateDto } from '@hs/contracts';
+import type { CreateCandidateDto, CandidateDto, CompanyMetricsDto } from '@hs/contracts';
 import { MailService } from '../../common/services/mail.service.js';
 import { problem } from '../../common/errors/app-http.exception.js';
 import type { UserContext } from '../../common/types/user-context.js';
@@ -130,6 +130,51 @@ export class CandidatesService {
     });
 
     return candidate;
+  }
+
+  async list(actor: UserContext): Promise<CandidateDto[]> {
+    const orgId = actor.orgId;
+    if (!orgId) {
+      throw problem({
+        title: 'Forbidden',
+        status: 403,
+        detail: 'User does not belong to an organization',
+        code: 'TENANT_REQUIRED',
+      });
+    }
+
+    const client = await this.pool.connect();
+    try {
+      return await withOrg(client, orgId, async (tx) => {
+        const res = await tx.query<{
+          id: string;
+          name: string;
+          email: string;
+          status: 'invited' | 'active' | 'deleted';
+          counted_against_cap_at: Date | null;
+          created_at: Date;
+        }>(
+          `SELECT id, name, email, status, counted_against_cap_at, created_at
+           FROM app.users
+           WHERE org_id = $1 AND role = 'candidate' AND status != 'deleted'
+           ORDER BY created_at DESC`,
+          [orgId],
+        );
+
+        return res.rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          email: row.email,
+          status: row.status,
+          countedAgainstCapAt: row.counted_against_cap_at
+            ? row.counted_against_cap_at.toISOString()
+            : null,
+          createdAt: row.created_at.toISOString(),
+        }));
+      });
+    } finally {
+      client.release();
+    }
   }
 
   async findAll(
@@ -481,5 +526,65 @@ export class CandidatesService {
     });
 
     return { success: true, sentAt: new Date().toISOString() };
+  }
+
+  async getMetrics(actor: UserContext): Promise<CompanyMetricsDto> {
+    const orgId = actor.orgId;
+    if (!orgId) {
+      throw problem({
+        title: 'Forbidden',
+        status: 403,
+        detail: 'User does not belong to an organization',
+        code: 'TENANT_REQUIRED',
+      });
+    }
+
+    const client = await this.pool.connect();
+    try {
+      return await withOrg(client, orgId, async (tx) => {
+        const candidateCountsRes = await tx.query<{ total: number; active: number }>(
+          `SELECT
+             count(*)::int AS total,
+             count(*) FILTER (WHERE status = 'active')::int AS active
+           FROM app.users
+           WHERE org_id = $1 AND role = 'candidate' AND status != 'deleted'`,
+          [orgId],
+        );
+
+        const invitedCandidates = Number(candidateCountsRes.rows[0]?.total ?? 0);
+        const activeCandidates = Number(candidateCountsRes.rows[0]?.active ?? 0);
+
+        const submissionsRes = await tx.query<{ count: string | number }>(
+          `SELECT count(*)::int AS count
+           FROM audit.events
+           WHERE org_id = $1 AND action = 'assignment.submitted'`,
+          [orgId],
+        );
+        const submissionsToReview = Number(submissionsRes.rows[0]?.count ?? 0);
+
+        const entitlementsRes = await tx.query<{
+          max_candidates: number;
+          max_templates: number;
+        }>(
+          `SELECT max_candidates, max_templates
+           FROM app.entitlements
+           WHERE org_id = $1`,
+          [orgId],
+        );
+        const maxCandidates = entitlementsRes.rows[0]?.max_candidates ?? 25;
+        const remainingQuota = Math.max(0, maxCandidates - invitedCandidates);
+
+        return {
+          configuredAssessments: 1,
+          invitedCandidates,
+          activeCandidates,
+          submissionsToReview,
+          maxCandidates,
+          remainingQuota,
+        };
+      });
+    } finally {
+      client.release();
+    }
   }
 }

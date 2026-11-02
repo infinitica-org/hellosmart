@@ -72,6 +72,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         failedAttempts[normalizedEmail] = 0;
         const res = NextResponse.json(data, { status: 200 });
         forwardApiSessionCookie(apiRes, res);
+
+        // Forced password reset on first login (BR-24)
+        const mustReset = Boolean(data?.mustResetPassword || data?.user?.mustResetPassword);
+        if (mustReset) {
+          res.cookies.set('hs_must_reset', 'true', {
+            path: '/',
+            httpOnly: false,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+          });
+        } else {
+          res.cookies.delete('hs_must_reset');
+        }
+
         return res;
       }
 
@@ -192,16 +206,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const devToken = `hs_dev_${crypto.randomUUID()}`;
     DEV_SESSION_STORE.set(devToken, { role: user.role, email: user.email });
 
+    const mustReset = Boolean(user.mustResetPassword);
+
     const sessionPayload = {
       user: {
         id: `usr_${user.portal}_01`,
         email: user.email,
         name: user.name,
         role: user.role,
+        mustResetPassword: mustReset,
       },
       role: user.role,
       portal: user.portal,
       token: devToken,
+      mustResetPassword: mustReset,
     };
 
     const res = NextResponse.json(sessionPayload, { status: 200 });
@@ -223,6 +241,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
     });
+
+    // Forced password reset on first login (BR-24)
+    if (mustReset) {
+      res.cookies.set('hs_must_reset', 'true', {
+        path: '/',
+        httpOnly: false,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+      });
+    } else {
+      res.cookies.delete('hs_must_reset');
+    }
 
     return res;
   } catch (error) {

@@ -38,13 +38,15 @@ export function ActiveSessionsDialog({
     }
   }, [isOpen, fetchSessions]);
 
-  const handleRevoke = async (sessionId: string) => {
-    setRevokingId(sessionId);
+  const handleRevoke = async (targetSessionId: string) => {
+    setRevokingId(targetSessionId);
     setError(null);
     try {
-      const success = await sessionClient.revoke(sessionId);
+      const success = await sessionClient.revoke(targetSessionId);
       if (success) {
-        setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+        setSessions((prev) =>
+          prev.filter((s) => (s.id || s.sessionId) !== targetSessionId)
+        );
       } else {
         setError('Failed to revoke session. Please try again.');
       }
@@ -116,45 +118,52 @@ export function ActiveSessionsDialog({
           </div>
         ) : (
           <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-            {sessions.map((session) => (
-              <div
-                key={session.id}
-                className={`p-3.5 rounded-xl border flex items-center justify-between transition ${
-                  session.isCurrent
-                    ? 'bg-indigo-50/50 border-indigo-200'
-                    : 'bg-slate-50/60 border-slate-200/80 hover:bg-slate-50'
-                }`}
-              >
-                <div className="space-y-1 min-w-0 pr-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-900 truncate">
-                      {session.device || session.userAgent || 'Web Browser'}
-                    </span>
-                    {session.isCurrent && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-700">
-                        This device
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-slate-500">
-                    <span>IP: {session.ipAddress || '127.0.0.1'}</span>
-                    <span>•</span>
-                    <span>Active: {formatDate(session.lastActiveAt)}</span>
-                  </div>
-                </div>
+            {sessions.map((session) => {
+              const targetId = session.id || session.sessionId;
+              const isCurrentSession = Boolean(session.isCurrent ?? session.current);
+              const ip = session.ipAddress || session.ip || '127.0.0.1';
+              const lastActive = session.lastActiveAt || session.lastSeenAt || session.createdAt;
 
-                {!session.isCurrent && (
-                  <button
-                    type="button"
-                    onClick={() => handleRevoke(session.id)}
-                    disabled={revokingId === session.id}
-                    className="px-3 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition disabled:opacity-50 cursor-pointer"
-                  >
-                    {revokingId === session.id ? 'Revoking...' : 'Revoke'}
-                  </button>
-                )}
-              </div>
-            ))}
+              return (
+                <div
+                  key={targetId}
+                  className={`p-3.5 rounded-xl border flex items-center justify-between transition ${
+                    isCurrentSession
+                      ? 'bg-indigo-50/50 border-indigo-200'
+                      : 'bg-slate-50/60 border-slate-200/80 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="space-y-1 min-w-0 pr-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-900 truncate">
+                        {session.device || session.userAgent || 'Web Browser'}
+                      </span>
+                      {isCurrentSession && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-700">
+                          This device
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                      <span>IP: {ip}</span>
+                      <span>•</span>
+                      <span>Active: {formatDate(lastActive)}</span>
+                    </div>
+                  </div>
+
+                  {!isCurrentSession && targetId && (
+                    <button
+                      type="button"
+                      onClick={() => handleRevoke(targetId)}
+                      disabled={revokingId === targetId}
+                      className="px-3 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition disabled:opacity-50 cursor-pointer"
+                    >
+                      {revokingId === targetId ? 'Revoking...' : 'Revoke'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 

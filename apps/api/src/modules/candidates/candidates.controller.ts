@@ -22,12 +22,18 @@ import {
 import type { RequestMeta } from '../auth/auth.service.js';
 import { CandidatesService } from './candidates.service.js';
 
-@Controller('candidates')
+@Controller(['candidates', 'company/candidates'])
 @Roles('company_admin')
 export class CandidatesController {
   constructor(
     @Inject(CandidatesService) private readonly candidatesService: CandidatesService,
   ) {}
+
+  @Get('metrics')
+  async metrics(@Req() request: AuthenticatedRequest) {
+    const actor = request[REQUEST_USER_KEY];
+    return this.candidatesService.getMetrics(actor);
+  }
 
   @Get()
   async findAll(

@@ -4,6 +4,7 @@ export interface DevLoginAccount {
   portal: 'admin' | 'company' | 'candidate';
   name: string;
   requiresMfa?: boolean;
+  mustResetPassword?: boolean;
   status?: 'active' | 'suspended';
 }
 
@@ -86,6 +87,15 @@ export const DEV_LOGIN_ACCOUNTS: Record<string, DevLoginAccount> = {
     portal: 'candidate',
     name: 'Alex Turner',
     requiresMfa: false,
+    status: 'active',
+  },
+  'candidate.new@seed.example.test': {
+    email: 'candidate.new@seed.example.test',
+    role: 'candidate',
+    portal: 'candidate',
+    name: 'New Candidate',
+    requiresMfa: false,
+    mustResetPassword: true,
     status: 'active',
   },
   'suspended@example.com': {

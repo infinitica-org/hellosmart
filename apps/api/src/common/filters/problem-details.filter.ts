@@ -201,6 +201,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
         };
       }
     } else {
+      console.error('[ProblemDetailsFilter] Uncaught exception:', exception);
       problem = {
         type: 'https://hellosmart.ai/problems/internal_error',
         title: 'Internal Server Error',
