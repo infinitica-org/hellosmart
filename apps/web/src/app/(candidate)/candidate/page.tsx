@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader, EmptyState, Button, Card } from '@hs/ui';
 import { AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { AssessmentCard, type CandidateAssessment } from '@/components/candidate/assessment-card';
+import { SystemDiagnosticsModal } from '@/components/candidate/diagnostics/diagnostics-modal';
 import { useCandidateAssessments } from '@/hooks/candidate/use-candidate-assessments';
 import { ROUTES } from '@/constants/routes';
 import { ALERT_MESSAGES } from '@/constants/messages';
@@ -12,9 +13,15 @@ import { ALERT_MESSAGES } from '@/constants/messages';
 export default function CandidateDashboardPage() {
   const router = useRouter();
   const { data, isLoading, isRefetching, error, refetch } = useCandidateAssessments();
+  const [selectedAssessmentForDiagnostics, setSelectedAssessmentForDiagnostics] = useState<CandidateAssessment | null>(null);
 
   const handleStart = (assessment: CandidateAssessment) => {
-    router.push(ROUTES.CANDIDATE.DIAGNOSTICS(assessment.id));
+    setSelectedAssessmentForDiagnostics(assessment);
+  };
+
+  const handleContinueToConsent = (assessment: CandidateAssessment) => {
+    setSelectedAssessmentForDiagnostics(null);
+    router.push(ROUTES.CANDIDATE.CONSENT(assessment.id));
   };
 
   const handleResume = (assessment: CandidateAssessment) => {
@@ -135,6 +142,14 @@ export default function CandidateDashboardPage() {
           ))}
         </div>
       )}
+
+      {/* Pre-Test System Diagnostics Modal (#118) */}
+      <SystemDiagnosticsModal
+        isOpen={Boolean(selectedAssessmentForDiagnostics)}
+        assessment={selectedAssessmentForDiagnostics}
+        onClose={() => setSelectedAssessmentForDiagnostics(null)}
+        onContinueToConsent={handleContinueToConsent}
+      />
     </div>
   );
 }

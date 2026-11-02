@@ -25,9 +25,11 @@ export const ROUTES = deepFreeze({
   },
   CANDIDATE: {
     DASHBOARD: '/candidate',
+    DASHBOARD_ALIAS: '/candidate/dashboard',
     ASSESSMENTS: '/candidate/assessments',
     PROFILE: '/candidate/profile',
     DIAGNOSTICS: (assessmentId: string) => `/candidate/assessments/${assessmentId}/diagnostics` as const,
+    CONSENT: (assessmentId: string) => `/candidate/assessments/${assessmentId}/consent` as const,
     WORKSPACE: (sessionIdOrId: string) => `/candidate/workspaces/${sessionIdOrId}` as const,
   },
   ADMIN: {
