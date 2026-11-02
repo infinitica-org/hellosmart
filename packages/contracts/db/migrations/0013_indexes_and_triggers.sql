@@ -1,4 +1,4 @@
--- 0013 Database Indexing, Query Optimization & Audit Triggers (T-036, T-037, BR-01, BR-31)
+-- 0013 Database Indexing, Query Optimization & Audit Triggers (BR-01, BR-31)
 --
 -- Performance & Integrity Hardening:
 -- 1. Candidate query optimization on app.users(org_id, status).

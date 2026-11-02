@@ -1,6 +1,6 @@
 # Database Indexing, Query Optimization & Audit Triggers (Subtask 4.2)
 
-> **Traceability**: `T-036`, `T-037`, `BR-01`, `BR-03`, `BR-31`  
+> **Traceability**: `BR-01`, `BR-03`, `BR-31`  
 > **Migration**: `packages/contracts/db/migrations/0013_indexes_and_triggers.sql`  
 > **Benchmark Suite**: `packages/contracts/db/bench/benchmark-queries.sql`  
 > **Test Suite**: `apps/api/test/indexing-and-triggers.test.ts`
@@ -9,7 +9,7 @@
 
 ## 1. Query Patterns & Index Decisions
 
-### 1.1 Candidate Listing by Tenant and Status (`T-036`)
+### 1.1 Candidate Listing by Tenant and Status
 
 - **Real Query Site**: `apps/api/src/modules/candidates/candidates.service.ts`
   ```sql
@@ -23,17 +23,17 @@
 - **Rationale & Benchmark Findings**:
   - Baseline (no status index, relying on `users_org_idx (org_id)`): `4.75ms` median execution time (Bitmap Heap Scan over tenant rows).
   - Ticket Candidate Index `(org_id, status)`: `1.16ms` median execution time (**4.1x faster**). Filters out non-matching status values directly in the btree.
-  - Covering Candidate Index `(org_id, role, status, created_at DESC)`: `0.076ms` median (**62x faster**, Index Scan).
-  - **Decision**: Implemented `(org_id, status)` in migration `0013` as specified by the ticket; both variants easily achieve the sub-10ms target.
+  - Wider Covering Index `(org_id, role, status, created_at DESC)`: `0.076ms` median (**62x faster**, Index Scan).
+  - **Decision**: Implemented `(org_id, status)` in migration `0013` as specified by the ticket; both variants easily achieve the sub-10ms target. The wider covering index remains documented for future optimization if candidate volume demands an Index Scan over Bitmap Heap Scan.
 
 ### 1.2 Tenant User Lookup by Email
 
-- **Ticket Request**: Add compound index on `app.users (org_id, email)`.
 - **Evaluation**: Skipped in migration `0013` because `users_org_id_email_key UNIQUE (org_id, email)` already exists from migration `0001_tenancy_foundation.sql`. Adding a non-unique duplicate index would waste storage and write throughput with zero query performance benefit.
 
-### 1.3 Assessment Listing by Organization
+### 1.3 Assessment Listing by Organization (Representative Query)
 
 - **Query**: `SELECT ... FROM app.assessments WHERE org_id = $1 AND status = $2 ORDER BY created_at DESC`
+- **Representative Benchmark**: Note that this query is a representative benchmark anticipating upcoming Stream 6 endpoints; it is not yet called by active application code in `apps/api/src/`.
 - **Status**: `idx_assessments_status` on `app.assessments (org_id, status)` already exists from migration `0011_assessments.sql`.
 - **Benchmark Result**: `4.48ms` median execution time on 50,000 synthetic rows (sub-10ms target met).
 
@@ -72,14 +72,20 @@ Benchmarking was conducted on a dedicated scratch database (`hellosmart_perf_che
 - 50,000 synthetic assessment rows with JSONB briefs and configurations
 - Fully populated statistics via `ANALYZE`
 
-### 3.1 Results Summary (Median of 5 Iterations)
+### 3.1 Benchmark Environment & Constraints
 
-| Query Scenario                       | Execution Time (Median) | Target  | Target Met            | Query Plan                                   |
-| ------------------------------------ | ----------------------- | ------- | --------------------- | -------------------------------------------- |
-| **Candidate List (org_id, status)**  | **1.16 ms**             | < 10 ms | **YES (4.1x faster)** | Bitmap Heap Scan on `idx_users_org_status`   |
-| **Assessment List (org_id, status)** | **4.48 ms**             | < 10 ms | **YES**               | Bitmap Heap Scan on `idx_assessments_status` |
-| **Template Version Fetch (BR-03)**   | **0.071 ms**            | < 10 ms | **YES**               | Index Scan on `template_versions_pkey`       |
-| **Audit Append Event (BR-31)**       | **3.199 ms**            | < 10 ms | **YES**               | Insert on `audit.events` + hash computation  |
+- **Hardware & Runtime**: Local development workstation running Ubuntu 22.04 LTS under WSL2, hosting PostgreSQL 16.4 inside Docker container `hellosmart-postgres-1`.
+- **Measurement Protocol**: 5 consecutive warm-cache execution iterations (`EXPLAIN (ANALYZE, BUFFERS)`) per scenario; reported figures represent the median execution time.
+- **Approximation Notice**: Measurements reflect single-client local testing without concurrent query load, connection pooling contention, or network RTT. Production performance on AWS RDS will vary based on instance sizing and IOPS.
+
+### 3.2 Results Summary (Median of 5 Iterations)
+
+| Query Scenario                                                        | Execution Time (Median) | Target  | Target Met            | Query Plan                                   |
+| --------------------------------------------------------------------- | ----------------------- | ------- | --------------------- | -------------------------------------------- |
+| **Candidate List (org_id, status)**                                   | **1.16 ms**             | < 10 ms | **YES (4.1x faster)** | Bitmap Heap Scan on `idx_users_org_status`   |
+| **Assessment List (org_id, status)** [Representative, not in app yet] | **4.48 ms**             | < 10 ms | **YES**               | Bitmap Heap Scan on `idx_assessments_status` |
+| **Template Version Fetch (BR-03)**                                    | **0.071 ms**            | < 10 ms | **YES**               | Index Scan on `template_versions_pkey`       |
+| **Audit Append Event (BR-31)**                                        | **3.199 ms**            | < 10 ms | **YES**               | Insert on `audit.events` + hash computation  |
 
 All core queries execute comfortably in under 5ms, surpassing the 10ms acceptance criteria.
 
@@ -166,3 +172,17 @@ When `app.assignments` is authored during Stream 2:
 1. Add compound index: `CREATE INDEX idx_assignments_assessment_status ON app.assignments (assessment_id, status);`
 2. Add compound index: `CREATE INDEX idx_assignments_status_deadline ON app.assignments (status, deadline_at);`
 3. Verify RLS tenant scoping policy on `app.assignments` matches `org_id` isolation.
+
+---
+
+## 7. Fresh-Database Provisioning & Role Grant Invariants
+
+During test environment setup and verification on `hellosmart_test`, the following database role grant invariants were identified:
+
+1. **Per-Database `ALTER DEFAULT PRIVILEGES` Scope**:
+   In PostgreSQL, default privilege alterations are scoped strictly per database. When creating a fresh database (such as `hellosmart_test` or an ephemeral CI runner), default privileges configured on the primary database do not automatically apply.
+2. **Migration Grant Scope**:
+   Core tables (`app.users`, `app.organizations`, `app.entitlements`, `app.invitations`, `audit.events`) were created in early migrations without explicit `GRANT` statements, relying on `001_roles.sql`. When initializing a new database:
+   - Run migrations: `pnpm db:migrate`
+   - Apply table-level grants from `packages/contracts/db/init/001_roles.sql` as `hs_owner`.
+   - Enforce least-privilege on sensitive credentials: explicitly ensure `REVOKE ALL ON app.mfa_backup_codes FROM hs_app, hs_platform;` (Decision C) and verify `audit.events` has `UPDATE, DELETE, TRUNCATE` revoked.
