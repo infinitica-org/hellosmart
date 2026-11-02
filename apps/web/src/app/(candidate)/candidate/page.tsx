@@ -6,6 +6,7 @@ import { PageHeader, EmptyState, Button, Card } from '@hs/ui';
 import { AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { AssessmentCard, type CandidateAssessment } from '@/components/candidate/assessment-card';
 import { SystemDiagnosticsModal } from '@/components/candidate/diagnostics/diagnostics-modal';
+import { AssessmentConsentModal } from '@/components/candidate/assessment-consent-modal';
 import { useCandidateAssessments } from '@/hooks/candidate/use-candidate-assessments';
 import { ROUTES } from '@/constants/routes';
 import { ALERT_MESSAGES } from '@/constants/messages';
@@ -14,6 +15,7 @@ export default function CandidateDashboardPage() {
   const router = useRouter();
   const { data, isLoading, isRefetching, error, refetch } = useCandidateAssessments();
   const [selectedAssessmentForDiagnostics, setSelectedAssessmentForDiagnostics] = useState<CandidateAssessment | null>(null);
+  const [selectedAssessmentForConsent, setSelectedAssessmentForConsent] = useState<CandidateAssessment | null>(null);
 
   const handleStart = (assessment: CandidateAssessment) => {
     setSelectedAssessmentForDiagnostics(assessment);
@@ -21,7 +23,13 @@ export default function CandidateDashboardPage() {
 
   const handleContinueToConsent = (assessment: CandidateAssessment) => {
     setSelectedAssessmentForDiagnostics(null);
-    router.push(ROUTES.CANDIDATE.CONSENT(assessment.id));
+    setSelectedAssessmentForConsent(assessment);
+  };
+
+  const handleConsentSuccess = (assessment: CandidateAssessment) => {
+    setSelectedAssessmentForConsent(null);
+    const targetId = assessment.workspaceId || assessment.id;
+    router.push(ROUTES.CANDIDATE.WORKSPACE(targetId));
   };
 
   const handleResume = (assessment: CandidateAssessment) => {
@@ -149,6 +157,14 @@ export default function CandidateDashboardPage() {
         assessment={selectedAssessmentForDiagnostics}
         onClose={() => setSelectedAssessmentForDiagnostics(null)}
         onContinueToConsent={handleContinueToConsent}
+      />
+
+      {/* Pre-Assessment Legal Agreement & Consent Modal (#119, BR-12) */}
+      <AssessmentConsentModal
+        isOpen={Boolean(selectedAssessmentForConsent)}
+        assessment={selectedAssessmentForConsent}
+        onClose={() => setSelectedAssessmentForConsent(null)}
+        onConsentSuccess={handleConsentSuccess}
       />
     </div>
   );
