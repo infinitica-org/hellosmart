@@ -1,106 +1,139 @@
 'use client';
 
-import React, { useState } from 'react';
-import { PageHeader, EmptyState, Badge, Button, Card } from '@hs/ui';
-
-interface AssessmentItem {
-  id: string;
-  title: string;
-  companyName: string;
-  status: 'ready' | 'in_progress' | 'submitted';
-  durationMinutes: number;
-  mode: string;
-}
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { PageHeader, EmptyState, Button, Card } from '@hs/ui';
+import { AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { AssessmentCard, type CandidateAssessment } from '@/components/candidate/assessment-card';
+import { useCandidateAssessments } from '@/hooks/candidate/use-candidate-assessments';
+import { ROUTES } from '@/constants/routes';
+import { ALERT_MESSAGES } from '@/constants/messages';
 
 export default function CandidateDashboardPage() {
-  // Real candidate assignments state (starts empty with zero dummy data)
-  const [assignments, setAssignments] = useState<AssessmentItem[]>([]);
+  const router = useRouter();
+  const { data, isLoading, isRefetching, error, refetch } = useCandidateAssessments();
+
+  const handleStart = (assessment: CandidateAssessment) => {
+    router.push(ROUTES.CANDIDATE.DIAGNOSTICS(assessment.id));
+  };
+
+  const handleResume = (assessment: CandidateAssessment) => {
+    const targetId = assessment.workspaceId || assessment.id;
+    router.push(ROUTES.CANDIDATE.WORKSPACE(targetId));
+  };
+
+  const handleCountdownZero = (_assessment: CandidateAssessment) => {
+    void refetch();
+  };
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Candidate Assessment Workspace"
-        description="Complete practical work simulation tasks in a controlled cloud environment with real developer tools."
-        badge={{ text: 'Candidate Portal', variant: 'info' }}
-        data-testid="candidate-page-header"
-      />
+    <div className="space-y-8 max-w-5xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <PageHeader
+          title="Candidate Assessment Workspace"
+          description="Complete practical work simulation tasks in a controlled cloud environment with real developer tools."
+          badge={{ text: 'Candidate Portal', variant: 'info' }}
+          data-testid="candidate-page-header"
+        />
 
-      {/* Main Area: Show Assigned Assessment Card(s) or Clean Empty State */}
-      {assignments.length > 0 ? (
-        <div className="space-y-4">
-          {assignments.map((task) => (
-            <Card
-              key={task.id}
-              className="p-6 sm:p-8 space-y-5 shadow-xs"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-neutral-100">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-base font-medium text-neutral-900">{task.title}</h2>
-                    <Badge
-                      variant={
-                        task.status === 'ready'
-                          ? 'success'
-                          : task.status === 'in_progress'
-                            ? 'warning'
-                            : 'default'
-                      }
-                      dot
-                    >
-                      {task.status === 'ready'
-                        ? 'Ready to Start'
-                        : task.status === 'in_progress'
-                          ? 'In Progress'
-                          : 'Submitted'}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-neutral-500 mt-1 font-light">
-                    Issued by <span className="text-neutral-800 font-medium">{task.companyName}</span> &bull; {task.durationMinutes} minutes duration
-                  </p>
+        {data && data.length > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void refetch()}
+            disabled={isLoading || isRefetching}
+            className="self-start sm:self-auto flex items-center gap-2 text-xs border-neutral-200"
+            aria-label="Refresh assessments"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        )}
+      </div>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div data-testid="candidate-loading-skeleton" className="space-y-4">
+          {[1, 2].map((i) => (
+            <Card key={i} className="p-6 sm:p-8 animate-pulse border-neutral-200 bg-white">
+              <div className="flex items-center justify-between pb-6 border-b border-neutral-100">
+                <div className="space-y-2.5">
+                  <div className="h-5 w-48 bg-neutral-200 rounded-md" />
+                  <div className="h-4 w-72 bg-neutral-100 rounded-md" />
                 </div>
-
-                <Button
-                  type="button"
-                  variant="primary"
-                  data-testid="start-assessment-button"
-                  className="flex-shrink-0 bg-primary hover:bg-primary-hover text-white border-transparent font-medium"
-                >
-                  Start Assessment →
-                </Button>
+                <div className="h-10 w-36 bg-neutral-200 rounded-xl" />
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/80">
-                  <span className="text-neutral-500 block mb-0.5 font-light">Environment</span>
-                  <span className="text-neutral-800 font-medium">{task.mode}</span>
-                </div>
-                <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/80">
-                  <span className="text-neutral-500 block mb-0.5 font-light">Duration</span>
-                  <span className="text-neutral-800 font-medium">{task.durationMinutes} Minutes</span>
-                </div>
-                <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/80">
-                  <span className="text-neutral-500 block mb-0.5 font-light">AI Assistance</span>
-                  <span className="text-neutral-800 font-medium">Governed AI Proxy</span>
-                </div>
+              <div className="pt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="h-14 bg-neutral-50 rounded-xl border border-neutral-100" />
+                <div className="h-14 bg-neutral-50 rounded-xl border border-neutral-100" />
+                <div className="h-14 bg-neutral-50 rounded-xl border border-neutral-100" />
               </div>
             </Card>
           ))}
-        </div>
-      ) : (
-        <Card className="p-6 sm:p-8 shadow-xs space-y-6">
-          <div>
-            <h2 className="text-base font-medium text-neutral-900">Assigned Tasks</h2>
-            <p className="text-xs text-neutral-500 font-normal mt-0.5">
-              Active invitations from hiring companies.
-            </p>
+          <div className="flex items-center justify-center gap-2 py-4 text-xs text-neutral-400">
+            <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />
+            Loading assigned assessments...
           </div>
+        </div>
+      )}
 
+      {/* Error State */}
+      {!isLoading && error && (
+        <Card
+          data-testid="candidate-error-state"
+          className="p-6 sm:p-8 border-red-200 bg-red-50/50 space-y-4"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-red-900">Failed to load assessments</h3>
+              <p className="text-xs text-red-700 mt-1">
+                {error.message || 'Unable to connect to the assessment service. Please try again.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              className="border-red-300 text-red-700 hover:bg-red-100/60"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              Try Again
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Empty State: exact ticket requirement */}
+      {!isLoading && !error && (!data || data.length === 0) && (
+        <Card className="p-6 sm:p-10 shadow-xs border-neutral-200 bg-white" data-testid="candidate-empty-container">
           <EmptyState
-            title="No active assignments"
-            description="You do not currently have any pending assessments. Please check your invitation email or contact your hiring recruiter."
+            title="No active assessments"
+            description={ALERT_MESSAGES.CANDIDATES.EMPTY_ACTIVE_ASSESSMENTS}
             data-testid="candidate-empty-state"
           />
         </Card>
+      )}
+
+      {/* Assessment Cards List */}
+      {!isLoading && !error && data && data.length > 0 && (
+        <div className="space-y-5" data-testid="candidate-assessments-list">
+          {data.map((assessment) => (
+            <AssessmentCard
+              key={assessment.id}
+              assessment={assessment}
+              onStartAssessment={handleStart}
+              onResumeAssessment={handleResume}
+              onCountdownZero={handleCountdownZero}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

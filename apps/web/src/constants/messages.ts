@@ -20,6 +20,7 @@ export const ALERT_MESSAGES = deepFreeze({
     DELETE_FAILED: 'Failed to delete candidate.',
     INVITE_FAILED: 'Failed to invite candidate.',
     UPDATE_FAILED: 'Failed to update candidate.',
+    EMPTY_ACTIVE_ASSESSMENTS: 'No active assessments. When an assessment is assigned by your employer, it will appear here.',
   },
   CSV: {
     FILE_SIZE_EXCEEDS_50MB: 'File size exceeds allowed 50MB limit',
