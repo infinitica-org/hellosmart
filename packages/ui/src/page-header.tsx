@@ -52,18 +52,11 @@ export function PageHeader({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-xl sm:text-2xl font-normal tracking-tight text-foreground">
               {title}
             </h1>
-            {badge && (
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-normal border shrink-0 ${
- badgeColors[badge.variant || 'default']
- }`}
-              >
-                {badge.text}
-              </span>
-            )}
+        
+          
           </div>
           {description && (
             <p className="mt-1 text-xs sm:text-sm text-neutral-600 max-w-3xl leading-relaxed font-normal">

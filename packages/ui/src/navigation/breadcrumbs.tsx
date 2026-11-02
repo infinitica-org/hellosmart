@@ -1,6 +1,7 @@
 'use client';
 
 import React, { forwardRef, ReactNode, HTMLAttributes } from 'react';
+import { Home, ArrowRight, ChevronRight } from 'lucide-react';
 
 export type BreadcrumbSeparatorVariant = 'chevron' | 'slash' | 'arrow' | 'dot';
 export type BreadcrumbVariant = 'default' | 'icons' | 'pills' | 'ghost';
@@ -12,22 +13,7 @@ export interface BreadcrumbItemData {
 }
 
 export function BreadcrumbHomeIcon({ className = 'w-4 h-4' }: { className?: string }): React.JSX.Element {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden="true"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-      />
-    </svg>
-  );
+  return <Home className={className} aria-hidden="true" />;
 }
 
 export function renderSeparator(variant: BreadcrumbSeparatorVariant): ReactNode {
@@ -35,36 +21,12 @@ export function renderSeparator(variant: BreadcrumbSeparatorVariant): ReactNode 
     case 'slash':
       return <span className="text-xs text-neutral-300 font-mono select-none px-0.5">/</span>;
     case 'arrow':
-      return (
-        <svg
-          className="w-3.5 h-3.5 text-neutral-300 flex-shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth="2"
-          aria-hidden="true"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-        </svg>
-      );
+      return <ArrowRight className="w-3.5 h-3.5 text-neutral-300 flex-shrink-0" aria-hidden="true" />;
     case 'dot':
       return <span className="w-1.5 h-1.5 rounded-full bg-neutral-300 flex-shrink-0" aria-hidden="true" />;
     case 'chevron':
     default:
-      return (
-        <svg
-          className="w-4 h-4 text-neutral-300 flex-shrink-0"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
-      );
+      return <ChevronRight className="w-4 h-4 text-neutral-300 flex-shrink-0" aria-hidden="true" />;
   }
 }
 

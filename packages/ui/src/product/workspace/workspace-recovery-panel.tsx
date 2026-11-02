@@ -1,5 +1,6 @@
 import React, { forwardRef, HTMLAttributes } from 'react';
 import { Button } from '../../components/button';
+import { Check } from 'lucide-react';
 
 export interface WorkspaceRecoveryPanelProps extends HTMLAttributes<HTMLDivElement> {
   lastSavedAt?: string | Date | undefined;
@@ -18,9 +19,7 @@ export const WorkspaceRecoveryPanel = forwardRef<HTMLDivElement, WorkspaceRecove
       >
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-sm bg-success-muted border border-success-border flex items-center justify-center text-success shrink-0">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-            </svg>
+            <Check className="w-4 h-4 stroke-[2.5]" />
           </div>
           <div>
             <div className="font-semibold text-neutral-900 flex items-center gap-2">

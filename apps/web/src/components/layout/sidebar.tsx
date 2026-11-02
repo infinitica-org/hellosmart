@@ -27,6 +27,7 @@ export function Sidebar(props: SidebarProps): React.JSX.Element {
       renderLink={({ href, children, className, onClick, target, rel, disabled, item, onMouseEnter, onMouseLeave, ...rest }) => (
         <Link
           href={href}
+          prefetch={true}
           className={className}
           {...(target ? { target } : {})}
           {...(rel ? { rel } : {})}

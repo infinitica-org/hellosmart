@@ -3,6 +3,7 @@
 import React, { ReactNode } from 'react';
 import { Button } from '../components/button';
 import { Spinner } from './spinner';
+import { AlertTriangle, HelpCircle, Lock, ServerCrash, WifiOff } from 'lucide-react';
 
 export interface ErrorComponentProps {
   title?: string | undefined;
@@ -27,14 +28,7 @@ export function ErrorState({
       className={`min-h-[60vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
       <div className="w-18 h-18 rounded-md bg-danger-muted border border-danger-border flex items-center justify-center text-danger mb-6 shadow-sm p-4">
-        <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.75"
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
+        <AlertTriangle className="w-9 h-9" />
       </div>
 
       <span className="text-xs font-mono font-bold tracking-widest text-danger uppercase mb-2">
@@ -75,14 +69,7 @@ export function NotFound({
       className={`min-h-[70vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
       <div className="w-20 h-20 rounded-md bg-primary/10 border border-primary/30 flex items-center justify-center text-primary mb-6 shadow-sm">
-        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.5"
-            d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
+        <HelpCircle className="w-10 h-10 stroke-[1.5]" />
       </div>
 
       <span className="text-xs font-mono font-bold tracking-widest text-primary uppercase mb-2">
@@ -118,14 +105,7 @@ export function AccessDenied({
       className={`min-h-[70vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
       <div className="w-20 h-20 rounded-md bg-warning-muted border border-warning-border flex items-center justify-center text-warning mb-6 shadow-sm">
-        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.5"
-            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-          />
-        </svg>
+        <Lock className="w-10 h-10 stroke-[1.5]" />
       </div>
 
       <span className="text-xs font-mono font-bold tracking-widest text-warning uppercase mb-2">
@@ -162,14 +142,7 @@ export function ServerError({
       className={`min-h-[70vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
       <div className="w-20 h-20 rounded-md bg-danger-muted border border-danger-border flex items-center justify-center text-danger mb-6 shadow-sm">
-        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.5"
-            d="M5 12h14M12 5l7 7-7 7"
-          />
-        </svg>
+        <ServerCrash className="w-10 h-10 stroke-[1.5]" />
       </div>
 
       <span className="text-xs font-mono font-bold tracking-widest text-danger uppercase mb-2">
@@ -209,14 +182,7 @@ export function NetworkError({
       className={`min-h-[60vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in ${className}`}
     >
       <div className="w-18 h-18 rounded-md bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-600 mb-6 shadow-sm p-4">
-        <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.75"
-            d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 4.243a9 9 0 01-2.828-5.657m0 0l2.828 2.829m-2.828-2.829L3 3"
-          />
-        </svg>
+        <WifiOff className="w-9 h-9" />
       </div>
 
       <span className="text-xs font-mono font-bold tracking-widest text-neutral-500 uppercase mb-2">

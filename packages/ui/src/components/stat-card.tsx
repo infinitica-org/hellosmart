@@ -49,7 +49,7 @@ export const StatCard = forwardRef<HTMLDivElement, StatCardProps>(
             {label}
           </div>
           {icon && (
-            <div className={`${isCompact ? 'w-6 h-6' : 'w-7 h-7'} rounded-sm bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-600 shrink-0`}>
+            <div className={`${isCompact ? 'w-6 h-6' : 'w-7 h-7'} rounded-sm  border  border-neutral-200 flex items-center justify-center text-neutral-600 shrink-0`}>
               {icon}
             </div>
           )}
@@ -57,7 +57,7 @@ export const StatCard = forwardRef<HTMLDivElement, StatCardProps>(
         </div>
 
         <div className={`flex items-baseline gap-2 ${isCompact ? 'mt-1' : 'mt-1.5'}`}>
-          <div className={`${isCompact ? 'text-xl' : 'text-2xl sm:text-3xl'} font-semibold font-mono text-neutral-900 tracking-tight leading-none`}>
+          <div className={`${isCompact ? 'text-xl' : 'text-2xl sm:text-3xl'} font-normal text-neutral-900 tracking-tight leading-none`}>
             {value}
           </div>
           {trend && (

@@ -86,7 +86,7 @@ export function TemplateCard({
         </div>
 
         {/* Template Title (Readable 2-line wrap instead of aggressive ellipsis truncation) */}
-        <h3 className="text-base sm:text-lg font-semibold text-neutral-900 group-hover:text-primary transition-colors line-clamp-2 min-h-[3rem] leading-snug">
+        <h3 className="text-base sm:text-lg font-medium text-neutral-900 group-hover:text-primary transition-colors line-clamp-2 min-h-[3rem] leading-snug">
           {template.name}
         </h3>
 

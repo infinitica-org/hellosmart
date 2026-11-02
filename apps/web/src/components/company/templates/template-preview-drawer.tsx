@@ -94,7 +94,7 @@ export function TemplatePreviewDrawer({
           </div>
         </div>
 
-        <h2 className="text-xl font-bold text-neutral-900 leading-snug">
+        <h2 className="text-xl font-medium text-neutral-900 leading-snug">
           {activeTemplate?.name || (isLoading ? 'Loading Template…' : 'Template Specification')}
         </h2>
 

@@ -120,136 +120,25 @@ export interface UserProfileDropdownProps {
 // ---------------------------------------------------------------------------
 
 const ICON_SIZE = 'w-5 h-5 shrink-0';
-/** Hamburger menu */
-const MenuIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <line x1="4" y1="6" x2="20" y2="6" />
-    <line x1="4" y1="12" x2="20" y2="12" />
-    <line x1="4" y1="18" x2="20" y2="18" />
-  </svg>
-);
 
-/** Close X */
-const CloseIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 6L6 18M6 6l12 12" />
-  </svg>
-);
-
-/** Three-dot vertical ellipsis */
-const EllipsisVerticalIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-    <circle cx="12" cy="5" r="1.5" />
-    <circle cx="12" cy="12" r="1.5" />
-    <circle cx="12" cy="19" r="1.5" />
-  </svg>
-);
-
-/** User/profile icon */
-const UserIcon = ({ className = 'w-4 h-4' }: { className?: string } = {}) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-    <circle cx="12" cy="7" r="4" />
-  </svg>
-);
-
-/** Settings/cog icon */
-const SettingsIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-  </svg>
-);
-
-/** Log out icon */
-const LogoutIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-    <polyline points="16 17 21 12 16 7" />
-    <line x1="21" y1="12" x2="9" y2="12" />
-  </svg>
-);
-
-/** Chevron down */
-const ChevronDownIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-);
-
-/** Chevron left */
-const ChevronLeftIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="15 18 9 12 15 6" />
-  </svg>
-);
-
-/** Chevron right (for sub-items) */
-const ChevronRightIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="9 18 15 12 9 6" />
-  </svg>
-);
-
-/** Collapse (panel left) icon */
-const PanelLeftIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <line x1="9" y1="3" x2="9" y2="21" />
-  </svg>
-);
-
-/** Panel Left Expand (Maximize) icon */
-const PanelLeftOpenIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <path d="M9 3v18" />
-    <path d="M14 9l3 3-3 3" />
-  </svg>
-);
-
-/** Panel Left Collapse (Minimize) icon */
-const PanelLeftCloseIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <path d="M9 3v18" />
-    <path d="M17 15l-3-3 3-3" />
-  </svg>
-);
-
-/** Sidebar Collapse Arrow icon matching screenshot (|←) */
-const ArrowLeftToLineIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 19V5" />
-    <path d="m14 7-5 5 5 5" />
-    <path d="M9 12h11" />
-  </svg>
-);
-
-const ArrowRightToLineIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 19V5" />
-    <path d="m10 7 5 5-5 5" />
-    <path d="M15 12H4" />
-  </svg>
-);
-
-/** Help circle icon (?) */
-const HelpCircleIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-    <line x1="12" y1="17" x2="12.01" y2="17" />
-  </svg>
-);
-
-/** Toggle icon (pill switch) */
-const ToggleSwitchIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <rect width="20" height="12" x="2" y="6" rx="6" ry="6" />
-    <circle cx="8" cy="12" r="2" />
-  </svg>
-);
+import {
+  Menu as MenuIcon,
+  X as CloseIcon,
+  MoreVertical as EllipsisVerticalIcon,
+  User as UserIcon,
+  Settings as SettingsIcon,
+  LogOut as LogoutIcon,
+  ChevronDown as ChevronDownIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  ArrowLeftToLine as ArrowLeftToLineIcon,
+  ArrowRightToLine as ArrowRightToLineIcon,
+  PanelLeft as PanelLeftIcon,
+  PanelLeftOpen,
+  PanelLeftClose,
+  HelpCircle as HelpCircleIcon,
+  ToggleLeft as ToggleSwitchIcon,
+} from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Active style helpers
@@ -258,19 +147,19 @@ const ToggleSwitchIcon = ({ className = 'w-4 h-4' }: { className?: string }) => 
 const activeStyleClasses: Record<NonNullable<SidebarProps['activeStyle']>, { active: string; inactive: string }> = {
   light: {
     active: 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white font-medium border border-neutral-200/90 dark:border-neutral-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] rounded-lg',
-    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 border border-transparent rounded-lg font-normal',
+    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 border border-transparent rounded-lg font-medium',
   },
   brand: {
     active: 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white font-medium border border-neutral-200/90 dark:border-neutral-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] rounded-lg',
-    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 border border-transparent rounded-lg font-normal',
+    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 border border-transparent rounded-lg font-medium',
   },
   subtle: {
     active: 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white font-medium border border-neutral-200/90 dark:border-neutral-700/60 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] rounded-lg',
-    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 border border-transparent rounded-lg font-normal',
+    inactive: 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 border border-transparent rounded-lg font-medium',
   },
   dark: {
     active: 'bg-neutral-800 text-white font-medium border border-neutral-700/80 shadow-[0_1px_3px_rgba(0,0,0,0.25)] rounded-lg',
-    inactive: 'text-neutral-400 hover:text-white hover:bg-neutral-800/50 border border-transparent rounded-lg font-normal',
+    inactive: 'text-neutral-400 hover:text-white hover:bg-neutral-800/50 border border-transparent rounded-lg font-medium',
   },
 };
 
@@ -618,7 +507,7 @@ function SidebarNavItemRow({
     item.onClick?.();
   };
 
-  const classes = `group flex items-center justify-between gap-3 w-full h-10 px-3 text-sm transition-all duration-150 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-200 ${
+  const classes = `group flex items-center justify-between gap-3 w-full h-10 px-3 text-sm font-medium transition-[color,background-color,border-color,box-shadow] duration-150 ease-out cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-200 ${
     active ? styleConfig.active : styleConfig.inactive
   } ${item.className || ''} ${item.disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`;
 
@@ -629,13 +518,13 @@ function SidebarNavItemRow({
     <>
       <span className="flex items-center gap-3 min-w-0" style={paddingLeft}>
         {item.icon ? (
-          <span className={`w-5 h-5 flex items-center justify-center shrink-0 transition-colors ${active ? 'text-neutral-900 dark:text-white' : 'text-neutral-500 group-hover:text-neutral-900 dark:text-neutral-400 dark:group-hover:text-white'}`}>
+          <span className={`w-5 h-5 flex items-center justify-center shrink-0 transition-colors duration-150 ${active ? 'text-neutral-900 dark:text-white' : 'text-neutral-500 group-hover:text-neutral-900 dark:text-neutral-400 dark:group-hover:text-white'}`}>
             {item.icon}
           </span>
         ) : (
           <span className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-primary' : 'bg-neutral-300 dark:bg-neutral-600'}`} />
         )}
-        <span className="truncate">{item.label}</span>
+        <span className="truncate text-sm font-medium text-left">{item.label}</span>
       </span>
 
       <span className="flex items-center gap-1.5 shrink-0">
@@ -914,7 +803,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       return (
         <nav
           onScroll={() => setHoveredRailItem(null)}
-          className={`flex-1 min-h-0 py-3 space-y-3 flex flex-col w-full transition-all duration-300 overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgba(212,212,216,0.8)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-200 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full ${
+          className={`flex-1 min-h-0 py-3 space-y-3 flex flex-col w-full overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgba(212,212,216,0.8)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-200 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-thumb]:rounded-full ${
             effectiveExpanded ? 'px-3' : 'px-2 items-center'
           }`}
         >
@@ -932,7 +821,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
               setHoveredRailItem(null);
               onSelect?.(item);
               item.onClick?.();
-              setMobileOpen(false);
+              if (mobileOpen) setMobileOpen(false);
             };
 
             const handleItemMouseEnter = (e: React.MouseEvent<HTMLElement>) => {
@@ -954,17 +843,17 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             const isDark = activeStyle === 'dark';
 
             const activeBgClass = isDark
-              ? 'bg-neutral-800 text-white border border-neutral-700/80 shadow-[0_1px_3px_rgba(0,0,0,0.25)] rounded-lg'
+              ? 'bg-neutral-800 text-white border border-neutral-700/80 shadow-[0_1px_3px_rgba(0,0,0,0.25)] rounded-lg font-medium'
               : 'bg-white text-neutral-900 border border-neutral-200/90 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] rounded-lg font-medium';
 
-            const inactiveBgClass = 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 border border-transparent rounded-lg font-normal';
+            const inactiveBgClass = 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 border border-transparent rounded-lg font-medium';
 
             const activeIconColor = isDark ? 'text-white' : 'text-neutral-900 dark:text-white';
 
-            const baseClasses = `group relative flex items-center transition-all duration-150 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-200 select-none ${
+            const baseClasses = `group relative flex items-center transition-[color,background-color,border-color,box-shadow] duration-150 ease-out cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-200 select-none ${
               effectiveExpanded
-                ? 'w-full h-10 px-3 gap-3 rounded-lg text-sm'
-                : 'w-10 h-10 justify-center mx-auto rounded-lg text-sm'
+                ? 'w-full h-10 px-3 gap-3 rounded-lg text-sm font-medium'
+                : 'w-10 h-10 justify-center mx-auto rounded-lg text-sm font-medium'
             } ${
               active ? activeBgClass : inactiveBgClass
             } ${item.className || ''} ${item.disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`;
@@ -975,9 +864,9 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
               <>
                 {/* Active icon: strictly locked to 20x20 dimensions so it never grows or scales */}
                 <span
-                  className={`flex items-center justify-center shrink-0 transition-colors duration-200 ${
- active ? activeIconColor : 'text-neutral-400 group-hover:text-neutral-700'
- }`}
+                  className={`flex items-center justify-center shrink-0 transition-colors duration-150 ${
+                    active ? activeIconColor : 'text-neutral-400 group-hover:text-neutral-700'
+                  }`}
                   style={{ width: 20, height: 20, minWidth: 20, maxWidth: 20, minHeight: 20, maxHeight: 20 }}
                 >
                   {item.icon || <span className="w-2.5 h-2.5 rounded-full bg-current" />}
@@ -985,7 +874,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
                 {/* Text label when maximized */}
                 {effectiveExpanded && (
-                  <span className={`text-sm font-medium truncate flex-1 text-left ${active ? (isDark ? 'text-white' : 'text-neutral-900 font-semibold') : 'text-neutral-800'}`}>
+                  <span className={`text-sm font-medium truncate flex-1 text-left ${active ? (isDark ? 'text-white' : 'text-neutral-900') : 'text-neutral-600 group-hover:text-neutral-900 dark:text-neutral-400 dark:group-hover:text-white'}`}>
                     {item.label}
                   </span>
                 )}
@@ -1111,32 +1000,48 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
   );
 };
 
-    // ---- Header (logo + brand + optional collapse toggle) ----
+// ---- Header (logo + brand + optional collapse toggle) ----
     const renderHeader = () => {
       if (hideHeader) return null;
 
       return (
-        <div className="flex items-center justify-between shrink-0 h-[70px] px-4 border-b border-neutral-100 dark:border-neutral-800">
+        <div className="flex items-center justify-between shrink-0 h-[70px] px-4 border-b border-neutral-200 dark:border-neutral-800 gap-2">
           <BrandMark
             showLogo={showLogo}
             logoSrc={logoSrc}
             whiteLabel={whiteLabel}
             showSubtitle={false}
-            size="lg"
-            logoSize="md"
+            size="md"
+            logoSize="sm"
             customTitle={resolvedBrandTitle}
+            className="min-w-0 flex-1 truncate"
           />
 
-          {/* Collapse button (matching |← from screenshot, visible unless explicitly false) */}
+          {/* Close button inside mobile drawer */}
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+            title="Close menu"
+            className="md:hidden shrink-0 rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 transition-colors focus:outline-none cursor-pointer"
+          >
+            <CloseIcon className="w-5 h-5" />
+          </button>
+
+          {/* Desktop collapse toggle */}
           {collapsible !== false && showCollapseButton !== false && (
             <button
               type="button"
               onClick={handleToggleCollapse}
               aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 transition-colors focus:outline-none cursor-pointer"
+              className="hidden md:inline-flex shrink-0 rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 transition-colors focus:outline-none cursor-pointer"
             >
-              <ArrowLeftToLineIcon className="w-5 h-5 text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200" />
+              {isCollapsed ? (
+                <ArrowRightToLineIcon className="w-5 h-5 text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200" />
+              ) : (
+                <ArrowLeftToLineIcon className="w-5 h-5 text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200" />
+              )}
             </button>
           )}
         </div>
@@ -1149,23 +1054,35 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
       if (effectiveExpanded) {
         return (
-          <div className="flex items-center justify-between shrink-0 h-[70px] px-4 border-b border-neutral-100 dark:border-neutral-800 w-full overflow-hidden">
+          <div className="flex items-center justify-between shrink-0 h-[70px] px-4 border-b border-neutral-200 dark:border-neutral-800 w-full overflow-hidden gap-2">
             <BrandMark
               showLogo={showLogo}
               logoSrc={logoSrc}
               whiteLabel={whiteLabel}
               showSubtitle={false}
-              size="lg"
-              logoSize="md"
+              size="md"
+              logoSize="sm"
               fullText={true}
               customTitle={resolvedBrandTitle}
+              className="min-w-0 flex-1 truncate"
             />
+            {/* Close button inside mobile drawer */}
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Close menu"
+              title="Close menu"
+              className="md:hidden shrink-0 rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 transition-colors focus:outline-none cursor-pointer"
+            >
+              <CloseIcon className="w-5 h-5" />
+            </button>
+            {/* Desktop collapse toggle */}
             <button
               type="button"
               onClick={handleToggleCollapse}
               aria-label="Collapse sidebar"
               title="Collapse sidebar"
-              className="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 transition-colors focus:outline-none cursor-pointer"
+              className="hidden md:inline-flex shrink-0 rounded-lg p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 transition-colors focus:outline-none cursor-pointer"
             >
               <ArrowLeftToLineIcon className="w-5 h-5 text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200" />
             </button>
@@ -1174,7 +1091,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       }
 
       return (
-        <div className="flex items-center justify-center shrink-0 h-[70px] w-full border-b border-neutral-100 dark:border-neutral-800">
+        <div className="flex items-center justify-center shrink-0 h-[70px] w-full border-b border-neutral-200 dark:border-neutral-800">
           <button
             type="button"
             onClick={handleToggleCollapse}
@@ -1189,14 +1106,14 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
                 logoSrc={logoSrc}
                 whiteLabel={whiteLabel}
                 showSubtitle={false}
-                size="lg"
-                logoSize="md"
+                size="md"
+                logoSize="sm"
                 fullText={false}
                 customTitle={resolvedBrandTitle}
               />
             </span>
 
-            {/* Hover state: Show Expand Arrow (→|) when hovering */}
+            {/* Hover state: Show Expand Arrow (ArrowRightToLine) when hovering */}
             <span className="flex items-center justify-center transition-all duration-200 opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 text-neutral-600 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white absolute inset-0 pointer-events-none">
               <ArrowRightToLineIcon className="w-5 h-5" />
             </span>
@@ -1208,7 +1125,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
     // ---- Footer (Help, Profile) ----
     const renderFooter = () => {
       return (
-        <div className="shrink-0 border-t border-neutral-100 dark:border-neutral-800/80 p-3 space-y-1 bg-white dark:bg-neutral-900">
+        <div className="shrink-0 border-t border-neutral-200 dark:border-neutral-800 p-3 space-y-1 bg-white dark:bg-neutral-900">
           {/* Help */}
           <button
             type="button"
@@ -1251,7 +1168,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       }
 
       return (
-        <div className="shrink-0 p-2 border-t border-neutral-100 dark:border-neutral-800/80 flex flex-col items-center gap-2 w-full bg-white dark:bg-neutral-900">
+        <div className="shrink-0 p-2 border-t border-neutral-200 dark:border-neutral-800 flex flex-col items-center gap-2 w-full bg-white dark:bg-neutral-900">
           <button
             type="button"
             onClick={() => {
@@ -1285,7 +1202,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       if (!effectiveExpanded) {
         return (
           <aside
-            className={`flex flex-col bg-white dark:bg-neutral-900 w-full h-full shrink-0 border-r border-neutral-200/80 dark:border-neutral-800 transition-all duration-300 ${className} items-center`}
+            className={`flex flex-col bg-white dark:bg-neutral-900 w-full h-full shrink-0 border-r border-neutral-200 dark:border-neutral-800 ${className} items-center`}
           >
             {renderRailHeader()}
             {renderRailNavItems()}
@@ -1296,7 +1213,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
       return (
         <aside
-          className={`flex flex-col bg-white dark:bg-neutral-900 w-full h-full shrink-0 border-r border-neutral-200/80 dark:border-neutral-800 transition-all duration-300 ${className}`}
+          className={`flex flex-col bg-white dark:bg-neutral-900 w-full h-full shrink-0 border-r border-neutral-200 dark:border-neutral-800 ${className}`}
         >
           {renderHeader()}
           {renderNavItems()}
@@ -1310,11 +1227,11 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
         {/* ── Desktop sidebar ── */}
         <div
           ref={ref}
-          className={`hidden md:flex flex-col h-screen sticky top-0 transition-all duration-300 ease-in-out shrink-0 z-30 bg-white dark:bg-neutral-900 border-r border-neutral-200/80 dark:border-neutral-800 ${
+          className={`hidden md:flex flex-col h-screen sticky top-0 transition-[width] duration-200 ease-in-out shrink-0 z-30 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 ${
             effectiveWidth
           }`}
         >
-          <div className={`flex flex-col h-full ${effectiveWidth} transition-all duration-300 ease-in-out`}>
+          <div className={`flex flex-col h-full ${effectiveWidth} transition-[width] duration-200 ease-in-out`}>
             {sidebarPanel(effectiveWidth)}
           </div>
         </div>
@@ -1365,16 +1282,6 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
             {/* Drawer */}
             <div className="absolute inset-y-0 left-0 w-72 animate-slide-in-left">
-              {/* Close button */}
-              <button
-                type="button"
-                onClick={() => setMobileOpen(false)}
-                aria-label="Close menu"
-                className="absolute top-4 right-4 z-10 rounded-sm p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors focus:outline-none"
-              >
-                <CloseIcon />
-              </button>
-
               {sidebarPanel('w-72')}
             </div>
           </div>

@@ -102,18 +102,18 @@ export function BrandMark({
       )}
 
       {fullText && (
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0">
           {customTitle ? (
-            <span className={`font-semibold tracking-tight ${textStyles.title} ${sizeClasses[size]}`}>
+            <span className={`font-semibold tracking-tight truncate ${textStyles.title} ${sizeClasses[size]}`}>
               {customTitle}
             </span>
           ) : (
-            <span className={`font-semibold tracking-tight ${textStyles.title} ${sizeClasses[size]}`}>
+            <span className={`font-semibold tracking-tight truncate ${textStyles.title} ${sizeClasses[size]}`}>
               HelloSmart<span className={textStyles.dotAi}>.ai</span>
             </span>
           )}
           {shouldShowSubtitle && (
-            <span className={`text-[10px] tracking-wider font-normal -mt-0.5 ${textStyles.caption}`}>
+            <span className={`text-[10px] tracking-wider font-normal truncate -mt-0.5 ${textStyles.caption}`}>
               {subtitle || (
                 <>
                   Powered by hellosmart<span className={textStyles.captionAi}>.ai</span>

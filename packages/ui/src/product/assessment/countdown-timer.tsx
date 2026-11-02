@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, forwardRef, HTMLAttributes } from 'react';
+import { Clock } from 'lucide-react';
 
 export interface CountdownTimerProps extends HTMLAttributes<HTMLDivElement> {
   deadlineUtc: string | Date;
@@ -66,14 +67,7 @@ export const CountdownTimer = forwardRef<HTMLDivElement, CountdownTimerProps>(
         className={`inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-md border font-mono select-none shadow-sm ${colorClasses} ${className}`}
         {...props}
       >
-        <svg className="w-4 h-4 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
+        <Clock className="w-4 h-4 shrink-0 text-primary" />
 
         <span className="text-sm font-bold tracking-wider">
           {hours > 0 && `${pad(hours)}:`}
