@@ -34,6 +34,7 @@ export interface StoragePort {
   ): Promise<string>;
   getStream(key: string): Promise<StorageGetResult>;
   exists(key: string): Promise<boolean>;
+  findKeyByObjectId(orgId: string, assignmentId: string, objectId: string): Promise<string | null>;
 }
 
 export interface StorageConfig {
@@ -45,6 +46,6 @@ export interface StorageConfig {
   endpoint?: string | undefined;
 }
 
-export const PRESIGNED_URL_TTL_SECONDS = 900; // 15 minutes (BR-20 / Ticket requirement)
+export const PRESIGNED_URL_TTL_SECONDS = 900; // 15 minutes (Ticket requirement)
 export const MAX_FILE_SIZE_BYTES = 52_428_800; // 50 MB hard cap
 export const MAX_FILENAME_LENGTH = 100;

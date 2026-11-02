@@ -68,6 +68,20 @@ export class FakeStorageAdapter implements StoragePort {
     return this.objects.has(key);
   }
 
+  async findKeyByObjectId(
+    orgId: string,
+    assignmentId: string,
+    objectId: string,
+  ): Promise<string | null> {
+    const prefix = `storage/${orgId}/submissions/${assignmentId}/${objectId}-`;
+    for (const key of this.objects.keys()) {
+      if (key.startsWith(prefix)) {
+        return key;
+      }
+    }
+    return null;
+  }
+
   public clear(): void {
     this.objects.clear();
   }

@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   type S3ClientConfig,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -140,6 +141,28 @@ export class S3StorageAdapter implements StoragePort {
         return false;
       }
       throw err;
+    }
+  }
+
+  async findKeyByObjectId(
+    orgId: string,
+    assignmentId: string,
+    objectId: string,
+  ): Promise<string | null> {
+    const prefix = `storage/${orgId}/submissions/${assignmentId}/${objectId}-`;
+    const command = new ListObjectsV2Command({
+      Bucket: this.bucket,
+      Prefix: prefix,
+      MaxKeys: 1,
+    });
+    try {
+      const response = await this.s3Client.send(command);
+      if (response.Contents && response.Contents.length > 0 && response.Contents[0]?.Key) {
+        return response.Contents[0].Key;
+      }
+      return null;
+    } catch {
+      return null;
     }
   }
 }

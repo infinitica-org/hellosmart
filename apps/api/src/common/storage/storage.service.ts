@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import crypto from 'node:crypto';
+import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { AuditLogService } from '../audit/audit-log.service.js';
 import type { AuthenticatedUser } from '../constants/auth.constants.js';
@@ -13,7 +14,13 @@ import {
   type StoragePort,
   type StoragePutResult,
 } from './storage.types.js';
-import { buildStorageKey, sanitizeFilename, validateFileExtension } from './storage-keys.js';
+import {
+  buildStorageKey,
+  extractMetadataFromKey,
+  isKeyInOrg,
+  sanitizeFilename,
+  validateFileExtension,
+} from './storage-keys.js';
 import {
   FileTooLargeException,
   InvalidFileContentException,
@@ -22,18 +29,20 @@ import {
 import type { AssignmentOwnershipPort } from './assignment-ownership.port.js';
 import { verifyDownloadToken } from './local-fs-storage.adapter.js';
 
-export interface StoredArtifact {
-  objectId: string;
-  key: string;
-  orgId: string;
-  assignmentId: string;
-  filename: string;
-  contentType: string;
-  size: number;
-  sha256: string;
-  uploadedAt: string;
-  uploaderId: string;
-}
+const MIME_TYPE_BY_EXTENSION: Record<string, string> = {
+  '.zip': 'application/zip',
+  '.tar.gz': 'application/gzip',
+  '.pdf': 'application/pdf',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.txt': 'text/plain',
+  '.md': 'text/markdown',
+  '.csv': 'text/csv',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+};
 
 export interface UploadArtifactResult {
   objectId: string;
@@ -46,12 +55,6 @@ export interface UploadArtifactResult {
 
 @Injectable()
 export class StorageService {
-  /**
-   * In-memory artifact registry for metadata tracking before the Sprint 4
-   * app.submission_artifacts database table is migrated (Decision 2).
-   */
-  private readonly artifacts = new Map<string, StoredArtifact>();
-
   constructor(
     @Inject(STORAGE_PORT)
     private readonly storagePort: StoragePort,
@@ -171,35 +174,23 @@ export class StorageService {
     }
 
     const now = new Date().toISOString();
-    const artifactRecord: StoredArtifact = {
-      objectId,
-      key,
-      orgId: user.orgId,
-      assignmentId,
-      filename: safeFilename,
-      contentType: mimeType || 'application/octet-stream',
-      size: putResult.size,
-      sha256: putResult.sha256,
-      uploadedAt: now,
-      uploaderId: user.userId,
-    };
 
-    this.artifacts.set(objectId, artifactRecord);
-
-    // Append-only audit log entry (BR-31)
+    // Append-only audit log entry (BR-31). Filename excluded from audit payload.
     await this.auditLogService.log({
       actorId: user.userId,
       actorRole: user.role,
       orgId: user.orgId,
-      action: 'storage.artifact.upload',
+      action: 'artifact.uploaded',
       entity: 'artifact',
       entityId: objectId,
       after: {
         org_id: user.orgId,
+        actor_id: user.userId,
+        role: user.role,
         assignment_id: assignmentId,
         object_id: objectId,
-        filename: safeFilename,
         size_bytes: putResult.size,
+        content_type: mimeType || 'application/octet-stream',
         sha256: putResult.sha256,
       },
     });
@@ -215,14 +206,17 @@ export class StorageService {
   }
 
   /**
-   * Generates a download URL (GET /storage/download-url/:objectId).
+   * Generates a download URL (GET /storage/download-url/:assignmentId/:objectId).
+   * Stateless lookup: resolves the storage key using findKeyByObjectId prefix scan.
    * Rejects candidate role (403).
    * Company admins can download their org's artifacts; other orgs return generic 404 (BR-01).
    * Platform admin downloads across orgs with an audited exception.
    */
   async createDownloadUrl(
+    assignmentId: string,
     objectId: string,
     user: AuthenticatedUser,
+    targetOrgId?: string,
   ): Promise<{ url: string; expiresInSeconds: number }> {
     if (user.role === 'candidate') {
       throw problem({
@@ -233,8 +227,49 @@ export class StorageService {
       });
     }
 
-    const artifact = this.getArtifact(objectId);
-    if (!artifact) {
+    let effectiveOrgId: string;
+    if (user.role === 'company_admin') {
+      if (!user.orgId) {
+        throw problem({
+          status: 404,
+          code: 'NOT_FOUND',
+          title: 'Not Found',
+          detail: 'Artifact not found',
+        });
+      }
+      if (targetOrgId && targetOrgId !== user.orgId) {
+        // Cross-org returns generic 404 per BR-01
+        throw problem({
+          status: 404,
+          code: 'NOT_FOUND',
+          title: 'Not Found',
+          detail: 'Artifact not found',
+        });
+      }
+      effectiveOrgId = user.orgId;
+    } else if (user.role === 'platform_admin') {
+      effectiveOrgId = targetOrgId || user.orgId || '';
+      if (!effectiveOrgId) {
+        throw problem({
+          status: 400,
+          code: 'BAD_REQUEST',
+          title: 'Bad Request',
+          detail: 'orgId query parameter is required for platform admin download URL requests',
+        });
+      }
+    } else {
+      throw problem({
+        status: 403,
+        code: 'FORBIDDEN',
+        title: 'Forbidden',
+        detail: 'Forbidden',
+      });
+    }
+
+    // Stateless key resolution from storage prefix
+    const key = await this.storagePort.findKeyByObjectId(effectiveOrgId, assignmentId, objectId);
+
+    if (!key || !isKeyInOrg(key, effectiveOrgId)) {
       throw problem({
         status: 404,
         code: 'NOT_FOUND',
@@ -243,37 +278,35 @@ export class StorageService {
       });
     }
 
-    if (user.role === 'company_admin') {
-      if (artifact.orgId !== user.orgId) {
-        // Strict tenant isolation: cross-tenant access returns generic 404
-        throw problem({
-          status: 404,
-          code: 'NOT_FOUND',
-          title: 'Not Found',
-          detail: 'Artifact not found',
-        });
-      }
-    } else if (user.role === 'platform_admin') {
+    const meta = extractMetadataFromKey(key);
+    const filename = meta?.filename ?? 'deliverable.bin';
+    const ext = path.extname(filename).toLowerCase();
+    const contentType = MIME_TYPE_BY_EXTENSION[ext] ?? 'application/octet-stream';
+
+    if (user.role === 'platform_admin') {
       // Platform admin audited exception (BR-31)
       await this.auditLogService.log({
         actorId: user.userId,
         actorRole: 'platform_admin',
-        orgId: artifact.orgId,
-        action: 'storage.artifact.platform_download',
+        orgId: effectiveOrgId,
+        action: 'artifact.platform_downloaded',
         entity: 'artifact',
         entityId: objectId,
         after: {
-          org_id: artifact.orgId,
+          org_id: effectiveOrgId,
           actor_id: user.userId,
+          role: 'platform_admin',
+          assignment_id: assignmentId,
           object_id: objectId,
+          target_org_id: effectiveOrgId,
         },
       });
     }
 
     const url = await this.storagePort.createDownloadUrl(
-      artifact.key,
-      artifact.filename,
-      artifact.contentType,
+      key,
+      filename,
+      contentType,
       PRESIGNED_URL_TTL_SECONDS,
     );
 
@@ -285,40 +318,47 @@ export class StorageService {
 
   /**
    * Streams a download from the local storage adapter using an HMAC-SHA256 signed token.
+   * Returns generic 404 for non-local drivers, missing/expired/tampered/wrong-org tokens.
    */
   async getDownloadStream(token: string): Promise<StorageGetResult> {
+    if (this.config.driver !== 'local') {
+      throw problem({
+        status: 404,
+        code: 'NOT_FOUND',
+        title: 'Not Found',
+        detail: 'Artifact not found',
+      });
+    }
+
     if (!token || typeof token !== 'string') {
       throw problem({
-        status: 400,
-        code: 'INVALID_DOWNLOAD_TOKEN',
-        title: 'Bad Request',
-        detail: 'Download token is required',
+        status: 404,
+        code: 'NOT_FOUND',
+        title: 'Not Found',
+        detail: 'Artifact not found',
       });
     }
 
     const payload = verifyDownloadToken(token, this.config.signingSecret);
-    if (!payload) {
+    if (!payload || !isKeyInOrg(payload.key, payload.orgId)) {
       throw problem({
-        status: 400,
-        code: 'INVALID_DOWNLOAD_TOKEN',
-        title: 'Invalid Download Token',
-        detail: 'Download token is invalid or expired',
+        status: 404,
+        code: 'NOT_FOUND',
+        title: 'Not Found',
+        detail: 'Artifact not found',
+      });
+    }
+
+    const exists = await this.storagePort.exists(payload.key);
+    if (!exists) {
+      throw problem({
+        status: 404,
+        code: 'NOT_FOUND',
+        title: 'Not Found',
+        detail: 'Artifact not found',
       });
     }
 
     return this.storagePort.getStream(payload.key);
-  }
-
-  // Registry helper methods (used for tests and dev)
-  public registerArtifact(artifact: StoredArtifact): void {
-    this.artifacts.set(artifact.objectId, artifact);
-  }
-
-  public getArtifact(objectId: string): StoredArtifact | undefined {
-    return this.artifacts.get(objectId);
-  }
-
-  public clearArtifacts(): void {
-    this.artifacts.clear();
   }
 }

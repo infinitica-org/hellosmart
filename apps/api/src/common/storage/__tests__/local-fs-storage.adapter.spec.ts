@@ -80,6 +80,32 @@ describe('LocalFsStorageAdapter', () => {
     expect(Buffer.concat(chunks).toString('utf8')).toBe(content.toString('utf8'));
   });
 
+  it('statelessly discovers storage key by objectId via findKeyByObjectId', async () => {
+    const orgId = '11111111-1111-4111-8111-111111111111';
+    const assignmentId = '22222222-2222-4222-8222-222222222222';
+    const objectId = '33333333-3333-4333-8333-333333333333';
+    const expectedKey = `storage/${orgId}/submissions/${assignmentId}/${objectId}-report.pdf`;
+
+    const foundKey = await adapter.findKeyByObjectId(orgId, assignmentId, objectId);
+    expect(foundKey).toBe(expectedKey);
+
+    // Non-existent objectId
+    const missing = await adapter.findKeyByObjectId(
+      orgId,
+      assignmentId,
+      '99999999-9999-4999-8999-999999999999',
+    );
+    expect(missing).toBeNull();
+
+    // Cross-tenant search returns null
+    const crossOrg = await adapter.findKeyByObjectId(
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      assignmentId,
+      objectId,
+    );
+    expect(crossOrg).toBeNull();
+  });
+
   it('generates a valid download URL with HMAC-SHA256 signed token', async () => {
     const key =
       'storage/11111111-1111-4111-8111-111111111111/submissions/22222222-2222-4222-8222-222222222222/33333333-3333-4333-8333-333333333333-report.pdf';

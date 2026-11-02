@@ -5,6 +5,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { S3StorageAdapter } from '../s3-storage.adapter.js';
 import type { StorageConfig } from '../storage.types.js';
@@ -97,5 +98,44 @@ describe('S3StorageAdapter', () => {
       chunks.push(chunk);
     }
     expect(Buffer.concat(chunks).toString('utf8')).toBe('hello s3 stream');
+  });
+
+  it('statelessly finds key by objectId via ListObjectsV2Command', async () => {
+    let capturedListCommand: any;
+    const orgId = '11111111-1111-4111-8111-111111111111';
+    const assignmentId = '22222222-2222-4222-8222-222222222222';
+    const objectId = '33333333-3333-4333-8333-333333333333';
+    const expectedKey = `storage/${orgId}/submissions/${assignmentId}/${objectId}-archive.zip`;
+
+    const mockClient = {
+      send: vi.fn().mockImplementation(async (command) => {
+        capturedListCommand = command;
+        if (command.input.Prefix?.includes(objectId)) {
+          return {
+            Contents: [{ Key: expectedKey }],
+          };
+        }
+        return { Contents: [] };
+      }),
+    } as unknown as S3Client;
+
+    const adapter = new S3StorageAdapter(config, mockClient);
+    const key = await adapter.findKeyByObjectId(orgId, assignmentId, objectId);
+
+    expect(key).toBe(expectedKey);
+    expect(capturedListCommand).toBeInstanceOf(ListObjectsV2Command);
+    expect(capturedListCommand.input.Bucket).toBe('hs-test-bucket');
+    expect(capturedListCommand.input.Prefix).toBe(
+      `storage/${orgId}/submissions/${assignmentId}/${objectId}-`,
+    );
+    expect(capturedListCommand.input.MaxKeys).toBe(1);
+
+    // Non-matching objectId
+    const missing = await adapter.findKeyByObjectId(
+      orgId,
+      assignmentId,
+      '99999999-9999-4999-8999-999999999999',
+    );
+    expect(missing).toBeNull();
   });
 });

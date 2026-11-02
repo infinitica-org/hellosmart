@@ -631,7 +631,7 @@ paths:
       summary: Upload candidate submission artifact (max 50MB streaming)
       tags: [storage]
       operationId: uploadArtifact
-      x-requirement: [CO-048, CA-020, BR-18, BR-31]
+      x-requirement: [CA-018, BR-18, BR-31]
       x-roles: [candidate]
       parameters:
         - name: assignmentId
@@ -677,20 +677,33 @@ paths:
         '403': { $ref: '#/components/responses/Problem' }
         '413': { $ref: '#/components/responses/Problem' }
 
-  /storage/download-url/{objectId}:
+  /storage/download-url/{assignmentId}/{objectId}:
     get:
       summary: Generate presigned download URL for submission artifact
       tags: [storage]
       operationId: getArtifactDownloadUrl
-      x-requirement: [CO-048, BR-01, BR-20, BR-31]
+      x-requirement: [CO-042, BR-01, BR-31]
       x-roles: [company_admin, platform_admin]
       parameters:
+        - name: assignmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
         - name: objectId
           in: path
           required: true
           schema:
             type: string
             format: uuid
+        - name: orgId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Target organization ID (required for platform_admin cross-tenant download)
       responses:
         '200':
           description: Presigned download URL generated successfully
@@ -702,6 +715,7 @@ paths:
                 properties:
                   url: { type: string, format: uri }
                   expiresInSeconds: { type: integer, example: 900 }
+        '400': { $ref: '#/components/responses/Problem' }
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '404': { $ref: '#/components/responses/Problem' }

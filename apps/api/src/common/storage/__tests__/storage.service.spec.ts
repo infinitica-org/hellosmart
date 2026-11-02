@@ -27,6 +27,7 @@ describe('StorageService', () => {
   let service: StorageService;
   let fakeStorage: FakeStorageAdapter;
   let fakeOwnership: FakeAssignmentOwnershipAdapter;
+  let mockAuditLogService: any;
   let auditLogs: any[] = [];
   const signingSecret = '0123456789abcdef0123456789abcdef0123456789abcdef';
 
@@ -60,34 +61,33 @@ describe('StorageService', () => {
 
   const assignmentId = '22222222-2222-4222-8222-222222222222';
 
+  const config: StorageConfig = {
+    driver: 'local',
+    localRoot: '.storage',
+    signingSecret,
+    bucket: 'hs-test',
+    region: 'us-east-1',
+  };
+
   beforeEach(() => {
     fakeStorage = new FakeStorageAdapter();
     fakeOwnership = new FakeAssignmentOwnershipAdapter();
     auditLogs = [];
 
-    const mockAuditLogService = {
+    mockAuditLogService = {
       log: vi.fn().mockImplementation(async (entry) => {
         auditLogs.push(entry);
         return { id: 'audit-1', ...entry };
       }),
     };
 
-    const config: StorageConfig = {
-      driver: 'fake',
-      localRoot: '.storage',
-      signingSecret,
-      bucket: 'hs-test',
-      region: 'us-east-1',
-    };
+    service = new StorageService(fakeStorage, fakeOwnership, config, mockAuditLogService);
 
-    service = new StorageService(fakeStorage, fakeOwnership, config, mockAuditLogService as any);
-
-    // Register active assignment ownership
     fakeOwnership.grantOwnership(candidateUser.userId, candidateUser.orgId!, assignmentId);
   });
 
   describe('uploadArtifact', () => {
-    it('successfully uploads valid artifact and emits audit entry', async () => {
+    it('successfully uploads valid artifact and emits audit entry with exact allowed keys', async () => {
       const validPdf = Buffer.from('%PDF-1.7\nSample content');
       const result = await service.uploadArtifact({
         assignmentId,
@@ -103,13 +103,30 @@ describe('StorageService', () => {
       expect(result.size).toBe(validPdf.length);
       expect(result.sha256).toBeDefined();
 
-      // Check audit event
-      const auditEvent = auditLogs.find((l) => l.action === 'storage.artifact.upload');
+      // Check audit event convention and exact payload keys (no filename or secrets)
+      const auditEvent = auditLogs.find((l) => l.action === 'artifact.uploaded');
       expect(auditEvent).toBeDefined();
       expect(auditEvent.orgId).toBe(candidateUser.orgId);
-      expect(auditEvent.after.object_id).toBe(result.objectId);
-      expect(auditEvent.after.size_bytes).toBe(validPdf.length);
-      expect(auditEvent.after.sha256).toBe(result.sha256);
+      expect(auditEvent.actorId).toBe(candidateUser.userId);
+      expect(auditEvent.actorRole).toBe('candidate');
+
+      const payloadKeys = Object.keys(auditEvent.after).sort();
+      const expectedKeys = [
+        'actor_id',
+        'assignment_id',
+        'content_type',
+        'object_id',
+        'org_id',
+        'role',
+        'sha256',
+        'size_bytes',
+      ].sort();
+      expect(payloadKeys).toEqual(expectedKeys);
+
+      // Verify filename, tokens, and urls are NOT present
+      expect(auditEvent.after).not.toHaveProperty('filename');
+      expect(auditEvent.after).not.toHaveProperty('url');
+      expect(auditEvent.after).not.toHaveProperty('token');
     });
 
     it('rejects uploads from non-candidate roles with 403', async () => {
@@ -183,7 +200,7 @@ describe('StorageService', () => {
     });
   });
 
-  describe('createDownloadUrl', () => {
+  describe('createDownloadUrl (Stateless Prefix Lookup)', () => {
     let objectId: string;
 
     beforeEach(async () => {
@@ -198,50 +215,167 @@ describe('StorageService', () => {
       objectId = upload.objectId;
     });
 
+    it('works across separate service instances, proving zero in-memory state', async () => {
+      // Create a brand new StorageService instance with a new empty context
+      const newService = new StorageService(
+        fakeStorage,
+        fakeOwnership,
+        config,
+        mockAuditLogService,
+      );
+
+      const res = await newService.createDownloadUrl(assignmentId, objectId, companyAdminUser);
+      expect(res.url).toBeDefined();
+      expect(res.expiresInSeconds).toBe(900);
+    });
+
     it('rejects candidate role from requesting download URLs (403)', async () => {
       await expectHttpException(
-        service.createDownloadUrl(objectId, candidateUser),
+        service.createDownloadUrl(assignmentId, objectId, candidateUser),
         403,
         /Candidates cannot request artifact download URLs/,
       );
     });
 
     it('allows company admin to download artifacts within own org', async () => {
-      const res = await service.createDownloadUrl(objectId, companyAdminUser);
+      const res = await service.createDownloadUrl(assignmentId, objectId, companyAdminUser);
       expect(res.url).toBeDefined();
       expect(res.expiresInSeconds).toBe(900);
     });
 
     it('returns generic 404 for company admin requesting another orgs artifact (BR-01)', async () => {
       await expectHttpException(
-        service.createDownloadUrl(objectId, otherCompanyAdmin),
+        service.createDownloadUrl(assignmentId, objectId, otherCompanyAdmin),
         404,
         /Artifact not found/,
       );
     });
 
-    it('allows platform admin to download across orgs with an audited exception', async () => {
-      const res = await service.createDownloadUrl(objectId, platformAdminUser);
+    it('returns generic 404 when assignmentId does not match (BR-01)', async () => {
+      const wrongAssignment = '88888888-8888-4888-8888-888888888888';
+      await expectHttpException(
+        service.createDownloadUrl(wrongAssignment, objectId, companyAdminUser),
+        404,
+        /Artifact not found/,
+      );
+    });
+
+    it('allows platform admin to download across orgs with targetOrgId and audited exception', async () => {
+      const res = await service.createDownloadUrl(
+        assignmentId,
+        objectId,
+        platformAdminUser,
+        candidateUser.orgId!,
+      );
       expect(res.url).toBeDefined();
 
-      const audit = auditLogs.find((l) => l.action === 'storage.artifact.platform_download');
+      const audit = auditLogs.find((l) => l.action === 'artifact.platform_downloaded');
       expect(audit).toBeDefined();
       expect(audit.actorRole).toBe('platform_admin');
-      expect(audit.after.org_id).toBe(candidateUser.orgId);
-      expect(audit.after.object_id).toBe(objectId);
+      expect(audit.actorId).toBe(platformAdminUser.userId);
+      expect(audit.orgId).toBe(candidateUser.orgId);
+
+      const payloadKeys = Object.keys(audit.after).sort();
+      const expectedKeys = [
+        'actor_id',
+        'assignment_id',
+        'object_id',
+        'org_id',
+        'role',
+        'target_org_id',
+      ].sort();
+      expect(payloadKeys).toEqual(expectedKeys);
+      expect(audit.after).not.toHaveProperty('url');
+      expect(audit.after).not.toHaveProperty('token');
     });
 
     it('returns 404 for non-existent artifact', async () => {
       await expectHttpException(
-        service.createDownloadUrl('00000000-0000-4000-8000-000000000000', companyAdminUser),
+        service.createDownloadUrl(
+          assignmentId,
+          '00000000-0000-4000-8000-000000000000',
+          companyAdminUser,
+        ),
         404,
         /Artifact not found/,
       );
     });
   });
 
-  describe('getDownloadStream', () => {
-    it('verifies valid signed token and returns stream', async () => {
+  describe('getDownloadStream (Public Download Route Verification)', () => {
+    it('returns generic 404 when STORAGE_DRIVER is not local', async () => {
+      const s3ConfigService = new StorageService(
+        fakeStorage,
+        fakeOwnership,
+        { ...config, driver: 's3' },
+        mockAuditLogService,
+      );
+
+      await expectHttpException(
+        s3ConfigService.getDownloadStream('some-token'),
+        404,
+        /Artifact not found/,
+      );
+    });
+
+    it('returns the exact same generic 404 for invalid, malformed, expired, or tampered tokens', async () => {
+      // 1. Malformed token
+      await expectHttpException(
+        service.getDownloadStream('malformed-token-string'),
+        404,
+        /Artifact not found/,
+      );
+
+      // 2. Expired token
+      const expiredToken = signDownloadToken(
+        {
+          key: `storage/${candidateUser.orgId}/submissions/${assignmentId}/test.pdf`,
+          orgId: candidateUser.orgId!,
+          filename: 'test.pdf',
+          contentType: 'application/pdf',
+          expiresAt: Date.now() - 5000,
+        },
+        signingSecret,
+      );
+      await expectHttpException(service.getDownloadStream(expiredToken), 404, /Artifact not found/);
+
+      // 3. Tampered signature token
+      const validToken = signDownloadToken(
+        {
+          key: `storage/${candidateUser.orgId}/submissions/${assignmentId}/test.pdf`,
+          orgId: candidateUser.orgId!,
+          filename: 'test.pdf',
+          contentType: 'application/pdf',
+          expiresAt: Date.now() + 60000,
+        },
+        signingSecret,
+      );
+      const tamperedToken = `${validToken.split('.')[0]}.tamperedsig`;
+      await expectHttpException(
+        service.getDownloadStream(tamperedToken),
+        404,
+        /Artifact not found/,
+      );
+
+      // 4. Wrong-org / key mismatch token
+      const wrongOrgToken = signDownloadToken(
+        {
+          key: `storage/different-org/submissions/${assignmentId}/test.pdf`,
+          orgId: candidateUser.orgId!,
+          filename: 'test.pdf',
+          contentType: 'application/pdf',
+          expiresAt: Date.now() + 60000,
+        },
+        signingSecret,
+      );
+      await expectHttpException(
+        service.getDownloadStream(wrongOrgToken),
+        404,
+        /Artifact not found/,
+      );
+    });
+
+    it('streams download for valid token and existing file', async () => {
       const key = `storage/${candidateUser.orgId}/submissions/${assignmentId}/test-report.pdf`;
       await fakeStorage.put(key, Readable.from(['deliverable']), {
         contentType: 'text/plain',
@@ -264,14 +398,6 @@ describe('StorageService', () => {
 
       const streamRes = await service.getDownloadStream(token);
       expect(streamRes.stream).toBeDefined();
-    });
-
-    it('rejects invalid or expired token with 400', async () => {
-      await expectHttpException(
-        service.getDownloadStream('invalid.token.here'),
-        400,
-        /Download token is invalid or expired/,
-      );
     });
   });
 });

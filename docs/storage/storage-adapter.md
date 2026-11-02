@@ -1,8 +1,9 @@
 # Storage Adapter Architecture & Tenant Scoping Specification
 
 > **Requirement Traceability:** `[4.3]` S3/Object Storage Adapter for Submission Artifacts  
-> **Relevant Business Rules:** `BR-01` (Tenant Isolation), `BR-18` (Untrusted Candidate Input), `BR-20` (Submission Flow & Access Control), `BR-31` (Append-Only Audit Logging)  
-> **Related Requirements:** `CO-048`, `CA-020`
+> **Relevant Business Rules:** `BR-01` (Tenant Isolation), `BR-18` (Untrusted Candidate Input), `BR-31` (Append-Only Audit Logging)  
+> **Candidate Access & Human Review:** `BR-20` (Candidate view after release; candidate download URL access is blocked during MMP submission)  
+> **Related Requirements:** `CA-018` (Candidate Work Submission), `CO-042` (Submission Detail View)
 
 ---
 
@@ -74,13 +75,25 @@ Candidate uploads are untrusted user input (BR-18). The platform strictly enforc
 
 ---
 
-## 5. Download URLs & Access Control (BR-20)
+## 5. Download URLs & Access Control
+
+### Stateless Object Key Resolution (`findKeyByObjectId`)
+
+No in-memory process registry is maintained. To eliminate statefulness and ensure resiliency across process restarts or horizontal replicas:
+
+1. The route `GET /storage/download-url/:assignmentId/:objectId` accepts both `assignmentId` and `objectId`.
+2. The storage adapter scans the tenant's exact prefix:
+   `storage/{effectiveOrgId}/submissions/{assignmentId}/{objectId}-`
+3. In S3: Uses `ListObjectsV2Command` with `MaxKeys: 1`.
+4. In Local Filesystem: Scans the directory `${localRoot}/storage/${effectiveOrgId}/submissions/${assignmentId}/` for matching files.
+5. In Fake Adapter: Iterates memory keys matching the prefix.
+6. If no key matches, or if the resolved key does not belong to `effectiveOrgId`, a generic `404 Not Found` is returned.
 
 ### Roles & Permissions
 
-- **Candidate:** Rejected with `403 Forbidden`. Candidates submit work; they cannot request download URLs.
-- **Company Admin:** May request download URLs for artifacts within their own organization. Any attempt to access artifacts of another tenant returns `404 Not Found` (never 403, preventing existence leaks per BR-01).
-- **Platform Admin:** May request download URLs across all tenants via an audited exception. Every platform download logs `storage.artifact.platform_download` with the target `org_id`, `actor_id`, and `object_id`.
+- **Candidate:** Rejected with `403 Forbidden`. Candidates submit work (CA-018); candidate viewing of results/submissions is gated on human release in later tickets (BR-20).
+- **Company Admin:** May request download URLs for artifacts within their own organization (`CO-042`). Any attempt to access artifacts of another tenant returns `404 Not Found` (never 403, preventing existence leaks per BR-01).
+- **Platform Admin:** May request download URLs across all tenants via an audited exception. The target organization must be supplied via the `orgId` query parameter.
 
 ### Presigned URL Flow (Production / S3)
 
@@ -93,15 +106,18 @@ Uses `@aws-sdk/s3-request-presigner` with:
 ### Signed URL Flow (Development / Local Filesystem)
 
 1. Endpoint: `GET /api/v1/storage/download?token=<signedToken>`.
-2. Token contains JSON payload: `{ key, orgId, filename, contentType, expiresAt }`.
-3. Signed with HMAC-SHA256 using `STORAGE_SIGNING_SECRET` (or `SESSION_SECRET`).
-4. Verification:
+2. Rate Limiting: Protected with `@Throttle({ default: { limit: 30, ttl: 60_000 } })`.
+3. Non-local Drivers: If `STORAGE_DRIVER !== 'local'`, this route returns generic `404 Not Found`.
+4. Token verification:
    - Evaluates expiration timestamp against `Date.now()`.
    - Uses `crypto.timingSafeEqual` to prevent timing attacks.
-5. Response headers:
+   - Any invalid, expired, tampered, wrong-org, or non-existent token returns the exact same generic `404 Not Found` response.
+5. Security Headers:
    - `Content-Type: <contentType>`
    - `Content-Disposition: attachment; filename="<safe_filename>"`
    - `X-Content-Type-Options: nosniff`
+   - `Cache-Control: no-store`
+   - Sets no cookies.
 
 ### Access Log Leak Prevention
 
@@ -113,15 +129,23 @@ Access logs in Fastify strip query strings (in `apps/api/src/modules/observabili
 
 Append-only audit logs are recorded via `AuditLogService.log`:
 
-1. `storage.artifact.upload`: Emitted upon successful candidate upload. Metadata recorded:
+1. `artifact.uploaded`: Emitted upon successful candidate upload. Metadata recorded:
    - `org_id`: Tenant UUID
+   - `actor_id`: Candidate User UUID
+   - `role`: `'candidate'`
    - `assignment_id`: Assessment assignment UUID
-   - `object_id`: Artifact UUID
-   - `filename`: Sanitized filename
+   - `object_id`: Deliverable UUID
    - `size_bytes`: Final byte count
+   - `content_type`: MIME type
    - `sha256`: SHA-256 hex digest
-   - _No secrets, tokens, or URLs are ever recorded._
-2. `storage.artifact.platform_download`: Emitted when a platform admin requests a download URL for a tenant's artifact.
+   - _Security Rule:_ Filename and user-chosen strings are excluded from the audit payload. Zero presigned URLs or signed tokens are ever logged.
+2. `artifact.platform_downloaded`: Emitted when a platform admin requests a download URL for a tenant's artifact:
+   - `org_id`: Target tenant UUID
+   - `actor_id`: Platform Admin User UUID
+   - `role`: `'platform_admin'`
+   - `assignment_id`: Assignment UUID
+   - `object_id`: Deliverable UUID
+   - `target_org_id`: Target tenant UUID
 
 ---
 

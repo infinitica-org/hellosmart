@@ -182,4 +182,26 @@ export class LocalFsStorageAdapter implements StoragePort {
       return false;
     }
   }
+
+  async findKeyByObjectId(
+    orgId: string,
+    assignmentId: string,
+    objectId: string,
+  ): Promise<string | null> {
+    const prefix = `storage/${orgId}/submissions/${assignmentId}/`;
+    try {
+      const dirPath = this.resolveSafePath(prefix);
+      if (!fs.existsSync(dirPath)) {
+        return null;
+      }
+      const files = await fs.promises.readdir(dirPath);
+      const match = files.find((name) => name.startsWith(`${objectId}-`));
+      if (!match) {
+        return null;
+      }
+      return `${prefix}${match}`;
+    } catch {
+      return null;
+    }
+  }
 }

@@ -10,23 +10,30 @@ describe('StorageController', () => {
 
   const candidateUser: AuthenticatedUser = {
     userId: 'c1111111-1111-4111-8111-111111111111',
-    orgId: 'org11111-1111-4111-8111-111111111111',
+    orgId: '11111111-1111-4111-8111-111111111111',
     role: 'candidate',
     email: 'candidate@test.com',
   };
 
   const companyAdminUser: AuthenticatedUser = {
     userId: 'a1111111-1111-4111-8111-111111111111',
-    orgId: 'org11111-1111-4111-8111-111111111111',
+    orgId: '11111111-1111-4111-8111-111111111111',
     role: 'company_admin',
     email: 'admin@test.com',
+  };
+
+  const platformAdminUser: AuthenticatedUser = {
+    userId: 'p1111111-1111-4111-8111-111111111111',
+    orgId: null,
+    role: 'platform_admin',
+    email: 'ops@hellosmart.ai',
   };
 
   beforeEach(() => {
     mockService = {
       uploadArtifact: vi.fn().mockResolvedValue({
         objectId: 'obj-123',
-        key: 'storage/org/file.pdf',
+        key: 'storage/11111111-1111-4111-8111-111111111111/submissions/assignment-123/obj-123-file.pdf',
         filename: 'file.pdf',
         size: 1024,
         sha256: 'abc123sha',
@@ -105,16 +112,41 @@ describe('StorageController', () => {
   });
 
   describe('getDownloadUrl', () => {
-    it('calls storageService.createDownloadUrl and returns url', async () => {
-      const res = await controller.getDownloadUrl('obj-123', companyAdminUser);
+    it('calls storageService.createDownloadUrl with assignmentId and objectId for company admin', async () => {
+      const res = await controller.getDownloadUrl(
+        '22222222-2222-4222-8222-222222222222',
+        '33333333-3333-4333-8333-333333333333',
+        companyAdminUser,
+      );
       expect(res.url).toBe('https://download.local/test.pdf');
       expect(res.expiresInSeconds).toBe(900);
-      expect(mockService.createDownloadUrl).toHaveBeenCalledWith('obj-123', companyAdminUser);
+      expect(mockService.createDownloadUrl).toHaveBeenCalledWith(
+        '22222222-2222-4222-8222-222222222222',
+        '33333333-3333-4333-8333-333333333333',
+        companyAdminUser,
+        undefined,
+      );
+    });
+
+    it('forwards optional orgId query parameter for platform admin', async () => {
+      const targetOrgId = '44444444-4444-4444-8444-444444444444';
+      await controller.getDownloadUrl(
+        '22222222-2222-4222-8222-222222222222',
+        '33333333-3333-4333-8333-333333333333',
+        platformAdminUser,
+        targetOrgId,
+      );
+      expect(mockService.createDownloadUrl).toHaveBeenCalledWith(
+        '22222222-2222-4222-8222-222222222222',
+        '33333333-3333-4333-8333-333333333333',
+        platformAdminUser,
+        targetOrgId,
+      );
     });
   });
 
   describe('download', () => {
-    it('streams response with security headers (nosniff and attachment)', async () => {
+    it('streams response with strict security headers (nosniff, attachment, no-store, no cookies)', async () => {
       const headers: Record<string, string> = {};
       const mockReply = {
         header: (name: string, val: string) => {
@@ -128,7 +160,26 @@ describe('StorageController', () => {
       expect(headers['Content-Type']).toBe('application/pdf');
       expect(headers['Content-Disposition']).toBe('attachment; filename="test.pdf"');
       expect(headers['X-Content-Type-Options']).toBe('nosniff');
+      expect(headers['Cache-Control']).toBe('no-store');
+      expect(headers['Set-Cookie']).toBeUndefined();
       expect(mockReply.send).toHaveBeenCalled();
+    });
+
+    it('returns generic 404 when download stream lookup fails or token is rejected', async () => {
+      vi.mocked(mockService.getDownloadStream!).mockRejectedValue(new Error('Invalid token'));
+
+      const mockReply = {
+        header: vi.fn(),
+        send: vi.fn(),
+      } as any;
+
+      try {
+        await controller.download('bad-token', mockReply);
+        expect.fail('Expected download to throw 404');
+      } catch (err: any) {
+        expect(err.getStatus?.()).toBe(404);
+        expect(err.getResponse?.()?.detail).toBe('Artifact not found');
+      }
     });
   });
 });
