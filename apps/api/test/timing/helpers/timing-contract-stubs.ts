@@ -49,23 +49,23 @@ export interface AutoSubmitSweepParams {
 export class TimingContractStubs {
   /**
    * Stub for candidate workspace launch/connect endpoint (POST /candidate/assignments/:id/connect).
-   * Scheduled for Stream 2 candidate runtime (CA-005, CA-012, BR-08, T-021).
+   * Scheduled for Stream 2 candidate runtime (CA-005, CA-012, BR-08).
    */
   static async launchAssignment(_params: CandidateLaunchParams): Promise<never> {
     throw new Error(
       'UNIMPLEMENTED: POST /candidate/assignments/:id/connect and app.assignments table ' +
-        'are scheduled for Stream 2 candidate runtime (CA-005, CA-012, BR-08, T-021).',
+        'are scheduled for Stream 2 candidate runtime (CA-005, CA-012, BR-08).',
     );
   }
 
   /**
    * Stub for workspace lifecycle event reporting (POST /candidate/workspaces/:id/events).
-   * Scheduled for Stream 2 candidate runtime (CA-009, CA-011, BR-09, T-022).
+   * Scheduled for Stream 2 candidate runtime (CA-009, CA-011, BR-09).
    */
   static async recordWorkspaceEvent(_params: WorkspaceEventParams): Promise<never> {
     throw new Error(
       'UNIMPLEMENTED: POST /candidate/workspaces/:id/events and workspace disconnect/resume handling ' +
-        'are scheduled for Stream 2 candidate runtime (CA-009, CA-011, BR-09, T-022).',
+        'are scheduled for Stream 2 candidate runtime (CA-009, CA-011, BR-09).',
     );
   }
 

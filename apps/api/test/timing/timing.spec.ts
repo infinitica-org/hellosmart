@@ -166,14 +166,17 @@ describe('Stream 10: Timing, Boundary Expiry & Disconnect Logic (BR-08, BR-09, C
       expect(deadline.toISOString()).toBe('2026-11-03T18:00:00.000Z');
     });
 
-    it('applies extended minutes to the base ceiling (OPEN QUESTION: whether extension can exceed window_end without explicit window extension)', () => {
+    it('applies extended minutes to the base ceiling (OPEN QUESTION for Vishal V: Readings A, B, and C for combined extension)', () => {
       const timing = {
         type: 'both' as const,
         durationMinutes: 90,
         windowStartUtc: '2026-11-03T09:00:00.000Z',
         windowEndUtc: '2026-11-03T18:00:00.000Z',
       };
-      // Truncated to 18:00, then admin grants 15 minutes extension -> 18:15 in reference model reading
+      // Truncated to 18:00, then admin grants 15 minutes extension.
+      // Reference model currently exercises Reading A: min(first_connect + duration, window_end) + extended_minutes = 18:15.
+      // Reading B caps at window_end (18:00). Reading C extends window_end (18:15).
+      // CO-031 ("Extend time or window") suggests time and window extensions may be separate fields.
       const firstConnect = new Date('2026-11-03T17:15:00.000Z');
       const deadline = calculateEffectiveDeadline(timing, firstConnect, 15);
       expect(deadline.toISOString()).toBe('2026-11-03T18:15:00.000Z');
@@ -403,9 +406,12 @@ describe('Stream 10: Timing, Boundary Expiry & Disconnect Logic (BR-08, BR-09, C
             await adminClient.query(`DELETE FROM app.template_assignments WHERE template_id = $1`, [
               templateId,
             ]);
+            // Workaround for trigger returning NEW on DELETE in 0010_templates_and_assignments.sql
+            await adminClient.query(`SET session_replication_role = replica`);
             await adminClient.query(`DELETE FROM app.template_versions WHERE template_id = $1`, [
               templateId,
             ]);
+            await adminClient.query(`RESET session_replication_role`);
             await adminClient.query(`DELETE FROM app.templates WHERE id = $1`, [templateId]);
           }
           if (orgId) {
