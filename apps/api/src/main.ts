@@ -17,6 +17,7 @@ import {
   registerLoggingHooks,
   setSharedLogger,
 } from './modules/observability/index.js';
+import { registerWebhookRawBodyParser } from './modules/webhooks/calcom/calcom-webhook-parser.js';
 
 async function bootstrap(): Promise<void> {
   const config = loadConfig();
@@ -35,6 +36,7 @@ async function bootstrap(): Promise<void> {
   });
 
   registerLoggingHooks(adapter.getInstance());
+  registerWebhookRawBodyParser(adapter.getInstance());
 
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule.forRoot({ logger }),

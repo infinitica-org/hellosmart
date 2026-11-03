@@ -31,6 +31,7 @@ export const DEFAULT_MAIL_CONFIG: Config = {
   STORAGE_LOCAL_ROOT: '.storage',
   STORAGE_S3_BUCKET: 'hs-local-artifacts',
   STORAGE_S3_REGION: 'us-east-1',
+  INTERNATIONAL_TAX_TREATMENT: 'reject',
 };
 
 function escapeHtml(str: string): string {
