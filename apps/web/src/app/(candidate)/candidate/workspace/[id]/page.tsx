@@ -25,41 +25,99 @@ import { DeliverablesUploader } from '@/components/candidate/deliverables-upload
 import { SubmissionConfirmationDialog } from '@/components/candidate/submission-confirmation-dialog';
 import { useAssessmentTiming } from '@/hooks/candidate/use-assessment-timing';
 import { useAssessmentDraft } from '@/hooks/candidate/use-assessment-draft';
-import { useCandidateAssessments } from '@/hooks/candidate/use-candidate-assessments';
 import { useWorkspaceFullscreen } from '@/hooks/candidate/use-workspace-fullscreen';
 import { ROUTES } from '@/constants/routes';
 import type { SubmitAssessmentResponse } from '@hs/contracts';
 
-const DEFAULT_INSTRUCTIONS = `# Senior Full Stack Engineer Assessment
-
-## Scenario & Goal
-You are building an AI-orchestrated analytics pipeline with automated evaluation agents. The core application requires a high-throughput backend service, strict multi-tenant data isolation, and resilient background job execution.
-
-## Technical Requirements
-- **RESTful API**: Build and expose secure REST endpoints with validated payloads.
-- **Data Isolation**: Scope all database queries, cache entries, and stored files by \`org_id\`.
-- **Error Handling**: Follow RFC 9457 Problem Details for all error payloads.
-- **Autosave & Reliability**: Handle transient network disconnection without data corruption.
-
-## Expected Deliverables
-1. Complete source code hosted in a GitHub repository on the specified branch.
-2. Optional packaged solution archive (\`.zip\` or \`.tar.gz\`).
-3. Comprehensive architecture notes explaining your design decisions, security model, and trade-offs.`;
+export interface CandidateAssessmentDetail {
+  id: string;
+  title: string;
+  companyName?: string;
+  durationMinutes: number;
+  status?: string;
+  instructions?: string | null;
+  brief?: string | null;
+  description?: string | null;
+  checklist?: string[];
+  deliverables?: string[];
+  workspaceMode?: 'cloud' | 'chat';
+  workspaceId?: string | null;
+}
 
 export default function CandidateWorkspacePage() {
   const params = useParams();
   const router = useRouter();
-  const assessmentId = (params?.id as string) || 'asm-ready-001';
+  const assessmentId = (params?.id as string) || '';
 
-  // Candidate Assessment Data
-  const { data: assessments } = useCandidateAssessments();
-  const assessment = assessments?.find((a) => a.id === assessmentId) ?? {
-    id: assessmentId,
-    title: 'Senior Full Stack Engineer Assessment',
-    companyName: 'Aster Ridge Technologies',
-    durationMinutes: 90,
-    status: 'in_progress' as const,
-  };
+  // Dynamic Assessment Data Calling (Real API fetch by assessmentId, no mock data)
+  const [assessment, setAssessment] = useState<CandidateAssessmentDetail | null>(null);
+  const [isLoadingAssessment, setIsLoadingAssessment] = useState<boolean>(true);
+  const [assessmentError, setAssessmentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!assessmentId) {
+      setIsLoadingAssessment(false);
+      setAssessmentError('No assessment ID provided.');
+      return;
+    }
+
+    let isCancelled = false;
+
+    async function fetchAssessmentDetails() {
+      setIsLoadingAssessment(true);
+      setAssessmentError(null);
+
+      try {
+        // Direct variable data-calling to API
+        const res = await fetch(`/api/candidate/assessment?id=${encodeURIComponent(assessmentId)}`, {
+          cache: 'no-store',
+          headers: { Accept: 'application/json' },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (!isCancelled && data && data.id) {
+            setAssessment(data);
+            return;
+          }
+        }
+
+        // Secondary fallback: check assignments endpoint
+        const listRes = await fetch('/api/candidate/assignments', {
+          cache: 'no-store',
+          headers: { Accept: 'application/json' },
+        });
+
+        if (listRes.ok) {
+          const list = await listRes.json();
+          const items = Array.isArray(list) ? list : list?.items || list?.data || [];
+          const found = items.find((item: any) => item.id === assessmentId || item.workspaceId === assessmentId);
+          if (!isCancelled && found) {
+            setAssessment(found);
+            return;
+          }
+        }
+
+        if (!isCancelled) {
+          setAssessmentError('Assessment not found or you do not have permission to view this workspace.');
+        }
+      } catch (err: unknown) {
+        if (!isCancelled) {
+          const message = err instanceof Error ? err.message : 'Unable to connect to assessment service';
+          setAssessmentError(message);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingAssessment(false);
+        }
+      }
+    }
+
+    void fetchAssessmentDetails();
+    return () => {
+      isCancelled = true;
+    };
+  }, [assessmentId]);
 
   // Authoritative Timing Engine (Stream 3 integration)
   const timing = useAssessmentTiming(assessmentId);
@@ -189,6 +247,66 @@ export default function CandidateWorkspacePage() {
     );
   }
 
+  // Loading State (Variables calling data)
+  if (isLoadingAssessment) {
+    return (
+      <div className="h-full min-h-[400px] flex flex-col items-center justify-center p-8 space-y-3">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+          Loading workspace and task instructions...
+        </p>
+      </div>
+    );
+  }
+
+  // Error State: Assessment not found or not assigned
+  if (assessmentError || !assessment) {
+    return (
+      <div className="h-full min-h-[400px] flex flex-col items-center justify-center p-8">
+        <div className="max-w-md w-full p-6 sm:p-8 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-center space-y-4 shadow-xs">
+          <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+              Assessment Not Found
+            </h2>
+            <p className="text-xs text-neutral-500">
+              {assessmentError || 'The requested assessment could not be loaded.'}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => router.push(ROUTES.CANDIDATE.DASHBOARD)}
+            className="w-full"
+          >
+            Return to Candidate Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const instructionsContent =
+    assessment.instructions ||
+    assessment.brief ||
+    assessment.description ||
+    `# ${assessment.title || 'Assessment Instructions'}
+
+## Overview
+Please complete the requirements for this assessment and submit your solution deliverables using the panel on the right.
+
+## Technical Guidelines
+- Ensure all business logic, data models, and API endpoints meet the specified evaluation criteria.
+- Scope all database queries, cache entries, and stored artifacts by tenant \`org_id\` where applicable.
+- Handle edge cases, unexpected input, and error conditions gracefully with appropriate status codes.
+
+## Expected Deliverables
+1. Complete source code hosted in a repository on the specified branch.
+2. Optional packaged solution archive (\`.zip\` or \`.tar.gz\`) up to 50 MB.
+3. Architecture notes describing your approach, design decisions, and trade-offs.`;
+
   return (
     <div className="h-full min-h-0 flex flex-col gap-3 overflow-hidden">
       {/* Top Workspace Control Bar */}
@@ -204,11 +322,15 @@ export default function CandidateWorkspacePage() {
           </div>
 
           <div className="flex items-center gap-3 text-xs text-neutral-500 flex-wrap">
-            <span className="flex items-center gap-1.5 font-medium text-neutral-700 dark:text-neutral-300">
-              <Building2 className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-              {assessment.companyName}
-            </span>
-            <span className="text-neutral-300 select-none">&bull;</span>
+            {assessment.companyName ? (
+              <>
+                <span className="flex items-center gap-1.5 font-medium text-neutral-700 dark:text-neutral-300">
+                  <Building2 className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                  {assessment.companyName}
+                </span>
+                <span className="text-neutral-300 select-none">&bull;</span>
+              </>
+            ) : null}
             <span className="flex items-center gap-1.5 font-medium text-neutral-600 dark:text-neutral-400">
               <Clock className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
               {assessment.durationMinutes} Minutes Allowance
@@ -321,7 +443,7 @@ export default function CandidateWorkspacePage() {
 
           {/* Scrollable Brief Content */}
           <div className="flex-1 min-h-0 overflow-y-auto p-5 text-xs space-y-4">
-            <SafeMarkdown content={DEFAULT_INSTRUCTIONS} />
+            <SafeMarkdown content={instructionsContent} />
           </div>
 
           {/* Integrated Deliverables Checklist docked at bottom of left pane */}

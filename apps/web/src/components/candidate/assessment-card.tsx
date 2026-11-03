@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter, Button } from '@hs/ui';
-import { Building2, Clock, CheckCircle2, AlertCircle, Play, RotateCcw, FileText, Lock, Terminal, ShieldCheck } from 'lucide-react';
+import { Building2, Clock, CheckCircle2, AlertCircle, Play, RotateCcw, FileText, Lock, Terminal, ShieldCheck, Loader2 } from 'lucide-react';
 import { WindowCountdown } from './window-countdown';
 
 export type AssessmentStatus = 'window_not_open' | 'ready' | 'in_progress' | 'submitted' | 'expired';
@@ -23,10 +23,15 @@ export interface CandidateAssessment {
   workspaceMode?: 'cloud' | 'chat';
   /** Associated workspace session id if available */
   workspaceId?: string | null;
+  /** Candidate task instructions / brief (markdown) */
+  instructions?: string | null;
+  /** Short scenario or task description */
+  description?: string | null;
 }
 
 export interface AssessmentCardProps {
-  assessment: CandidateAssessment;
+  assessment?: CandidateAssessment | undefined;
+  assessmentId?: string | undefined;
   /** Triggered when Start Assessment is clicked (routes to System Diagnostics #118) */
   onStartAssessment?: (assessment: CandidateAssessment) => void;
   /** Triggered when Resume Assessment is clicked (routes to Workspace #120) */
@@ -54,13 +59,115 @@ function formatSubmittedDate(dateString?: string | null): string {
 }
 
 export function AssessmentCard({
-  assessment,
+  assessment: initialAssessment,
+  assessmentId,
   onStartAssessment,
   onResumeAssessment,
   onCountdownZero,
   className = '',
 }: AssessmentCardProps): React.JSX.Element {
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+
+  // Dynamic variable data calling (Fetches real data by ID if not provided)
+  const [data, setData] = useState<CandidateAssessment | null>(initialAssessment ?? null);
+  const [isLoading, setIsLoading] = useState<boolean>(!initialAssessment && Boolean(assessmentId));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialAssessment) {
+      setData(initialAssessment);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!assessmentId) return;
+
+    let isCancelled = false;
+
+    async function fetchCardData() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // Direct variable data-calling from API
+        const res = await fetch(`/api/candidate/assessment?id=${encodeURIComponent(assessmentId!)}`, {
+          cache: 'no-store',
+          headers: { Accept: 'application/json' },
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          if (!isCancelled && json && json.id) {
+            setData(json);
+            return;
+          }
+        }
+
+        // Secondary fallback to assignments endpoint
+        const listRes = await fetch('/api/candidate/assignments', {
+          cache: 'no-store',
+          headers: { Accept: 'application/json' },
+        });
+
+        if (listRes.ok) {
+          const list = await listRes.json();
+          const items = Array.isArray(list) ? list : list?.items || list?.data || [];
+          const found = items.find((item: any) => item.id === assessmentId || item.workspaceId === assessmentId);
+          if (!isCancelled && found) {
+            setData(found);
+            return;
+          }
+        }
+
+        if (!isCancelled) {
+          setError('Assessment not found');
+        }
+      } catch (err: unknown) {
+        if (!isCancelled) {
+          setError(err instanceof Error ? err.message : 'Unable to load assessment card');
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void fetchCardData();
+    return () => {
+      isCancelled = true;
+    };
+  }, [initialAssessment, assessmentId]);
+
+  // Loading skeleton when fetching via assessmentId
+  if (isLoading) {
+    return (
+      <div className={`rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-5 sm:p-6 animate-pulse space-y-4 ${className}`}>
+        <div className="flex justify-between items-center pb-4 border-b border-neutral-100 dark:border-neutral-800">
+          <div className="space-y-2">
+            <div className="h-5 w-48 bg-neutral-200 dark:bg-neutral-800 rounded" />
+            <div className="h-3 w-64 bg-neutral-100 dark:bg-neutral-800/60 rounded" />
+          </div>
+          <div className="h-9 w-32 bg-neutral-200 dark:bg-neutral-800 rounded-md" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="h-14 bg-neutral-50 dark:bg-neutral-800/40 rounded-lg" />
+          <div className="h-14 bg-neutral-50 dark:bg-neutral-800/40 rounded-lg" />
+          <div className="h-14 bg-neutral-50 dark:bg-neutral-800/40 rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+
+  // Error state if assessment could not be fetched
+  if (error || !data) {
+    return (
+      <div className={`rounded-xl bg-red-50/50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 p-4 text-xs text-red-700 dark:text-red-400 flex items-center gap-2.5 ${className}`}>
+        <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+        <span>{error || 'Assessment details unavailable'}</span>
+      </div>
+    );
+  }
 
   const {
     id,
@@ -71,7 +178,7 @@ export function AssessmentCard({
     windowStartUtc,
     submittedAt,
     workspaceMode = 'cloud',
-  } = assessment;
+  } = data;
 
   // Render Status Badge
   const renderStatusBadge = () => {
@@ -152,7 +259,7 @@ export function AssessmentCard({
         return (
           <button
             type="button"
-            onClick={() => onStartAssessment?.(assessment)}
+            onClick={() => onStartAssessment?.(data)}
             data-testid="btn-start-assessment"
             className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-primary hover:bg-primary-hover shadow-xs hover:shadow active:scale-[0.99] transition-all whitespace-nowrap cursor-pointer"
           >
@@ -165,7 +272,7 @@ export function AssessmentCard({
         return (
           <button
             type="button"
-            onClick={() => onResumeAssessment?.(assessment)}
+            onClick={() => onResumeAssessment?.(data)}
             data-testid="btn-resume-assessment"
             className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 shadow-xs hover:shadow active:scale-[0.99] transition-all whitespace-nowrap cursor-pointer"
           >
@@ -212,11 +319,15 @@ export function AssessmentCard({
 
               {/* Company Name & Metadata Row */}
               <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400 flex-wrap">
-                <span className="flex items-center gap-1.5" data-testid="company-name">
-                  <Building2 className="w-3.5 h-3.5 text-neutral-400 shrink-0" aria-hidden="true" />
-                  <span className="font-medium text-neutral-700 dark:text-neutral-300">{companyName}</span>
-                </span>
-                <span className="text-neutral-300 dark:text-neutral-700 select-none">&bull;</span>
+                {companyName ? (
+                  <>
+                    <span className="flex items-center gap-1.5" data-testid="company-name">
+                      <Building2 className="w-3.5 h-3.5 text-neutral-400 shrink-0" aria-hidden="true" />
+                      <span className="font-medium text-neutral-700 dark:text-neutral-300">{companyName}</span>
+                    </span>
+                    <span className="text-neutral-300 dark:text-neutral-700 select-none">&bull;</span>
+                  </>
+                ) : null}
                 <span className="flex items-center gap-1.5" data-testid="assessment-duration">
                   <Clock className="w-3.5 h-3.5 text-neutral-400 shrink-0" aria-hidden="true" />
                   <span>{durationMinutes} Minutes Duration</span>
@@ -237,7 +348,7 @@ export function AssessmentCard({
             <div>
               <WindowCountdown
                 targetDateUtc={windowStartUtc}
-                onZero={() => onCountdownZero?.(assessment)}
+                onZero={() => onCountdownZero?.(data)}
               />
             </div>
           )}

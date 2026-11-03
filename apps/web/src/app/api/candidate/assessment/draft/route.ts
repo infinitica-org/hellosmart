@@ -9,7 +9,7 @@ const devDraftStore = new Map<string, CandidateDraft>();
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const assessmentId = searchParams.get('assessmentId') || 'asm-ready-001';
+    const assessmentId = searchParams.get('assessmentId') || '';
 
     const sessionCookie = req.cookies.get('hs_session')?.value;
     const authHeader = req.headers.get('authorization');

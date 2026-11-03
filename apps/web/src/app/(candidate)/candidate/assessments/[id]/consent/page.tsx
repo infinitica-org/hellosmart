@@ -35,8 +35,8 @@ export default function CandidateConsentPage() {
 
   const assessment = assessments?.find((a) => a.id === assessmentId) ?? (assessments?.[0]) ?? (assessmentId ? {
     id: assessmentId,
-    title: 'Senior Full Stack Engineer Assessment',
-    companyName: 'Aster Ridge Technologies',
+    title: 'Assessment',
+    companyName: '',
     durationMinutes: 90,
     status: 'ready' as const,
   } : null);
@@ -84,11 +84,15 @@ export default function CandidateConsentPage() {
                 {assessment.title}
               </h2>
               <div className="flex items-center gap-3 text-xs text-neutral-500 flex-wrap">
-                <span className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300 font-medium">
-                  <Building2 className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                  {assessment.companyName}
-                </span>
-                <span className="text-neutral-300 select-none">&bull;</span>
+                {assessment.companyName ? (
+                  <>
+                    <span className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300 font-medium">
+                      <Building2 className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                      {assessment.companyName}
+                    </span>
+                    <span className="text-neutral-300 select-none">&bull;</span>
+                  </>
+                ) : null}
                 <span className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300 font-medium">
                   <Clock className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
                   {assessment.durationMinutes} Minutes Duration
