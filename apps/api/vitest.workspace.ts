@@ -13,6 +13,7 @@ export default defineWorkspace([
         'test/security/**',
         'test/timing/**/*.{test,spec}.ts',
         'test/jobs/**/*.{test,spec}.ts',
+        'test/candidates/csv-fuzz.spec.ts',
       ],
       setupFiles: ['test/setup.ts'],
       testTimeout: 60_000,
@@ -27,6 +28,16 @@ export default defineWorkspace([
       setupFiles: ['test/setup.ts'],
       testTimeout: 60_000,
       hookTimeout: 60_000,
+    },
+  },
+  {
+    test: {
+      name: 'candidates-fuzz',
+      environment: 'node',
+      include: ['test/candidates/csv-fuzz.spec.ts'],
+      setupFiles: ['test/setup.ts'],
+      testTimeout: 120_000,
+      hookTimeout: 120_000,
     },
   },
   {
