@@ -11,6 +11,15 @@ export interface SendInvitationInput {
   orgId?: string;
 }
 
+export interface SendAssessmentInvitationInput {
+  to: string;
+  token: string;
+  orgName: string;
+  orgId: string;
+  assessmentId: string;
+  assessmentName: string;
+}
+
 export const DEFAULT_MAIL_CONFIG: Config = {
   NODE_ENV: 'test',
   PORT: 4000,
@@ -340,6 +349,85 @@ export class MailService implements EmailSender {
         orgName: input.orgName,
       },
       ...(input.orgId ? { orgId: input.orgId } : {}),
+    });
+
+    return {
+      providerId: result.providerId,
+    };
+  }
+
+  /**
+   * Dispatches assessment invitation emails for candidate assignments (S1-T05-1).
+   * Separate from account creation onboarding; links directly to assessment workspace with 7-day expiry.
+   */
+  async sendAssessmentInvitationEmail(
+    input: SendAssessmentInvitationInput,
+  ): Promise<{ providerId: string; inviteUrl?: string }> {
+    const inviteUrl = `${this.config.APP_BASE_URL}/candidate/assessments/${encodeURIComponent(input.assessmentId)}?token=${encodeURIComponent(input.token)}`;
+
+    if (this.config.EMAIL_PROVIDER === 'fake') {
+      this.lastInviteLink = inviteUrl;
+
+      if (this.config.NODE_ENV === 'development') {
+        this.logger.log(`[DEV ASSESSMENT INVITE] Dispatched invitation to ${input.to} for assessment ${input.assessmentId}`);
+
+        const mailpitUrl = this.config.MAILPIT_URL ?? 'http://127.0.0.1:8025';
+        try {
+          const response = await fetch(`${mailpitUrl}/api/v1/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              From: { Email: 'no-reply@hellosmart.ai', Name: 'HelloSmart.ai Notification' },
+              To: [{ Email: input.to }],
+              Subject: `Assessment Invitation: ${input.assessmentName} at ${input.orgName}`,
+              HTML: `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; padding: 36px 20px;">
+                  <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0;">
+                    <div style="margin-bottom: 20px;">
+                      <span style="font-size: 20px; font-weight: 900; color: #0f172a;">HelloSmart<span style="color: #4f46e5;">.ai</span></span>
+                    </div>
+                    <h1 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 0;">You're Invited to Complete an Assessment</h1>
+                    <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+                      You have been assigned to complete <strong>${input.assessmentName}</strong> for <strong>${input.orgName}</strong> on HelloSmart.ai.
+                    </p>
+                    <div style="margin: 28px 0;">
+                      <a href="${inviteUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #4f46e5; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 8px;">
+                        Start Assessment &rarr;
+                      </a>
+                    </div>
+                    <p style="font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                      This assessment link is single-use and expires in 7 days.
+                    </p>
+                  </div>
+                </div>
+              `,
+              Text: `You have been assigned to ${input.assessmentName} at ${input.orgName}. Access your assessment: ${inviteUrl}`,
+            }),
+            signal: AbortSignal.timeout(3_000),
+          });
+          if (!response.ok) {
+            this.logger.warn(`[Mailpit] Assessment invitation email was not captured (HTTP ${response.status})`);
+          }
+        } catch (err) {
+          this.logger.warn(`[Mailpit] Could not capture assessment invitation email (${(err as Error).message})`);
+        }
+      }
+
+      return {
+        providerId: `fake_assessment_invite_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        inviteUrl,
+      };
+    }
+
+    const result = await this.send({
+      to: input.to,
+      template: 'assessment_invitation',
+      vars: {
+        inviteUrl,
+        assessmentName: input.assessmentName,
+        orgName: input.orgName,
+      },
+      orgId: input.orgId,
     });
 
     return {

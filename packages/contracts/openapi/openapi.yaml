@@ -563,9 +563,11 @@ paths:
       x-roles: [company_admin]
       parameters:
         - { name: q, in: query, schema: { type: string, maxLength: 100 } }
-        - { name: status, in: query, schema: { $ref: '#/components/schemas/CandidateStatus' } }
+        - { name: search, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 10 } }
         - { $ref: '#/components/parameters/Cursor' }
-        - { $ref: '#/components/parameters/Limit' }
       responses:
         '200':
           description: Page of candidates in the caller's org.
@@ -576,6 +578,10 @@ paths:
                 required: [items]
                 properties:
                   items: { type: array, items: { $ref: '#/components/schemas/Candidate' } }
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  totalPages: { type: integer }
                   nextCursor: { type: [string, 'null'] }
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
@@ -597,15 +603,180 @@ paths:
               properties:
                 name: { type: string, minLength: 1, maxLength: 120 }
                 email: { type: string, format: email, maxLength: 254 }
+                assessment_id: { type: string, format: uuid, description: 'Optional assessment ID to assign candidate to' }
       responses:
         '201':
           description: Created; invite email queued.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Candidate' }
+              schema:
+                oneOf:
+                  - { $ref: '#/components/schemas/Candidate' }
+                  - { $ref: '#/components/schemas/CandidateAssignment' }
         '401': { $ref: '#/components/responses/Problem' }
+        '403':
+          description: Quota cap reached (CANDIDATE_CAP_EXCEEDED, PENDING_INVITE_CAP_EXCEEDED) or tenant forbidden
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
+
+  /candidates/bulk:
+    post:
+      summary: Streaming bulk upload of candidates from CSV
+      tags: [candidates]
+      operationId: uploadCandidatesBulk
+      x-requirement: [CO-012]
+      x-roles: [company_admin]
+      parameters:
+        - name: assessment_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+          description: Optional assessment ID to assign candidates to
+      requestBody:
+        required: true
+        content:
+          text/csv:
+            schema:
+              type: string
+              format: binary
+              description: Streaming CSV data with required 'name' and 'email' headers
+          application/csv:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Bulk upload processing completed with row-level outcomes and aggregate counts
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BulkCandidateUploadResult' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403':
+          description: Quota cap reached (CANDIDATE_CAP_EXCEEDED, PENDING_INVITE_CAP_EXCEEDED) or tenant forbidden
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /candidates/{id}:
+    patch:
+      summary: Update candidate information
+      tags: [candidates]
+      operationId: updateCandidate
+      x-requirement: [CO-015]
+      x-roles: [company_admin]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 1, maxLength: 120 }
+                email: { type: string, format: email, maxLength: 254 }
+      responses:
+        '200':
+          description: Candidate updated successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Candidate' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+    delete:
+      summary: Soft-delete candidate from organization
+      tags: [candidates]
+      operationId: deleteCandidate
+      x-requirement: [CO-016]
+      x-roles: [company_admin]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Candidate soft-deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /candidates/{id}/resend-invite:
+    post:
+      summary: Resend invitation link to candidate
+      tags: [candidates]
+      operationId: resendCandidateInvite
+      x-requirement: [CO-017, BR-24, BR-31]
+      x-roles: [company_admin]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: assignment_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+          description: Optional target assessment assignment ID when candidate has multiple assignments
+      responses:
+        '200':
+          description: Invitation link refreshed and dispatched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  deliveryStatus:
+                    type: string
+                    enum: [sent, failed]
+                    description: Status of email delivery after successful token rotation
+                  processedAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409':
+          description: Assignment connected or multiple assignments exist without specifying assignment_id (AMBIGUOUS_ASSIGNMENT)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /candidates/{id}/assignments/{assignmentId}/resend-invite:
+    post:
+      summary: Resend invitation link for a specific assessment assignment
+      tags: [candidates]
+      operationId: resendCandidateAssignmentInvite
+      x-requirement: [CO-017, BR-24, BR-31]
+      x-roles: [company_admin]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: assignmentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+          description: ID of the assignment to resend
+      responses:
+        '200':
+          description: Invitation link refreshed and dispatched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  deliveryStatus:
+                    type: string
+                    enum: [sent, failed]
+                    description: Status of email delivery after successful token rotation
+                  processedAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
 
   /candidate/assignments/{id}/connect:
     post:
@@ -896,6 +1067,20 @@ components:
         status: { $ref: '#/components/schemas/CandidateStatus' }
         countedAgainstCapAt: { type: [string, 'null'], format: date-time }
         createdAt: { type: string, format: date-time }
+    CandidateAssignment:
+      type: object
+      required: [id, candidateId, assessmentId, name, email, status, invitedAt, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        candidateId: { type: string, format: uuid }
+        assessmentId: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [invited, window_not_open, ready, in_progress, disconnected, submitted, expired, revoked] }
+        invitedAt: { type: string, format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        deliveryStatus: { type: string, enum: [sent, failed] }
     WorkspaceConnection:
       type: object
       required: [workspaceId, mode, gatewayUrl, ticket, deadlineAt]
@@ -937,3 +1122,38 @@ components:
       properties:
         success: { type: boolean, example: true }
         message: { type: string, example: 'All sessions revoked successfully' }
+    BulkCandidateRowError:
+      type: object
+      required: [rowNumber, code, message]
+      properties:
+        rowNumber: { type: integer, minimum: 1 }
+        field: { type: string }
+        code: { type: string }
+        message: { type: string }
+    BulkCandidateCreatedSample:
+      type: object
+      required: [rowNumber, candidateId, name, email, status, deliveryStatus]
+      properties:
+        rowNumber: { type: integer, minimum: 1 }
+        candidateId: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        assignmentId: { type: string, format: uuid }
+        status: { type: string }
+        deliveryStatus: { type: string, enum: [sent, failed] }
+    BulkCandidateUploadResult:
+      type: object
+      required: [totalRows, processedRows, successfulRows, failedRows, errorsTruncated, errors, createdSample]
+      properties:
+        totalRows: { type: integer, minimum: 0 }
+        processedRows: { type: integer, minimum: 0 }
+        successfulRows: { type: integer, minimum: 0 }
+        failedRows: { type: integer, minimum: 0 }
+        errorsTruncated: { type: boolean }
+        errors:
+          type: array
+          items: { $ref: '#/components/schemas/BulkCandidateRowError' }
+        createdSample:
+          type: array
+          items: { $ref: '#/components/schemas/BulkCandidateCreatedSample' }
+

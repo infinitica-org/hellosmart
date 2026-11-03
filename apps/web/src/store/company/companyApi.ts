@@ -134,7 +134,10 @@ export const companyApi = createApi({
       ],
     }),
 
-    resendCandidateInvite: builder.mutation<{ success: boolean; sentAt: string }, string>({
+    resendCandidateInvite: builder.mutation<
+      { success: boolean; sentAt?: string; deliveryStatus?: 'sent' | 'failed'; processedAt?: string },
+      string
+    >({
       query: (candidateId) => ({
         url: `company/candidates/${encodeURIComponent(candidateId)}/resend-invite`,
         method: 'POST',

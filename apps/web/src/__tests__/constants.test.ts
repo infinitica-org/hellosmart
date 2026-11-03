@@ -244,6 +244,7 @@ describe('Centralized Platform Constants & Variable Architecture (Stream 8.5)', 
     it('provides candidate lifecycle notification messages', () => {
       expect(ALERT_MESSAGES.CANDIDATES.INVITE_SUCCESS).toBe('Candidate invitation sent successfully.');
       expect(ALERT_MESSAGES.CANDIDATES.RESEND_SUCCESS).toBe('Candidate invite link refreshed and resent.');
+      expect(ALERT_MESSAGES.CANDIDATES.RESEND_DELIVERY_FAILED).toBe('Invite link was refreshed, but the invitation email could not be delivered.');
       expect(ALERT_MESSAGES.CANDIDATES.UPDATE_SUCCESS).toBe('Candidate details updated successfully.');
       expect(ALERT_MESSAGES.CANDIDATES.DELETE_SUCCESS).toBe('Candidate removed from your organization.');
     });

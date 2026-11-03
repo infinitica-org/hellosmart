@@ -247,9 +247,10 @@ describe('S1-T00-3: Component API Migration & RTK Endpoint Tests', () => {
       vi.stubGlobal('fetch', mockFetch);
 
       const result = await store.dispatch(companyApi.endpoints.getCandidates.initiate());
-      expect(result.data).toBeDefined();
-      expect(result.data).toHaveLength(1);
-      expect(result.data?.[0]?.email).toBe('jane@example.com');
+      const candidatesList = Array.isArray(result.data) ? result.data : result.data?.items;
+      expect(candidatesList).toBeDefined();
+      expect(candidatesList).toHaveLength(1);
+      expect(candidatesList?.[0]?.email).toBe('jane@example.com');
     });
 
     it('executes getCompanyMetrics query providing dedicated Metrics tag (decoupled from Candidates tag)', async () => {

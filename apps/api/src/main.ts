@@ -17,6 +17,7 @@ import {
   registerLoggingHooks,
   setSharedLogger,
 } from './modules/observability/index.js';
+import { registerCsvContentTypeParsers } from './modules/candidates/csv-stream-parser.js';
 
 async function bootstrap(): Promise<void> {
   const config = loadConfig();
@@ -35,6 +36,7 @@ async function bootstrap(): Promise<void> {
   });
 
   registerLoggingHooks(adapter.getInstance());
+  registerCsvContentTypeParsers(adapter.getInstance());
 
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule.forRoot({ logger }),

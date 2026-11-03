@@ -254,6 +254,21 @@ export async function fetchTemplateById(
 }
 
 /**
+ * Helper to resolve the appropriate Candidate API URL.
+ * In the browser, routes through Next.js BFF (/api/company/candidates) so that HttpOnly
+ * session cookies and CSRF headers are forwarded seamlessly (S1-T05-4).
+ * On the server or during tests, targets the API base directly.
+ */
+export function resolveCandidateApiUrl(endpoint = ''): string {
+  const sub = endpoint.startsWith('/') ? endpoint : (endpoint ? `/${endpoint}` : '');
+  if (typeof window !== 'undefined') {
+    return `/api/company/candidates${sub}`;
+  }
+  const base = getApiBaseUrl();
+  return `${base}/candidates${sub}`;
+}
+
+/**
  * Fetches the paginated list of candidates for the caller's organization.
  * Scoped strictly by server session tenant orgId (BR-01, CO-014).
  *
@@ -263,7 +278,6 @@ export async function fetchCandidates(
   filters?: Partial<CandidateFilters>,
   fetchFn: typeof fetch = fetch
 ): Promise<CandidateListResponse> {
-  const baseUrl = getApiBaseUrl();
   const searchParams = new URLSearchParams();
 
   if (filters?.search) {
@@ -280,7 +294,7 @@ export async function fetchCandidates(
   }
 
   const queryString = searchParams.toString();
-  const url = `${baseUrl}/candidates${queryString ? `?${queryString}` : ''}`;
+  const url = `${resolveCandidateApiUrl()}${queryString ? `?${queryString}` : ''}`;
 
   const res = await apiFetch(
     url,
@@ -326,8 +340,7 @@ export async function inviteCandidate(
   dto: CreateCandidateDto,
   fetchFn: typeof fetch = fetch
 ): Promise<CandidateDto> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/candidates`;
+  const url = resolveCandidateApiUrl();
 
   const res = await apiFetch(
     url,
@@ -371,8 +384,7 @@ export async function bulkUploadCandidates(
   payload: BulkCandidateUploadPayload,
   fetchFn: typeof fetch = fetch
 ): Promise<BulkCandidateUploadResponse> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/candidates/bulk`;
+  const url = resolveCandidateApiUrl('/bulk');
 
   const res = await apiFetch(
     url,
@@ -421,8 +433,7 @@ export async function updateCandidate(
     throw new Error('Candidate ID is required');
   }
 
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/candidates/${encodeURIComponent(candidateId)}`;
+  const url = resolveCandidateApiUrl(`/${encodeURIComponent(candidateId)}`);
 
   const res = await apiFetch(
     url,
@@ -469,8 +480,7 @@ export async function deleteCandidate(
     throw new Error('Candidate ID is required');
   }
 
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/candidates/${encodeURIComponent(candidateId)}`;
+  const url = resolveCandidateApiUrl(`/${encodeURIComponent(candidateId)}`);
 
   const res = await apiFetch(
     url,
@@ -504,19 +514,37 @@ export async function deleteCandidate(
 
 /**
  * Resends an invitation to an eligible candidate with a fresh expiring link (CO-017, BR-24, BR-31).
+ * Supports explicit assignment-level resend when assignmentId is provided.
  *
- * Endpoint: POST /api/v1/candidates/:id/resend-invite
+ * Endpoint: POST /api/v1/candidates/:id/assignments/:assignmentId/resend-invite
+ *       or: POST /api/v1/candidates/:id/resend-invite
  */
 export async function resendCandidateInvite(
   candidateId: string,
-  fetchFn: typeof fetch = fetch
-): Promise<{ success: boolean; sentAt: string }> {
+  assignmentIdOrFetch?: string | typeof fetch,
+  fetchFn?: typeof fetch
+): Promise<{ success: boolean; processedAt: string; deliveryStatus: 'sent' | 'failed' }> {
   if (!candidateId) {
     throw new Error('Candidate ID is required');
   }
 
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/candidates/${encodeURIComponent(candidateId)}/resend-invite`;
+  let assignmentId: string | undefined;
+  let activeFetch: typeof fetch = fetch;
+
+  if (typeof assignmentIdOrFetch === 'function') {
+    activeFetch = assignmentIdOrFetch;
+    assignmentId = undefined;
+  } else {
+    assignmentId = assignmentIdOrFetch;
+    if (fetchFn) {
+      activeFetch = fetchFn;
+    }
+  }
+
+  const endpoint = assignmentId
+    ? `/${encodeURIComponent(candidateId)}/assignments/${encodeURIComponent(assignmentId)}/resend-invite`
+    : `/${encodeURIComponent(candidateId)}/resend-invite`;
+  const url = resolveCandidateApiUrl(endpoint);
 
   const res = await apiFetch(
     url,
@@ -527,7 +555,7 @@ export async function resendCandidateInvite(
       },
       credentials: 'include',
     },
-    fetchFn
+    activeFetch
   );
 
   if (!res.ok) {
@@ -545,6 +573,16 @@ export async function resendCandidateInvite(
     throw new ApiError(res.status, errorCode, errorDetail);
   }
 
-  return { success: true, sentAt: new Date().toISOString() };
+  const data = (await res.json().catch(() => ({}))) as {
+    success?: boolean;
+    processedAt?: string;
+    deliveryStatus?: 'sent' | 'failed';
+  };
+
+  return {
+    success: data.success ?? true,
+    deliveryStatus: data.deliveryStatus ?? 'sent',
+    processedAt: data.processedAt || new Date().toISOString(),
+  };
 }
 
