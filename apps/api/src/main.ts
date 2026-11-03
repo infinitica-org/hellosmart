@@ -48,9 +48,11 @@ async function bootstrap(): Promise<void> {
   await app.register(cookie, { secret: config.SESSION_SECRET });
   await app.register(multipart, {
     limits: {
-      fileSize: 52428800, // 50 MB
+      fileSize: 52_428_800, // 50 MB
       files: 1,
+      fields: 10,
     },
+    attachFieldsToBody: false,
   });
 
   app.enableCors(createCorsOptions(config));
@@ -59,7 +61,10 @@ async function bootstrap(): Promise<void> {
 
   appLogger.log('Starting HelloSmart API...', 'Bootstrap');
   await app.listen(config.PORT, '0.0.0.0');
-  appLogger.log(`HelloSmart API listening on port ${config.PORT} [${config.NODE_ENV}]`, 'Bootstrap');
+  appLogger.log(
+    `HelloSmart API listening on port ${config.PORT} [${config.NODE_ENV}]`,
+    'Bootstrap',
+  );
 }
 
 void bootstrap();

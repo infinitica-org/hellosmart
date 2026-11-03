@@ -16,6 +16,7 @@ import {
 } from '@hs/ui';
 import { CreateOrganizationInput } from '@/types/organization';
 import { PLACEHOLDERS, UI_LABELS } from '@/constants';
+import { useCreateOrganizationMutation } from '@/store/admin/adminApi';
 
 export interface ProvisionModalProps {
   open: boolean;
@@ -44,7 +45,7 @@ export function ProvisionModal({
   });
 
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createOrganization, { isLoading: isSubmitting }] = useCreateOrganizationMutation();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Auto-generate slug from company name if not manually edited
@@ -93,21 +94,8 @@ export function ProvisionModal({
       return;
     }
 
-    setIsSubmitting(true);
     try {
-      const res = await fetch('/api/admin/organizations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.detail || data?.message || 'Failed to provision organization.');
-      }
+      await createOrganization(formData).unwrap();
 
       toast({
         title: 'Company Provisioned Successfully',
@@ -131,9 +119,12 @@ export function ProvisionModal({
       onSuccess?.();
       onClose();
     } catch (err: any) {
-      setErrorMessage(err.message || 'An unexpected error occurred during provisioning.');
-    } finally {
-      setIsSubmitting(false);
+      setErrorMessage(
+        err?.data?.detail ||
+          err?.data?.message ||
+          err?.message ||
+          'An unexpected error occurred during provisioning.',
+      );
     }
   };
 

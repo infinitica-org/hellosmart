@@ -1,3 +1,8 @@
+/**
+ * @deprecated Prefer using centralized RTK Query slices (@/store/admin/adminApi,
+ * @/store/company/companyApi, @/store/candidate/candidateApi) for component-level data fetching.
+ * Direct api-client calls are retained for backwards compatibility and low-level auth utilities.
+ */
 import type {
   AcceptInvitationRequest,
   AcceptInvitationResponse,
@@ -148,6 +153,12 @@ export function resolveBrowserAuthUrl(apiV1Path: string): string {
   }
   if (path === '/candidates') {
     return '/api/company/candidates';
+  }
+  if (path.startsWith('/company/templates')) {
+    return `/api${path}`;
+  }
+  if (path.startsWith('/company/assessments')) {
+    return `/api${path}`;
   }
   const invitationTokenMatch = /^\/auth\/invitations\/([^/]+)$/.exec(path);
   if (invitationTokenMatch?.[1]) {

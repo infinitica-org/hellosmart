@@ -7,7 +7,6 @@ import { AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { AssessmentCard, type CandidateAssessment } from '@/components/candidate/assessment-card';
 import { useGetCandidateAssignmentsQuery } from '@/store/candidate/candidateApi';
 import { ROUTES } from '@/constants/routes';
-import { ALERT_MESSAGES } from '@/constants/messages';
 
 export default function CandidateDashboardPage() {
   const router = useRouter();
@@ -38,8 +37,8 @@ export default function CandidateDashboardPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <PageHeader
-        title="My Assessments"
-        description="Complete practical work simulation tasks and technical evaluations in a controlled cloud environment."
+        title="Candidate Assessment Workspace"
+        description="Complete practical work simulation tasks in a controlled cloud environment with real developer tools."
         badge={{ text: 'Candidate Portal', variant: 'info' }}
         data-testid="candidate-page-header"
         actions={
@@ -59,32 +58,6 @@ export default function CandidateDashboardPage() {
           ) : undefined
         }
       />
-
-      {/* Loading State */}
-      {isLoading && (
-        <div data-testid="candidate-loading-skeleton" className="space-y-4">
-          {[1, 2].map((i) => (
-            <Card key={i} className="p-6 sm:p-8 animate-pulse border-neutral-200 bg-white">
-              <div className="flex items-center justify-between pb-6 border-b border-neutral-100">
-                <div className="space-y-2.5">
-                  <div className="h-5 w-48 bg-neutral-200 rounded-md" />
-                  <div className="h-4 w-72 bg-neutral-100 rounded-md" />
-                </div>
-                <div className="h-10 w-36 bg-neutral-200 rounded-xl" />
-              </div>
-              <div className="pt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="h-14 bg-neutral-50 rounded-xl border border-neutral-100" />
-                <div className="h-14 bg-neutral-50 rounded-xl border border-neutral-100" />
-                <div className="h-14 bg-neutral-50 rounded-xl border border-neutral-100" />
-              </div>
-            </Card>
-          ))}
-          <div className="flex items-center justify-center gap-2 py-4 text-xs text-neutral-400">
-            <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />
-            Loading assigned assessments...
-          </div>
-        </div>
-      )}
 
       {/* Error State */}
       {!isLoading && error && (
@@ -118,20 +91,23 @@ export default function CandidateDashboardPage() {
         </Card>
       )}
 
-      {/* Empty State: exact ticket requirement */}
-      {!isLoading && !error && (!data || data.length === 0) && (
-        <Card className="p-6 sm:p-10 shadow-xs border-neutral-200 bg-white" data-testid="candidate-empty-container">
-          <EmptyState
-            title="No active assessments"
-            description={ALERT_MESSAGES.CANDIDATES.EMPTY_ACTIVE_ASSESSMENTS}
-            data-testid="candidate-empty-state"
-          />
-        </Card>
-      )}
-
-      {/* Assessment Cards List */}
-      {!isLoading && !error && data && data.length > 0 && (
+      {/* Main Content: Assigned Tasks or Empty State */}
+      {data && data.length > 0 ? (
         <div className="space-y-5" data-testid="candidate-assessments-list">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-medium text-neutral-900">Assigned Tasks</h2>
+              <p className="text-xs text-neutral-500 font-normal mt-0.5">
+                Active invitations from hiring companies.
+              </p>
+            </div>
+            {isFetching && (
+              <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Refreshing…</span>
+              </div>
+            )}
+          </div>
           {data.map((assessment) => (
             <AssessmentCard
               key={assessment.id}
@@ -142,6 +118,29 @@ export default function CandidateDashboardPage() {
             />
           ))}
         </div>
+      ) : (
+        <Card className="p-6 sm:p-8 shadow-xs space-y-6" data-testid="candidate-empty-container">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-medium text-neutral-900">Assigned Tasks</h2>
+              <p className="text-xs text-neutral-500 font-normal mt-0.5">
+                Active invitations from hiring companies.
+              </p>
+            </div>
+            {isLoading && (
+              <div className="flex items-center gap-1.5 text-xs text-neutral-400" data-testid="candidate-loading-indicator">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Loading…</span>
+              </div>
+            )}
+          </div>
+
+          <EmptyState
+            title="No active assignments"
+            description="You do not currently have any pending assessments. Please check your invitation email or contact your hiring recruiter."
+            data-testid="candidate-empty-state"
+          />
+        </Card>
       )}
     </div>
   );

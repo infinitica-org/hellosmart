@@ -1,5 +1,6 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { getApiBaseUrl, CSRF_HEADER_NAME, CSRF_HEADER_VALUE } from '@/lib/api-client';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { createCustomBaseQuery } from '../api/baseApi';
+import { getApiBaseUrl } from '@/lib/api-client';
 import type {
   CandidateAssessmentDetail,
   WorkspaceSession,
@@ -14,29 +15,85 @@ import type {
   UploadedArtifactMetadata,
 } from '@hs/contracts';
 
+/**
+ * Cache tags owned and accessible to the Candidate portal.
+ * Candidates interact with their assigned assessments, active workspace sessions, and submissions.
+ * Company-only resources (Candidates CRUD, Rubrics, Quotes) are strictly excluded.
+ */
+export const CANDIDATE_TAG_TYPES = [
+  'Session',
+  'Assessments',
+  'Workspace',
+  'Submissions',
+  'CandidateAssignments',
+  'ActiveSession',
+  'AssessmentDetail',
+  'CandidateDraft',
+] as const;
+
+export type CandidateTagType = (typeof CANDIDATE_TAG_TYPES)[number];
+
+export interface CandidateAssessmentItem {
+  id: string;
+  title: string;
+  role: string;
+  status: 'invited' | 'in_progress' | 'submitted' | 'expired';
+  durationMinutes: number;
+  deadline?: string;
+  submittedAt?: string;
+}
+
+export interface WorkspaceDraftPayload {
+  workspaceId: string;
+  files?: Record<string, string>;
+  notes?: string;
+  updatedAt: string;
+}
+
+export interface AssessmentSubmissionPayload {
+  workspaceId: string;
+  artifacts?: Array<{ name: string; url: string }>;
+  submissionNotes?: string;
+}
+
+export interface AssessmentSubmissionResponse {
+  submissionId: string;
+  status: 'submitted' | 'under_review';
+  submittedAt: string;
+}
+
+/**
+ * Candidate RTK Query API slice.
+ * Operates exclusively within the CandidateStore with its own dedicated cache and reducerPath.
+ * Enforces memory isolation so candidates cannot read company or admin store state (BR-01, BR-25).
+ */
 export const candidateApi = createApi({
   reducerPath: 'candidateApi',
-  baseQuery: fetchBaseQuery({
+  baseQuery: createCustomBaseQuery({
     baseUrl: getApiBaseUrl(),
-    credentials: 'include',
-    prepareHeaders: (headers, { type, endpoint }) => {
-      // Automatically add CSRF header for all state-changing mutations
-      if (type === 'mutation') {
-        headers.set(CSRF_HEADER_NAME, CSRF_HEADER_VALUE);
-      }
-      return headers;
-    },
+    reducerPath: 'candidateApi',
   }),
-  tagTypes: [
-    'CandidateAssignments',
-    'ActiveSession',
-    'AssessmentDetail',
-    'CandidateDraft',
-  ],
+  tagTypes: CANDIDATE_TAG_TYPES,
   endpoints: (builder) => ({
     getCandidateAssignments: builder.query<CandidateAssessment[], void>({
       query: () => '/candidate/assignments',
-      providesTags: ['CandidateAssignments'],
+      providesTags: ['CandidateAssignments', 'Assessments'],
+    }),
+
+    getCandidateAssessments: builder.query<CandidateAssessmentItem[], void>({
+      query: () => '/candidate/assignments',
+      providesTags: (result) => {
+        const items = Array.isArray(result)
+          ? result
+          : (result as { items?: CandidateAssessmentItem[] } | null | undefined)?.items ?? [];
+        return [
+          ...items.map(({ id }: { id: string }) => ({
+            type: 'Assessments' as const,
+            id,
+          })),
+          { type: 'Assessments', id: 'LIST' },
+        ];
+      },
     }),
 
     getCandidateAssessment: builder.query<CandidateAssessmentDetail, string>({
@@ -55,6 +112,7 @@ export const candidateApi = createApi({
       }),
       invalidatesTags: (_result, _error, { id }) => [
         'CandidateAssignments',
+        'Assessments',
         { type: 'AssessmentDetail', id },
       ],
     }),
@@ -68,7 +126,7 @@ export const candidateApi = createApi({
         method: 'POST',
         body: ticket ? { ticket } : {},
       }),
-      invalidatesTags: ['CandidateAssignments', 'ActiveSession'],
+      invalidatesTags: ['CandidateAssignments', 'Assessments', 'ActiveSession', 'Workspace'],
     }),
 
     getAssessmentTiming: builder.query<AssessmentTimingResponse, string>({
@@ -92,6 +150,18 @@ export const candidateApi = createApi({
       invalidatesTags: (_result, _error, { id }) => [{ type: 'CandidateDraft', id }],
     }),
 
+    saveDraft: builder.mutation<{ success: boolean; savedAt: string }, WorkspaceDraftPayload>({
+      query: (body) => ({
+        url: `/candidate/assessments/${encodeURIComponent(body.workspaceId)}/draft`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        { type: 'Workspace', id: workspaceId },
+        { type: 'CandidateDraft', id: workspaceId },
+      ],
+    }),
+
     uploadArtifact: builder.mutation<UploadedArtifactMetadata, FormData>({
       query: (formData) => ({
         url: '/candidate/artifacts/upload',
@@ -111,8 +181,26 @@ export const candidateApi = createApi({
       }),
       invalidatesTags: (_result, _error, { id }) => [
         'CandidateAssignments',
+        'Assessments',
         'ActiveSession',
+        'Submissions',
         { type: 'CandidateDraft', id },
+      ],
+    }),
+
+    submitAssessment: builder.mutation<
+      AssessmentSubmissionResponse,
+      AssessmentSubmissionPayload
+    >({
+      query: (body) => ({
+        url: `/candidate/assessments/${encodeURIComponent(body.workspaceId)}/submit`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { workspaceId }) => [
+        { type: 'Workspace', id: workspaceId },
+        { type: 'Assessments', id: 'LIST' },
+        { type: 'Submissions', id: 'LIST' },
       ],
     }),
 
@@ -124,14 +212,17 @@ export const candidateApi = createApi({
 
 export const {
   useGetCandidateAssignmentsQuery,
+  useGetCandidateAssessmentsQuery,
+  useLazyGetCandidateAssessmentsQuery,
   useGetCandidateAssessmentQuery,
   useRecordConsentMutation,
   useStartAssessmentMutation,
   useGetAssessmentTimingQuery,
   useGetAssessmentDraftQuery,
   useSaveAssessmentDraftMutation,
+  useSaveDraftMutation,
   useUploadArtifactMutation,
   useSubmitDeliverablesMutation,
+  useSubmitAssessmentMutation,
   usePingCandidateQuery,
 } = candidateApi;
-
