@@ -30,10 +30,10 @@ describe('Stream 10: Timing, Boundary Expiry & Disconnect Logic (BR-08, BR-09, C
   });
 
   // =========================================================================
-  // PART A: REAL TESTS (Pure Timing Calculations, Boundaries & DB Persistence)
+  // PART A: REAL TESTS (Reference Model Executable Spec vs Product Code)
   // =========================================================================
 
-  describe('Part A.1: Duration Calculations & Simulated Time Travel (BR-08, CO-028, CO-031)', () => {
+  describe('Part A.1: Reference model (executable spec, not product code) - Duration Calculations & Simulated Time Travel (BR-08, CO-028, CO-031)', () => {
     it('calculates exact deadline from first connect for minimum (15m), default (90m), and maximum (480m) durations', () => {
       const baseTime = new Date('2026-11-03T10:00:00.000Z');
       vi.useFakeTimers();
@@ -90,7 +90,7 @@ describe('Stream 10: Timing, Boundary Expiry & Disconnect Logic (BR-08, BR-09, C
     });
   });
 
-  describe('Part A.2: Window Boundary State Transitions (BR-08, CO-028, CO-030)', () => {
+  describe('Part A.2: Reference model (executable spec, not product code) - Window Boundary State Transitions (BR-08, CO-028, CO-030)', () => {
     const timingConfig = {
       type: 'window' as const,
       windowStartUtc: '2026-11-03T09:00:00.000Z',
@@ -139,7 +139,7 @@ describe('Stream 10: Timing, Boundary Expiry & Disconnect Logic (BR-08, BR-09, C
     });
   });
 
-  describe('Part A.3: Combined Timing Mode Ceilings (CO-030)', () => {
+  describe('Part A.3: Reference model (executable spec, not product code) - Combined Timing Mode Ceilings (CO-030)', () => {
     it('applies duration when duration expires before window end', () => {
       const timing = {
         type: 'both' as const,
@@ -166,21 +166,21 @@ describe('Stream 10: Timing, Boundary Expiry & Disconnect Logic (BR-08, BR-09, C
       expect(deadline.toISOString()).toBe('2026-11-03T18:00:00.000Z');
     });
 
-    it('applies extended minutes to the base ceiling', () => {
+    it('applies extended minutes to the base ceiling (OPEN QUESTION: whether extension can exceed window_end without explicit window extension)', () => {
       const timing = {
         type: 'both' as const,
         durationMinutes: 90,
         windowStartUtc: '2026-11-03T09:00:00.000Z',
         windowEndUtc: '2026-11-03T18:00:00.000Z',
       };
-      // Truncated to 18:00, then admin grants 15 minutes extension -> 18:15
+      // Truncated to 18:00, then admin grants 15 minutes extension -> 18:15 in reference model reading
       const firstConnect = new Date('2026-11-03T17:15:00.000Z');
       const deadline = calculateEffectiveDeadline(timing, firstConnect, 15);
       expect(deadline.toISOString()).toBe('2026-11-03T18:15:00.000Z');
     });
   });
 
-  describe('Part A.4: Calendar & Clock Irregularities (DST, Leap Day, Year-End, Backward Clock)', () => {
+  describe('Part A.4: Reference model (executable spec, not product code) - Calendar & Clock Irregularities (DST, Leap Day, Year-End, Backward Clock)', () => {
     it('calculates exact elapsed UTC seconds across Daylight Saving Time (DST) transition', () => {
       // US Eastern fallback: 2026-11-01 02:00:00 EDT switches to 01:00:00 EST
       // In UTC: 2026-11-01T05:30:00.000Z (01:30 EDT) to 2026-11-01T07:00:00.000Z (02:00 EST)
@@ -225,7 +225,7 @@ describe('Stream 10: Timing, Boundary Expiry & Disconnect Logic (BR-08, BR-09, C
     });
   });
 
-  describe('Part A.5: TimingConfigSchema Contract Validation (Contracts Layer)', () => {
+  describe('Part A.5: Product Code - TimingConfigSchema Contract Validation (Contracts Layer)', () => {
     it('applies default values for duration, type, tz, and pauseTimerOnDisconnect (BR-09 default false)', () => {
       const parsed = TimingConfigSchema.parse({});
       expect(parsed.type).toBe('duration');
@@ -265,7 +265,7 @@ describe('Stream 10: Timing, Boundary Expiry & Disconnect Logic (BR-08, BR-09, C
     });
   });
 
-  describe('Part A.6: In-Memory Assignment Ownership Adapter Timing Checks', () => {
+  describe('Part A.6: Product Code - In-Memory FakeAssignmentOwnershipAdapter Timing Checks', () => {
     let adapter: FakeAssignmentOwnershipAdapter;
 
     beforeEach(() => {
@@ -311,7 +311,7 @@ describe('Stream 10: Timing, Boundary Expiry & Disconnect Logic (BR-08, BR-09, C
   // =========================================================================
 
   describe.runIf(isDbAvailable)(
-    'Part A.7: Database Assessment Timing Persistence on hellosmart_test (BR-01, BR-08, BR-09)',
+    'Part A.7: Product Code - Database Assessment Timing Persistence on hellosmart_test (BR-01, BR-08, BR-09)',
     () => {
       let testAppCtx: TimingTestContext;
       let orgId: string;
@@ -519,7 +519,7 @@ describe('Stream 10: Timing, Boundary Expiry & Disconnect Logic (BR-08, BR-09, C
     },
   );
 
-  describe('Part A.8: Fake Timer Hygiene Verification', () => {
+  describe('Part A.8: Test Environment - Fake Timer Hygiene Verification', () => {
     it('proves fake timers are completely restored and Date uses real system time in subsequent tests', () => {
       // In this test, vi.useFakeTimers was NOT called; real system clock must be active
       const now = Date.now();
@@ -543,8 +543,9 @@ describe('Stream 10: Timing, Boundary Expiry & Disconnect Logic (BR-08, BR-09, C
       });
     });
 
-    it.skip('launch after window closes returns HTTP 403 Forbidden with code WINDOW_EXPIRED', async () => {
+    it.skip('launch after window closes returns HTTP 403 Forbidden with Problem Details payload (OPEN QUESTION: code WINDOW_EXPIRED vs ASSIGNMENT_EXPIRED)', async () => {
       // SKIPPED: app.assignments table and POST /candidate/assignments/:id/connect pending Stream 2 (CA-005, CA-012, BR-08)
+      // Open Question for Vishal V: AGENTS.md / openapi.yaml do not specify between WINDOW_EXPIRED and ASSIGNMENT_EXPIRED
       await TimingContractStubs.launchAssignment({
         assignmentId: '00000000-0000-4000-8000-000000000002',
         candidateSessionToken: 'sess_candidate',

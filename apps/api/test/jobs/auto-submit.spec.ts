@@ -9,10 +9,10 @@ describe('Auto-Submit Background Sweeper & Expiry Contract (BR-08, CA-018, NF-01
   });
 
   // =========================================================================
-  // Pure Logic Verification for Auto-Submit Boundaries
+  // Reference Model (Executable Spec, Not Product Code)
   // =========================================================================
 
-  describe('Auto-Submit Deadline Boundary Calculations (Pure Logic)', () => {
+  describe('Reference model (executable spec, not product code) - Auto-Submit Deadline Boundary Calculations', () => {
     const deadline = new Date('2026-11-03T15:00:00.000Z');
 
     it('identifies unexpired assignment 1ms before deadline (no auto-submit triggered)', () => {

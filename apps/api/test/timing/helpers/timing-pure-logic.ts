@@ -39,7 +39,7 @@ export function calculateDeadline(
  * Window start and window end are both INCLUSIVE (BR-08 boundary decision):
  * - referenceTime < windowStartUtc => 'window_not_open' (HTTP 403 WINDOW_NOT_OPEN)
  * - windowStartUtc <= referenceTime <= windowEndUtc => 'ready'
- * - referenceTime > windowEndUtc => 'expired' (HTTP 403 WINDOW_EXPIRED)
+ * - referenceTime > windowEndUtc => 'expired' (HTTP 403 WINDOW_EXPIRED or ASSIGNMENT_EXPIRED - Open Question for Vishal V)
  */
 export function checkWindowStatus(timing: TimingWindowConfig, referenceTime: Date): WindowStatus {
   if (isNaN(referenceTime.getTime())) {
