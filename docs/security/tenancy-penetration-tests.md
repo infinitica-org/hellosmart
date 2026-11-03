@@ -1,7 +1,7 @@
 # Multi-Tenant Data Isolation & Security Penetration Testing Runbook
 
 > **Scope**: Ticket [10.1] Multi-Tenant Data Isolation & Security Penetration Tests  
-> **Requirements**: BR-01 (Tenant Isolation), BR-02 (Template Privacy), BR-03 (Version Pinning), BR-11 (No Work Loss / State Restoration), BR-25 (Route Isolation & RBAC Boundaries)  
+> **Requirements**: BR-01 (Tenant Isolation), BR-02 (Template Privacy), BR-03 (Version Pinning), BR-25 (Route Isolation & RBAC Boundaries) [BR-11 unconfirmed for storage download API]  
 > **Target Environment**: Automated in-process Fastify test harness against PostgreSQL test database (`hellosmart_test`)  
 > **Test Suites**: `apps/api/test/security/tenancy.spec.ts`, `apps/api/test/security/privilege-escalation.spec.ts`
 
@@ -30,33 +30,32 @@ HelloSmart.ai employs a strict **defense-in-depth** multi-tenancy security model
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────┐
-│                      PostgreSQL RLS Data Layer                         │
-│   • Non-superuser connection (hs_app with NOBYPASSRLS)                 │
-│   • Session-level variable setting: app.set_tenant(org_id)             │
-│   • Row-Level Security policies active on tenant tables                │
-│   • Cross-tenant reads return 0 rows; writes violate RLS checks        │
+│                    PostgreSQL Row-Level Security                       │
+│   • Runtime role: hs_app (NOBYPASSRLS, restricted permissions)         │
+│   • Session configuration: app.org_id set via SET LOCAL per request    │
+│   • FORCE ROW LEVEL SECURITY on all tenant tables                      │
+│   • Fail-closed: Null or unassigned app.org_id returns 0 rows          │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 1.1 PostgreSQL Row-Level Security (RLS)
 
-- All tenant-owned tables (`app.organizations`, `app.entitlements`, `app.users`, `app.invitations`, `app.templates`, `app.template_versions`, `app.template_assignments`, `app.assessments`, `app.password_history`, `app.mfa_backup_codes`) enforce tenant boundaries.
-- The application executes queries through dedicated database roles (`hs_app`, `hs_platform`, `hs_owner`), ensuring that application traffic has `NOBYPASSRLS` and `NOSUPERUSER` privileges.
-- Every tenant transaction sets `SET LOCAL app.org_id = '<org-uuid>'`.
+- **Runtime Boundary**: The application pool connects exclusively as `hs_app`, which is explicitly forbidden from holding `BYPASSRLS`.
+- **Tenant Context**: Every database transaction sets `SET LOCAL app.org_id = '<uuid>'`. RLS policies evaluate `org_id = current_setting('app.org_id', true)::uuid`.
+- **Fail-Closed Default**: If a query executes without setting `app.org_id`, `current_setting('app.org_id', true)` returns `NULL`, filtering all tenant-scoped rows and returning zero results.
 
 ### 1.2 Application Guards & Authority
 
-- **SessionGuard**: Validates session authenticity strictly from ambient HTTP cookies (`__Host-hs_session` in production, `hs_session` in dev/test). Queries `app.find_user_by_id` on every authenticated request to verify live account and organization status. If an account or organization is suspended or deleted, requests fail-closed immediately with HTTP 403 (`USER_SUSPENDED`, `USER_DELETED`, `ORGANIZATION_SUSPENDED`).
-- **RolesGuard**: Enforces RBAC boundaries based on `@Roles(...)` decorators. Restricts candidates from accessing company and platform surfaces, and restricts company admins from accessing platform administration endpoints.
-- **OrgScopeGuard**: Evaluates parameterized routes (e.g. `/:orgId/*`). Confirms that the caller's authenticated `orgId` matches the route parameter; cross-tenant attempts return a generic HTTP 404 (`TENANT_NOT_FOUND`).
-- **CsrfOriginGuard**: Protects all state-changing HTTP requests (`POST`, `PUT`, `PATCH`, `DELETE`) carrying ambient session cookies. Requires the custom `X-HS-CSRF` header and verifies that the `Origin` or `Referer` header strictly matches `config.CORS_ORIGINS`.
+- **SessionGuard**: Validates session cookies against Redis/in-memory session store, extracts caller credentials (`userId`, `orgId`, `role`), and checks live database status for suspended or deleted accounts.
+- **RolesGuard**: Enforces RBAC boundaries on routes decorated with `@Roles(...)`. For example, all `/api/v1/admin/*` and `/api/v1/auth/mfa/*` endpoints require the `platform_admin` role.
+- **CsrfOriginGuard**: Enforces CSRF token presence (`X-HS-CSRF: 1`) and trusted origin matching (`Origin` header matching configured `CORS_ORIGINS`) on all mutating methods (`POST`, `PUT`, `PATCH`, `DELETE`).
+- **OrgScopeGuard**: Validates parameterized routes (`/:orgId`) against the authenticated user's `session.orgId`. Foreign organization IDs return `404 Not Found` with code `TENANT_NOT_FOUND`.
 
 ### 1.3 Storage Isolation
 
-- Candidate submission deliverables and artifacts are stored under strict organization prefixes:
-  `storage/{orgId}/submissions/{assignmentId}/{objectId}-{filename}`
-- Presigned download URL generation (`GET /api/v1/storage/download-url/:assignmentId/:objectId`) looks up artifacts using stateless prefix scans (`findKeyByObjectId`) scoped strictly to the caller's `orgId`.
-- If Tenant A requests an artifact belonging to Tenant B, or attempts to override the target organization via `?orgId=<tenant-b>`, the storage service fails to locate the key under Tenant A's prefix and returns a generic HTTP 404 (`Artifact not found`) with zero metadata leakage.
+- **Prefix Scoping**: Objects are stored under `storage/{orgId}/submissions/{assignmentId}/{objectId}-{filename}`.
+- **Scoped Lookup**: When generating download URLs, `StorageService.findKeyByObjectId` scans strictly within `storage/${orgId}/submissions/${assignmentId}/`. Foreign object IDs return `404 Not Found` with message `Artifact not found`.
+- **Download Token Verification**: For local filesystem storage, `GET /api/v1/storage/download` requires a signed HMAC token containing `{ key, orgId, exp }`. Forged, tampered, or expired tokens return generic `404 Not Found`.
 
 ---
 
@@ -64,132 +63,140 @@ HelloSmart.ai employs a strict **defense-in-depth** multi-tenancy security model
 
 ### 2.1 The Control-First Principle
 
-A security test that only tests negative outcomes (e.g., asserting that an attacker gets a 404) can produce **false positives** if the underlying route is broken, the resource was never seeded, or the endpoint URL has a typo.
-To eliminate false positives, all penetration tests in `test/security/tenancy.spec.ts` strictly enforce the **Control-First Principle**:
+To prevent false negatives (tests passing because an endpoint is broken, misconfigured, or returning 404 for all callers), every cross-tenant attack test is paired with an identical **control-first** test:
 
-1. **Positive Control**: Execute the request as the owning tenant (Tenant B) to prove that the resource exists, the route is functional, and an authorized caller receives HTTP 200/201.
-2. **Adversarial Attack**: Execute the exact same request using the attacking tenant's credentials (Tenant A) and assert that the attack is rejected with HTTP 404.
+1. **Control Test**: The legitimate owner (Tenant B) requests the resource and asserts `HTTP 200 OK` with valid data.
+2. **Attack Test**: The attacker (Tenant A) requests the exact same resource ID and asserts `HTTP 404 Not Found`.
 
 ### 2.2 No-Oracle Guarantees
 
-An attacker must never be able to determine whether a resource exists in another organization by observing differences in status codes, error payloads, headers, or execution timing:
+An API must never act as an oracle allowing an attacker to determine whether a resource exists in a foreign tenant:
 
-- Foreign tenant resources and non-existent random UUIDs return **identical** HTTP 404 status codes, error codes, and problem detail payloads.
-- No timing discrepancies or diagnostic clues are leaked in error responses.
+- The HTTP status code, response headers, and response JSON body returned when Tenant A attacks Tenant B's real resource MUST be indistinguishable from the response returned when Tenant A requests a randomly generated, non-existent UUID.
+- The error response structure conforms strictly to RFC 9457 Problem Details.
 
 ### 2.3 Zero Data Leakage (`assertZeroTenantLeak`)
 
-Every adversarial attack response (status, body, headers, and cookies) is parsed by the `assertZeroTenantLeak` verification helper. The helper asserts zero occurrences of any of Tenant B's private identifiers:
+Every response body, header, and cookie returned to Tenant A during cross-tenant attacks is recursively scanned for Tenant B identifiers:
 
-- Organization ID, slug, and display name
-- User IDs, administrator emails, and candidate emails
-- Template IDs, slugs, and manifest titles
-- Assessment IDs and assessment names
-- Storage assignment IDs, object IDs, and storage keys
+- Tenant B organization ID, slug, and display name
+- Tenant B user IDs, candidate IDs, and emails
+- Tenant B template versions, assessment IDs, and assessment names
+- Tenant B storage keys, assignment IDs, and object IDs
+
+If any foreign identifier appears in the attacker's response (outside of the attacked target token echoed in the URL path), the test immediately fails.
 
 ### 2.4 Test Data Isolation and Teardown
 
-All test resources are created in `hellosmart_test` using randomly generated nonces. At test completion, `teardownSecurityTestData()` executes a single atomic transaction on `adminPool` (`hs_owner`) that removes all created rows in dependency order and asserts that `COUNT(*) === 0` across all affected tables.
+- Test fixtures create isolated organizations (`sec-alpha-...`, `sec-beta-...`, `sec-susp-...`) using a cryptographically random nonce.
+- Teardown executes within a database transaction as table owner `hs_owner`, deleting rows in strict foreign-key dependency order.
+- To avoid tripping `BR-03` triggers on template versions (`app.prevent_published_template_version_mutation`), test templates are seeded with status `'draft'`.
+- Teardown asserts that the database row count for all created entities returns exactly to zero.
 
 ---
 
 ## 3. Attack Matrix & Verification Results
 
-| Requirement | Attack Vector                                         | Method & Route                                      | Attacking Role           | Expected Status         | Result     |
-| :---------- | :---------------------------------------------------- | :-------------------------------------------------- | :----------------------- | :---------------------- | :--------- |
-| **BR-02**   | Read Tenant B assigned template                       | `GET /api/v1/company/templates/:id`                 | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
-| **BR-02**   | Template catalog list leakage                         | `GET /api/v1/company/templates`                     | Tenant A `company_admin` | `200 OK` (Only A items) | **PASSED** |
-| **BR-01**   | Read Tenant B assessment                              | `GET /api/v1/company/assessments/:id`               | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
-| **BR-01**   | Mutate Tenant B assessment brief                      | `PATCH /api/v1/company/assessments/:id/brief`       | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
-| **BR-01**   | Assessment list leakage                               | `GET /api/v1/company/assessments`                   | Tenant A `company_admin` | `200 OK` (Only A items) | **PASSED** |
-| **BR-01**   | Candidate list isolation (`/candidates`)              | `GET /api/v1/candidates?limit=1000`                 | Tenant A `company_admin` | `200 OK` (Only A items) | **PASSED** |
-| **BR-01**   | Candidate list isolation (`/company/candidates`)      | `GET /api/v1/company/candidates?limit=1000`         | Tenant A `company_admin` | `200 OK` (Only A items) | **PASSED** |
-| **BR-01**   | Cross-tenant delete candidate (`/candidates`)         | `DELETE /api/v1/candidates/:id`                     | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
-| **BR-01**   | Cross-tenant delete candidate (`/company/candidates`) | `DELETE /api/v1/company/candidates/:id`             | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
-| **BR-01**   | Cross-tenant update candidate (`/candidates`)         | `PATCH /api/v1/candidates/:id`                      | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
-| **BR-01**   | Cross-tenant update candidate (`/company/candidates`) | `PATCH /api/v1/company/candidates/:id`              | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
-| **BR-01**   | Cross-tenant resend invite (`/candidates`)            | `POST /api/v1/candidates/:id/resend-invite`         | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
-| **BR-01**   | Cross-tenant resend invite (`/company/candidates`)    | `POST /api/v1/company/candidates/:id/resend-invite` | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
-| **BR-01**   | Mass-assignment tenant injection (`orgId` in body)    | `POST /api/v1/candidates`                           | Tenant A `company_admin` | `422 Unprocessable`     | **PASSED** |
-| **BR-01**   | Mass-assignment tenant injection (`orgId` in body)    | `POST /api/v1/company/candidates`                   | Tenant A `company_admin` | `422 Unprocessable`     | **PASSED** |
-| **BR-01**   | Storage download URL cross-tenant attack              | `GET /api/v1/storage/download-url/:asgId/:objId`    | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
-| **BR-01**   | Storage download URL mixed-pair attack                | `GET /api/v1/storage/download-url/:asgA/:objB`      | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
-| **BR-01**   | Storage download URL override via `?orgId=`           | `GET /api/v1/storage/download-url/...`              | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
-| **BR-11**   | Public storage stream with forged/tampered token      | `GET /api/v1/storage/download?token=...`            | Anonymous / Public       | `404 Not Found`         | **PASSED** |
-| **BR-01**   | Header forgery injection (`X-Org-Id`, `X-Tenant-Id`)  | `GET /api/v1/company/templates`                     | Tenant A `company_admin` | `200 OK` (Ignored)      | **PASSED** |
-| **BR-01**   | Parameterized route cross-tenant attack               | `GET /api/v1/_test/org/:orgId/ping`                 | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
-| **BR-25**   | Candidate attacking company templates                 | `GET /api/v1/company/templates`                     | `candidate`              | `403 Forbidden`         | **PASSED** |
-| **BR-25**   | Candidate attacking company assessments               | `GET /api/v1/company/assessments`                   | `candidate`              | `403 Forbidden`         | **PASSED** |
-| **BR-25**   | Candidate attacking candidates management             | `GET /api/v1/candidates`                            | `candidate`              | `403 Forbidden`         | **PASSED** |
-| **BR-25**   | Candidate attacking candidates management             | `GET /api/v1/company/candidates`                    | `candidate`              | `403 Forbidden`         | **PASSED** |
-| **BR-25**   | Candidate attacking artifact download URLs            | `GET /api/v1/storage/download-url/...`              | `candidate`              | `403 Forbidden`         | **PASSED** |
-| **BR-25**   | Candidate attacking admin console routes              | `GET /api/v1/admin/*`                               | `candidate`              | `403 Forbidden`         | **PASSED** |
-| **BR-25**   | Company admin attacking platform admin orgs           | `GET /api/v1/admin/organizations`                   | `company_admin`          | `403 Forbidden`         | **PASSED** |
-| **BR-25**   | Company admin provisioning organization               | `POST /api/v1/admin/organizations`                  | `company_admin`          | `403 Forbidden`         | **PASSED** |
-| **BR-25**   | Company admin updating org status                     | `PATCH /api/v1/admin/organizations/:id/status`      | `company_admin`          | `403 Forbidden`         | **PASSED** |
-| **BR-25**   | Company admin attacking master templates              | `GET /api/v1/admin/templates`                       | `company_admin`          | `403 Forbidden`         | **PASSED** |
-| **BR-25**   | Company admin viewing platform metrics                | `GET /api/v1/admin/metrics`                         | `company_admin`          | `403 Forbidden`         | **PASSED** |
-| **BR-25**   | Company admin viewing platform MFA status             | `GET /api/v1/auth/mfa/status`                       | `company_admin`          | `403 Forbidden`         | **PASSED** |
-| **Auth**    | Unauthenticated access to protected routes            | Protected routes                                    | Anonymous                | `401 Unauthorized`      | **PASSED** |
-| **Auth**    | Tampered session cookie token                         | Protected routes                                    | Attacker                 | `401 Unauthorized`      | **PASSED** |
-| **CSRF**    | Ambient session request missing `X-HS-CSRF`           | State-changing routes                               | Authenticated caller     | `403 Forbidden`         | **PASSED** |
-| **CSRF**    | Ambient session request missing `Origin`/`Referer`    | State-changing routes                               | Authenticated caller     | `403 Forbidden`         | **PASSED** |
-| **CSRF**    | Ambient session request with untrusted `Origin`       | State-changing routes                               | Authenticated caller     | `403 Forbidden`         | **PASSED** |
-| **Status**  | Session for suspended user                            | Protected routes                                    | Suspended user           | `403 Forbidden`         | **PASSED** |
-| **Status**  | Session for soft-deleted user                         | Protected routes                                    | Deleted user             | `403 Forbidden`         | **PASSED** |
-| **Status**  | Session for user in suspended organization            | Protected routes                                    | User in suspended org    | `403 Forbidden`         | **PASSED** |
-| **Status**  | Session for removed/nonexistent database user         | Protected routes                                    | Ghost user               | `401 Unauthorized`      | **PASSED** |
-| **Status**  | Password login attempt for suspended user             | `POST /api/v1/auth/login`                           | Suspended user           | `403 Forbidden`         | **PASSED** |
-| **Status**  | Password login attempt for user in suspended org      | `POST /api/v1/auth/login`                           | User in suspended org    | `403 Forbidden`         | **PASSED** |
-| **Matrix**  | Dynamic route matrix verification against Fastify     | All registered routes                               | System                   | Full match (100%)       | **PASSED** |
+| Requirement | Attack Scenario                                                   | Target Endpoint                                     | Attacker Role            | Expected Result         | Status     |
+| ----------- | ----------------------------------------------------------------- | --------------------------------------------------- | ------------------------ | ----------------------- | ---------- |
+| **BR-02**   | Read Tenant B assigned template by UUID                           | `GET /api/v1/company/templates/:id`                 | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-02**   | Read Tenant B assigned template by slug                           | `GET /api/v1/company/templates/:slug`               | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-02**   | Read unassigned template by UUID                                  | `GET /api/v1/company/templates/:id`                 | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-02**   | Read unassigned template by slug                                  | `GET /api/v1/company/templates/:slug`               | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-02**   | Adversarial slug input (UUID-looking, long, encoded)              | `GET /api/v1/company/templates/:slug`               | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-02**   | Template catalog list leakage                                     | `GET /api/v1/company/templates`                     | Tenant A `company_admin` | `200 OK` (Only A items) | **PASSED** |
+| **BR-01**   | Read Tenant B assessment                                          | `GET /api/v1/company/assessments/:id`               | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-01**   | Mutate Tenant B assessment brief                                  | `PATCH /api/v1/company/assessments/:id/brief`       | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-01**   | Assessment list leakage                                           | `GET /api/v1/company/assessments`                   | Tenant A `company_admin` | `200 OK` (Only A items) | **PASSED** |
+| **BR-01**   | Candidate list isolation (`/company/candidates` canonical)        | `GET /api/v1/company/candidates?limit=1000`         | Tenant A `company_admin` | `200 OK` (Only A items) | **PASSED** |
+| **BR-01**   | Candidate list isolation (`/candidates` deprecated alias)         | `GET /api/v1/candidates?limit=1000`                 | Tenant A `company_admin` | `200 OK` (Only A items) | **PASSED** |
+| **BR-01**   | Cross-tenant delete candidate (`/company/candidates`)             | `DELETE /api/v1/company/candidates/:id`             | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-01**   | Cross-tenant delete candidate (`/candidates`)                     | `DELETE /api/v1/candidates/:id`                     | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-01**   | Cross-tenant update candidate (`/company/candidates`)             | `PATCH /api/v1/company/candidates/:id`              | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-01**   | Cross-tenant update candidate (`/candidates`)                     | `PATCH /api/v1/candidates/:id`                      | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-01**   | Cross-tenant resend invite (`/company/candidates`)                | `POST /api/v1/company/candidates/:id/resend-invite` | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-01**   | Cross-tenant resend invite (`/candidates`)                        | `POST /api/v1/candidates/:id/resend-invite`         | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-01**   | Mass-assignment tenant injection (`orgId` in body)                | `POST /api/v1/company/candidates`                   | Tenant A `company_admin` | `422 Unprocessable`     | **PASSED** |
+| **BR-01**   | Mass-assignment tenant injection (`orgId` in body)                | `POST /api/v1/candidates`                           | Tenant A `company_admin` | `422 Unprocessable`     | **PASSED** |
+| **BR-01**   | Storage download URL cross-tenant attack                          | `GET /api/v1/storage/download-url/:asgId/:objId`    | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-01**   | Storage download URL mixed-pair attack                            | `GET /api/v1/storage/download-url/:asgA/:objB`      | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-01**   | Storage download URL override via `?orgId=`                       | `GET /api/v1/storage/download-url/...`              | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-01**   | Public storage stream with forged/tampered token                  | `GET /api/v1/storage/download?token=...`            | Anonymous / Public       | `404 Not Found`         | **PASSED** |
+| **BR-01**   | Header forgery injection (`X-Org-Id`, `X-Tenant-Id`)              | `GET /api/v1/company/templates`                     | Tenant A `company_admin` | `200 OK` (Ignored)      | **PASSED** |
+| **BR-01**   | Parameterized route cross-tenant attack                           | `GET /api/v1/_test/org/:orgId/ping`                 | Tenant A `company_admin` | `404 Not Found`         | **PASSED** |
+| **BR-25**   | Candidate attacking company templates                             | `GET /api/v1/company/templates`                     | `candidate`              | `403 Forbidden`         | **PASSED** |
+| **BR-25**   | Candidate attacking company assessments                           | `GET /api/v1/company/assessments`                   | `candidate`              | `403 Forbidden`         | **PASSED** |
+| **BR-25**   | Candidate attacking candidates management (`/company/candidates`) | `GET /api/v1/company/candidates`                    | `candidate`              | `403 Forbidden`         | **PASSED** |
+| **BR-25**   | Candidate attacking candidates management (`/candidates`)         | `GET /api/v1/candidates`                            | `candidate`              | `403 Forbidden`         | **PASSED** |
+| **BR-25**   | Candidate attacking artifact download URLs                        | `GET /api/v1/storage/download-url/...`              | `candidate`              | `403 Forbidden`         | **PASSED** |
+| **BR-25**   | Candidate attacking admin console routes                          | `GET /api/v1/admin/*`                               | `candidate`              | `403 Forbidden`         | **PASSED** |
+| **BR-25**   | Company admin attacking platform admin orgs                       | `GET /api/v1/admin/organizations`                   | `company_admin`          | `403 Forbidden`         | **PASSED** |
+| **BR-25**   | Company admin provisioning organization                           | `POST /api/v1/admin/organizations`                  | `company_admin`          | `403 Forbidden`         | **PASSED** |
+| **BR-25**   | Company admin updating org status                                 | `PATCH /api/v1/admin/organizations/:id/status`      | `company_admin`          | `403 Forbidden`         | **PASSED** |
+| **BR-25**   | Company admin attacking master templates                          | `GET /api/v1/admin/templates`                       | `company_admin`          | `403 Forbidden`         | **PASSED** |
+| **BR-25**   | Company admin viewing platform metrics                            | `GET /api/v1/admin/metrics`                         | `company_admin`          | `403 Forbidden`         | **PASSED** |
+| **BR-25**   | Company admin viewing platform MFA status                         | `GET /api/v1/auth/mfa/status`                       | `company_admin`          | `403 Forbidden`         | **PASSED** |
 
 ---
 
 ## 4. Endpoints with No Router Match (Router Generic 404s)
 
-The following HTTP methods and paths do not have registered endpoints in the NestJS controllers:
+The following HTTP methods have no handler declared on the controller and return the router's generic 404. These are tracked separately and are **not** counted as tenant isolation proofs:
 
-- `PATCH /api/v1/company/templates/:id`
-- `DELETE /api/v1/company/templates/:id`
-- `PATCH /api/v1/company/assessments/:id` (only `:id/brief` exists)
-- `DELETE /api/v1/company/assessments/:id`
-- `GET /api/v1/company/candidates/:id`
-- `GET /api/v1/candidates/:id`
-
-> **Security Note**: These requests return Fastify's generic HTTP 404 router response for any identifier. They are tested in a separate, explicitly named describe block (`Endpoints with no router match`) and are **never** counted as tenant isolation proofs, nor are they evaluated against the control-first rule.
+1. `PATCH /api/v1/company/templates/:id` -> Generic Router 404
+2. `DELETE /api/v1/company/templates/:id` -> Generic Router 404
+3. `PATCH /api/v1/company/assessments/:id` -> Generic Router 404
+4. `DELETE /api/v1/company/assessments/:id` -> Generic Router 404
+5. `GET /api/v1/company/candidates/:id` -> Generic Router 404
+6. `GET /api/v1/candidates/:id` -> Generic Router 404
 
 ---
 
 ## 5. Skipped Tests & Blockers
 
-The following test cases are intentionally skipped (`describe.skip`) due to pending upstream streams:
+The following test cases are intentionally skipped (`it.skip`) because the corresponding backend features or architecture decisions are pending:
 
-1. **Quotes & Billing Isolation (`GET /company/quotes`, `GET /company/quotes/:id`)**:
-   - _Blocker_: Quoting engine and commercial pricing entities are scheduled for **Stream 8**.
-2. **Submission Grading Isolation (`GET /company/submissions/:id`)**:
-   - _Blocker_: Submission deliverables entity and AI review aggregator are scheduled for **Stream 5**.
-3. **Candidate Assignment Launch (`POST /company/assignments/:id/start`)**:
-   - _Blocker_: Candidate workspace provisioning orchestrator is scheduled for **Stream 2**.
+1. **Commercial Quotes & Invoices (`GET /company/quotes`, `GET /company/quotes/:id`)**:
+   - _Blocker_: Quoting and billing entities (`app.quotes`, `app.quote_lines`, `app.invoices`) are not yet implemented in backend.
+2. **Submission Deliverables & Agent Grading (`GET /company/submissions/:id`)**:
+   - _Blocker_: Candidate submission entities (`app.submissions`, `app.agent_runs`) and review aggregator are not yet implemented in backend.
+3. **Candidate Assignment & Workspace Session Launch (`POST /company/assignments/:id/start`)**:
+   - _Blocker_: Candidate workspace provisioning orchestrator and `app.assignments` are not yet implemented in backend.
+4. **Suspended Account Bad-Password Login Order**:
+   - _Blocker_: Decision pending on login verification order (`recommended, to be confirmed by Vishal V`).
+5. **Suspended Account Correct-Password Login Order**:
+   - _Blocker_: Decision pending on login verification order (`recommended, to be confirmed by Vishal V`).
+6. **DevTestController Fail-Closed Exclusion**:
+   - _Blocker_: Registration condition hardening in `app.module.ts` (`recommended, to be confirmed by Vishal V`).
 
 ---
 
 ## 6. Security Findings & Recommendations
 
-### Finding 1: `DevTestController` Registration Condition
+### Finding 1: `DevTestController` Registration Condition (Fail-Closed Hardening)
 
 - **Severity**: Low (Architectural hardening recommendation)
 - **Location**: `apps/api/src/app.module.ts`, Line 39
-- **Description**: `DevTestController` (`/_test/*`) is registered via `const devControllers = process.env.NODE_ENV === 'production' ? [] : [DevTestController];`.
-- **Risk**: If a production deployment starts with `NODE_ENV` undefined or misconfigured as `development` or `test`, dev test routes (`/_test/ping`, `/_test/mutate`) become reachable in production.
-- **Recommendation**: Invert the condition to fail closed (`NODE_ENV === 'development' || NODE_ENV === 'test' ? [DevTestController] : []`), or exclude `DevTestController` from the production build entirely.
+- **Description**: `DevTestController` (`/_test/*`) is currently registered via:
+  ```ts
+  const devControllers = process.env.NODE_ENV === 'production' ? [] : [DevTestController];
+  ```
+- **Risk**: This is a **fail-open** construct. If a deployment starts with `NODE_ENV` undefined, misspelled, or set to `staging`, test controllers (`/_test/ping`, `/_test/mutate`) become reachable in that environment.
+- **Recommendation (to be confirmed by Vishal V)**: Invert the condition to fail-closed opt-in:
+  ```ts
+  const devControllers =
+    process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
+      ? [DevTestController]
+      : [];
+  ```
 
-### Finding 2: Suspended Account Disclosure via `/auth/login`
+### Finding 2: Suspended Account Status Disclosure via `/auth/login`
 
-- **Severity**: Informational / Business Logic Clarification
+- **Severity**: Low / Information Disclosure (Business Logic Clarification)
 - **Location**: `apps/api/src/modules/auth/auth.service.ts`, Lines 76, 538–555
-- **Description**: `assertAccountActive(user)` is executed **before** password verification. When a suspended user or a user belonging to a suspended organization attempts to log in with an incorrect password, the API responds with HTTP 403 `ACCOUNT_SUSPENDED` or `ORG_SUSPENDED`.
-- **Risk**: An unauthenticated attacker can probe email addresses to identify whether an account exists and is currently suspended without needing valid credentials.
-- **Recommendation / Question for Vishal V**: Confirm whether this disclosure is acceptable for candidate UX or if password verification should occur prior to account suspension checks (or return generic `INVALID_CREDENTIALS` on bad passwords).
+- **Description**: In `AuthService.loginWithPassword()`, `assertAccountActive(user)` executes **prior** to password verification. When a suspended user or a user belonging to a suspended organization attempts to log in with an incorrect password, the API immediately returns HTTP 403 `ACCOUNT_SUSPENDED` or `ORG_SUSPENDED`.
+- **Risk**: An unauthenticated attacker can probe arbitrary email addresses to enumerate which users and organizations exist and are currently suspended, without possessing valid credentials.
+- **Recommendation (to be confirmed by Vishal V)**: Verify the password first, and only return `403 ACCOUNT_SUSPENDED` or `ORG_SUSPENDED` when the password is valid. If the password is incorrect, return generic HTTP 401 `INVALID_CREDENTIALS` identical in timing and schema to an unknown user. (Two skipped tests are ready in `privilege-escalation.spec.ts` once agreed).
 
 ### Finding 3: OpenAPI Documentation Drift
 
@@ -199,6 +206,22 @@ The following test cases are intentionally skipped (`describe.skip`) due to pend
   1. `CandidatesController` serves both `/candidates` and `/company/candidates`, whereas OpenAPI documents only `/company/candidates`.
   2. `AdminTemplatesController` registers `POST /admin/templates/:id/assign/bulk`, `POST /admin/templates/:id/clone`, and `POST /admin/templates/:id/versions/:version/publish`, which are not documented in `openapi.yaml`.
   3. `GET /company/templates/:id` returns `id: template.slug` rather than a UUID in its response DTO.
+- **Recommendation (to be confirmed by Vishal V)**: Update `openapi.yaml` to include missing endpoints and deprecate the `/candidates` root prefix.
+
+### Finding 4: Template Lookup by UUID vs Slug
+
+- **Severity**: Informational / Architecture Consistency
+- **Location**: `apps/api/src/modules/templates/templates.repository.ts`, Line 131
+- **Description**: `CompanyTemplatesController.getTemplateById` queries PostgreSQL with `WHERE (t.id::text = $2 OR t.slug = $2) AND ta.org_id = $1`. It accepts both a UUID or a slug string (e.g. `sec-tpl-b-...` or `tpl_fs_01`).
+- **Verification**: Tests confirm that Tenant A cannot access Tenant B templates by either UUID or slug, and cannot access unassigned templates by either form.
+- **Recommendation (to be confirmed by Vishal V)**: Update the OpenAPI schema for `GET /company/templates/{id}` parameter description to state `idOrSlug: string` to avoid caller confusion.
+
+### Finding 5: `/candidates` Alias Deprecation
+
+- **Severity**: Low (API consistency)
+- **Location**: `apps/api/src/modules/candidates/candidates.controller.ts`
+- **Description**: `CandidatesController` is decorated with `@Controller(['candidates', 'company/candidates'])`.
+- **Recommendation (to be confirmed by Vishal V)**: Formally deprecate `/candidates` in favor of `/company/candidates`. In our test helpers, both prefixes are defined in `CANDIDATE_ROUTE_PREFIXES` so that removing the alias in the future is a single-line edit.
 
 ---
 
@@ -213,6 +236,8 @@ Ensure the test database and Redis services are active:
 pnpm test:tenancy
 ```
 
+_Expected Output_: `Test Files: 3 passed (3)`, `Tests: 105 passed | 6 skipped (111)`.
+
 ### 7.2 Verifying Graceful Skip on Offline Database
 
 To confirm that test suites skip cleanly without unhandled rejections when the database is unavailable:
@@ -222,7 +247,7 @@ To confirm that test suites skip cleanly without unhandled rejections when the d
 DATABASE_URL=postgres://hs_app:hs_app_local@127.0.0.1:5439/hellosmart_test pnpm --dir apps/api vitest run --project tenancy
 ```
 
-_Expected Output_: `Test Files: 3 skipped (3)`, `Tests: 92 skipped (95)`.
+_Expected Output_: `Test Files: 3 skipped (3)`, `Tests: 111 skipped (111)`.
 
 ### 7.3 Adding New Routes to the Security Matrix
 
@@ -236,6 +261,8 @@ Whenever a new controller or route is introduced into `apps/api/src`:
 
 ## 8. Open Questions for Vishal V
 
-1. **Suspended Account Login Disclosure**: During `/auth/login`, should suspended users receive HTTP 403 `ACCOUNT_SUSPENDED` before password verification (current behavior), or should bad passwords return HTTP 401 `INVALID_CREDENTIALS` regardless of account status to prevent user enumeration?
-2. **Dual Candidate Route Prefixes**: `CandidatesController` currently serves both `/candidates` and `/company/candidates`. Should `/candidates` be deprecated in favor of `/company/candidates` for OpenAPI consistency, or should both remain permanently supported?
-3. **Template ID vs Slug in Company Portal**: `CompanyTemplatesController.getTemplateById` returns `id: template.slug` (e.g. `tpl_fs_01`), matching the static template catalog keys, while the database primary key is a UUID. Should the response DTO expose both `id` (UUID) and `slug` (string) explicitly?
+1. **Suspended Account Login Disclosure**: During `/auth/login`, should suspended users receive HTTP 403 `ACCOUNT_SUSPENDED` before password verification (current behavior), or should bad passwords return HTTP 401 `INVALID_CREDENTIALS` regardless of account status to prevent user enumeration? (Recommended: verify password first).
+2. **Dual Candidate Route Prefixes**: `CandidatesController` currently serves both `/candidates` and `/company/candidates`. Should `/candidates` be deprecated in favor of `/company/candidates` for OpenAPI consistency, or should both remain permanently supported? (Recommended: deprecate `/candidates`).
+3. **Template ID vs Slug in Company Portal**: `CompanyTemplatesController.getTemplateById` returns `id: template.slug` (e.g. `tpl_fs_01`), matching the static template catalog keys, while the database primary key is a UUID. Should the response DTO expose both `id` (UUID) and `slug` (string) explicitly? (Recommended: expose both).
+4. **DevTestController Registration**: In `app.module.ts`, `DevTestController` is excluded only when `NODE_ENV === 'production'`. Should this be inverted to fail-closed opt-in for `development` and `test`? (Recommended: fail-closed opt-in).
+5. **OpenAPI Route Completeness**: `AdminTemplatesController` registers several bulk and publish endpoints not yet in `openapi.yaml`. Should these be added to the OpenAPI contract? (Recommended: sync `openapi.yaml`).

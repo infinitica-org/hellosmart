@@ -1,43 +1,36 @@
-import crypto from 'node:crypto';
-import pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import * as pg from 'pg';
+import * as crypto from 'crypto';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import {
-  assertZeroTenantLeak,
-  createSecurityTestApp,
-  injectSecRequest,
   setupSecurityTestData,
   teardownSecurityTestData,
+  createSecurityTestApp,
+  injectSecRequest,
+  assertZeroTenantLeak,
+  checkDbConnection,
+  CANDIDATE_ROUTE_PREFIXES,
   type SecurityTestContext,
 } from './helpers/index.js';
 
-const DATABASE_URL =
-  process.env.DATABASE_URL ?? 'postgres://hs_app:hs_app_local@127.0.0.1:5432/hellosmart_test';
-const DATABASE_ADMIN_URL =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgres://hs_owner:hs_owner_local@127.0.0.1:5432/hellosmart_test';
+/**
+ * Multi-Tenant Data Isolation & Security Penetration Test Suite
+ *
+ * Requirements:
+ * - BR-01: Tenant Isolation (Every query scoped by org_id; cross-org reads return 404)
+ * - BR-02: Template Privacy (Private blueprints assigned per-org; no public catalog)
+ * - BR-03: Version Pinning (Draft template versions used in test fixture to allow safe teardown)
+ */
 
 let app: NestFastifyApplication;
 let adminPool: pg.Pool;
 let ctx: SecurityTestContext;
 let isDbAvailable = false;
 
-async function checkDbConnection(): Promise<boolean> {
-  try {
-    const probe = new pg.Pool({
-      connectionString: DATABASE_URL,
-      connectionTimeoutMillis: 3000,
-      max: 1,
-    });
-    const client = await probe.connect();
-    await client.query('SELECT 1');
-    client.release();
-    await probe.end();
-    return true;
-  } catch {
-    return false;
-  }
-}
+const DATABASE_ADMIN_URL =
+  process.env.DATABASE_OWNER_URL ??
+  process.env.DATABASE_ADMIN_URL ??
+  'postgres://hs_owner:hs_owner_local@127.0.0.1:5432/hellosmart_test';
 
 isDbAvailable = await checkDbConnection();
 
@@ -64,8 +57,9 @@ describe
     // =========================================================================
     // 1. Template Isolation (BR-02: Private Templates Assigned Per-Tenant)
     // =========================================================================
-    describe('1. Template Isolation (BR-02: No Public Marketplace, Strict Private Blueprints)', () => {
-      it('control-first: Tenant B admin can view Tenant B assigned template', async () => {
+    describe('1. Template Isolation (BR-02: Strict Private Blueprints, ID and Slug Lookup)', () => {
+      // --- Control-First Tests ---
+      it('control-first: Tenant B admin can view Tenant B assigned template by UUID', async () => {
         const res = await injectSecRequest(app, {
           method: 'GET',
           url: `/api/v1/company/templates/${ctx.templateB.id}`,
@@ -76,7 +70,41 @@ describe
         expect([ctx.templateB.id, ctx.templateB.slug]).toContain(res.json?.id);
       });
 
-      it('cross-tenant: Tenant A admin receives 404 when requesting Tenant B template', async () => {
+      it('control-first: Tenant B admin can view Tenant B assigned template by slug', async () => {
+        const res = await injectSecRequest(app, {
+          method: 'GET',
+          url: `/api/v1/company/templates/${ctx.templateB.slug}`,
+          sessionToken: ctx.companyAdminB.sessionToken,
+        });
+
+        expect(res.statusCode).toBe(200);
+        expect([ctx.templateB.id, ctx.templateB.slug]).toContain(res.json?.id);
+      });
+
+      it('control-first: Tenant A admin can view Tenant A assigned template by UUID', async () => {
+        const res = await injectSecRequest(app, {
+          method: 'GET',
+          url: `/api/v1/company/templates/${ctx.templateA.id}`,
+          sessionToken: ctx.companyAdminA.sessionToken,
+        });
+
+        expect(res.statusCode).toBe(200);
+        expect([ctx.templateA.id, ctx.templateA.slug]).toContain(res.json?.id);
+      });
+
+      it('control-first: Tenant A admin can view Tenant A assigned template by slug', async () => {
+        const res = await injectSecRequest(app, {
+          method: 'GET',
+          url: `/api/v1/company/templates/${ctx.templateA.slug}`,
+          sessionToken: ctx.companyAdminA.sessionToken,
+        });
+
+        expect(res.statusCode).toBe(200);
+        expect([ctx.templateA.id, ctx.templateA.slug]).toContain(res.json?.id);
+      });
+
+      // --- Cross-Tenant Attacks by UUID and Slug ---
+      it('cross-tenant: Tenant A admin receives 404 requesting Tenant B template by UUID (zero leak)', async () => {
         const res = await injectSecRequest(app, {
           method: 'GET',
           url: `/api/v1/company/templates/${ctx.templateB.id}`,
@@ -84,17 +112,109 @@ describe
         });
 
         expect(res.statusCode).toBe(404);
+        expect(res.json?.code).toBe('TEMPLATE_NOT_FOUND');
         assertZeroTenantLeak(res, ctx.allTenantBIdentifiers, {
           excludeTokens: [ctx.templateB.id, ctx.templateB.slug],
         });
       });
 
-      it('no-oracle: Tenant A receives identical error response for Tenant B template vs nonexistent UUID', async () => {
+      it('cross-tenant: Tenant A admin receives 404 requesting Tenant B template by slug (zero leak)', async () => {
+        const res = await injectSecRequest(app, {
+          method: 'GET',
+          url: `/api/v1/company/templates/${ctx.templateB.slug}`,
+          sessionToken: ctx.companyAdminA.sessionToken,
+        });
+
+        expect(res.statusCode).toBe(404);
+        expect(res.json?.code).toBe('TEMPLATE_NOT_FOUND');
+        assertZeroTenantLeak(res, ctx.allTenantBIdentifiers, {
+          excludeTokens: [ctx.templateB.id, ctx.templateB.slug],
+        });
+      });
+
+      // --- Unassigned Template Access by UUID and Slug ---
+      it('unassigned-template: Tenant A admin receives 404 requesting unassigned template by UUID (zero leak)', async () => {
+        const res = await injectSecRequest(app, {
+          method: 'GET',
+          url: `/api/v1/company/templates/${ctx.templateUnassigned.id}`,
+          sessionToken: ctx.companyAdminA.sessionToken,
+        });
+
+        expect(res.statusCode).toBe(404);
+        expect(res.json?.code).toBe('TEMPLATE_NOT_FOUND');
+        assertZeroTenantLeak(res, [ctx.templateUnassigned.id, ctx.templateUnassigned.slug], {
+          excludeTokens: [ctx.templateUnassigned.id, ctx.templateUnassigned.slug],
+        });
+      });
+
+      it('unassigned-template: Tenant A admin receives 404 requesting unassigned template by slug (zero leak)', async () => {
+        const res = await injectSecRequest(app, {
+          method: 'GET',
+          url: `/api/v1/company/templates/${ctx.templateUnassigned.slug}`,
+          sessionToken: ctx.companyAdminA.sessionToken,
+        });
+
+        expect(res.statusCode).toBe(404);
+        expect(res.json?.code).toBe('TEMPLATE_NOT_FOUND');
+        assertZeroTenantLeak(res, [ctx.templateUnassigned.id, ctx.templateUnassigned.slug], {
+          excludeTokens: [ctx.templateUnassigned.id, ctx.templateUnassigned.slug],
+        });
+      });
+
+      // --- Adversarial and Malformed Slug Requests ---
+      it('adversarial slug: UUID-looking non-existent slug returns generic 404', async () => {
+        const res = await injectSecRequest(app, {
+          method: 'GET',
+          url: '/api/v1/company/templates/00000000-0000-0000-0000-000000000000',
+          sessionToken: ctx.companyAdminA.sessionToken,
+        });
+
+        expect(res.statusCode).toBe(404);
+        expect(res.json?.code).toBe('TEMPLATE_NOT_FOUND');
+      });
+
+      it('adversarial slug: very long slug returns generic 404 with no crash', async () => {
+        const longSlug = 'a'.repeat(250);
+        const res = await injectSecRequest(app, {
+          method: 'GET',
+          url: `/api/v1/company/templates/${longSlug}`,
+          sessionToken: ctx.companyAdminA.sessionToken,
+        });
+
+        expect(res.statusCode).toBe(404);
+        expect(['TEMPLATE_NOT_FOUND', 'NOT_FOUND']).toContain(res.json?.code);
+      });
+
+      it('adversarial slug: URL-encoded slug with special characters returns generic 404', async () => {
+        const encodedSlug = encodeURIComponent('invalid/slug?foo=bar#frag');
+        const res = await injectSecRequest(app, {
+          method: 'GET',
+          url: `/api/v1/company/templates/${encodedSlug}`,
+          sessionToken: ctx.companyAdminA.sessionToken,
+        });
+
+        expect(res.statusCode).toBe(404);
+        expect(res.json?.code).toBe('TEMPLATE_NOT_FOUND');
+      });
+
+      it('no-oracle: Tenant A receives identical error response for Tenant B template vs nonexistent UUID vs unassigned template', async () => {
         const nonexistentId = crypto.randomUUID();
 
-        const attackRes = await injectSecRequest(app, {
+        const foreignUuidRes = await injectSecRequest(app, {
           method: 'GET',
           url: `/api/v1/company/templates/${ctx.templateB.id}`,
+          sessionToken: ctx.companyAdminA.sessionToken,
+        });
+
+        const foreignSlugRes = await injectSecRequest(app, {
+          method: 'GET',
+          url: `/api/v1/company/templates/${ctx.templateB.slug}`,
+          sessionToken: ctx.companyAdminA.sessionToken,
+        });
+
+        const unassignedUuidRes = await injectSecRequest(app, {
+          method: 'GET',
+          url: `/api/v1/company/templates/${ctx.templateUnassigned.id}`,
           sessionToken: ctx.companyAdminA.sessionToken,
         });
 
@@ -104,14 +224,19 @@ describe
           sessionToken: ctx.companyAdminA.sessionToken,
         });
 
-        expect(attackRes.statusCode).toBe(404);
+        expect(foreignUuidRes.statusCode).toBe(404);
+        expect(foreignSlugRes.statusCode).toBe(404);
+        expect(unassignedUuidRes.statusCode).toBe(404);
         expect(randomRes.statusCode).toBe(404);
-        expect(attackRes.json?.code).toBe(randomRes.json?.code);
-        expect(attackRes.json?.title).toBe(randomRes.json?.title);
-        expect(attackRes.json?.status).toBe(randomRes.json?.status);
+
+        expect(foreignUuidRes.json?.code).toBe(randomRes.json?.code);
+        expect(foreignSlugRes.json?.code).toBe(randomRes.json?.code);
+        expect(unassignedUuidRes.json?.code).toBe(randomRes.json?.code);
+        expect(foreignUuidRes.json?.title).toBe(randomRes.json?.title);
+        expect(foreignUuidRes.json?.status).toBe(randomRes.json?.status);
       });
 
-      it('list-isolation: Tenant A admin template list contains only assigned templates, never Tenant B templates', async () => {
+      it('list-isolation: Tenant A admin template list contains only assigned templates, never Tenant B or unassigned templates', async () => {
         const res = await injectSecRequest(app, {
           method: 'GET',
           url: '/api/v1/company/templates',
@@ -124,6 +249,7 @@ describe
         const items: any[] = Array.isArray(res.json) ? res.json : res.json?.data || [];
         const returnedIds = items.map((t) => t.id);
         expect(returnedIds).not.toContain(ctx.templateB.id);
+        expect(returnedIds).not.toContain(ctx.templateUnassigned.id);
       });
     });
 
@@ -207,245 +333,139 @@ describe
     // =========================================================================
     // 3. Candidate Isolation across both /candidates and /company/candidates
     // =========================================================================
-    describe('3. Candidate Isolation (Dual-Prefix Serving: /candidates and /company/candidates)', () => {
-      describe('Prefix: /candidates', () => {
-        it('control-first: Tenant B admin can view Tenant B candidate list', async () => {
-          const res = await injectSecRequest(app, {
-            method: 'GET',
-            url: '/api/v1/candidates',
-            sessionToken: ctx.companyAdminB.sessionToken,
+    describe('3. Candidate Isolation (Canonical and Alias Route Prefixes)', () => {
+      for (const item of CANDIDATE_ROUTE_PREFIXES) {
+        const { prefix, isAlias, description } = item;
+
+        describe(`Prefix: ${prefix} (${description})`, () => {
+          it(`control-first: Tenant B admin can view Tenant B candidate list under ${prefix}`, async () => {
+            const res = await injectSecRequest(app, {
+              method: 'GET',
+              url: `/api/v1${prefix}`,
+              sessionToken: ctx.companyAdminB.sessionToken,
+            });
+
+            expect(res.statusCode).toBe(200);
+            const candidates: any[] = Array.isArray(res.json)
+              ? res.json
+              : res.json?.items || res.json?.data || [];
+            expect(candidates.some((c) => c.email === ctx.candidateB.email)).toBe(true);
           });
 
-          expect(res.statusCode).toBe(200);
-          const candidates: any[] = Array.isArray(res.json)
-            ? res.json
-            : res.json?.items || res.json?.data || [];
-          expect(candidates.some((c) => c.email === ctx.candidateB.email)).toBe(true);
+          it(`list-isolation: Tenant A admin querying ${prefix} never sees Tenant B candidate`, async () => {
+            const res = await injectSecRequest(app, {
+              method: 'GET',
+              url: `/api/v1${prefix}?page=1&limit=1000&status=all`,
+              sessionToken: ctx.companyAdminA.sessionToken,
+            });
+
+            expect(res.statusCode).toBe(200);
+            assertZeroTenantLeak(res, ctx.allTenantBIdentifiers);
+          });
+
+          it(`cross-tenant delete: Tenant A admin receives 404 deleting Tenant B candidate under ${prefix}`, async () => {
+            const res = await injectSecRequest(app, {
+              method: 'DELETE',
+              url: `/api/v1${prefix}/${ctx.candidateB.id}`,
+              sessionToken: ctx.companyAdminA.sessionToken,
+            });
+
+            expect(res.statusCode).toBe(404);
+            assertZeroTenantLeak(res, ctx.allTenantBIdentifiers);
+
+            // Verify no side effects in DB
+            const client = await adminPool.connect();
+            try {
+              const dbRes = await client.query(
+                'SELECT status, deleted_at FROM app.users WHERE id = $1',
+                [ctx.candidateB.id],
+              );
+              expect(dbRes.rows[0].status).toBe('active');
+              expect(dbRes.rows[0].deleted_at).toBeNull();
+            } finally {
+              client.release();
+            }
+          });
+
+          it(`cross-tenant update: Tenant A admin receives 404 updating Tenant B candidate under ${prefix}`, async () => {
+            const res = await injectSecRequest(app, {
+              method: 'PATCH',
+              url: `/api/v1${prefix}/${ctx.candidateB.id}`,
+              sessionToken: ctx.companyAdminA.sessionToken,
+              payload: { name: 'Attempted Tenant A Takeover' },
+            });
+
+            expect(res.statusCode).toBe(404);
+            assertZeroTenantLeak(res, ctx.allTenantBIdentifiers);
+          });
+
+          it(`cross-tenant resend invite: Tenant A admin receives 404 under ${prefix}`, async () => {
+            const res = await injectSecRequest(app, {
+              method: 'POST',
+              url: `/api/v1${prefix}/${ctx.candidateB.id}/resend-invite`,
+              sessionToken: ctx.companyAdminA.sessionToken,
+            });
+
+            expect(res.statusCode).toBe(404);
+            assertZeroTenantLeak(res, ctx.allTenantBIdentifiers);
+          });
+
+          it(`mass-assignment injection: foreign orgId payload rejected under ${prefix}, valid create strictly caller-scoped`, async () => {
+            // Step 1: Prove strict schema rejects mass-assignment unknown keys (orgId, org_id) with 422
+            const spoofEmail = `spoofed.${isAlias ? 'alias' : 'canon'}.${ctx.nonce}@example.test`;
+            const resRejected = await injectSecRequest(app, {
+              method: 'POST',
+              url: `/api/v1${prefix}`,
+              sessionToken: ctx.companyAdminA.sessionToken,
+              payload: {
+                name: 'Spoofed Candidate',
+                email: spoofEmail,
+                orgId: ctx.orgB.id,
+                org_id: ctx.orgB.id,
+              },
+            });
+
+            expect(resRejected.statusCode).toBe(422);
+            expect(resRejected.json?.code).toBe('VALIDATION_ERROR');
+
+            // Step 2: Valid candidate creation creates candidate strictly in caller tenant (orgA), never Tenant B
+            const validEmail = `valid.${isAlias ? 'alias' : 'canon'}.${ctx.nonce}@example.test`;
+            const resValid = await injectSecRequest(app, {
+              method: 'POST',
+              url: `/api/v1${prefix}`,
+              sessionToken: ctx.companyAdminA.sessionToken,
+              payload: {
+                name: `Valid Candidate ${isAlias ? 'Alias' : 'Canon'}`,
+                email: validEmail,
+              },
+            });
+
+            expect(resValid.statusCode).toBe(201);
+            const createdId = resValid.json?.id;
+            expect(createdId).toBeDefined();
+            if (createdId) {
+              ctx.trackedUserIds.push(createdId);
+            }
+
+            const client = await adminPool.connect();
+            try {
+              const dbRes = await client.query('SELECT org_id FROM app.users WHERE id = $1', [
+                createdId,
+              ]);
+              expect(dbRes.rows[0].org_id).toBe(ctx.orgA.id);
+              expect(dbRes.rows[0].org_id).not.toBe(ctx.orgB.id);
+            } finally {
+              client.release();
+            }
+          });
         });
-
-        it('list-isolation: Tenant A admin querying with wide pagination never sees Tenant B candidate', async () => {
-          const res = await injectSecRequest(app, {
-            method: 'GET',
-            url: '/api/v1/candidates?page=1&limit=1000&status=all',
-            sessionToken: ctx.companyAdminA.sessionToken,
-          });
-
-          expect(res.statusCode).toBe(200);
-          assertZeroTenantLeak(res, ctx.allTenantBIdentifiers);
-        });
-
-        it('cross-tenant delete: Tenant A admin receives 404 deleting Tenant B candidate with no side effects', async () => {
-          const res = await injectSecRequest(app, {
-            method: 'DELETE',
-            url: `/api/v1/candidates/${ctx.candidateB.id}`,
-            sessionToken: ctx.companyAdminA.sessionToken,
-          });
-
-          expect(res.statusCode).toBe(404);
-          assertZeroTenantLeak(res, ctx.allTenantBIdentifiers);
-
-          // Verify no side effects in DB
-          const client = await adminPool.connect();
-          try {
-            const dbRes = await client.query(
-              'SELECT status, deleted_at FROM app.users WHERE id = $1',
-              [ctx.candidateB.id],
-            );
-            expect(dbRes.rows[0].status).toBe('active');
-            expect(dbRes.rows[0].deleted_at).toBeNull();
-          } finally {
-            client.release();
-          }
-        });
-
-        it('cross-tenant update: Tenant A admin receives 404 updating Tenant B candidate', async () => {
-          const res = await injectSecRequest(app, {
-            method: 'PATCH',
-            url: `/api/v1/candidates/${ctx.candidateB.id}`,
-            sessionToken: ctx.companyAdminA.sessionToken,
-            payload: { name: 'Attempted Tenant A Takeover' },
-          });
-
-          expect(res.statusCode).toBe(404);
-          assertZeroTenantLeak(res, ctx.allTenantBIdentifiers);
-        });
-
-        it('cross-tenant resend invite: Tenant A admin receives 404 resending invite for Tenant B candidate', async () => {
-          const res = await injectSecRequest(app, {
-            method: 'POST',
-            url: `/api/v1/candidates/${ctx.candidateB.id}/resend-invite`,
-            sessionToken: ctx.companyAdminA.sessionToken,
-          });
-
-          expect(res.statusCode).toBe(404);
-          assertZeroTenantLeak(res, ctx.allTenantBIdentifiers);
-        });
-
-        it('mass-assignment / tenant impersonation: foreign orgId payload rejected by strict schema, valid create strictly caller-scoped', async () => {
-          // Step 1: Prove strict schema rejects mass-assignment unknown keys (orgId, org_id) with 422
-          const spoofEmail = `spoofed.cand.1.${ctx.nonce}@example.test`;
-          const resRejected = await injectSecRequest(app, {
-            method: 'POST',
-            url: '/api/v1/candidates',
-            sessionToken: ctx.companyAdminA.sessionToken,
-            payload: {
-              name: 'Spoofed Candidate',
-              email: spoofEmail,
-              orgId: ctx.orgB.id,
-              org_id: ctx.orgB.id,
-            },
-          });
-
-          expect(resRejected.statusCode).toBe(422);
-          expect(resRejected.json?.code).toBe('VALIDATION_ERROR');
-
-          // Step 2: Valid candidate creation creates candidate strictly in caller tenant (orgA), never Tenant B
-          const validEmail = `valid.cand.1.${ctx.nonce}@example.test`;
-          const resValid = await injectSecRequest(app, {
-            method: 'POST',
-            url: '/api/v1/candidates',
-            sessionToken: ctx.companyAdminA.sessionToken,
-            payload: {
-              name: 'Valid Candidate 1',
-              email: validEmail,
-            },
-          });
-
-          expect(resValid.statusCode).toBe(201);
-          const createdId = resValid.json?.id;
-          expect(createdId).toBeDefined();
-          if (createdId) {
-            ctx.trackedUserIds.push(createdId);
-          }
-
-          const client = await adminPool.connect();
-          try {
-            const dbRes = await client.query('SELECT org_id FROM app.users WHERE id = $1', [
-              createdId,
-            ]);
-            expect(dbRes.rows[0].org_id).toBe(ctx.orgA.id);
-            expect(dbRes.rows[0].org_id).not.toBe(ctx.orgB.id);
-          } finally {
-            client.release();
-          }
-        });
-      });
-
-      describe('Prefix: /company/candidates', () => {
-        it('control-first: Tenant B admin can view Tenant B candidate list under /company/candidates', async () => {
-          const res = await injectSecRequest(app, {
-            method: 'GET',
-            url: '/api/v1/company/candidates',
-            sessionToken: ctx.companyAdminB.sessionToken,
-          });
-
-          expect(res.statusCode).toBe(200);
-          const candidates: any[] = Array.isArray(res.json)
-            ? res.json
-            : res.json?.items || res.json?.data || [];
-          expect(candidates.some((c) => c.email === ctx.candidateB.email)).toBe(true);
-        });
-
-        it('list-isolation: Tenant A admin querying /company/candidates never sees Tenant B candidate', async () => {
-          const res = await injectSecRequest(app, {
-            method: 'GET',
-            url: '/api/v1/company/candidates?page=1&limit=1000&status=all',
-            sessionToken: ctx.companyAdminA.sessionToken,
-          });
-
-          expect(res.statusCode).toBe(200);
-          assertZeroTenantLeak(res, ctx.allTenantBIdentifiers);
-        });
-
-        it('cross-tenant delete: Tenant A admin receives 404 deleting Tenant B candidate under /company/candidates', async () => {
-          const res = await injectSecRequest(app, {
-            method: 'DELETE',
-            url: `/api/v1/company/candidates/${ctx.candidateB.id}`,
-            sessionToken: ctx.companyAdminA.sessionToken,
-          });
-
-          expect(res.statusCode).toBe(404);
-          assertZeroTenantLeak(res, ctx.allTenantBIdentifiers);
-        });
-
-        it('cross-tenant update: Tenant A admin receives 404 updating Tenant B candidate under /company/candidates', async () => {
-          const res = await injectSecRequest(app, {
-            method: 'PATCH',
-            url: `/api/v1/company/candidates/${ctx.candidateB.id}`,
-            sessionToken: ctx.companyAdminA.sessionToken,
-            payload: { name: 'Attempted Tenant A Takeover Via Company Prefix' },
-          });
-
-          expect(res.statusCode).toBe(404);
-          assertZeroTenantLeak(res, ctx.allTenantBIdentifiers);
-        });
-
-        it('cross-tenant resend invite: Tenant A admin receives 404 under /company/candidates', async () => {
-          const res = await injectSecRequest(app, {
-            method: 'POST',
-            url: `/api/v1/company/candidates/${ctx.candidateB.id}/resend-invite`,
-            sessionToken: ctx.companyAdminA.sessionToken,
-          });
-
-          expect(res.statusCode).toBe(404);
-          assertZeroTenantLeak(res, ctx.allTenantBIdentifiers);
-        });
-
-        it('mass-assignment / tenant impersonation: foreign orgId payload rejected under /company/candidates, valid create strictly caller-scoped', async () => {
-          // Step 1: Prove strict schema rejects mass-assignment unknown keys (orgId, org_id) with 422
-          const spoofEmail = `spoofed.cand.2.${ctx.nonce}@example.test`;
-          const resRejected = await injectSecRequest(app, {
-            method: 'POST',
-            url: '/api/v1/company/candidates',
-            sessionToken: ctx.companyAdminA.sessionToken,
-            payload: {
-              name: 'Spoofed Candidate 2',
-              email: spoofEmail,
-              orgId: ctx.orgB.id,
-              org_id: ctx.orgB.id,
-            },
-          });
-
-          expect(resRejected.statusCode).toBe(422);
-          expect(resRejected.json?.code).toBe('VALIDATION_ERROR');
-
-          // Step 2: Valid candidate creation creates candidate strictly in caller tenant (orgA)
-          const validEmail = `valid.cand.2.${ctx.nonce}@example.test`;
-          const resValid = await injectSecRequest(app, {
-            method: 'POST',
-            url: '/api/v1/company/candidates',
-            sessionToken: ctx.companyAdminA.sessionToken,
-            payload: {
-              name: 'Valid Candidate 2',
-              email: validEmail,
-            },
-          });
-
-          expect(resValid.statusCode).toBe(201);
-          const createdId = resValid.json?.id;
-          expect(createdId).toBeDefined();
-          if (createdId) {
-            ctx.trackedUserIds.push(createdId);
-          }
-
-          const client = await adminPool.connect();
-          try {
-            const dbRes = await client.query('SELECT org_id FROM app.users WHERE id = $1', [
-              createdId,
-            ]);
-            expect(dbRes.rows[0].org_id).toBe(ctx.orgA.id);
-            expect(dbRes.rows[0].org_id).not.toBe(ctx.orgB.id);
-          } finally {
-            client.release();
-          }
-        });
-      });
+      }
     });
 
     // =========================================================================
-    // 4. Storage Isolation & Artifact Access Penetration Tests
+    // 4. Storage Artifact Isolation & Signed Download URL Security (BR-01)
     // =========================================================================
-    describe('4. Storage Artifact Isolation & Signed Download URL Security (BR-01, BR-11)', () => {
+    describe('4. Storage Artifact Isolation & Signed Download URL Security (BR-01)', () => {
       it('control-first: Tenant B admin can generate download URL for Tenant B submission artifact', async () => {
         const res = await injectSecRequest(app, {
           method: 'GET',
@@ -672,16 +692,16 @@ describe
     // 7. Skipped Tests for Unimplemented Entities (With Specific Blockers)
     // =========================================================================
     describe.skip('7. Future Entity Isolation Tests (Blocked: Entities not yet implemented in backend)', () => {
-      it('cross-tenant quote reading (blocked: Stream 8 commercial quoting not yet implemented)', async () => {
+      it('cross-tenant quote reading (blocked: quoting and billing entities not yet implemented in backend)', async () => {
         // Pending Quotes & Pricing Engine
       });
 
-      it('cross-tenant submission reading (blocked: Stream 5 reviewer agent engine not yet implemented)', async () => {
-        // Pending Stream 5 Submissions table and service
+      it('cross-tenant submission reading (blocked: submission entities and review pipeline not yet implemented in backend)', async () => {
+        // Pending Submissions table and service
       });
 
-      it('cross-tenant assignment launch (blocked: Stream 2 workspace session provisioning not yet implemented)', async () => {
-        // Pending Stream 2 candidate assignment & workspace orchestrator
+      it('cross-tenant assignment launch (blocked: candidate assignment and workspace orchestrator not yet implemented in backend)', async () => {
+        // Pending candidate assignment & workspace orchestrator
       });
     });
   });

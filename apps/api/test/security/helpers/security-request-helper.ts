@@ -22,6 +22,25 @@ export interface SecResponse {
 const STATE_CHANGING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
 /**
+ * Resolves the allowed test origin dynamically from the test configuration or environment.
+ * Never hardcodes a fixed URL; reads CORS_ORIGINS (or APP_BASE_URL) set by the test harness.
+ */
+export function resolveTestOrigin(customOrigin?: string): string {
+  if (customOrigin) {
+    return customOrigin;
+  }
+  const configured = process.env.CORS_ORIGINS?.split(',')[0]?.trim();
+  if (configured) {
+    return configured;
+  }
+  const appBaseUrl = process.env.APP_BASE_URL?.trim();
+  if (appBaseUrl) {
+    return appBaseUrl;
+  }
+  return 'http://localhost:3000';
+}
+
+/**
  * Wraps app.inject with standard anti-CSRF headers, trusted origin, and session cookies
  * to ensure that security tests focus on authorization and tenancy logic rather than
  * tripping browser anti-CSRF guards by accident.
@@ -49,7 +68,7 @@ export async function injectSecRequest(
     }
 
     if (!options.omitOrigin && !reqHeaders['origin'] && !reqHeaders['Origin']) {
-      reqHeaders['origin'] = options.customOrigin || 'http://localhost:3000';
+      reqHeaders['origin'] = resolveTestOrigin(options.customOrigin);
     }
   }
 

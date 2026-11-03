@@ -40,6 +40,7 @@ export interface SecurityTestContext {
 
   templateA: { id: string; slug: string; versionId: string };
   templateB: { id: string; slug: string; versionId: string };
+  templateUnassigned: { id: string; slug: string; versionId: string };
 
   assessmentA: { id: string; name: string };
   assessmentB: { id: string; name: string };
@@ -192,6 +193,23 @@ export async function setupSecurityTestData(
     );
     const versionBId = vBRes.rows[0].id;
 
+    // Unassigned template (assigned to NO organization)
+    const tUnassignedRes = await client.query(
+      `INSERT INTO app.templates (slug, name, category, difficulty, workspace_mode, description)
+       VALUES ($1, $2, 'Engineering', 'Advanced', 'cloud', 'Test Template Unassigned')
+       RETURNING id`,
+      [`sec-tpl-unassigned-${nonce}`, `Sec Template Unassigned ${nonce}`],
+    );
+    const templateUnassignedId = tUnassignedRes.rows[0].id;
+
+    const vUnassignedRes = await client.query(
+      `INSERT INTO app.template_versions (template_id, version, status, manifest)
+       VALUES ($1, '1.0.0', 'draft', '{"title": "Sec Version Unassigned"}'::jsonb)
+       RETURNING id`,
+      [templateUnassignedId],
+    );
+    const versionUnassignedId = vUnassignedRes.rows[0].id;
+
     // 5. Template Assignments (Org A to Template A, Org B to Template B)
     await client.query(
       `INSERT INTO app.template_assignments (template_id, org_id)
@@ -257,8 +275,8 @@ export async function setupSecurityTestData(
       companyAdminC.id,
       platformAdmin.id,
     ];
-    const trackedTemplateIds = [templateAId, templateBId];
-    const trackedVersionIds = [versionAId, versionBId];
+    const trackedTemplateIds = [templateAId, templateBId, templateUnassignedId];
+    const trackedVersionIds = [versionAId, versionBId, versionUnassignedId];
     const trackedAssessmentIds = [assessmentAId, assessmentBId];
 
     const allTenantBIdentifiers = [
@@ -293,6 +311,11 @@ export async function setupSecurityTestData(
       platformAdmin,
       templateA: { id: templateAId, slug: `sec-tpl-a-${nonce}`, versionId: versionAId },
       templateB: { id: templateBId, slug: `sec-tpl-b-${nonce}`, versionId: versionBId },
+      templateUnassigned: {
+        id: templateUnassignedId,
+        slug: `sec-tpl-unassigned-${nonce}`,
+        versionId: versionUnassignedId,
+      },
       assessmentA: { id: assessmentAId, name: `Assessment Alpha ${nonce}` },
       assessmentB: { id: assessmentBId, name: `Assessment Beta ${nonce}` },
       storageAssignmentIdA,

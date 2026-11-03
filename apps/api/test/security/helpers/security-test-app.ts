@@ -7,6 +7,28 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../../src/app.module.js';
 import { loadConfig } from '../../../src/config/config.js';
 
+export async function checkDbConnection(url?: string): Promise<boolean> {
+  const connStr =
+    url ??
+    process.env.DATABASE_URL ??
+    'postgres://hs_app:hs_app_local@127.0.0.1:5432/hellosmart_test';
+  try {
+    const pg = await import('pg');
+    const probe = new pg.default.Pool({
+      connectionString: connStr,
+      connectionTimeoutMillis: 3000,
+      max: 1,
+    });
+    const client = await probe.connect();
+    await client.query('SELECT 1');
+    client.release();
+    await probe.end();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function createSecurityTestApp(): Promise<{
   app: NestFastifyApplication;
   registeredRoutes: Array<{ method: string; url: string }>;
