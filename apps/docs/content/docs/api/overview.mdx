@@ -183,7 +183,7 @@ The API enforces strict defense-in-depth security controls on all incoming and o
 - **Preflight Cache**: 86,400 seconds (24 hours).
 
 ### C. CSRF & Origin Validation
-- **Custom Header**: State-changing browser requests (`POST`, `PUT`, `PATCH`, `DELETE`) must send `X-HS-CSRF: 1`.
+- **Custom Header**: State-changing browser requests (`POST`, `PUT`, `PATCH`, `DELETE`) must send  `X-HS-CSRF: 1`.
 - **Origin / Referer Verification**: Evaluates request `Origin` (falling back to strict URL parsing on `Referer` if `Origin` is omitted) against the configured trusted origin. Substring and domain-suffix attacks are rejected.
 - **Exemptions**: Server-to-server endpoints (such as external payment and booking webhooks) are explicitly decorated with `@SkipCsrf()`.
 

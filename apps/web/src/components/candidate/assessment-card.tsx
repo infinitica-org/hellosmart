@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter, Button } from '@hs/ui';
 import { Building2, Clock, CheckCircle2, AlertCircle, Play, RotateCcw, FileText, Lock, Terminal, ShieldCheck, Loader2 } from 'lucide-react';
 import { WindowCountdown } from './window-countdown';
+import { fetchCandidateAssessmentDetails, fetchCandidateAssignments } from '@/lib/candidate-api';
 
 export type AssessmentStatus = 'window_not_open' | 'ready' | 'in_progress' | 'submitted' | 'expired';
 
@@ -90,33 +91,32 @@ export function AssessmentCard({
 
       try {
         // Direct variable data-calling from API
-        const res = await fetch(`/api/candidate/assessment?id=${encodeURIComponent(assessmentId!)}`, {
-          cache: 'no-store',
-          headers: { Accept: 'application/json' },
-        });
-
-        if (res.ok) {
-          const json = await res.json();
-          if (!isCancelled && json && json.id) {
-            setData(json);
+        try {
+          const detail = await fetchCandidateAssessmentDetails(assessmentId!);
+          if (!isCancelled && detail && detail.id) {
+            setData({
+              id: detail.assignmentId || detail.id,
+              title: detail.name,
+              companyName: detail.companyName,
+              durationMinutes: detail.durationMinutes,
+              status: (detail.status as any) || 'ready',
+              workspaceMode: detail.workspaceMode,
+              instructions: detail.instructions ?? null,
+              description: detail.scenario ?? null,
+              windowStartUtc: detail.windowStartUtc ?? null,
+              windowEndUtc: detail.windowEndUtc ?? null,
+            });
             return;
           }
+        } catch {
+          // Fallback to assignments list query
         }
 
-        // Secondary fallback to assignments endpoint
-        const listRes = await fetch('/api/candidate/assignments', {
-          cache: 'no-store',
-          headers: { Accept: 'application/json' },
-        });
-
-        if (listRes.ok) {
-          const list = await listRes.json();
-          const items = Array.isArray(list) ? list : list?.items || list?.data || [];
-          const found = items.find((item: any) => item.id === assessmentId || item.workspaceId === assessmentId);
-          if (!isCancelled && found) {
-            setData(found);
-            return;
-          }
+        const items = await fetchCandidateAssignments();
+        const found = items.find((item: any) => item.id === assessmentId || item.workspaceId === assessmentId || item.assessmentId === assessmentId);
+        if (!isCancelled && found) {
+          setData(found);
+          return;
         }
 
         if (!isCancelled) {

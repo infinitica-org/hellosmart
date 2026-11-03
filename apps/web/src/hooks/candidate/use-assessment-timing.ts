@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { AssessmentTimingResponse } from '@hs/contracts';
+import { fetchCandidateTiming } from '@/lib/candidate-api';
 
 export interface UseAssessmentTimingResult {
   remainingMs: number;
@@ -48,16 +49,7 @@ export function useAssessmentTiming(
   const syncTiming = useCallback(async () => {
     try {
       const clientRequestTime = Date.now();
-      const res = await fetch(
-        `/api/candidate/assessment/timing?assessmentId=${encodeURIComponent(assessmentId)}`,
-        { cache: 'no-store' }
-      );
-
-      if (!res.ok) {
-        throw new Error(`Failed to synchronize timing (${res.status})`);
-      }
-
-      const data: AssessmentTimingResponse = await res.json();
+      const data: AssessmentTimingResponse = await fetchCandidateTiming(assessmentId);
       setTimingData(data);
 
       const serverNowMs = new Date(data.serverTimeUtc).getTime();

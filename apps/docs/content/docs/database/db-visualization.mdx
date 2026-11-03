@@ -123,6 +123,18 @@ erDiagram
         boolean auto_submitted
     }
 
+    CONSENTS {
+        uuid id PK
+        uuid assignment_id FK
+        uuid org_id FK
+        uuid candidate_id FK
+        string mode "cloud | chat"
+        string text_version
+        timestamptz accepted_at
+        string ip_address
+        string user_agent
+    }
+
     WORKSPACES {
         uuid id PK
         uuid org_id FK
@@ -134,13 +146,30 @@ erDiagram
         timestamptz last_activity_at
     }
 
+    DRAFTS {
+        uuid assignment_id PK,FK
+        uuid org_id FK
+        uuid candidate_id FK
+        string repository_url
+        string branch_name
+        jsonb uploaded_artifact
+        text architecture_notes
+        int version
+        timestamptz updated_at
+    }
+
     SUBMISSIONS {
         uuid id PK
         uuid assignment_id FK
-        string artifacts_ref "S3 bucket key"
-        string final_snapshot_ref
+        uuid org_id FK
+        uuid candidate_id FK
+        string repository_url
+        string branch_name
+        jsonb uploaded_artifact
+        text architecture_notes
         timestamptz submitted_at
         boolean auto_submitted
+        string receipt_id UK
     }
 
     AGENT_SCORES {

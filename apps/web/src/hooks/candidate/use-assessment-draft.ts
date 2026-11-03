@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CandidateDraft, UploadedArtifactMetadata } from '@hs/contracts';
+import { fetchCandidateDraft, saveCandidateDraft } from '@/lib/candidate-api';
 
 export type DraftStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 
@@ -45,13 +46,7 @@ export function useAssessmentDraft(assessmentId: string): UseAssessmentDraftResu
 
     async function loadDraft() {
       try {
-        const res = await fetch(
-          `/api/candidate/assessment/draft?assessmentId=${encodeURIComponent(assessmentId)}`,
-          { cache: 'no-store' }
-        );
-        if (!res.ok) return;
-
-        const data: CandidateDraft = await res.json();
+        const data: CandidateDraft = await fetchCandidateDraft(assessmentId);
         if (!isCancelled && data) {
           setDraft(data);
           if (data.updatedAt) {
@@ -79,21 +74,8 @@ export function useAssessmentDraft(assessmentId: string): UseAssessmentDraftResu
 
     try {
       const currentDraft = draftRef.current;
-      const res = await fetch('/api/candidate/assessment/draft', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(currentDraft),
-      });
+      const resJson = await saveCandidateDraft(assessmentId, currentDraft);
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => null);
-        throw new Error(errJson?.message || `Autosave failed (${res.status})`);
-      }
-
-      const resJson = await res.json();
       const savedTime = resJson?.updatedAt || new Date().toISOString();
       const nextVersion = resJson?.version || (currentDraft.version || 0) + 1;
 

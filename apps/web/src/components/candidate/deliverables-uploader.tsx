@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { UploadCloud, FileArchive, CheckCircle2, AlertCircle, X, RotateCcw, Loader2 } from 'lucide-react';
 import type { UploadedArtifactMetadata } from '@hs/contracts';
+import { uploadDeliverableArtifact } from '@/lib/candidate-api';
 
 const MAX_FILE_SIZE = 52428800; // 50 MB (50 * 1024 * 1024)
 const ALLOWED_EXTS = ['.zip', '.tar', '.gz', '.tgz'];
@@ -11,6 +12,7 @@ export interface DeliverablesUploaderProps {
   artifact: UploadedArtifactMetadata | null;
   onArtifactChange: (artifact: UploadedArtifactMetadata | null) => void;
   onUploadStateChange?: (isUploading: boolean) => void;
+  assignmentId?: string;
   className?: string;
 }
 
@@ -26,6 +28,7 @@ export function DeliverablesUploader({
   artifact,
   onArtifactChange,
   onUploadStateChange,
+  assignmentId,
   className = '',
 }: DeliverablesUploaderProps): React.JSX.Element {
   const [isDragging, setIsDragging] = useState(false);
@@ -59,21 +62,15 @@ export function DeliverablesUploader({
 
       const formData = new FormData();
       formData.append('file', file);
+      if (assignmentId) {
+        formData.append('assignmentId', assignmentId);
+      }
 
       try {
         setUploadProgress(40);
-        const res = await fetch('/api/candidate/artifacts/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!res.ok) {
-          const errJson = await res.json().catch(() => null);
-          throw new Error(errJson?.message || `Upload failed with status ${res.status}`);
-        }
+        const metadata = await uploadDeliverableArtifact(formData);
 
         setUploadProgress(85);
-        const metadata: UploadedArtifactMetadata = await res.json();
         setUploadProgress(100);
 
         setTimeout(() => {
@@ -88,7 +85,7 @@ export function DeliverablesUploader({
         onUploadStateChange?.(false);
       }
     },
-    [onArtifactChange, onUploadStateChange]
+    [onArtifactChange, onUploadStateChange, assignmentId]
   );
 
   const handleDrop = useCallback(

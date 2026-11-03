@@ -28,6 +28,11 @@ import { useAssessmentDraft } from '@/hooks/candidate/use-assessment-draft';
 import { useWorkspaceFullscreen } from '@/hooks/candidate/use-workspace-fullscreen';
 import { ROUTES } from '@/constants/routes';
 import type { SubmitAssessmentResponse } from '@hs/contracts';
+import {
+  fetchCandidateAssessmentDetails,
+  fetchCandidateAssignments,
+  submitCandidateDeliverables,
+} from '@/lib/candidate-api';
 
 export interface CandidateAssessmentDetail {
   id: string;
@@ -69,33 +74,21 @@ export default function CandidateWorkspacePage() {
 
       try {
         // Direct variable data-calling to API
-        const res = await fetch(`/api/candidate/assessment?id=${encodeURIComponent(assessmentId)}`, {
-          cache: 'no-store',
-          headers: { Accept: 'application/json' },
-        });
-
-        if (res.ok) {
-          const data = await res.json();
+        try {
+          const data = await fetchCandidateAssessmentDetails(assessmentId);
           if (!isCancelled && data && data.id) {
-            setAssessment(data);
+            setAssessment(data as any);
             return;
           }
+        } catch {
+          // Fallback to assignments endpoint
         }
 
-        // Secondary fallback: check assignments endpoint
-        const listRes = await fetch('/api/candidate/assignments', {
-          cache: 'no-store',
-          headers: { Accept: 'application/json' },
-        });
-
-        if (listRes.ok) {
-          const list = await listRes.json();
-          const items = Array.isArray(list) ? list : list?.items || list?.data || [];
-          const found = items.find((item: any) => item.id === assessmentId || item.workspaceId === assessmentId);
-          if (!isCancelled && found) {
-            setAssessment(found);
-            return;
-          }
+        const items = await fetchCandidateAssignments();
+        const found = items.find((item: any) => item.id === assessmentId || item.workspaceId === assessmentId || item.assessmentId === assessmentId);
+        if (!isCancelled && found) {
+          setAssessment(found as any);
+          return;
         }
 
         if (!isCancelled) {
@@ -155,28 +148,15 @@ export default function CandidateWorkspacePage() {
       await draftEngine.flushDraft();
 
       // 2. Submit assessment
-      const res = await fetch('/api/candidate/assessment/submit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({
-          assessmentId,
-          repositoryUrl: draftEngine.draft.repositoryUrl || '',
-          branchName: draftEngine.draft.branchName || 'main',
-          uploadedArtifactId: draftEngine.draft.uploadedArtifact?.id || null,
-          architectureNotes: draftEngine.draft.architectureNotes || '',
-          confirmChecklist: true,
-        }),
+      const receipt = await submitCandidateDeliverables(assessmentId, {
+        assessmentId,
+        repositoryUrl: draftEngine.draft.repositoryUrl || '',
+        branchName: draftEngine.draft.branchName || 'main',
+        uploadedArtifactId: draftEngine.draft.uploadedArtifact?.id || null,
+        architectureNotes: draftEngine.draft.architectureNotes || '',
+        confirmChecklist: true,
       });
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => null);
-        throw new Error(errJson?.message || `Submission failed (${res.status})`);
-      }
-
-      const receipt: SubmitAssessmentResponse = await res.json();
       setSubmissionReceipt(receipt);
       setShowConfirmDialog(false);
     } catch (err: unknown) {
@@ -605,6 +585,7 @@ Please complete the requirements for this assessment and submit your solution de
                 artifact={draftEngine.draft.uploadedArtifact || null}
                 onArtifactChange={draftEngine.setUploadedArtifact}
                 onUploadStateChange={setIsUploading}
+                assignmentId={assessment.id}
               />
             </div>
 

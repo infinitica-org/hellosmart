@@ -1,5 +1,6 @@
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module.js';
@@ -45,6 +46,12 @@ async function bootstrap(): Promise<void> {
 
   await app.register(helmet, createHelmetOptions(config));
   await app.register(cookie, { secret: config.SESSION_SECRET });
+  await app.register(multipart, {
+    limits: {
+      fileSize: 52428800, // 50 MB
+      files: 1,
+    },
+  });
 
   app.enableCors(createCorsOptions(config));
   app.setGlobalPrefix('api/v1');

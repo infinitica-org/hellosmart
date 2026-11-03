@@ -20,8 +20,10 @@ import {
   CURRENT_CONSENT_TEXT_VERSION,
   type AssessmentConsentResponse,
 } from '@hs/contracts';
-import { useCandidateAssessments } from '@/hooks/candidate/use-candidate-assessments';
-import { useCandidateConsent } from '@/hooks/candidate/use-candidate-consent';
+import {
+  useRecordConsentMutation,
+  useGetCandidateAssignmentsQuery,
+} from '@/store/candidate/candidateApi';
 import { ROUTES } from '@/constants/routes';
 
 export default function CandidateConsentPage() {
@@ -30,8 +32,11 @@ export default function CandidateConsentPage() {
   const assessmentId = params?.id as string;
 
   const [hasAgreed, setHasAgreed] = useState(false);
-  const { data: assessments, isLoading: isAssessmentsLoading } = useCandidateAssessments();
-  const { isSubmitting, error, submitConsent, resetError } = useCandidateConsent();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const error = submitError;
+  const resetError = () => setSubmitError(null);
+  const { data: assessments, isLoading: isAssessmentsLoading } = useGetCandidateAssignmentsQuery();
+  const [recordConsentMutation, { isLoading: isSubmitting }] = useRecordConsentMutation();
 
   const assessment = assessments?.find((a) => a.id === assessmentId) ?? (assessments?.[0]) ?? (assessmentId ? {
     id: assessmentId,
@@ -44,10 +49,19 @@ export default function CandidateConsentPage() {
   const handleSubmit = async () => {
     if (!hasAgreed || isSubmitting || !assessment) return;
 
-    const result = await submitConsent(assessment.id);
-    if (result && result.success) {
-      const targetId = assessment.workspaceId || assessment.id;
-      router.push(ROUTES.CANDIDATE.WORKSPACE(targetId));
+    try {
+      setSubmitError(null);
+      const result = await recordConsentMutation({
+        id: assessment.id,
+        textVersion: CURRENT_CONSENT_TEXT_VERSION,
+      }).unwrap();
+
+      if (result && result.success) {
+        const targetId = assessment.workspaceId || assessment.id;
+        router.push(ROUTES.CANDIDATE.WORKSPACE(targetId));
+      }
+    } catch (err: any) {
+      setSubmitError(err?.data?.detail || err?.message || 'Unable to record legal consent. Please retry.');
     }
   };
 

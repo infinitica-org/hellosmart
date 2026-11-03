@@ -5,13 +5,22 @@ import { useRouter } from 'next/navigation';
 import { PageHeader, EmptyState, Button, Card } from '@hs/ui';
 import { AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { AssessmentCard, type CandidateAssessment } from '@/components/candidate/assessment-card';
-import { useCandidateAssessments } from '@/hooks/candidate/use-candidate-assessments';
+import { useGetCandidateAssignmentsQuery } from '@/store/candidate/candidateApi';
 import { ROUTES } from '@/constants/routes';
 import { ALERT_MESSAGES } from '@/constants/messages';
 
 export default function CandidateDashboardPage() {
   const router = useRouter();
-  const { data, isLoading, isRefetching, error, refetch } = useCandidateAssessments();
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error: rtkError,
+    refetch,
+  } = useGetCandidateAssignmentsQuery();
+
+  const isRefetching = !isLoading && isFetching;
+  const error = rtkError ? (rtkError as any).data || rtkError : null;
 
   const handleStart = (assessment: CandidateAssessment) => {
     router.push(ROUTES.CANDIDATE.DIAGNOSTICS(assessment.id));

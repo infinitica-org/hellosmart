@@ -625,6 +625,240 @@ paths:
         '409': { $ref: '#/components/responses/Problem' }
         '423': { $ref: '#/components/responses/Problem' }
 
+  /candidate/assignments:
+    get:
+      summary: List assessments assigned to authenticated candidate
+      tags: [candidate-portal]
+      operationId: getCandidateAssignments
+      x-requirement: [CA-008, BR-01, BR-08]
+      x-roles: [candidate]
+      responses:
+        '200':
+          description: List of assigned assessments for candidate
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CandidateAssignment'
+        '401': { $ref: '#/components/responses/Problem' }
+
+  /candidate/assessments/{id}:
+    get:
+      summary: Get assessment details and brief for candidate
+      tags: [candidate-portal]
+      operationId: getCandidateAssessment
+      x-requirement: [CA-008, BR-01]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Assessment details, instructions, and workspace configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateAssessmentDetail'
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /candidate/assessments/{id}/consent:
+    post:
+      summary: Record legal consent before workspace launch
+      tags: [candidate-portal]
+      operationId: recordAssessmentConsent
+      x-requirement: [CA-008, BR-12]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordConsentPayload'
+      responses:
+        '201':
+          description: Legal consent recorded durably
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentRecord'
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /candidate/assessments/{id}/start:
+    post:
+    
+      summary: Start or reconnect to assessment workspace session
+      tags: [candidate-portal]
+      operationId: startAssessmentSession
+      x-requirement: [CA-008, BR-08, BR-09]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ticket: { type: string }
+      responses:
+        '200':
+          description: Assessment workspace session started or reconnected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceSession'
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /candidate/assessments/{id}/submit:
+    post:
+      summary: Submit candidate deliverables for assessment
+      tags: [candidate-portal]
+      operationId: submitAssessmentDeliverables
+      x-requirement: [CA-008, BR-20]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitDeliverablesPayload'
+      responses:
+        '200':
+          description: Final deliverables submitted and finalized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionReceipt'
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /candidate/assessments/{id}/timing:
+    get:
+      summary: Get authoritative countdown timer state
+      tags: [candidate-portal]
+      operationId: getAssessmentTiming
+      x-requirement: [CA-008, BR-08, BR-09]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Authoritative countdown timer state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentTimingState'
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /candidate/assessments/{id}/draft:
+    get:
+      summary: Retrieve candidate workspace draft
+      tags: [candidate-portal]
+      operationId: getAssessmentDraft
+      x-requirement: [CA-008, BR-11]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Candidate draft state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateDraft'
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    post:
+      summary: Autosave candidate workspace draft (30s cadence)
+      tags: [candidate-portal]
+      operationId: saveAssessmentDraft
+      x-requirement: [CA-008, BR-11]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CandidateDraftPayload'
+      responses:
+        '200':
+          description: Draft saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateDraft'
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /candidate/artifacts/upload:
+    post:
+      summary: Upload deliverable archive to object storage
+      tags: [candidate-portal]
+      operationId: uploadDeliverableArtifact
+      x-requirement: [CA-008, NF-001]
+      x-roles: [candidate]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Deliverable archive (.zip, .tar, .tar.gz, .tgz up to 50MB)
+                assignmentId:
+                  type: string
+                  format: uuid
+                  description: Optional assignment ID to link artifact with candidate draft
+      responses:
+        '200':
+          description: Artifact uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadedArtifact'
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /candidate/ping:
+    get:
+      summary: Diagnostics endpoint for candidate system preflight check
+      tags: [candidate-portal]
+      operationId: pingCandidate
+      x-requirement: [CA-008]
+      responses:
+        '200':
+          description: Diagnostic health status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, timestamp, service]
+                properties:
+                  ok: { type: boolean, example: true }
+                  timestamp: { type: integer, example: 1730626800000 }
+                  service: { type: string, example: 'hellosmart-candidate-api' }
+
 components:
   securitySchemes:
     session: { type: apiKey, in: cookie, name: hs_session }
@@ -812,4 +1046,151 @@ components:
       properties:
         success: { type: boolean, example: true }
         message: { type: string, example: 'All sessions revoked successfully' }
+
+    CandidateAssignment:
+      type: object
+      required: [id, assessmentId, title, companyName, durationMinutes, status]
+      properties:
+        id: { type: string, format: uuid }
+        assessmentId: { type: string, format: uuid }
+        title: { type: string }
+        companyName: { type: string }
+        durationMinutes: { type: integer, minimum: 1 }
+        status: { type: string, enum: [invited, window_not_open, ready, in_progress, disconnected, submitted, expired, revoked] }
+        windowStartUtc: { type: [string, 'null'], format: date-time }
+        windowEndUtc: { type: [string, 'null'], format: date-time }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        workspaceMode: { type: string, enum: [cloud, chat] }
+        workspaceId: { type: [string, 'null'], format: uuid }
+        instructions: { type: [string, 'null'] }
+        description: { type: [string, 'null'] }
+
+    CandidateAssessmentDetail:
+      type: object
+      required: [id, assignmentId, name, companyName, durationMinutes, workspaceMode, status]
+      properties:
+        id: { type: string, format: uuid }
+        assignmentId: { type: string, format: uuid }
+        name: { type: string }
+        companyName: { type: string }
+        durationMinutes: { type: integer, minimum: 1 }
+        workspaceMode: { type: string, enum: [cloud, chat] }
+        status: { type: string, enum: [invited, window_not_open, ready, in_progress, disconnected, submitted, expired, revoked] }
+        instructions: { type: [string, 'null'] }
+        scenario: { type: [string, 'null'] }
+        deliverables:
+          type: array
+          items: { type: string }
+        aiPolicy:
+          type: object
+          properties:
+            enabled: { type: boolean }
+            allowedModels:
+              type: array
+              items: { type: string }
+            capPerCandidate:
+              type: object
+              properties:
+                unit: { type: string, enum: [tokens, cents] }
+                value: { type: integer }
+            rpm: { type: integer }
+        windowStartUtc: { type: [string, 'null'], format: date-time }
+        windowEndUtc: { type: [string, 'null'], format: date-time }
+
+    RecordConsentPayload:
+      type: object
+      required: [textVersion]
+      properties:
+        textVersion: { type: string, example: 'v1.0' }
+
+    ConsentRecord:
+      type: object
+      required: [consentId, assignmentId, textVersion, acceptedAt]
+      properties:
+        consentId: { type: string, format: uuid }
+        assignmentId: { type: string, format: uuid }
+        textVersion: { type: string }
+        acceptedAt: { type: string, format: date-time }
+
+    WorkspaceSession:
+      type: object
+      required: [sessionId, assignmentId, mode, status, gatewayUrl, ticket, serverTimeUtc, deadlineUtc, remainingMs]
+      properties:
+        sessionId: { type: string, format: uuid }
+        assignmentId: { type: string, format: uuid }
+        mode: { type: string, enum: [cloud, chat] }
+        status: { type: string, enum: [queued, provisioning, not_connected, connected, disconnected, ended, destroyed, failed] }
+        gatewayUrl: { type: string, format: uri }
+        ticket: { type: string }
+        serverTimeUtc: { type: string, format: date-time }
+        deadlineUtc: { type: string, format: date-time }
+        remainingMs: { type: integer, minimum: 0 }
+        requireFullscreen: { type: boolean, default: true }
+
+    SubmitDeliverablesPayload:
+      type: object
+      required: [repositoryUrl, branchName, architectureNotes, confirmChecklist]
+      properties:
+        repositoryUrl: { type: string, format: uri }
+        branchName: { type: string, minLength: 1 }
+        uploadedArtifactId: { type: [string, 'null'] }
+        architectureNotes: { type: string, minLength: 10 }
+        confirmChecklist: { type: boolean, enum: [true] }
+
+    SubmissionReceipt:
+      type: object
+      required: [submissionId, assignmentId, receiptId, submittedAt]
+      properties:
+        submissionId: { type: string, format: uuid }
+        assignmentId: { type: string, format: uuid }
+        receiptId: { type: string, example: 'sub_rec_7f8a9b0c' }
+        submittedAt: { type: string, format: date-time }
+
+    AssessmentTimingState:
+      type: object
+      required: [assessmentId, serverTimeUtc, deadlineUtc, durationMinutes, remainingMs, isExpired]
+      properties:
+        assessmentId: { type: string, format: uuid }
+        serverTimeUtc: { type: string, format: date-time }
+        deadlineUtc: { type: string, format: date-time }
+        durationMinutes: { type: integer }
+        remainingMs: { type: integer, minimum: 0 }
+        pauseTimerOnDisconnect: { type: boolean, default: false }
+        isExpired: { type: boolean, default: false }
+
+    UploadedArtifact:
+      type: object
+      required: [id, originalName, mimeType, sizeBytes, downloadUrl, uploadedAt]
+      properties:
+        id: { type: string, format: uuid }
+        originalName: { type: string }
+        mimeType: { type: string }
+        sizeBytes: { type: integer }
+        downloadUrl: { type: string, format: uri }
+        uploadedAt: { type: string, format: date-time }
+
+    CandidateDraft:
+      type: object
+      required: [assignmentId, repositoryUrl, branchName, architectureNotes, version, updatedAt]
+      properties:
+        assignmentId: { type: string, format: uuid }
+        repositoryUrl: { type: string }
+        branchName: { type: string }
+        uploadedArtifact:
+          $ref: '#/components/schemas/UploadedArtifact'
+        architectureNotes: { type: string }
+        version: { type: integer, minimum: 0 }
+        updatedAt: { type: string, format: date-time }
+
+    CandidateDraftPayload:
+      type: object
+      required: [repositoryUrl, branchName, architectureNotes]
+      properties:
+        repositoryUrl: { type: string }
+        branchName: { type: string }
+        uploadedArtifact:
+          $ref: '#/components/schemas/UploadedArtifact'
+        architectureNotes: { type: string }
+        version: { type: integer, minimum: 0 }
+
 

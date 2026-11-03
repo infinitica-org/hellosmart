@@ -5,6 +5,7 @@ import {
   CURRENT_CONSENT_TEXT_VERSION,
   type AssessmentConsentResponse,
 } from '@hs/contracts';
+import { recordCandidateConsent } from '@/lib/candidate-api';
 
 export interface UseCandidateConsentResult {
   isSubmitting: boolean;
@@ -29,26 +30,7 @@ export function useCandidateConsent(): UseCandidateConsentResult {
       setError(null);
 
       try {
-        const response = await fetch('/api/candidate/assessment/consent', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({
-            assessmentId,
-            textVersion: CURRENT_CONSENT_TEXT_VERSION,
-          }),
-        });
-
-        const data = await response.json().catch(() => null);
-
-        if (!response.ok) {
-          const errMsg = data?.message || `Failed to record consent (${response.status})`;
-          setError(errMsg);
-          return null;
-        }
-
+        const data = await recordCandidateConsent(assessmentId, CURRENT_CONSENT_TEXT_VERSION);
         setRecordedConsent(data);
         return data;
       } catch (err: unknown) {

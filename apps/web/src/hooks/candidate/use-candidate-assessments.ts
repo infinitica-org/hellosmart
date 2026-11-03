@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { CandidateAssessment } from '@/components/candidate/assessment-card';
+import { fetchCandidateAssignments } from '@/lib/candidate-api';
 
 export interface UseCandidateAssessmentsResult {
   data: CandidateAssessment[] | null;
@@ -28,29 +29,7 @@ export function useCandidateAssessments(
     setError(null);
 
     try {
-      const res = await fetch('/api/candidate/assignments', {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-        },
-        credentials: 'include',
-        cache: 'no-store',
-      });
-
-      if (!res.ok) {
-        const errorJson = await res.json().catch(() => null);
-        const detail = errorJson?.detail || errorJson?.message || `Failed to fetch assignments (${res.status})`;
-        throw new Error(detail);
-      }
-      const json = await res.json();
-      const list: CandidateAssessment[] = Array.isArray(json)
-        ? json
-        : Array.isArray(json?.items)
-          ? json.items
-          : Array.isArray(json?.data)
-            ? json.data
-            : [];
-
+      const list = await fetchCandidateAssignments();
       setData(list);
     } catch (err: unknown) {
       const errorObj = err instanceof Error ? err : new Error('Unable to load assigned assessments');

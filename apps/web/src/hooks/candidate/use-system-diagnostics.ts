@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { getApiBaseUrl } from '@/lib/api-client';
 
 export type DiagnosticStatus = 'pass' | 'warning' | 'error' | 'pending';
 
@@ -166,7 +167,7 @@ export function useSystemDiagnostics(autoRun = true) {
     network: {
       latencyMs: null,
       samples: [],
-      endpoint: '/api/candidate/ping',
+      endpoint: `${getApiBaseUrl()}/candidate/ping`,
       status: 'pending',
       message: 'Measuring network latency to platform API...',
       lastChecked: null,
@@ -226,7 +227,7 @@ export function useSystemDiagnostics(autoRun = true) {
     let networkStatus: DiagnosticStatus = 'pending';
     let networkMsg = '';
     let avgLatency: number | null = null;
-    const endpoint = '/api/candidate/ping';
+    const endpoint = `${getApiBaseUrl()}/candidate/ping`;
 
     try {
       for (let i = 0; i < 3; i++) {
