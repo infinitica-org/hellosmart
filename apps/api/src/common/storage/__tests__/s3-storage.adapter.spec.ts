@@ -6,6 +6,7 @@ import {
   GetObjectCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
+  DeleteObjectsCommand,
 } from '@aws-sdk/client-s3';
 import { S3StorageAdapter } from '../s3-storage.adapter.js';
 import type { StorageConfig } from '../storage.types.js';
@@ -137,5 +138,67 @@ describe('S3StorageAdapter', () => {
       '99999999-9999-4999-8999-999999999999',
     );
     expect(missing).toBeNull();
+  });
+
+  it('deletes objects by keys via DeleteObjectsCommand with tenant check', async () => {
+    let capturedDeleteCommand: any;
+    const mockClient = {
+      send: vi.fn().mockImplementation(async (command) => {
+        capturedDeleteCommand = command;
+        return { Errors: [] };
+      }),
+    } as unknown as S3Client;
+
+    const adapter = new S3StorageAdapter(config, mockClient);
+    const orgId = '11111111-1111-4111-8111-111111111111';
+    const keys = [
+      `storage/${orgId}/submissions/a1/obj1-report.pdf`,
+      `storage/${orgId}/submissions/a1/obj2-data.zip`,
+    ];
+
+    // Cross-tenant attempt throws
+    await expect(
+      adapter.deleteByKeys('22222222-2222-4222-8222-222222222222', keys),
+    ).rejects.toThrow(/Tenant isolation violation/);
+
+    const res = await adapter.deleteByKeys(orgId, keys);
+    expect(res.deletedCount).toBe(2);
+    expect(capturedDeleteCommand).toBeInstanceOf(DeleteObjectsCommand);
+    expect(capturedDeleteCommand.input.Bucket).toBe('hs-test-bucket');
+    expect(capturedDeleteCommand.input.Delete.Objects).toHaveLength(2);
+  });
+
+  it('deletes objects by prefix via ListObjectsV2Command and DeleteObjectsCommand', async () => {
+    let capturedDeleteCommand: any;
+    const orgId = '11111111-1111-4111-8111-111111111111';
+    const prefix = `storage/${orgId}/submissions/assignment-1/`;
+
+    const mockClient = {
+      send: vi.fn().mockImplementation(async (command) => {
+        if (command instanceof ListObjectsV2Command) {
+          return {
+            Contents: [{ Key: `${prefix}obj1-report.pdf` }, { Key: `${prefix}obj2-code.zip` }],
+            NextContinuationToken: undefined,
+          };
+        }
+        if (command instanceof DeleteObjectsCommand) {
+          capturedDeleteCommand = command;
+          return { Errors: [] };
+        }
+        return {};
+      }),
+    } as unknown as S3Client;
+
+    const adapter = new S3StorageAdapter(config, mockClient);
+
+    // Reject root prefix
+    await expect(adapter.deleteByPrefix(orgId, `storage/${orgId}/`)).rejects.toThrow(
+      /Invalid prefix/,
+    );
+
+    const res = await adapter.deleteByPrefix(orgId, prefix);
+    expect(res.deletedCount).toBe(2);
+    expect(capturedDeleteCommand).toBeInstanceOf(DeleteObjectsCommand);
+    expect(capturedDeleteCommand.input.Delete.Objects).toHaveLength(2);
   });
 });

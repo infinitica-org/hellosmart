@@ -157,12 +157,32 @@ Content-Type: application/json
 
 ---
 
-## 4. Webhooks Architecture
+## 4. Webhooks & Object Storage Architecture
 
 HelloSmart processes incoming asynchronous webhooks idempotently:
 
 - **Razorpay**: Reconciles subscription renewals and one-time quote purchases at `/api/v1/webhooks/razorpay`. Verifies HMAC-SHA256 signature using `RAZORPAY_WEBHOOK_SECRET`.
-- **cal.com**: Ingests prospective enterprise customer discovery meetings at `/api/v1/webhooks/calcom` to automatically transition leads in our sales pipeline.
+- **cal.com**: Ingests prospective enterprise customer discovery meetings at `/api/v1/webhooks/calcom` to automatically transition leads in our sales pipeline. Validates `cal-signature-256` using constant-time HMAC comparison.
+
+### Artifact & Storage API Endpoints
+- `POST /api/v1/storage/upload`: Multipart file upload for candidate submission artifacts.
+- `GET /api/v1/storage/download-url/{assignmentId}/{objectId}`: Generates a presigned or HMAC-signed artifact retrieval URL.
+- `GET /api/v1/storage/download`: Streams requested submission artifact with signed token validation.
+
+### Commercial Quoting, Pricing & Promo API Endpoints (Stream 9)
+- `POST /api/v1/admin/quotes`: Generate itemized commercial quote with 18% GST and secure public access token.
+- `GET /api/v1/admin/quotes`: List commercial quotations (filterable by leadId, orgId, status).
+- `GET /api/v1/admin/quotes/{id}`: Retrieve detailed quotation with line snapshots and tax breakdowns.
+- `GET /api/v1/admin/pricing-catalog`: List subscription plans, custom templates, and add-on products.
+- `GET /api/v1/admin/pricing-catalog/{id}`: Retrieve detailed pricing catalog product information by ID.
+- `POST /api/v1/admin/pricing-catalog`: Create a new product in the centralized pricing catalog.
+- `PATCH /api/v1/admin/pricing-catalog/{id}`: Update dynamic product attributes, currency, prices, or billing schedules.
+- `POST /api/v1/admin/pricing-catalog/{id}/activate`: Activate product for quote generation.
+- `POST /api/v1/admin/pricing-catalog/{id}/deactivate`: Deactivate product to prevent inclusion in future quotes.
+- `GET /api/v1/admin/promo-codes`: List active and scheduled promotional discount codes.
+- `POST /api/v1/admin/promo-codes`: Create percentage or fixed monetary promotional codes.
+- `GET /api/v1/quotes/{token}`: Customer review screen endpoint. Retrieves immutable quote snapshot, line items, and GST breakdown using the secure public access token (PHS-I128 / SP-010).
+- `POST /api/v1/quotes/{token}/accept`: One-click customer quote acceptance. Atomically and idempotently accepts an issued quote, persists customer acceptance evidence and an append-only audit event in `audit.events` (PHS-I128 / SP-010).
 
 ---
 

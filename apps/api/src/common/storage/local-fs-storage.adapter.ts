@@ -11,7 +11,7 @@ import type {
   StoragePutResult,
 } from './storage.types.js';
 import { StreamValidationTransform } from './storage-validation.js';
-import { extractMetadataFromKey } from './storage-keys.js';
+import { extractMetadataFromKey, isKeyInOrg } from './storage-keys.js';
 
 export interface LocalDownloadTokenPayload {
   key: string;
@@ -203,5 +203,61 @@ export class LocalFsStorageAdapter implements StoragePort {
     } catch {
       return null;
     }
+  }
+
+  async deleteByKeys(orgId: string, keys: string[]): Promise<{ deletedCount: number }> {
+    let deletedCount = 0;
+    for (const key of keys) {
+      if (!isKeyInOrg(key, orgId)) {
+        throw new Error(
+          `Tenant isolation violation: key '${key}' does not belong to organization '${orgId}'`,
+        );
+      }
+      const filePath = this.resolveSafePath(key);
+      try {
+        await fs.promises.unlink(filePath);
+        deletedCount++;
+      } catch (err: any) {
+        if (err.code !== 'ENOENT') {
+          throw err;
+        }
+      }
+    }
+    return { deletedCount };
+  }
+
+  async deleteByPrefix(orgId: string, prefix: string): Promise<{ deletedCount: number }> {
+    const expectedPrefix = `storage/${orgId}/`;
+    if (
+      !prefix.startsWith(expectedPrefix) ||
+      prefix.trim() === expectedPrefix ||
+      prefix.trim() === 'storage/'
+    ) {
+      throw new Error(`Invalid prefix: prefix must be a specific subpath under ${expectedPrefix}`);
+    }
+    if (prefix.includes('..') || prefix.includes('\0') || prefix.includes('\\')) {
+      throw new Error('Path traversal rejected in storage prefix');
+    }
+
+    const targetDirOrFile = this.resolveSafePath(prefix);
+    let deletedCount = 0;
+
+    try {
+      const stat = await fs.promises.stat(targetDirOrFile);
+      if (stat.isDirectory()) {
+        const files = await fs.promises.readdir(targetDirOrFile, { recursive: true });
+        deletedCount = files.length;
+        await fs.promises.rm(targetDirOrFile, { recursive: true, force: true });
+      } else {
+        await fs.promises.unlink(targetDirOrFile);
+        deletedCount = 1;
+      }
+    } catch (err: any) {
+      if (err.code !== 'ENOENT') {
+        throw err;
+      }
+    }
+
+    return { deletedCount };
   }
 }

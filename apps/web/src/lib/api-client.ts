@@ -6,13 +6,17 @@
 import type {
   AcceptInvitationRequest,
   AcceptInvitationResponse,
+  AcceptQuoteDto,
+  AcceptQuoteResponseDto,
   ActiveSession,
   ActiveSessionsResponse,
   CandidateDto,
   ChangePasswordRequest,
   CompanyMetricsDto,
   CreateCandidateDto,
+  CustomerQuoteDto,
   InvitationDetailsResponse,
+  QuoteDto,
   SimpleSuccessResponse,
 } from '@hs/contracts';
 
@@ -158,6 +162,9 @@ export function resolveBrowserAuthUrl(apiV1Path: string): string {
     return `/api${path}`;
   }
   if (path.startsWith('/company/assessments')) {
+    return `/api${path}`;
+  }
+  if (path.startsWith('/quotes/')) {
     return `/api${path}`;
   }
   const invitationTokenMatch = /^\/auth\/invitations\/([^/]+)$/.exec(path);
@@ -688,5 +695,101 @@ export async function getCompanyMetrics(
   }
 
   return (await res.json()) as CompanyMetricsDto;
+}
+
+/**
+ * Customer Quote Review (PHS-I128 / SP-010)
+ * Securely retrieves issued quote details via Next.js BFF using public access token.
+ */
+export async function getQuoteByToken(
+  token: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<CustomerQuoteDto> {
+  const url = resolveBrowserAuthUrl(`/quotes/${encodeURIComponent(token)}`);
+  const res = await fetchFn(url, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+    credentials: 'include',
+  });
+
+  if (res.status === 404) {
+    throw new ApiError(404, 'QUOTE_NOT_FOUND', 'Quotation not found or the access link is invalid.');
+  }
+
+  if (res.status === 429) {
+    throw new RateLimitedError();
+  }
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to retrieve quotation details';
+    try {
+      const errJson = await res.json();
+      errorDetail = errJson.detail || errorDetail;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, 'API_ERROR', errorDetail);
+  }
+
+  return (await res.json()) as QuoteDto;
+}
+
+/**
+ * One-Click Customer Quote Acceptance (PHS-I128 / SP-010)
+ * Deliberate customer approval action via Next.js BFF.
+ * Injects X-HS-CSRF: 1 header and forwards credentials.
+ */
+export async function acceptQuote(
+  token: string,
+  data: AcceptQuoteDto,
+  fetchFn: typeof fetch = fetch,
+): Promise<AcceptQuoteResponseDto> {
+  const url = resolveBrowserAuthUrl(`/quotes/${encodeURIComponent(token)}/accept`);
+  const res = await fetchFn(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      [CSRF_HEADER_NAME]: CSRF_HEADER_VALUE,
+    },
+    body: JSON.stringify(data),
+    credentials: 'include',
+  });
+
+  if (res.status === 404) {
+    throw new ApiError(404, 'QUOTE_NOT_FOUND', 'Quotation not found or the access link is invalid.');
+  }
+
+  if (res.status === 422) {
+    let detail = 'Quotation cannot be accepted in its current state.';
+    let code = 'QUOTE_NOT_ACCEPTABLE';
+    try {
+      const errJson = await res.json();
+      detail = errJson.detail || detail;
+      code = errJson.code || code;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(422, code, detail);
+  }
+
+  if (res.status === 429) {
+    throw new RateLimitedError();
+  }
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to approve quotation';
+    try {
+      const errJson = await res.json();
+      errorDetail = errJson.detail || errorDetail;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, 'API_ERROR', errorDetail);
+  }
+
+  return (await res.json()) as AcceptQuoteResponseDto;
 }
 

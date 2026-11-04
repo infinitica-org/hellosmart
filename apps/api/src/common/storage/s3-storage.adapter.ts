@@ -4,6 +4,7 @@ import {
   GetObjectCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
+  DeleteObjectsCommand,
   type S3ClientConfig,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -18,6 +19,7 @@ import {
   type StoragePutResult,
 } from './storage.types.js';
 import { FileTooLargeException } from './storage-validation.js';
+import { isKeyInOrg } from './storage-keys.js';
 
 export class S3StorageAdapter implements StoragePort {
   private readonly s3Client: S3Client;
@@ -164,5 +166,80 @@ export class S3StorageAdapter implements StoragePort {
     } catch {
       return null;
     }
+  }
+
+  async deleteByKeys(orgId: string, keys: string[]): Promise<{ deletedCount: number }> {
+    if (keys.length === 0) {
+      return { deletedCount: 0 };
+    }
+
+    for (const key of keys) {
+      if (!isKeyInOrg(key, orgId)) {
+        throw new Error(
+          `Tenant isolation violation: key '${key}' does not belong to organization '${orgId}'`,
+        );
+      }
+    }
+
+    let deletedCount = 0;
+    const BATCH_SIZE = 1000;
+    for (let i = 0; i < keys.length; i += BATCH_SIZE) {
+      const batch = keys.slice(i, i + BATCH_SIZE);
+      const command = new DeleteObjectsCommand({
+        Bucket: this.bucket,
+        Delete: {
+          Objects: batch.map((k) => ({ Key: k })),
+          Quiet: true,
+        },
+      });
+      const res = await this.s3Client.send(command);
+      deletedCount += batch.length - (res.Errors?.length ?? 0);
+    }
+
+    return { deletedCount };
+  }
+
+  async deleteByPrefix(orgId: string, prefix: string): Promise<{ deletedCount: number }> {
+    const expectedPrefix = `storage/${orgId}/`;
+    if (
+      !prefix.startsWith(expectedPrefix) ||
+      prefix.trim() === expectedPrefix ||
+      prefix.trim() === 'storage/'
+    ) {
+      throw new Error(`Invalid prefix: prefix must be a specific subpath under ${expectedPrefix}`);
+    }
+    if (prefix.includes('..') || prefix.includes('\0') || prefix.includes('\\')) {
+      throw new Error('Path traversal rejected in storage prefix');
+    }
+
+    let deletedCount = 0;
+    let continuationToken: string | undefined;
+
+    do {
+      const listCommand = new ListObjectsV2Command({
+        Bucket: this.bucket,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      });
+
+      const listRes = await this.s3Client.send(listCommand);
+      const objects = listRes.Contents?.filter((obj) => Boolean(obj.Key)) ?? [];
+
+      if (objects.length > 0) {
+        const deleteCommand = new DeleteObjectsCommand({
+          Bucket: this.bucket,
+          Delete: {
+            Objects: objects.map((obj) => ({ Key: obj.Key! })),
+            Quiet: true,
+          },
+        });
+        const delRes = await this.s3Client.send(deleteCommand);
+        deletedCount += objects.length - (delRes.Errors?.length ?? 0);
+      }
+
+      continuationToken = listRes.NextContinuationToken;
+    } while (continuationToken);
+
+    return { deletedCount };
   }
 }

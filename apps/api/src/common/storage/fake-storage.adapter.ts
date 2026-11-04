@@ -6,6 +6,7 @@ import type {
   StoragePutMeta,
   StoragePutResult,
 } from './storage.types.js';
+import { isKeyInOrg } from './storage-keys.js';
 
 export class FakeStorageAdapter implements StoragePort {
   private readonly objects = new Map<
@@ -80,6 +81,44 @@ export class FakeStorageAdapter implements StoragePort {
       }
     }
     return null;
+  }
+
+  async deleteByKeys(orgId: string, keys: string[]): Promise<{ deletedCount: number }> {
+    let deletedCount = 0;
+    for (const key of keys) {
+      if (!isKeyInOrg(key, orgId)) {
+        throw new Error(
+          `Tenant isolation violation: key ${key} does not belong to organization ${orgId}`,
+        );
+      }
+      if (this.objects.delete(key)) {
+        deletedCount++;
+      }
+    }
+    return { deletedCount };
+  }
+
+  async deleteByPrefix(orgId: string, prefix: string): Promise<{ deletedCount: number }> {
+    const expectedPrefix = `storage/${orgId}/`;
+    if (
+      !prefix.startsWith(expectedPrefix) ||
+      prefix.trim() === expectedPrefix ||
+      prefix.trim() === 'storage/'
+    ) {
+      throw new Error(`Invalid prefix: prefix must be a specific subpath under ${expectedPrefix}`);
+    }
+    if (prefix.includes('..') || prefix.includes('\0') || prefix.includes('\\')) {
+      throw new Error('Path traversal rejected in storage prefix');
+    }
+
+    let deletedCount = 0;
+    for (const key of Array.from(this.objects.keys())) {
+      if (key.startsWith(prefix)) {
+        this.objects.delete(key);
+        deletedCount++;
+      }
+    }
+    return { deletedCount };
   }
 
   public clear(): void {

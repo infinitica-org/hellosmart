@@ -28,6 +28,10 @@ const ConfigSchema = z
     STORAGE_S3_ACCESS_KEY_ID: z.string().optional(),
     STORAGE_S3_SECRET_ACCESS_KEY: z.string().optional(),
     STORAGE_S3_FORCE_PATH_STYLE: z.coerce.boolean().optional(),
+    RETENTION_PURGE_ENABLED: z.coerce.boolean().default(false),
+    RETENTION_PURGE_HOUR_UTC: z.coerce.number().int().min(0).max(23).default(3),
+    RETENTION_PURGE_BATCH_SIZE: z.coerce.number().int().min(1).max(1000).default(100),
+    RETENTION_PURGE_DRY_RUN: z.coerce.boolean().default(false),
     APP_BASE_URL: z.string().url().default('http://localhost:3000'),
     /** Base32 TOTP secret for platform admin MFA (dev/test). Production uses vault via mfa_secret_ref. */
     PLATFORM_ADMIN_MFA_SECRET: z.string().min(16).optional(),
@@ -37,6 +41,24 @@ const ConfigSchema = z
     MFA_ENCRYPTION_KEY_ID: z.string().default('k1'),
     /** JSON or comma-separated mapping of previous MFA encryption keys for seamless key rotation. */
     MFA_PREVIOUS_ENCRYPTION_KEYS: z.string().optional(),
+    /** Cal.com webhook HMAC verification secret (min 16 chars). */
+    CALCOM_WEBHOOK_SECRET: z.string().min(16).optional(),
+    /** Seller tax jurisdiction country (ISO 3166-1 alpha-2, e.g. 'IN'). Required for GST calculation. */
+    SELLER_COUNTRY: z.string().length(2).optional(),
+    /** Seller tax jurisdiction state code (e.g. 'KA' for Karnataka). Required for GST calculation. */
+    SELLER_STATE: z.string().min(1).max(10).optional(),
+    /** Seller tax jurisdiction city. */
+    SELLER_CITY: z.string().min(1).optional(),
+    /** Seller tax jurisdiction postal PIN code. */
+    SELLER_PIN_CODE: z.string().min(1).optional(),
+    /** Statutory GSTIN of seller entity. */
+    SELLER_GSTIN: z.string().optional(),
+    /** International export tax classification treatment ('reject', 'zero_rated_lut', 'standard_igst'). */
+    INTERNATIONAL_TAX_TREATMENT: z
+      .enum(['reject', 'zero_rated_lut', 'standard_igst'])
+      .default('reject'),
+    /** Letter of Undertaking (LUT) reference number for zero-rated export of services under GST. */
+    EXPORT_LUT_NUMBER: z.string().optional(),
     /** Optional Mailpit URL for local email capture in development. */
     MAILPIT_URL: z.string().url().default('http://127.0.0.1:8025'),
     /** S0-T17-1: Have I Been Pwned breach check fail-open toggle (default true). */

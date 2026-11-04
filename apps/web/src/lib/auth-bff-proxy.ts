@@ -7,7 +7,7 @@ const STATE_CHANGING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 export async function proxyAuthedApiRequest(
   req: NextRequest,
   upstreamPath: string,
-  options?: { method?: string; body?: string },
+  options?: { method?: string; body?: string; origin?: string },
 ): Promise<NextResponse> {
   const sessionToken = req.cookies.get('hs_session')?.value;
   const apiBase = resolveServerApiV1Base();
@@ -25,6 +25,7 @@ export async function proxyAuthedApiRequest(
   if (STATE_CHANGING.has(method)) {
     headers['X-HS-CSRF'] = '1';
     const appOrigin =
+      options?.origin ||
       process.env.NEXT_PUBLIC_APP_URL ||
       process.env.APP_BASE_URL ||
       'http://localhost:3000';
