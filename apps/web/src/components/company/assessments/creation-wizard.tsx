@@ -158,16 +158,41 @@ export function CreationWizard({ template }: CreationWizardProps): React.JSX.Ele
   const handleConfirmSubmit = () => {
     setSubmitError(null);
 
-    create(
-      {
-        templateId: values.templateId,
-        templateVersionId: values.templateVersionId,
-        name: values.name,
-        requisitionId: values.requisitionId || undefined,
-        candidateInstructions: values.candidateInstructions,
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const validTemplateVersionId =
+      values.templateVersionId && UUID_REGEX.test(values.templateVersionId)
+        ? values.templateVersionId
+        : undefined;
+
+    const cleanedTiming = {
+      ...values.timing,
+      windowStartUtc:
+        values.timing.windowStartUtc && values.timing.windowStartUtc.trim() !== ''
+          ? new Date(values.timing.windowStartUtc).toISOString()
+          : undefined,
+      windowEndUtc:
+        values.timing.windowEndUtc && values.timing.windowEndUtc.trim() !== ''
+          ? new Date(values.timing.windowEndUtc).toISOString()
+          : undefined,
+    };
+
+    const payload: any = {
+      templateId: values.templateId,
+      ...(validTemplateVersionId ? { templateVersionId: validTemplateVersionId } : {}),
+      name: values.name,
+      requisitionId: values.requisitionId || undefined,
+      workspaceMode: (template as any).workspaceMode || 'cloud',
+      candidateInstructions: values.candidateInstructions,
+      deliverables: values.deliverables,
+      briefOverrides: {
+        instructions: values.candidateInstructions,
         deliverables: values.deliverables,
-        timing: values.timing,
       },
+      timing: cleanedTiming,
+    };
+
+    create(
+      payload,
       {
         onSuccess: (data) => {
           // Clear session draft
