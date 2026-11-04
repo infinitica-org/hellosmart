@@ -33,7 +33,16 @@ export function ProvisionModal({
 }: ProvisionModalProps) {
   const { toast } = useToast();
 
-  const [formData, setFormData] = useState<CreateOrganizationInput>({
+  const [formData, setFormData] = useState<{
+    name: string;
+    slug: string;
+    adminEmail: string;
+    adminName: string;
+    plan: 'trial' | 'pro';
+    maxTemplates: number | string;
+    maxCandidates: number | string;
+    trialDays: number | string;
+  }>({
     name: '',
     slug: '',
     adminEmail: '',
@@ -47,6 +56,12 @@ export function ProvisionModal({
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [createOrganization, { isLoading: isSubmitting }] = useCreateOrganizationMutation();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleClose = () => {
+    setSlugManuallyEdited(false);
+    setErrorMessage(null);
+    onClose();
+  };
 
   // Auto-generate slug from company name if not manually edited
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,7 +110,12 @@ export function ProvisionModal({
     }
 
     try {
-      await createOrganization(formData).unwrap();
+      await createOrganization({
+        ...formData,
+        maxTemplates: Number(formData.maxTemplates) || 5,
+        maxCandidates: Number(formData.maxCandidates) || 25,
+        trialDays: Number(formData.trialDays) || 14,
+      }).unwrap();
 
       toast({
         title: 'Company Provisioned Successfully',
@@ -129,7 +149,7 @@ export function ProvisionModal({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} size="lg" data-testid={testId}>
+    <Dialog open={open} onClose={handleClose} size="lg" data-testid={testId}>
       <form onSubmit={handleSubmit}>
         <DialogHeader>
           <DialogTitle>Provision New Company</DialogTitle>
@@ -218,9 +238,18 @@ export function ProvisionModal({
                 min="1"
                 max="100"
                 value={formData.maxTemplates.toString()}
-                onChange={(e) =>
-                  setFormData({ ...formData, maxTemplates: parseInt(e.target.value, 10) || 1 })
-                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData((prev) => ({
+                    ...prev,
+                    maxTemplates: val === '' ? '' : parseInt(val, 10) || '',
+                  }));
+                }}
+                onBlur={() => {
+                  if (formData.maxTemplates === '' || Number(formData.maxTemplates) < 1) {
+                    setFormData((prev) => ({ ...prev, maxTemplates: 1 }));
+                  }
+                }}
                 helperText="Template limit (X)"
                 required
                 data-testid="provision-max-templates-input"
@@ -234,9 +263,18 @@ export function ProvisionModal({
                 min="1"
                 max="1000"
                 value={formData.maxCandidates.toString()}
-                onChange={(e) =>
-                  setFormData({ ...formData, maxCandidates: parseInt(e.target.value, 10) || 1 })
-                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData((prev) => ({
+                    ...prev,
+                    maxCandidates: val === '' ? '' : parseInt(val, 10) || '',
+                  }));
+                }}
+                onBlur={() => {
+                  if (formData.maxCandidates === '' || Number(formData.maxCandidates) < 1) {
+                    setFormData((prev) => ({ ...prev, maxCandidates: 1 }));
+                  }
+                }}
                 helperText="Candidate quota (Y)"
                 required
                 data-testid="provision-max-candidates-input"
@@ -250,9 +288,18 @@ export function ProvisionModal({
                 min="1"
                 max="365"
                 value={formData.trialDays.toString()}
-                onChange={(e) =>
-                  setFormData({ ...formData, trialDays: parseInt(e.target.value, 10) || 1 })
-                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData((prev) => ({
+                    ...prev,
+                    trialDays: val === '' ? '' : parseInt(val, 10) || '',
+                  }));
+                }}
+                onBlur={() => {
+                  if (formData.trialDays === '' || Number(formData.trialDays) < 1) {
+                    setFormData((prev) => ({ ...prev, trialDays: 1 }));
+                  }
+                }}
                 helperText="Trial duration (Z)"
                 required
                 data-testid="provision-trial-days-input"
@@ -265,7 +312,7 @@ export function ProvisionModal({
           <Button
             type="button"
             variant="outline"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isSubmitting}
             data-testid="provision-cancel-btn"
           >
