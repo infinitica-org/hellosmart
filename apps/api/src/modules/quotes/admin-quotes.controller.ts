@@ -26,14 +26,16 @@ import type { AuthenticatedUser } from '../../common/constants/auth.constants.js
 import { PricingCatalogService } from './pricing-catalog.service.js';
 import { PromoCodesService } from './promo-codes.service.js';
 import { QuotesService } from './quotes.service.js';
+import { GstCalculatorService } from './gst-calculator.service.js';
 
 @Controller('admin')
-@Roles('platform_admin')
+@Roles('platform_admin', 'company_admin')
 export class AdminQuotesController {
   constructor(
     private readonly quotesService: QuotesService,
     private readonly catalogService: PricingCatalogService,
     private readonly promoService: PromoCodesService,
+    private readonly gstService: GstCalculatorService,
   ) {}
 
   // --- Quotes Management ---
@@ -57,6 +59,27 @@ export class AdminQuotesController {
 
     const user: AuthenticatedUser | undefined = (req as any)[REQUEST_USER_KEY];
 
+    // Enforce tenant scoping for company admin
+    if (user?.role === 'company_admin') {
+      if (!user.orgId) {
+        throw problem({
+          title: 'Forbidden',
+          status: 403,
+          detail: 'Company admin is not associated with an organization',
+          code: 'ORG_CONTEXT_MISSING',
+        });
+      }
+      if (parsed.data.leadId) {
+        throw problem({
+          title: 'Forbidden',
+          status: 403,
+          detail: 'Company admins cannot generate quotes for prospective leads directly',
+          code: 'FORBIDDEN_LEAD_QUOTE',
+        });
+      }
+      parsed.data.orgId = user.orgId;
+    }
+
     return await this.quotesService.createQuote({
       dto: parsed.data,
       userId: user?.userId,
@@ -72,13 +95,21 @@ export class AdminQuotesController {
     @Query('leadId') leadId?: string,
     @Query('orgId') orgId?: string,
     @Query('status') status?: string,
+    @Req() req?: FastifyRequest,
   ) {
-    return await this.quotesService.listQuotes({ leadId, orgId, status });
+    const user: AuthenticatedUser | undefined = req ? (req as any)[REQUEST_USER_KEY] : undefined;
+    const effectiveOrgId = (user?.role === 'company_admin' ? user.orgId : orgId) || undefined;
+    return await this.quotesService.listQuotes({ leadId, orgId: effectiveOrgId, status });
   }
 
   @Get('quotes/:id')
-  async getQuote(@Param('id') id: string) {
-    const quote = await this.quotesService.getQuoteById(id);
+  async getQuote(
+    @Param('id') id: string,
+    @Req() req?: FastifyRequest,
+  ) {
+    const user: AuthenticatedUser | undefined = req ? (req as any)[REQUEST_USER_KEY] : undefined;
+    const orgId = user?.role === 'company_admin' ? (user.orgId ?? undefined) : undefined;
+    const quote = await this.quotesService.getQuoteById(id, orgId);
     if (!quote) {
       throw problem({
         title: 'Not Found',
@@ -87,7 +118,77 @@ export class AdminQuotesController {
         code: 'QUOTE_NOT_FOUND',
       });
     }
+
     return quote;
+  }
+
+  @Post('quotes/:id/send')
+  @HttpCode(HttpStatus.OK)
+  async sendQuote(
+    @Param('id') id: string,
+    @Body() body: any,
+    @Req() req: FastifyRequest,
+  ) {
+    const user: AuthenticatedUser | undefined = (req as any)[REQUEST_USER_KEY];
+    const orgId = user?.role === 'company_admin' ? (user.orgId ?? undefined) : undefined;
+
+    return await this.quotesService.sendQuoteEmail({
+      quoteId: id,
+      orgId,
+      publicToken: body?.publicToken,
+      recipientEmail: body?.recipientEmail,
+      actorId: user?.userId,
+      actorRole: user?.role,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      requestId: (req as any).id,
+    });
+  }
+
+  // --- Leads Management ---
+
+  @Get('leads')
+  async listLeads(
+    @Query('stage') stage?: string,
+    @Query('search') search?: string,
+    @Query('orgId') orgId?: string,
+    @Req() req?: FastifyRequest,
+  ) {
+    const user: AuthenticatedUser | undefined = req ? (req as any)[REQUEST_USER_KEY] : undefined;
+    const effectiveOrgId = (user?.role === 'company_admin' ? user.orgId : orgId) || undefined;
+    return await this.quotesService.listLeads({
+      stage,
+      search,
+      orgId: effectiveOrgId,
+    });
+  }
+
+  @Get('leads/:id')
+  async getLead(
+    @Param('id') id: string,
+    @Req() req?: FastifyRequest,
+  ) {
+    const user: AuthenticatedUser | undefined = req ? (req as any)[REQUEST_USER_KEY] : undefined;
+    const orgId = user?.role === 'company_admin' ? (user.orgId ?? undefined) : undefined;
+    const lead = await this.quotesService.getLeadById(id, orgId);
+    if (!lead) {
+      throw problem({
+        title: 'Not Found',
+        status: 404,
+        detail: `Lead '${id}' not found`,
+        code: 'LEAD_NOT_FOUND',
+      });
+    }
+
+    return lead;
+  }
+
+  // --- GST Calculator ---
+
+  @Post('gst/calculate')
+  @HttpCode(HttpStatus.OK)
+  async calculateGst(@Body() body: any) {
+    return this.gstService.calculateTax(body);
   }
 
   // --- Pricing Catalog Management ---
@@ -121,6 +222,7 @@ export class AdminQuotesController {
   }
 
   @Post('pricing-catalog')
+  @Roles('platform_admin')
   @HttpCode(HttpStatus.CREATED)
   async createCatalogItem(@Body() body: unknown) {
     const parsed = CreatePricingCatalogItemDtoSchema.safeParse(body);
@@ -138,6 +240,7 @@ export class AdminQuotesController {
   }
 
   @Patch('pricing-catalog/:id')
+  @Roles('platform_admin')
   async updateCatalogItem(
     @Param('id') id: string,
     @Body() body: unknown,
@@ -157,12 +260,14 @@ export class AdminQuotesController {
   }
 
   @Post('pricing-catalog/:id/activate')
+  @Roles('platform_admin')
   @HttpCode(HttpStatus.OK)
   async activateCatalogItem(@Param('id') id: string) {
     return await this.catalogService.setCatalogItemStatus(id, true);
   }
 
   @Post('pricing-catalog/:id/deactivate')
+  @Roles('platform_admin')
   @HttpCode(HttpStatus.OK)
   async deactivateCatalogItem(@Param('id') id: string) {
     return await this.catalogService.setCatalogItemStatus(id, false);
@@ -176,6 +281,7 @@ export class AdminQuotesController {
   }
 
   @Post('promo-codes')
+  @Roles('platform_admin')
   @HttpCode(HttpStatus.CREATED)
   async createPromoCode(@Body() body: unknown) {
     const parsed = CreatePromoCodeDtoSchema.safeParse(body);

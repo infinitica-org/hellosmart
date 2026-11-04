@@ -17,6 +17,13 @@ import { problem } from '../../common/errors/app-http.exception.js';
 import { GstCalculatorService } from './gst-calculator.service.js';
 import { PricingCatalogService } from './pricing-catalog.service.js';
 import { PromoCodesService } from './promo-codes.service.js';
+import { REDIS_CLIENT, type HelloRedisClient } from '../redis/redis.tokens.js';
+import { EMAIL_SENDER_PORT, type EmailSenderPort } from '../adapters/adapters.tokens.js';
+import {
+  encryptQuoteToken,
+  decryptQuoteToken,
+  timingSafeTokenHashEqual,
+} from './quote-token.util.js';
 
 function roundToTwo(num: number): number {
   return Math.round((num + Number.EPSILON) * 100) / 100;
@@ -32,6 +39,8 @@ export class QuotesService {
     private readonly catalogService: PricingCatalogService,
     private readonly promoService: PromoCodesService,
     private readonly gstService: GstCalculatorService,
+    @Optional() @Inject(REDIS_CLIENT) private readonly redis?: HelloRedisClient,
+    @Optional() @Inject(EMAIL_SENDER_PORT) private readonly emailSender?: EmailSenderPort,
   ) {}
 
   /**
@@ -188,6 +197,11 @@ export class QuotesService {
     // 5. Generate secure token & quote number
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const secretKey =
+      this.config?.SESSION_SECRET ||
+      process.env.SESSION_SECRET ||
+      'dev-fallback-secret-key-at-least-32-chars';
+    const encryptedToken = encryptQuoteToken(rawToken, secretKey);
 
     const expiresInDays = dto.expiresInDays ?? 14;
     const issuedAt = new Date();
@@ -228,12 +242,12 @@ export class QuotesService {
            quote_number, lead_id, org_id, currency, status,
            subtotal, discount_total, taxable_amount, cgst_total, sgst_total, igst_total,
            tax_total, grand_total, tax_classification, seller_jurisdiction, customer_jurisdiction,
-           promo_code_id, notes, public_token_hash, issued_at, expires_at, created_by
+           promo_code_id, notes, public_token_hash, encrypted_token, issued_at, expires_at, created_by
          ) VALUES (
            $1, $2, $3, $4, 'draft',
            $5, $6, $7, $8, $9, $10,
            $11, $12, $13, $14::jsonb, $15::jsonb,
-           $16, $17, $18, $19, $20, $21
+           $16, $17, $18, $19, $20, $21, $22
          ) RETURNING id`,
         [
           quoteNumber,
@@ -254,6 +268,7 @@ export class QuotesService {
           promoResult ? promoResult.promoCodeId : null,
           dto.notes || null,
           tokenHash,
+          encryptedToken,
           issuedAt.toISOString(),
           expiresAt.toISOString(),
           validUserId,
@@ -369,6 +384,13 @@ export class QuotesService {
       throw new Error(`Failed to retrieve newly created quote ${quoteId}`);
     }
 
+    // Cache raw public token in Redis for email workflow and resending
+    if (this.redis?.isOpen) {
+      await this.redis.set(`quote_token:${quoteId}`, rawToken, {
+        EX: expiresInDays * 24 * 60 * 60,
+      }).catch((e: any) => this.logger.warn(`Failed to cache quote token in redis: ${e.message}`));
+    }
+
     return {
       quote: createdQuote,
       publicToken: rawToken,
@@ -376,11 +398,14 @@ export class QuotesService {
     };
   }
 
-  async getQuoteById(id: string): Promise<QuoteDto | null> {
-    const quoteRes = await this.queryWithPlatform(
-      `SELECT * FROM app.quotes WHERE id = $1`,
-      [id],
-    );
+  async getQuoteById(id: string, orgId?: string | null | undefined): Promise<QuoteDto | null> {
+    const params: any[] = [id];
+    let sql = `SELECT * FROM app.quotes WHERE id = $1`;
+    if (orgId) {
+      params.push(orgId);
+      sql += ` AND org_id = $2`;
+    }
+    const quoteRes = await this.queryWithPlatform(sql, params);
     if (quoteRes.rows.length === 0) return null;
 
     const linesRes = await this.queryWithPlatform(
@@ -649,6 +674,393 @@ export class QuotesService {
     }
 
     return quotes;
+  }
+
+  /**
+   * Dispatches a customer quote review link via email (customer email workflow).
+   * Retrieves raw token from Redis cache or caller, resolves recipient email,
+   * sends email via EmailSenderPort, and logs an append-only audit event.
+   */
+  async sendQuoteEmail(params: {
+    quoteId: string;
+    orgId?: string | null | undefined;
+    publicToken?: string | undefined;
+    recipientEmail?: string | undefined;
+    actorId?: string | null | undefined;
+    actorRole?: string | null | undefined;
+    ip?: string | undefined;
+    userAgent?: string | undefined;
+    requestId?: string | undefined;
+  }): Promise<{ success: boolean; quoteNumber: string; recipientEmail: string; sentAt: string }> {
+    const quote = await this.getQuoteById(params.quoteId, params.orgId);
+    if (!quote) {
+      throw problem({
+        title: 'Not Found',
+        status: 404,
+        detail: `Quote '${params.quoteId}' not found`,
+        code: 'QUOTE_NOT_FOUND',
+      });
+    }
+
+    if (quote.status !== 'issued') {
+      throw problem({
+        title: 'Conflict',
+        status: 409,
+        detail: `Quotation is in '${quote.status}' status and cannot be sent`,
+        code: 'INVALID_QUOTE_STATUS',
+      });
+    }
+
+    if (new Date(quote.expiresAt).getTime() <= Date.now()) {
+      throw problem({
+        title: 'Gone',
+        status: 410,
+        detail: 'Quotation has expired and cannot be sent',
+        code: 'QUOTE_EXPIRED',
+      });
+    }
+
+    const secretKey =
+      this.config?.SESSION_SECRET ||
+      process.env.SESSION_SECRET ||
+      'dev-fallback-secret-key-at-least-32-chars';
+
+    let resolvedToken: string | null = null;
+
+    // 1. Resolve authoritative token from encrypted_token in DB
+    const encRes = await this.queryWithPlatform(
+      `SELECT encrypted_token, public_token_hash FROM app.quotes WHERE id = $1`,
+      [quote.id],
+    );
+    const storedHash: string = encRes.rows[0]?.public_token_hash;
+    const encToken: string | undefined = encRes.rows[0]?.encrypted_token;
+
+    if (encToken) {
+      const decrypted = decryptQuoteToken(encToken, secretKey);
+      if (decrypted && timingSafeTokenHashEqual(decrypted, storedHash)) {
+        resolvedToken = decrypted;
+      }
+    }
+
+    // 2. Fall back to Redis cache for legacy quotes created prior to encrypted_token column
+    if (!resolvedToken && this.redis?.isOpen) {
+      const cached = await this.redis.get(`quote_token:${quote.id}`).catch(() => null);
+      if (cached && timingSafeTokenHashEqual(cached, storedHash)) {
+        resolvedToken = cached;
+      }
+    }
+
+    // 3. If caller supplied publicToken, validate against stored hash in constant time
+    if (params.publicToken) {
+      if (!timingSafeTokenHashEqual(params.publicToken, storedHash)) {
+        throw problem({
+          title: 'Unprocessable Entity',
+          status: 422,
+          detail: 'Supplied public token does not match quotation',
+          code: 'QUOTE_TOKEN_MISMATCH',
+        });
+      }
+      if (!resolvedToken) {
+        resolvedToken = params.publicToken;
+      }
+    }
+
+    if (!resolvedToken) {
+      throw problem({
+        title: 'Unprocessable Entity',
+        status: 422,
+        detail: 'Quote access token is not available for sending. Please regenerate the quote.',
+        code: 'QUOTE_TOKEN_UNAVAILABLE',
+      });
+    }
+
+    let recipientEmail = params.recipientEmail || quote.customerEmail || '';
+    let customerName = quote.customerName || 'Valued Customer';
+
+    if (!recipientEmail && quote.leadId) {
+      const leadRes = await this.queryWithPlatform(
+        `SELECT email, name FROM app.leads WHERE id = $1 AND deleted_at IS NULL`,
+        [quote.leadId],
+      );
+      if (leadRes.rows[0]) {
+        recipientEmail = leadRes.rows[0].email;
+        customerName = leadRes.rows[0].name || customerName;
+      }
+    } else if (!recipientEmail && quote.orgId) {
+      const orgRes = await this.queryWithPlatform(
+        `SELECT u.email, u.name, o.name as org_name
+         FROM app.organizations o
+         LEFT JOIN app.users u ON u.org_id = o.id AND u.role = 'company_admin'
+         WHERE o.id = $1
+         LIMIT 1`,
+        [quote.orgId],
+      );
+      if (orgRes.rows[0]) {
+        recipientEmail = orgRes.rows[0].email;
+        customerName = orgRes.rows[0].name || orgRes.rows[0].org_name || customerName;
+      }
+    }
+
+    if (!recipientEmail) {
+      throw problem({
+        title: 'Unprocessable Entity',
+        status: 422,
+        detail: 'Recipient customer email not found for this quote.',
+        code: 'CUSTOMER_EMAIL_NOT_FOUND',
+      });
+    }
+
+    if (!this.emailSender) {
+      throw problem({
+        title: 'Service Unavailable',
+        status: 503,
+        detail: 'Email delivery service is not configured or available',
+        code: 'EMAIL_SERVICE_UNAVAILABLE',
+      });
+    }
+
+    // Canonical origin verification & HTTPS enforcement
+    const appBaseUrl = (this.config?.APP_BASE_URL || process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const urlObj = new URL(appBaseUrl);
+    if (process.env.NODE_ENV === 'production' && urlObj.protocol !== 'https:') {
+      throw problem({
+        title: 'Internal Server Error',
+        status: 500,
+        detail: 'Production email links require a canonical https:// APP_BASE_URL',
+        code: 'INSECURE_APP_ORIGIN',
+      });
+    }
+
+    const absoluteReviewUrl = `${appBaseUrl}/quotes/${resolvedToken}`;
+    const sentAt = new Date().toISOString();
+
+    let sendResult: { providerId: string };
+    try {
+      sendResult = await this.emailSender.send({
+        to: recipientEmail,
+        template: 'quote_review',
+        vars: {
+          quoteNumber: quote.quoteNumber,
+          customerName,
+          grandTotal: `${quote.currency} ${quote.grandTotal.toFixed(2)}`,
+          publicUrl: absoluteReviewUrl,
+        },
+        ...(quote.orgId ? { orgId: quote.orgId } : {}),
+      });
+    } catch (err: any) {
+      this.logger.error(`Email delivery provider rejected message: ${err.message}`, err.stack);
+      throw problem({
+        title: 'Bad Gateway',
+        status: 502,
+        detail: `Email delivery provider rejected message: ${err.message}`,
+        code: 'EMAIL_DELIVERY_FAILED',
+      });
+    }
+
+    // Forward to Mailpit for local and development email preview (http://localhost:8025)
+    try {
+      const mailpitBase =
+        (this.config as any)?.MAILPIT_URL ||
+        process.env.MAILPIT_URL ||
+        'http://127.0.0.1:8025';
+
+      await fetch(`${mailpitBase.replace(/\/$/, '')}/api/v1/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          From: { Email: 'no-reply@hellosmart.ai', Name: 'HelloSmart Commercial' },
+          To: [{ Email: recipientEmail, Name: customerName }],
+          Subject: `Commercial Quotation ${quote.quoteNumber} from HelloSmart.ai`,
+          HTML: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e5e5; border-radius: 12px; background: #ffffff;">
+              <h2 style="color: #111; margin-top: 0;">HelloSmart.ai — Commercial Quotation</h2>
+              <p>Dear ${customerName},</p>
+              <p>Your commercial quotation <strong>${quote.quoteNumber}</strong> has been generated and is ready for your review.</p>
+              <div style="background-color: #f9fafb; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #f3f4f6;">
+                <p style="margin: 4px 0; font-size: 14px;"><strong>Quotation Number:</strong> <span style="font-family: monospace;">${quote.quoteNumber}</span></p>
+                <p style="margin: 4px 0; font-size: 14px;"><strong>Grand Total (incl. GST):</strong> <span style="font-family: monospace; color: #2563eb; font-weight: bold;">${quote.currency} ${quote.grandTotal.toFixed(2)}</span></p>
+                <p style="margin: 4px 0; font-size: 14px;"><strong>Statutory Tax Classification:</strong> ${quote.taxClassification}</p>
+              </div>
+              <p>Please click the button below to review item details, tax calculations, and approve the quotation:</p>
+              <div style="margin: 28px 0;">
+                <a href="${absoluteReviewUrl}" style="background-color: #111827; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block;">
+                  Review &amp; Approve Quotation &rarr;
+                </a>
+              </div>
+              <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">Direct Link: <a href="${absoluteReviewUrl}">${absoluteReviewUrl}</a></p>
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+              <p style="color: #9ca3af; font-size: 11px; margin-bottom: 0;">HelloSmart.ai &bull; Hire by Doing &bull; Statutory 18% GST Dual-Snapshot Engine</p>
+            </div>
+          `,
+          Text: `Dear ${customerName},\n\nYour commercial quotation ${quote.quoteNumber} is ready for review.\nGrand Total: ${quote.currency} ${quote.grandTotal.toFixed(2)}\n\nReview link: ${absoluteReviewUrl}\n`,
+        }),
+        signal: AbortSignal.timeout(5000),
+      }).catch((e: any) => this.logger.warn(`Mailpit send warning: ${e.message}`));
+    } catch (e: any) {
+      this.logger.warn(`Failed to dispatch to Mailpit: ${e.message}`);
+    }
+
+    // Append append-only audit event (CRITICAL: NEVER record raw token or publicUrl!)
+    const client = await this.pool.connect();
+    try {
+      await appendAuditEvent(client, {
+        actorId: params.actorId || null,
+        actorRole: params.actorRole || 'platform_admin',
+        orgId: quote.orgId || null,
+        action: 'quote.sent',
+        entity: 'quote',
+        entityId: quote.id,
+        after: {
+          quoteNumber: quote.quoteNumber,
+          recipientEmail,
+          sentAt,
+          deliveryStatus: 'accepted_by_provider',
+          providerMessageId: sendResult.providerId,
+        },
+        ip: params.ip,
+        userAgent: params.userAgent,
+        requestId: params.requestId,
+      });
+    } finally {
+      client.release();
+    }
+
+    return {
+      success: true,
+      quoteNumber: quote.quoteNumber,
+      recipientEmail,
+      sentAt,
+    };
+  }
+
+  /**
+   * Lists Cal.com sales leads with active booking information.
+   * Supports filtering by stage, search query, or tenant organization.
+   */
+  async listLeads(filter?: {
+    stage?: string | undefined;
+    search?: string | undefined;
+    orgId?: string | undefined;
+  }): Promise<any[]> {
+    const conditions: string[] = ['l.deleted_at IS NULL'];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (filter?.orgId) {
+      conditions.push(`l.org_id = $${idx++}`);
+      values.push(filter.orgId);
+    }
+    if (filter?.stage) {
+      conditions.push(`l.stage = $${idx++}`);
+      values.push(filter.stage);
+    }
+    if (filter?.search) {
+      conditions.push(`(l.email ILIKE $${idx} OR l.name ILIKE $${idx} OR l.company ILIKE $${idx})`);
+      values.push(`%${filter.search}%`);
+      idx++;
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const sql = `
+      SELECT
+        l.id,
+        l.org_id,
+        l.email,
+        l.name,
+        l.company,
+        l.calcom_booking_id,
+        l.utm,
+        l.stage,
+        l.owner_user_id,
+        l.active_booking_id,
+        l.created_at,
+        l.updated_at,
+        b.title AS active_booking_title,
+        b.start_time AS active_booking_start,
+        b.end_time AS active_booking_end,
+        b.status AS active_booking_status,
+        b.meeting_url AS active_booking_meeting_url
+      FROM app.leads l
+      LEFT JOIN app.lead_bookings b ON b.id = l.active_booking_id
+      ${whereClause}
+      ORDER BY l.created_at DESC
+    `;
+
+    const res = await this.queryWithPlatform(sql, values);
+    return res.rows.map((row) => ({
+      id: row.id,
+      orgId: row.org_id,
+      email: row.email,
+      name: row.name,
+      company: row.company,
+      calcomBookingId: row.calcom_booking_id,
+      utm: row.utm || {},
+      stage: row.stage,
+      ownerUserId: row.owner_user_id,
+      activeBookingId: row.active_booking_id,
+      activeBooking: row.active_booking_id
+        ? {
+            title: row.active_booking_title,
+            startTime: row.active_booking_start,
+            endTime: row.active_booking_end,
+            status: row.active_booking_status,
+            meetingUrl: row.active_booking_meeting_url,
+          }
+        : null,
+      createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+      updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
+    }));
+  }
+
+  /**
+   * Retrieves single lead and its booking history.
+   * If orgId is provided, strictly enforces tenant isolation in the SQL query.
+   */
+  async getLeadById(id: string, orgId?: string | null | undefined): Promise<any | null> {
+    const conditions = ['id = $1', 'deleted_at IS NULL'];
+    const values: any[] = [id];
+    if (orgId) {
+      conditions.push('org_id = $2');
+      values.push(orgId);
+    }
+    const res = await this.queryWithPlatform(
+      `SELECT * FROM app.leads WHERE ${conditions.join(' AND ')}`,
+      values,
+    );
+    if (res.rows.length === 0) return null;
+    const lead = res.rows[0];
+
+    const bookingsRes = await this.queryWithPlatform(
+      `SELECT * FROM app.lead_bookings WHERE lead_id = $1 ORDER BY created_at DESC`,
+      [id],
+    );
+
+    return {
+      id: lead.id,
+      orgId: lead.org_id,
+      email: lead.email,
+      name: lead.name,
+      company: lead.company,
+      calcomBookingId: lead.calcom_booking_id,
+      utm: lead.utm || {},
+      stage: lead.stage,
+      ownerUserId: lead.owner_user_id,
+      activeBookingId: lead.active_booking_id,
+      createdAt: lead.created_at instanceof Date ? lead.created_at.toISOString() : lead.created_at,
+      updatedAt: lead.updated_at instanceof Date ? lead.updated_at.toISOString() : lead.updated_at,
+      bookings: bookingsRes.rows.map((b) => ({
+        id: b.id,
+        uid: b.uid,
+        status: b.status,
+        title: b.title,
+        startTime: b.start_time instanceof Date ? b.start_time.toISOString() : b.start_time,
+        endTime: b.end_time instanceof Date ? b.end_time.toISOString() : b.end_time,
+        location: b.location,
+        meetingUrl: b.meeting_url,
+        cancellationReason: b.cancellation_reason,
+        createdAt: b.created_at instanceof Date ? b.created_at.toISOString() : b.created_at,
+      })),
+    };
   }
 
   private async resolveCustomerDetails(
