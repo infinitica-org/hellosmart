@@ -20,6 +20,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { CandidatesModule } from './modules/candidates/candidates.module.js';
 import { TemplatesModule } from './modules/templates/templates.module.js';
 import { AssessmentsModule } from './modules/assessments/assessments.module.js';
+import { AssignmentsModule } from './modules/assignments/assignments.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { StorageModule } from './common/storage/storage.module.js';
 import { JobsModule } from './modules/jobs/jobs.module.js';
@@ -91,6 +92,7 @@ const devControllers =
     CandidatesModule,
     TemplatesModule,
     AssessmentsModule,
+    AssignmentsModule,
     HealthModule,
     StorageModule,
     JobsModule,
