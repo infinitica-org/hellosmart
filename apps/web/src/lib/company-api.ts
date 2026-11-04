@@ -1,6 +1,7 @@
 import { apiFetch, getApiBaseUrl, resolveBrowserAuthUrl, ApiError } from './api-client';
 import type { RoleTemplateSummary, RoleTemplateDetail } from '@/components/company/templates/types';
 import type { CreateAssessmentDto, AssessmentDto } from '@/components/company/assessments/types';
+import type { AssessmentSummaryDto, AssessmentDetailDto } from '@hs/contracts';
 import type { AssessmentRubric } from '@/components/company/rubric/types';
 import type {
   CandidateDto,
@@ -157,6 +158,96 @@ export async function createAssessment(
   }
 
   return (await res.json()) as AssessmentDto;
+}
+
+/**
+ * Fetches the list of assessments for the caller's organization.
+ * Scoped strictly by server session tenant orgId (BR-01).
+ *
+ * Endpoint: GET /api/v1/company/assessments
+ */
+export async function fetchAssessments(
+  fetchFn: typeof fetch = fetch
+): Promise<AssessmentSummaryDto[]> {
+  const url = resolveBrowserAuthUrl('/company/assessments');
+
+  const res = await apiFetch(
+    url,
+    {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+      credentials: 'include',
+    },
+    fetchFn
+  );
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to fetch assessments';
+    let errorCode = 'ASSESSMENTS_FETCH_FAILED';
+
+    try {
+      const errorJson = await res.json();
+      errorDetail = errorJson.detail || errorDetail;
+      errorCode = errorJson.code || errorCode;
+    } catch {
+      // ignore JSON parse error
+    }
+
+    throw new ApiError(res.status, errorCode, errorDetail);
+  }
+
+  const data = await res.json();
+  if (Array.isArray(data)) {
+    return data as AssessmentSummaryDto[];
+  }
+  return ((data as { items?: AssessmentSummaryDto[] })?.items ?? []) as AssessmentSummaryDto[];
+}
+
+/**
+ * Fetches a single assessment by ID with tenant isolation (BR-01).
+ *
+ * Endpoint: GET /api/v1/company/assessments/:id
+ */
+export async function fetchAssessmentById(
+  id: string,
+  fetchFn: typeof fetch = fetch
+): Promise<AssessmentDetailDto> {
+  if (!id) {
+    throw new Error('Assessment ID is required');
+  }
+
+  const url = resolveBrowserAuthUrl(`/company/assessments/${encodeURIComponent(id)}`);
+
+  const res = await apiFetch(
+    url,
+    {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+      credentials: 'include',
+    },
+    fetchFn
+  );
+
+  if (!res.ok) {
+    let errorDetail = 'Failed to fetch assessment detail';
+    let errorCode = 'ASSESSMENT_NOT_FOUND';
+
+    try {
+      const errorJson = await res.json();
+      errorDetail = errorJson.detail || errorDetail;
+      errorCode = errorJson.code || errorCode;
+    } catch {
+      // ignore
+    }
+
+    throw new ApiError(res.status, errorCode, errorDetail);
+  }
+
+  return (await res.json()) as AssessmentDetailDto;
 }
 
 /**
