@@ -189,6 +189,8 @@ jobs:
 
       - name: Seed database fixtures
         run: pnpm db:seed
+        env:
+          ALLOW_NON_PRODUCTION_SEED: 'true'
 
       - name: Run unit tests for contracts
         run: pnpm --filter @hs/contracts test

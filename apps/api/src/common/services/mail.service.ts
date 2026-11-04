@@ -35,6 +35,7 @@ export const DEFAULT_MAIL_CONFIG: Config = {
   RETENTION_PURGE_HOUR_UTC: 3,
   RETENTION_PURGE_BATCH_SIZE: 100,
   RETENTION_PURGE_DRY_RUN: false,
+  INTERNATIONAL_TAX_TREATMENT: 'reject',
 };
 
 function escapeHtml(str: string): string {

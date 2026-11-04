@@ -6,9 +6,61 @@ import { withPlatform } from './db.js';
 const DEFAULT_DATABASE_URL =
   'postgresql://hs_app:hs_app_local@127.0.0.1:5432/hellosmart';
 
-async function main(): Promise<void> {
-  const databaseUrl = process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL;
-  const pool = new pg.Pool({ connectionString: databaseUrl });
+export interface SeedGuardOptions {
+  nodeEnv?: string | undefined;
+  appEnv?: string | undefined;
+  allowNonProductionSeed?: string | boolean | undefined;
+}
+
+/**
+ * Pre-flight safety assertion for database fixture seeding.
+ * Strictly guarantees:
+ * 1. Execution is unconditionally blocked when NODE_ENV=production or APP_ENV=production (even if opt-in is provided).
+ * 2. Execution is blocked if explicit opt-in ALLOW_NON_PRODUCTION_SEED=true is absent.
+ * 3. Throws a fatal Error BEFORE any database connection, pool creation, or mutation can occur.
+ */
+export function assertSeedSafety(options?: SeedGuardOptions): void {
+  const nodeEnv = (options?.nodeEnv ?? process.env.NODE_ENV ?? '').trim().toLowerCase();
+  const appEnv = (options?.appEnv ?? process.env.APP_ENV ?? '').trim().toLowerCase();
+  const allowOptIn = options?.allowNonProductionSeed ?? process.env.ALLOW_NON_PRODUCTION_SEED;
+
+  // 1. Refuse unconditionally in production (even with opt-in)
+  if (
+    nodeEnv === 'production' ||
+    nodeEnv === 'prod' ||
+    appEnv === 'production' ||
+    appEnv === 'prod'
+  ) {
+    throw new Error(
+      'SECURITY FATAL: Database fixture seeding is strictly forbidden in production environments (NODE_ENV/APP_ENV=production). Execution blocked.',
+    );
+  }
+
+  // 2. Require explicit opt-in in non-production environments
+  const isOptedIn =
+    allowOptIn === true ||
+    (typeof allowOptIn === 'string' && allowOptIn.trim().toLowerCase() === 'true');
+
+  if (!isOptedIn) {
+    throw new Error(
+      'SECURITY FATAL: Database fixture seeding requires explicit opt-in via ALLOW_NON_PRODUCTION_SEED=true. Execution blocked.',
+    );
+  }
+}
+
+export async function runFixtureSeed(
+  options?: SeedGuardOptions & {
+    databaseUrl?: string;
+    poolFactory?: (url: string) => pg.Pool;
+  },
+): Promise<void> {
+  // CRITICAL: Guard executes BEFORE any database connection, pool instantiation, or mutation
+  assertSeedSafety(options);
+
+  const databaseUrl = options?.databaseUrl ?? process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL;
+  const pool = options?.poolFactory
+    ? options.poolFactory(databaseUrl)
+    : new pg.Pool({ connectionString: databaseUrl });
   const client = await pool.connect();
 
   const devPasswordHash = await hash('ChangeMe-Dev-Only-1', {
@@ -65,16 +117,38 @@ async function main(): Promise<void> {
           [org.admin.id, org.id, org.admin.email, org.admin.name, devPasswordHash],
         );
       }
+
+      // Activate sample pricing catalog items strictly for local development and testing
+      await tx.query(
+        `UPDATE app.pricing_catalog
+         SET is_active = true
+         WHERE code IN (
+           'plan_starter_monthly',
+           'plan_growth_monthly',
+           'plan_enterprise_monthly_usd',
+           'template_custom_build',
+           'template_custom_build_usd',
+           'addon_extra_candidate_pack',
+           'addon_whitelabel'
+         )`,
+      );
     });
 
-    console.log('Seed complete: platform admin + Aster Ridge (paid) + Brindle & Co (trial).');
+    console.log('Seed complete: platform admin + Aster Ridge (paid) + Brindle & Co (trial) + dev catalog activated.');
   } finally {
     client.release();
     await pool.end();
   }
 }
 
-void main().catch((err: unknown) => {
-  console.error(err);
-  process.exit(1);
-});
+async function main(): Promise<void> {
+  await runFixtureSeed();
+}
+
+// Only execute when invoked directly as a script
+if (process.argv[1] && (process.argv[1].endsWith('seed.js') || process.argv[1].endsWith('seed.ts'))) {
+  main().catch((err: unknown) => {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  });
+}

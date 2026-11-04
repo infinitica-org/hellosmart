@@ -743,6 +743,267 @@ paths:
                 format: binary
         '400': { $ref: '#/components/responses/Problem' }
 
+  /webhooks/calcom:
+    post:
+      summary: Ingest Cal.com meeting booking and cancellation webhooks
+      tags: [webhooks]
+      operationId: handleCalcomWebhook
+      security: []
+      responses:
+        '200':
+          description: Webhook received and outcome persisted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received: { type: boolean }
+                  outcome: { type: string }
+                  reason: { type: string }
+        '401': { $ref: '#/components/responses/Problem' }
+
+  /admin/quotes:
+    post:
+      summary: Generate commercial quote with 18% GST and secure access token
+      tags: [quotes]
+      operationId: createAdminQuote
+      security: [{ session: [] }]
+      responses:
+        '201':
+          description: Quote generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        '422': { $ref: '#/components/responses/Problem' }
+    get:
+      summary: List commercial quotes
+      tags: [quotes]
+      operationId: listAdminQuotes
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: List of quotations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /admin/quotes/{id}:
+    get:
+      summary: Retrieve commercial quote by ID
+      tags: [quotes]
+      operationId: getAdminQuote
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200':
+          description: Quote details
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /quotes/{token}:
+    get:
+      summary: Customer Quote Review Screen
+      description: Retrieve immutable quote details and line item breakdown using the cryptographic public access token.
+      tags: [quotes]
+      operationId: getCustomerQuoteByToken
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: 64-character hex cryptographic public access token
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Immutable commercial quotation details
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+
+  /quotes/{token}/accept:
+    post:
+      summary: Customer One-Click Quote Acceptance
+      description: Atomically and idempotently accepts an issued quote, persists acceptance evidence, and appends an audit event.
+      tags: [quotes]
+      operationId: acceptCustomerQuote
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: 64-character hex cryptographic public access token
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmationAcknowledged]
+              properties:
+                acceptedByName: { type: string }
+                confirmationAcknowledged: { type: boolean }
+      responses:
+        '200':
+          description: Quotation accepted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+
+  /admin/pricing-catalog:
+    get:
+      summary: List products from pricing catalog
+      tags: [pricing]
+      operationId: listPricingCatalog
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Product catalog items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+    post:
+      summary: Create new product in pricing catalog
+      tags: [pricing]
+      operationId: createPricingCatalogItem
+      security: [{ session: [] }]
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                type: object
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /admin/pricing-catalog/{id}:
+    get:
+      summary: Get pricing catalog product by ID
+      tags: [pricing]
+      operationId: getPricingCatalogItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Product catalog item details
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      summary: Update dynamic product and price in pricing catalog
+      tags: [pricing]
+      operationId: updatePricingCatalogItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /admin/pricing-catalog/{id}/activate:
+    post:
+      summary: Activate product in pricing catalog
+      tags: [pricing]
+      operationId: activatePricingCatalogItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Product activated
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /admin/pricing-catalog/{id}/deactivate:
+    post:
+      summary: Deactivate product in pricing catalog
+      tags: [pricing]
+      operationId: deactivatePricingCatalogItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Product deactivated
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /admin/promo-codes:
+    get:
+      summary: List promotional discount codes
+      tags: [promos]
+      operationId: listPromoCodes
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Promo codes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+    post:
+      summary: Create new promotional discount code
+      tags: [promos]
+      operationId: createPromoCode
+      security: [{ session: [] }]
+      responses:
+        '201':
+          description: Promo code created
+          content:
+            application/json:
+              schema:
+                type: object
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
 components:
   securitySchemes:
     session: { type: apiKey, in: cookie, name: hs_session }

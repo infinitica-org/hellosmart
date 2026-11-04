@@ -11,6 +11,11 @@ import {
   Terminal,
   User,
   Layers,
+  CreditCard,
+  Briefcase,
+  File,
+  FileText,
+  ClipboardCheck,
 } from '@hs/ui';
 import { ROUTES } from '@/constants';
 
@@ -93,6 +98,51 @@ export const adminGroups: NavigationGroup[] = [
         label: 'Security',
         href: ROUTES.ADMIN.SECURITY,
         icon: <ShieldCheck className="w-4 h-4" strokeWidth={2} />,
+      },
+    ],
+  },
+  {
+    title: 'Sales & Commercial',
+    items: [
+      {
+        label: 'Overview',
+        href: ROUTES.ADMIN.SALES,
+        icon: <BarChart3 className="w-4 h-4" strokeWidth={2} />,
+      },
+      {
+        label: 'Leads & Bookings',
+        href: ROUTES.ADMIN.SALES_LEADS,
+        icon: <Users className="w-4 h-4" strokeWidth={2} />,
+      },
+      {
+        label: 'Pricing Catalog',
+        href: ROUTES.ADMIN.SALES_CATALOG,
+        icon: <Layers className="w-4 h-4" strokeWidth={2} />,
+      },
+      {
+        label: 'Promo Codes',
+        href: ROUTES.ADMIN.SALES_PROMOS,
+        icon: <CreditCard className="w-4 h-4" strokeWidth={2} />,
+      },
+      {
+        label: 'GST Calculator',
+        href: ROUTES.ADMIN.SALES_GST,
+        icon: <Briefcase className="w-4 h-4" strokeWidth={2} />,
+      },
+      {
+        label: 'Quote Builder',
+        href: ROUTES.ADMIN.SALES_QUOTE_NEW,
+        icon: <File className="w-4 h-4" strokeWidth={2} />,
+      },
+      {
+        label: 'Sent Quotes',
+        href: ROUTES.ADMIN.SALES_QUOTES,
+        icon: <FileText className="w-4 h-4" strokeWidth={2} />,
+      },
+      {
+        label: 'Customer Approvals',
+        href: ROUTES.ADMIN.SALES_APPROVALS,
+        icon: <ClipboardCheck className="w-4 h-4" strokeWidth={2} />,
       },
     ],
   },
