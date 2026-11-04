@@ -151,5 +151,24 @@ describe('Candidate Profile View & Component (BUG-12)', () => {
     signOutBtn.props.onClick();
     expect(mockSignOut).toHaveBeenCalled();
   });
+
+  it('enforces candidate requiredRole on CandidateProfilePage (BUG-CAN-12)', async () => {
+    const { renderToString } = await import('react-dom/server');
+    const authModule = await import('../hooks/use-portal-auth');
+    const spy = vi.spyOn(authModule, 'usePortalAuth').mockReturnValue({
+      user: null,
+      loading: false,
+      signOut: vi.fn(),
+      error: null,
+      refresh: vi.fn(),
+    } as any);
+
+    const { default: CandidateProfilePage } = await import(
+      '../app/(candidate)/candidate/profile/page'
+    );
+    renderToString(React.createElement(CandidateProfilePage));
+
+    expect(spy).toHaveBeenCalledWith({ requiredRole: 'candidate' });
+  });
 });
 
