@@ -78,17 +78,17 @@ export function PortalShell({
   const accountHref = roleLower.includes('candidate')
     ? ROUTES.CANDIDATE.PROFILE
     : roleLower.includes('admin')
-      ? ROUTES.ADMIN.SETTINGS
+      ? ROUTES.ADMIN.SECURITY
       : ROUTES.COMPANY.SETTINGS;
 
   const preferencesHref = roleLower.includes('candidate')
     ? ROUTES.CANDIDATE.PROFILE
     : roleLower.includes('admin')
-      ? ROUTES.ADMIN.SETTINGS
+      ? ROUTES.ADMIN.SECURITY
       : ROUTES.COMPANY.SETTINGS;
 
   const billingHref = roleLower.includes('admin')
-    ? ROUTES.ADMIN.SETTINGS
+    ? ROUTES.ADMIN.SECURITY
     : roleLower.includes('candidate')
       ? ROUTES.CANDIDATE.DASHBOARD
       : ROUTES.COMPANY.SETTINGS;
