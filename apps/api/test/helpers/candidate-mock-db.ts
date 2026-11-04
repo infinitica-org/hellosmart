@@ -450,8 +450,23 @@ export function createMockDbPool(options: MockDbPoolOptions = {}) {
         const matched = Array.from(assignments.values())
           .filter((a) => a.candidate_id === candidateId && a.org_id === orgId)
           .sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+        const isPortalQuery = q.includes('assessmentId') || q.includes('companyName');
         const rows = matched.map((a) => {
           const asm = assessments.get(a.assessment_id);
+          if (isPortalQuery) {
+            return {
+              id: a.id,
+              assessmentId: a.assessment_id,
+              title: asm?.name ?? 'Test Assessment',
+              companyName: 'Acme Corp',
+              workspaceMode: 'cloud',
+              status: a.status,
+              durationMinutes: 90,
+              deadline: null,
+              submittedAt: null,
+              releaseResults: false,
+            };
+          }
           return {
             id: a.id,
             assessment_id: a.assessment_id,
@@ -461,6 +476,66 @@ export function createMockDbPool(options: MockDbPoolOptions = {}) {
           };
         });
         return { rows, rowCount: rows.length };
+      }
+
+      // 8d2. Query single candidate assessment assignment for detail taking view
+      if (q.includes('FROM app.assignments a') && q.includes('WHERE a.id = $1 AND a.candidate_id = $2 AND a.org_id = $3')) {
+        const assignmentId = params?.[0] as string;
+        const candidateId = params?.[1] as string;
+        const orgId = params?.[2] as string;
+        const a = assignments.get(assignmentId);
+        if (a && a.candidate_id === candidateId && a.org_id === orgId) {
+          const asm = assessments.get(a.assessment_id);
+          return {
+            rows: [
+              {
+                id: a.id,
+                assessmentId: a.assessment_id,
+                title: asm?.name ?? 'Test Assessment',
+                companyName: 'Acme Corp',
+                workspaceMode: 'cloud',
+                status: a.status,
+                timing: { durationMinutes: 90, type: 'duration' },
+                aiPolicy: { enabled: true, allowedModels: ['gpt-4o'] },
+                briefOverrides: {
+                  scenario: 'Build a distributed resilient order processor.',
+                  instructions: 'Complete task within 90 minutes with zero downtime rollback.',
+                  deliverables: ['src/main.ts', 'src/worker.ts'],
+                },
+                deadline: null,
+                firstConnectAt: a.first_connect_at ?? null,
+                submittedAt: null,
+                autoSubmitted: false,
+                releaseResults: false,
+              },
+            ],
+            rowCount: 1,
+          };
+        }
+        return { rows: [], rowCount: 0 };
+      }
+
+      // 8d3. Update consent and first connect
+      if (q.includes('UPDATE app.assignments') && q.includes("first_connect_at = COALESCE(first_connect_at, now())")) {
+        const assignmentId = params?.[0] as string;
+        const a = assignments.get(assignmentId);
+        if (a) {
+          a.status = 'in_progress';
+          a.first_connect_at = new Date();
+          return { rows: [{ id: a.id, status: a.status, first_connect_at: a.first_connect_at }], rowCount: 1 };
+        }
+        return { rows: [], rowCount: 0 };
+      }
+
+      // 8d4. Update assessment submission
+      if (q.includes('UPDATE app.assignments') && q.includes("status = 'submitted'")) {
+        const assignmentId = params?.[0] as string;
+        const a = assignments.get(assignmentId);
+        if (a) {
+          a.status = 'submitted';
+          return { rows: [{ id: a.id, status: 'submitted', submitted_at: new Date() }], rowCount: 1 };
+        }
+        return { rows: [], rowCount: 0 };
       }
 
       // 8e. Atomically update assignment invite token & expiry
