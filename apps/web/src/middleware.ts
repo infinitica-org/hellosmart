@@ -47,7 +47,7 @@ export function buildCspDirectives(nonce: string): string {
     "img-src 'self' data: https:",
     "font-src 'self' data: https:",
     isDev
-      ? `connect-src 'self' ${originsString} ws: wss: https:`
+      ? `connect-src 'self' ${originsString} ws: wss: http: https:`
       : `connect-src 'self' ${originsString}`,
     'frame-src https://cal.com https://api.razorpay.com',
     "frame-ancestors 'none'",
