@@ -1,4 +1,4 @@
--- 0013 candidate_cap_tracking (S1-T05-3, BR-06)
+-- 0015 candidate_cap_tracking (S1-T05-3, BR-06)
 -- Track candidate quota consumption upon first workspace launch and supporting indexes for quota enforcement.
 
 -- 1. Add counted_against_cap_at column to app.users
@@ -12,7 +12,7 @@ CREATE INDEX IF NOT EXISTS users_candidate_cap_idx
 
 -- 3. Pending assessment assignment counting index
 -- Accelerates pending assignment counting across eligible statuses (invited, window_not_open, ready)
--- Runs after 0012_assignments.sql so app.assignments table is guaranteed to exist.
+-- Runs after 0014_assignments.sql so app.assignments table is guaranteed to exist.
 CREATE INDEX IF NOT EXISTS assignments_pending_counting_idx
   ON app.assignments (org_id, status, invite_expires_at, first_connect_at)
   WHERE status IN ('invited', 'window_not_open', 'ready') AND first_connect_at IS NULL;

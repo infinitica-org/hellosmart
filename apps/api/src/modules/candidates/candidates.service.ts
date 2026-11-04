@@ -1024,7 +1024,7 @@ export class CandidatesService {
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest();
     const issuedAt = new Date();
-    // Invariant: 0012_assignments.sql requires invite_expires_at <= invite_issued_at + interval '7 days'
+    // Invariant: 0014_assignments.sql requires invite_expires_at <= invite_issued_at + interval '7 days'
     const expiresAt = new Date(issuedAt.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     const client = await this.pool.connect();
@@ -1155,7 +1155,7 @@ export class CandidatesService {
           });
         }
 
-        // Atomically rotate assignment invite token and reset used_at (0012_assignments.sql invariant)
+        // Atomically rotate assignment invite token and reset used_at (0014_assignments.sql invariant)
         await tx.query(
           `UPDATE app.assignments
            SET invite_token_hash = $1,
