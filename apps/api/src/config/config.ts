@@ -28,6 +28,10 @@ const ConfigSchema = z
     STORAGE_S3_ACCESS_KEY_ID: z.string().optional(),
     STORAGE_S3_SECRET_ACCESS_KEY: z.string().optional(),
     STORAGE_S3_FORCE_PATH_STYLE: z.coerce.boolean().optional(),
+    RETENTION_PURGE_ENABLED: z.coerce.boolean().default(false),
+    RETENTION_PURGE_HOUR_UTC: z.coerce.number().int().min(0).max(23).default(3),
+    RETENTION_PURGE_BATCH_SIZE: z.coerce.number().int().min(1).max(1000).default(100),
+    RETENTION_PURGE_DRY_RUN: z.coerce.boolean().default(false),
     APP_BASE_URL: z.string().url().default('http://localhost:3000'),
     /** Base32 TOTP secret for platform admin MFA (dev/test). Production uses vault via mfa_secret_ref. */
     PLATFORM_ADMIN_MFA_SECRET: z.string().min(16).optional(),

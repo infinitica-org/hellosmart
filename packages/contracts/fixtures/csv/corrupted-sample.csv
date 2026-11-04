@@ -1,0 +1,25 @@
+name,email
+Valid Candidate 01,valid.01@example.test
+Quote "In" Middle,quote.middle@example.test
+OnlyNameColumn
+Extra Column Candidate,extra.col@example.test,third_unexpected_column
+   
+,missing.name@example.test
+Missing Email Candidate,
+No At Symbol,noatsymbol.example.test
+Double At Symbol,double@@example.test
+Spaces In Email,spaces in email@example.test
+Leading Space Email, leadingspace@example.test
+Trailing Space Email,trailingspace@example.test 
+Quoted Local Part,"quoted.local"@example.test
+Duplicate Email Same Case,valid.01@example.test
+Duplicate Email Diff Case,VALID.01@EXAMPLE.TEST
+"Multiline
+Candidate Name",multiline@example.test
+CRLF Ending Candidate,crlf.candidate@example.test
+Valid Candidate 02,valid.02@example.test
+Unicode Domain,unicode@bühler.example.test
+Emoji Name 😀,emoji.candidate@example.test
+Trailing Empty Field,trailing.empty@example.test,
+Valid Candidate 03,valid.03@example.test
+"Unbalanced Quote at EOF,unbalanced@example.test

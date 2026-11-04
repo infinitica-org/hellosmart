@@ -50,6 +50,7 @@ import { TemplatesModule } from './modules/templates/templates.module.js';
 import { AssessmentsModule } from './modules/assessments/assessments.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { StorageModule } from './common/storage/storage.module.js';
+import { JobsModule } from './modules/jobs/jobs.module.js';
 import { CalcomWebhookModule } from './modules/webhooks/calcom/calcom-webhook.module.js';
 import { QuotesModule } from './modules/quotes/quotes.module.js';
 import { ObservabilityModule } from './modules/observability/observability.module.js';
@@ -86,6 +87,7 @@ const devControllers = process.env.NODE_ENV === 'production' ? [] : [DevTestCont
     AssessmentsModule,
     HealthModule,
     StorageModule,
+    JobsModule,
     CalcomWebhookModule,
     QuotesModule,
   ],
