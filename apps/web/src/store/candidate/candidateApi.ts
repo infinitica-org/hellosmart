@@ -65,8 +65,10 @@ export interface WorkspaceDraftPayload {
 
 export interface AssessmentSubmissionPayload {
   workspaceId: string;
+  assignmentId?: string;
   artifacts?: Array<{ name: string; url: string }>;
   submissionNotes?: string;
+  autoSubmitted?: boolean;
 }
 
 export interface AssessmentSubmissionResponse {
