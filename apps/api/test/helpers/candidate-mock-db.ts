@@ -132,6 +132,15 @@ export function createMockDbPool(options: MockDbPoolOptions = {}) {
         return { rows: [{ count: count.toString() }], rowCount: 1 };
       }
 
+      // 0d. Count active assessments
+      if (q.includes('FROM app.assessments') && q.includes("status != 'archived'")) {
+        const orgId = params?.[0] as string;
+        const count = Array.from(assessments.values()).filter(
+          (a) => a.org_id === orgId && a.status !== 'archived',
+        ).length;
+        return { rows: [{ count }], rowCount: 1 };
+      }
+
       // 1. Assessment lookup
       if (q.includes('FROM app.assessments WHERE id = $1 AND org_id = $2')) {
         const assessmentId = params?.[0] as string;

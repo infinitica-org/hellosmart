@@ -1409,8 +1409,17 @@ export class CandidatesService {
         const maxCandidates = entitlementsRes.rows[0]?.max_candidates ?? 25;
         const remainingQuota = Math.max(0, maxCandidates - invitedCandidates);
 
+        // Query real configured non-archived assessments count
+        const assessmentsRes = await tx.query<{ count: number }>(
+          `SELECT count(*)::int AS count
+           FROM app.assessments
+           WHERE org_id = $1 AND status != 'archived'`,
+          [orgId],
+        );
+        const configuredAssessments = Number(assessmentsRes.rows[0]?.count ?? 0);
+
         return {
-          configuredAssessments: 1,
+          configuredAssessments,
           invitedCandidates,
           activeCandidates,
           submissionsToReview,

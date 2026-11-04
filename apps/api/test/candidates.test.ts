@@ -1584,7 +1584,7 @@ describe('Candidates API (S1-T05-1)', () => {
     expect(res.statusCode).toBe(200);
     const metrics = JSON.parse(res.body);
     expect(metrics).toMatchObject({
-      configuredAssessments: 1,
+      configuredAssessments: 3,
       maxCandidates: 25,
     });
     expect(metrics.invitedCandidates).toBeGreaterThanOrEqual(2);
