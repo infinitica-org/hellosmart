@@ -162,6 +162,28 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
       const body = JSON.parse(res.body);
       expect(body.code).toBe('UNSUPPORTED_MEDIA_TYPE');
     });
+
+    it('accepts application/json with candidates array', async () => {
+      const sessionToken = await createCompanySession();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/company/candidates/bulk',
+        headers: {
+          cookie: `hs_session=${sessionToken}`,
+          'x-hs-csrf': '1',
+          origin: 'http://localhost:3000',
+          'content-type': 'application/json',
+        },
+        payload: JSON.stringify({
+          candidates: [{ name: 'Json Candidate', email: 'json.cand@example.com' }],
+        }),
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.created).toBeDefined();
+    });
   });
 
   describe('2. Valid CSV Upload and Partial Success', () => {

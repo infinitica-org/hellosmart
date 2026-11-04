@@ -648,9 +648,12 @@ export class CandidatesService {
     payload: { candidates: CreateCandidateDto[] },
     actor: UserContext,
     meta: RequestMeta,
-  ): Promise<{ created: CandidateDto[]; errors: { row: number; email: string; reason: string }[] }> {
+  ): Promise<{
+    created: CandidateDto[];
+    errors: { row: number; rowNumber: number; name: string; email: string; reason: string }[];
+  }> {
     const created: CandidateDto[] = [];
-    const errors: { row: number; email: string; reason: string }[] = [];
+    const errors: { row: number; rowNumber: number; name: string; email: string; reason: string }[] = [];
 
     for (let i = 0; i < payload.candidates.length; i++) {
       const candidateDto = payload.candidates[i]!;
@@ -660,6 +663,8 @@ export class CandidatesService {
       } catch (err: any) {
         errors.push({
           row: i + 1,
+          rowNumber: i + 1,
+          name: candidateDto.name,
           email: candidateDto.email,
           reason: err?.detail || err?.message || 'Failed to import candidate',
         });

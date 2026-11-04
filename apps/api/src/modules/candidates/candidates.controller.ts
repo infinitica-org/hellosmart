@@ -74,16 +74,32 @@ export class CandidatesController {
     @Query('assessment_id') assessmentId?: string,
   ) {
     const contentType = (request.headers['content-type'] || '').toLowerCase();
-    if (!contentType.includes('text/csv') && !contentType.includes('application/csv')) {
+    const actor = request[REQUEST_USER_KEY];
+
+    // Support JSON candidate payload from client wizard/importer
+    if (contentType.includes('application/json')) {
+      const body = request.body as any;
+      if (Array.isArray(body) || Array.isArray(body?.candidates)) {
+        const candidates = Array.isArray(body) ? body : body.candidates;
+        return this.candidatesService.bulkCreate({ candidates }, actor, requestMeta(request));
+      }
       throw problem({
         title: 'Unsupported Media Type',
         status: 415,
-        detail: `Bulk candidate upload requires 'text/csv' or 'application/csv' content-type. Received: '${contentType || 'none'}'`,
+        detail: `Bulk candidate upload requires 'text/csv' or JSON object with candidates array. Received: '${contentType || 'none'}'`,
         code: 'UNSUPPORTED_MEDIA_TYPE',
       });
     }
 
-    const actor = request[REQUEST_USER_KEY];
+    if (!contentType.includes('text/csv') && !contentType.includes('application/csv')) {
+      throw problem({
+        title: 'Unsupported Media Type',
+        status: 415,
+        detail: `Bulk candidate upload requires 'text/csv', 'application/csv', or 'application/json' content-type. Received: '${contentType || 'none'}'`,
+        code: 'UNSUPPORTED_MEDIA_TYPE',
+      });
+    }
+
     const stream = (request.body as any) || request.raw;
     return this.candidatesService.processBulkCsvStream(
       stream,
