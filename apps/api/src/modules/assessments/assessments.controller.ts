@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Req,
 } from '@nestjs/common';
 import {
@@ -110,5 +111,25 @@ export class AssessmentsController {
     }
 
     return await this.assessmentsService.updateBrief(id, parsed.data, actor);
+  }
+
+  @Get(':id/rubric')
+  async getRubric(
+    @Param('id') id: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const actor = request[REQUEST_USER_KEY];
+    return await this.assessmentsService.getRubric(id, actor);
+  }
+
+  @Put(':id/rubric')
+  @HttpCode(200)
+  async updateRubric(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const actor = request[REQUEST_USER_KEY];
+    return await this.assessmentsService.updateRubric(id, body, actor);
   }
 }

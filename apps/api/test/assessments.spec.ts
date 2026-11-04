@@ -353,5 +353,40 @@ describe('Assessment Builder & Task Lifecycle Engine (Stream 2, S1-T02-1, S1-T02
         },
       });
     });
+
+    it('AssessmentsController handles getRubric and updateRubric', async () => {
+      const controller = new AssessmentsController(service);
+      const req: any = { [REQUEST_USER_KEY]: companyAdminOrgA };
+
+      (mockRepo.findById as any).mockResolvedValue({
+        id: 'asm_01',
+        templateId: 'tpl_fs_01',
+        templateVersionId: 'ver_01',
+        briefOverrides: {},
+      });
+      (mockRepo as any).updateRubric = vi.fn().mockResolvedValue(true);
+
+      const rubric = await controller.getRubric('asm_01', req);
+      expect(rubric.dimensions).toBeDefined();
+      expect(rubric.dimensions.length).toBeGreaterThan(0);
+
+      // Updating with invalid total weight (< 100) throws 422
+      await expect(
+        controller.updateRubric('asm_01', { dimensions: [{ weight: 50 }] }, req),
+      ).rejects.toMatchObject({
+        response: {
+          status: 422,
+          code: 'TOTAL_RUBRIC_WEIGHT_MUST_EQUAL_100',
+        },
+      });
+
+      // Updating with valid total weight (= 100) succeeds
+      const validUpdated = await controller.updateRubric(
+        'asm_01',
+        { dimensions: [{ id: 'd1', name: 'A', weight: 60 }, { id: 'd2', name: 'B', weight: 40 }] },
+        req,
+      );
+      expect(validUpdated.dimensions).toHaveLength(2);
+    });
   });
 });
