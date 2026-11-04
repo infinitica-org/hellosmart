@@ -151,10 +151,17 @@ export default function CompanyCandidatesPage() {
         });
       }
       void refetch();
-    } catch {
+    } catch (err: any) {
+      const isNoAssignment =
+        err?.data?.code === 'ASSIGNMENT_NOT_FOUND' ||
+        err?.message?.includes('No assessment assignment') ||
+        err?.detail?.includes('No assessment assignment');
+
       setNotification({
         type: 'info',
-        message: `Failed to resend invitation to ${candidate.email}.`,
+        message: isNoAssignment
+          ? `Cannot resend invite: ${candidate.name} has no assessment assignment yet. Assign an assessment first.`
+          : `Failed to resend invitation to ${candidate.email}.`,
       });
     }
   };
