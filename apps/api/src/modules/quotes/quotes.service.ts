@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import type { Pool, PoolClient } from 'pg';
+import type { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import type {
   AcceptQuoteResponseDto,
   CreateQuoteDto,
@@ -35,6 +35,23 @@ export class QuotesService {
   ) {}
 
   /**
+   * Helper to execute queries on the platform pool with app.is_platform = 'true'
+   * so Row Level Security (RLS) policies permit platform operations across leads and quotes.
+   */
+  private async queryWithPlatform<T extends QueryResultRow = any>(
+    sql: string,
+    params?: any[],
+  ): Promise<QueryResult<T>> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("SELECT set_config('app.is_platform', 'true', false)");
+      return await client.query<T>(sql, params);
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
    * Generates a commercial quote with itemized lines, promo discount, 18% GST calculation,
    * and cryptographically secure public access token.
    */
@@ -50,7 +67,7 @@ export class QuotesService {
 
     // 1. Verify customer reference
     if (dto.leadId) {
-      const leadCheck = await this.pool.query(
+      const leadCheck = await this.queryWithPlatform(
         `SELECT id, stage FROM app.leads WHERE id = $1 AND deleted_at IS NULL`,
         [dto.leadId],
       );
@@ -63,7 +80,7 @@ export class QuotesService {
         });
       }
     } else if (dto.orgId) {
-      const orgCheck = await this.pool.query(
+      const orgCheck = await this.queryWithPlatform(
         `SELECT id, status FROM app.organizations WHERE id = $1`,
         [dto.orgId],
       );
@@ -360,13 +377,13 @@ export class QuotesService {
   }
 
   async getQuoteById(id: string): Promise<QuoteDto | null> {
-    const quoteRes = await this.pool.query(
+    const quoteRes = await this.queryWithPlatform(
       `SELECT * FROM app.quotes WHERE id = $1`,
       [id],
     );
     if (quoteRes.rows.length === 0) return null;
 
-    const linesRes = await this.pool.query(
+    const linesRes = await this.queryWithPlatform(
       `SELECT * FROM app.quote_lines WHERE quote_id = $1 ORDER BY created_at ASC`,
       [id],
     );
@@ -380,7 +397,7 @@ export class QuotesService {
       return null;
     }
     const tokenHash = crypto.createHash('sha256').update(token.trim()).digest('hex');
-    const quoteRes = await this.pool.query(
+    const quoteRes = await this.queryWithPlatform(
       `SELECT * FROM app.quotes WHERE public_token_hash = $1`,
       [tokenHash],
     );
@@ -391,14 +408,14 @@ export class QuotesService {
     // If past expiration and still in 'issued' status, transition to 'expired'
     const isExpired = new Date(quoteRow.expires_at).getTime() < Date.now();
     if (isExpired && quoteRow.status === 'issued') {
-      await this.pool.query(
+      await this.queryWithPlatform(
         `UPDATE app.quotes SET status = 'expired', updated_at = clock_timestamp() WHERE id = $1`,
         [quoteRow.id],
       );
       quoteRow.status = 'expired';
     }
 
-    const linesRes = await this.pool.query(
+    const linesRes = await this.queryWithPlatform(
       `SELECT * FROM app.quote_lines WHERE quote_id = $1 ORDER BY created_at ASC`,
       [quoteRow.id],
     );
@@ -459,7 +476,7 @@ export class QuotesService {
       // Idempotency: Already accepted
       if (quoteRow.status === 'accepted') {
         await client.query('COMMIT');
-        const linesRes = await this.pool.query(
+        const linesRes = await this.queryWithPlatform(
           `SELECT * FROM app.quote_lines WHERE quote_id = $1 ORDER BY created_at ASC`,
           [quoteRow.id],
         );
@@ -570,7 +587,7 @@ export class QuotesService {
 
       await client.query('COMMIT');
 
-      const linesRes = await this.pool.query(
+      const linesRes = await this.queryWithPlatform(
         `SELECT * FROM app.quote_lines WHERE quote_id = $1 ORDER BY created_at ASC`,
         [updatedRow.id],
       );
@@ -616,14 +633,14 @@ export class QuotesService {
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const res = await this.pool.query(
+    const res = await this.queryWithPlatform(
       `SELECT * FROM app.quotes ${whereClause} ORDER BY created_at DESC`,
       values,
     );
 
     const quotes: QuoteDto[] = [];
     for (const row of res.rows) {
-      const linesRes = await this.pool.query(
+      const linesRes = await this.queryWithPlatform(
         `SELECT * FROM app.quote_lines WHERE quote_id = $1 ORDER BY created_at ASC`,
         [row.id],
       );
@@ -640,7 +657,7 @@ export class QuotesService {
   ): Promise<{ name: string | null; email: string | null; company: string | null }> {
     if (qRow.lead_id) {
       try {
-        const leadRes = await clientOrPool.query(
+        const leadRes = await this.queryWithPlatform(
           `SELECT name, email, company FROM app.leads WHERE id = $1`,
           [qRow.lead_id],
         );
@@ -657,7 +674,7 @@ export class QuotesService {
       }
     } else if (qRow.org_id) {
       try {
-        const orgRes = await clientOrPool.query(
+        const orgRes = await this.queryWithPlatform(
           `SELECT name FROM app.organizations WHERE id = $1`,
           [qRow.org_id],
         );
