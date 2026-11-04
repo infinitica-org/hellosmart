@@ -144,6 +144,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: { candidates },
@@ -212,6 +213,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: { candidates: warmUpCandidates },
@@ -242,6 +244,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: { candidates },
@@ -307,6 +310,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: { candidates: candidatesBatch2 },
@@ -363,6 +367,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminSecondaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: { candidates },
@@ -380,6 +385,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: {
@@ -397,6 +403,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
         });
@@ -409,6 +416,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: {
@@ -451,6 +459,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: {
@@ -467,6 +476,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminSecondaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: {
@@ -516,6 +526,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: { candidates },
@@ -573,6 +584,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: { candidates },
@@ -619,6 +631,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: { candidates },
@@ -655,6 +668,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: {
@@ -675,6 +689,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: {
@@ -712,6 +727,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: { candidates },
@@ -743,6 +759,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             'content-type': 'application/json',
             origin: ctx.corsOrigin,
           },
@@ -764,6 +781,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: {
@@ -792,6 +810,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: {
@@ -821,6 +840,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: { candidates: 'invalid-non-array' },
@@ -845,6 +865,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: { candidates: [candidatePayload] },
@@ -894,6 +915,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: { candidates },
@@ -938,6 +960,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${companyAdminPrimaryToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: { candidates },
@@ -963,6 +986,7 @@ describe.runIf(isDbAvailable)(
             headers: {
               cookie: `hs_session=${companyAdminPrimaryToken}`,
               'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
               origin: ctx.corsOrigin,
             },
             payload: { candidates: sharedCandidates },
@@ -973,6 +997,7 @@ describe.runIf(isDbAvailable)(
             headers: {
               cookie: `hs_session=${companyAdminPrimaryToken}`,
               'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
               origin: ctx.corsOrigin,
             },
             payload: { candidates: sharedCandidates },
@@ -1033,6 +1058,7 @@ describe.runIf(isDbAvailable)(
           headers: {
             cookie: `hs_session=${candidateToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: ctx.corsOrigin,
           },
           payload: {

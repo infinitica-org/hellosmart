@@ -135,6 +135,9 @@ Browse tenant data under the **`app`** schema. Prefer **`hs_owner`** only on loc
 With dependencies running and migrations applied, start the development applications:
 
 ```bash
+# Observability kit (Grafana :3001, Dozzle :8888)
+pnpm obs:up
+
 # Run full development environment in parallel (API + Web + Docs)
 pnpm dev
 

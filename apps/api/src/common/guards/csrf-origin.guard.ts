@@ -15,6 +15,7 @@ import {
 } from '../../config/security.config.js';
 import { SKIP_CSRF_KEY } from '../decorators/skip-csrf.decorator.js';
 import { problem } from '../errors/app-http.exception.js';
+import { requestHasSessionCookie } from '../../modules/session/session-cookie.js';
 
 @Injectable()
 export class CsrfOriginGuard implements CanActivate {
@@ -50,11 +51,7 @@ export class CsrfOriginGuard implements CanActivate {
     // 4. Identify whether request is from a browser or carries ambient session credentials
     const originHeader = request.headers['origin'];
     const refererHeader = request.headers['referer'];
-    const rawCookie = request.headers['cookie'];
-    const cookies = request.cookies || (request.raw as any)?.cookies || {};
-    const hasSessionCookie = Boolean(
-      cookies['hs_session'] || (typeof rawCookie === 'string' && rawCookie.includes('hs_session=')),
-    );
+    const hasSessionCookie = requestHasSessionCookie(request);
     const secFetchSite = request.headers['sec-fetch-site'];
 
     const isBrowserOrAmbientRequest = Boolean(
@@ -68,7 +65,8 @@ export class CsrfOriginGuard implements CanActivate {
       return true;
     }
 
-    // 5. Require custom anti-CSRF header (X-HS-CSRF) on all browser state-changing requests
+    // 5. Require custom anti-CSRF header (X-HS-CSRF) on all browser state-changing requests.
+    // Presence of the custom header is the defense (Fetch metadata + cookie); value is not a secret.
     const csrfHeader = request.headers[CSRF_HEADER_NAME] || request.headers['x-hs-csrf'];
     if (!csrfHeader || (typeof csrfHeader === 'string' && csrfHeader.trim() === '')) {
       throw problem({

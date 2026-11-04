@@ -33,11 +33,8 @@ import {
 } from '../../common/guards/session.guard.js';
 import { APP_CONFIG } from '../../config/config.tokens.js';
 import type { Config } from '../../config/config.js';
-import {
-  COOKIE_HOST_SESSION_NAME,
-  COOKIE_SESSION_NAME,
-  SessionService,
-} from '../session/session.service.js';
+import { extractRawSessionToken } from '../session/session-cookie.js';
+import { ROLE_SESSION_LIMITS } from '../session/session.types.js';
 import { clearSessionCookie, setSessionCookie } from './auth.cookies.js';
 import { AuthService } from './auth.service.js';
 
@@ -67,11 +64,12 @@ export class AuthController {
     if ('mfaRequired' in result) {
       return result;
     }
-    const mfaCompleted = result.role === 'platform_admin' && Boolean(body.mfaCode);
+    const mfaVerified =
+      result.role === 'platform_admin' && 'mfaVerified' in result && result.mfaVerified === true;
     const session = await this.auth.createSessionForUserId(result.id, meta, {
-      mfaVerified: mfaCompleted,
+      mfaVerified,
     });
-    setSessionCookie(reply, this.config, session.rawToken);
+    setSessionCookie(reply, this.config, session.rawToken, session.cookieMaxAgeSeconds);
     return MeDtoSchema.parse(session.me);
   }
 
@@ -99,7 +97,12 @@ export class AuthController {
     const session = await this.auth.createSessionForUserId(me.id, meta, {
       mfaVerified: true,
     });
-    setSessionCookie(reply, this.config, session.rawToken);
+    setSessionCookie(
+      reply,
+      this.config,
+      session.rawToken,
+      session.cookieMaxAgeSeconds ?? ROLE_SESSION_LIMITS.platform_admin.absoluteLifetimeSeconds,
+    );
     return MeDtoSchema.parse(session.me);
   }
 
@@ -109,7 +112,7 @@ export class AuthController {
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const rawToken = extractSessionId(request);
+    const rawToken = extractRawSessionToken(request);
     const result = await this.auth.logout(rawToken);
     clearSessionCookie(reply);
     return LogoutResponseDtoSchema.parse(result);
@@ -134,7 +137,7 @@ export class AuthController {
     }
 
     const user = request[REQUEST_USER_KEY];
-    const sessionId = extractSessionId(request);
+    const sessionId = extractRawSessionToken(request);
     const meta = requestMeta(request);
 
     const result = await this.auth.changePassword(user, sessionId, parsed.data, meta);
@@ -169,19 +172,3 @@ function requestMeta(request: FastifyRequest): {
   return meta;
 }
 
-function extractSessionId(request: FastifyRequest): string | undefined {
-  const cookies = request.cookies || (request.raw as any)?.cookies || {};
-  const hostCookie = cookies[COOKIE_HOST_SESSION_NAME];
-  if (typeof hostCookie === 'string' && hostCookie.trim().length > 0) {
-    return hostCookie.trim();
-  }
-  const regularCookie = cookies[COOKIE_SESSION_NAME];
-  if (typeof regularCookie === 'string' && regularCookie.trim().length > 0) {
-    return regularCookie.trim();
-  }
-  const auth = request.headers.authorization;
-  if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
-    return auth.slice('Bearer '.length).trim();
-  }
-  return undefined;
-}

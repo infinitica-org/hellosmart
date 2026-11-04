@@ -67,7 +67,7 @@ describe('S0-T16-1: MFA State & Session Creation Tracking (Item 2)', () => {
             mfaVerified: options?.mfaVerified,
           },
         );
-        return { rawToken, sessionId, me: mockPlatformAdmin as any };
+        return { rawToken, sessionId, cookieMaxAgeSeconds: 8 * 60 * 60, me: mockPlatformAdmin as any };
       },
     );
 
@@ -98,13 +98,21 @@ describe('S0-T16-1: MFA State & Session Creation Tracking (Item 2)', () => {
       org: null,
     };
 
-    vi.spyOn(authService, 'login').mockResolvedValueOnce(mockPlatformAdmin as any);
+    vi.spyOn(authService, 'login').mockResolvedValueOnce({
+      ...mockPlatformAdmin,
+      mfaVerified: true,
+    } as any);
 
     let capturedMfaVerified: boolean | undefined;
     vi.spyOn(authService, 'createSessionForUserId').mockImplementationOnce(
       async (userId, meta, options) => {
         capturedMfaVerified = options?.mfaVerified;
-        return { rawToken: 'token', sessionId: 'session-id', me: mockPlatformAdmin as any };
+        return {
+          rawToken: 'token',
+          sessionId: 'session-id',
+          cookieMaxAgeSeconds: 8 * 60 * 60,
+          me: mockPlatformAdmin as any,
+        };
       },
     );
 
@@ -146,7 +154,12 @@ describe('S0-T16-1: MFA State & Session Creation Tracking (Item 2)', () => {
     vi.spyOn(authService, 'createSessionForUserId').mockImplementationOnce(
       async (userId, meta, options) => {
         capturedMfaVerified = options?.mfaVerified;
-        return { rawToken: 'token', sessionId: 'session-id', me: mockCompanyAdmin as any };
+        return {
+          rawToken: 'token',
+          sessionId: 'session-id',
+          cookieMaxAgeSeconds: 12 * 60 * 60,
+          me: mockCompanyAdmin as any,
+        };
       },
     );
 

@@ -19,7 +19,13 @@ qa.hellosmart.ai {
 
 api.qa.hellosmart.ai {
 	import qa_guard
-	reverse_proxy api:4000
+	reverse_proxy api:4000 api-2:4000 {
+		lb_policy least_conn
+		health_uri /api/v1/health/ready
+		health_interval 5s
+		health_status 200
+		flush_interval -1
+	}
 }
 
 ws.qa.hellosmart.ai {

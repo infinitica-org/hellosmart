@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { SessionGuard } from '../session.guard.js';
+import { SessionGuard, REQUEST_USER_KEY } from '../session.guard.js';
 import { RolesGuard } from '../roles.guard.js';
+import { OrgScopeGuard } from '../org-scope.guard.js';
 import { ProblemDetailsException } from '../../exceptions/problem-details.exception.js';
 import { ProblemDetailsFilter } from '../../exceptions/problem-details.filter.js';
 import { SessionService, COOKIE_HOST_SESSION_NAME, COOKIE_SESSION_NAME } from '../../../modules/session/session.service.js';
@@ -47,10 +48,13 @@ describe('Auth & Role Guards Suite (Subtask 9.1)', () => {
     headers?: Record<string, string>;
     user?: any;
   }): ExecutionContext => {
-    const req: any = {
-      cookies: options.cookies || {},
-      headers: options.headers || {},
-      url: '/api/v1/protected-resource',
+      const req: any = {
+        cookies: options.cookies || {},
+        headers: options.headers || {},
+        url: '/api/v1/protected-resource',
+        params: {},
+        query: {},
+        body: {},
       raw: {
         cookies: options.cookies || {},
       },
@@ -77,6 +81,8 @@ describe('Auth & Role Guards Suite (Subtask 9.1)', () => {
     reflector = new Reflector();
     sessionService = {
       resolveSession: vi.fn(),
+      cacheAccountStatus: vi.fn().mockResolvedValue(undefined),
+      markMfaVerified: vi.fn().mockResolvedValue(undefined),
     } as unknown as SessionService;
     databaseService = new DatabaseService();
 
@@ -247,6 +253,48 @@ describe('Auth & Role Guards Suite (Subtask 9.1)', () => {
       });
     });
 
+    it('blocks platform_admin sessions that are not MFA-verified', async () => {
+      vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      vi.spyOn(sessionService, 'resolveSession').mockResolvedValue({
+        ...mockValidSession,
+        role: 'platform_admin',
+        orgId: null,
+        mfaVerified: false,
+      });
+
+      const ctx = createMockContext({
+        cookies: { [COOKIE_SESSION_NAME]: 'admin-token' },
+      });
+
+      try {
+        await sessionGuard.canActivate(ctx);
+        expect.unreachable('Should have thrown 403');
+      } catch (err: any) {
+        expect(err.problem.code).toBe('MFA_REQUIRED');
+      }
+    });
+
+    it('blocks authenticated users who must reset their password', async () => {
+      vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      vi.spyOn(sessionService, 'resolveSession').mockResolvedValue(mockValidSession);
+      databaseService.setStatusChecker(async () => ({
+        userStatus: 'active',
+        orgStatus: 'paid_active',
+        mustResetPassword: true,
+      }));
+
+      const ctx = createMockContext({
+        cookies: { [COOKIE_SESSION_NAME]: 'reset-token' },
+      });
+
+      try {
+        await sessionGuard.canActivate(ctx);
+        expect.unreachable('Should have thrown 403');
+      } catch (err: any) {
+        expect(err.problem.code).toBe('PASSWORD_RESET_REQUIRED');
+      }
+    });
+
     it('attaches user to request when authenticated via __Host-hs_session cookie', async () => {
       vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
       vi.spyOn(sessionService, 'resolveSession').mockResolvedValue(mockValidSession);
@@ -396,6 +444,23 @@ describe('Auth & Role Guards Suite (Subtask 9.1)', () => {
       const instance = new TestController();
       const metadata = Reflect.getMetadata(IS_PUBLIC_KEY, instance.testEndpoint);
       expect(metadata).toBe(true);
+    });
+
+    it('test(BR-01): OrgScopeGuard returns 404 when body org_id does not match session', () => {
+      const orgGuard = new OrgScopeGuard(reflector);
+      vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+      const ctx = createMockContext({
+        user: {
+          userId: mockValidSession.userId,
+          orgId: mockValidSession.orgId,
+          role: 'company_admin',
+          email: mockValidSession.email,
+        },
+      });
+      const req = ctx.switchToHttp().getRequest<any>();
+      req[REQUEST_USER_KEY] = req.user;
+      req.body = { org_id: '00000000-0000-4000-8000-000000000099' };
+      expect(() => orgGuard.canActivate(ctx)).toThrow();
     });
 
     it('@Roles sets roles array metadata', () => {

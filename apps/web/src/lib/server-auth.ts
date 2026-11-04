@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveServerApiV1Base } from './api-base-url';
 import { DEV_SESSION_STORE } from './session-store';
+import { apiSessionCookieHeader, readSessionTokenFromCookies } from './session-cookie';
 
 export interface AuthSession {
   role: string;
@@ -16,7 +17,7 @@ export type AuthCheckResult =
  * Validates the caller's session on the server side and verifies they have platform_admin role.
  * 
  * Rules:
- * 1. Checks `hs_session` cookie or `Authorization: Bearer <token>`.
+ * 1. Checks `hs_session` / `__Host-hs_session` cookies (never Authorization Bearer).
  * 2. Never trusts `hs_role` or client-supplied role hints.
  * 3. In production, calls the backend `/me` endpoint with a timeout.
  * 4. In development/test mode, falls back to DEV_SESSION_STORE if backend is offline.
@@ -24,9 +25,7 @@ export type AuthCheckResult =
  * 6. Returns 403 if authenticated but not a platform_admin.
  */
 export async function requirePlatformAdmin(req: NextRequest): Promise<AuthCheckResult> {
-  const sessionToken =
-    req.cookies.get('hs_session')?.value ||
-    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+  const sessionToken = readSessionTokenFromCookies(req);
 
   if (!sessionToken) {
     return {
@@ -76,8 +75,7 @@ export async function requirePlatformAdmin(req: NextRequest): Promise<AuthCheckR
   try {
     const meRes = await fetch(`${apiV1Base}/me`, {
       headers: {
-        Cookie: `hs_session=${sessionToken}`,
-        Authorization: `Bearer ${sessionToken}`,
+        Cookie: apiSessionCookieHeader(sessionToken),
       },
       cache: 'no-store',
       signal: AbortSignal.timeout(1500),

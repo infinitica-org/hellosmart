@@ -50,16 +50,17 @@ jobs:
           echo "${{ secrets.QA_SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
       - name: sync compose files
         run: |
-          ssh -p "${{ vars.QA_SSH_PORT || '2222' }}" "${{ secrets.QA_SSH_USER }}@${{ secrets.QA_SSH_HOST }}" "mkdir -p /srv/hellosmart/scripts"
+          ssh -p "${{ vars.QA_SSH_PORT || '2222' }}" "${{ secrets.QA_SSH_USER }}@${{ secrets.QA_SSH_HOST }}" "mkdir -p /srv/hellosmart/infra/observability /srv/hellosmart/infra/pgbouncer"
           scp -P "${{ vars.QA_SSH_PORT || '2222' }}" \
             infra/qa-vps/docker-compose.qa.yml \
             infra/qa-vps/Caddyfile \
             infra/qa-vps/qa.sh \
-            infra/qa-vps/qa-archive.sh \
+            docker-compose.obs.yml \
             "${{ secrets.QA_SSH_USER }}@${{ secrets.QA_SSH_HOST }}:/srv/hellosmart/"
-          scp -P "${{ vars.QA_SSH_PORT || '2222' }}" \
-            scripts/qa-log-archive.mjs \
-            "${{ secrets.QA_SSH_USER }}@${{ secrets.QA_SSH_HOST }}:/srv/hellosmart/scripts/"
+          scp -r -P "${{ vars.QA_SSH_PORT || '2222' }}" \
+            infra/observability \
+            infra/pgbouncer \
+            "${{ secrets.QA_SSH_USER }}@${{ secrets.QA_SSH_HOST }}:/srv/hellosmart/infra/"
       - name: deploy
         run: |
           ssh -p "${{ vars.QA_SSH_PORT || '2222' }}" "${{ secrets.QA_SSH_USER }}@${{ secrets.QA_SSH_HOST }}" \

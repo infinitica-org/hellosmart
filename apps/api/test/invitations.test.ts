@@ -500,9 +500,9 @@ describe('Stream 8 — Invitation Validate, Accept API & Mail Service (S0-T08-1,
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/invitations/accept',
+      remoteAddress: '203.0.113.195',
       headers: {
         'user-agent': 'Vitest-Test-Agent/1.0',
-        'x-forwarded-for': '203.0.113.195',
       },
       payload: {
         token: validToken,

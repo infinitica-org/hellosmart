@@ -133,6 +133,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           'content-type': 'text/csv',
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: 'name,email\nAlice,alice@example.com',
@@ -150,6 +151,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'application/json',
         },
@@ -178,6 +180,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -216,6 +219,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -257,6 +261,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -280,6 +285,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -302,6 +308,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -325,6 +332,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -345,6 +353,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -372,6 +381,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -434,6 +444,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -470,6 +481,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -510,6 +522,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -540,6 +553,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -561,6 +575,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -584,6 +599,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -614,6 +630,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -642,6 +659,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -670,6 +688,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -693,6 +712,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },
@@ -901,6 +921,7 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
           'content-type': 'text/csv',
         },

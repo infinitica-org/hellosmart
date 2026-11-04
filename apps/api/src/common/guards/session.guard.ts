@@ -11,27 +11,34 @@ import {
   IS_PUBLIC_KEY,
   AuthenticatedUser,
 } from '../constants/auth.constants.js';
-import {
-  COOKIE_HOST_SESSION_NAME,
-  COOKIE_SESSION_NAME,
-  SessionService,
-} from '../../modules/session/session.service.js';
+import { SessionService } from '../../modules/session/session.service.js';
+import { extractRawSessionToken } from '../../modules/session/session-cookie.js';
 import { DatabaseService } from '../database/database.service.js';
 import { ProblemDetailsException } from '../exceptions/problem-details.exception.js';
 
 export const REQUEST_USER_KEY = 'user';
+const STATUS_CACHE_TTL_MS = 30_000;
 
-function parseCookieHeader(header: string): Record<string, string> {
-  const map: Record<string, string> = {};
-  for (const part of header.split(';')) {
-    const eqIdx = part.indexOf('=');
-    if (eqIdx !== -1) {
-      const key = part.slice(0, eqIdx).trim();
-      const val = part.slice(eqIdx + 1).trim();
-      map[key] = decodeURIComponent(val);
-    }
-  }
-  return map;
+function requestPath(request: FastifyRequest): string {
+  const raw = request.url ?? '';
+  return raw.split('?')[0] ?? '';
+}
+
+function pathAllowedDuringPasswordReset(path: string): boolean {
+  return (
+    path.endsWith('/me') ||
+    path.includes('/auth/password/change') ||
+    path.includes('/auth/logout')
+  );
+}
+
+function pathAllowedDuringMfaEnrollment(path: string): boolean {
+  return (
+    path.endsWith('/me') ||
+    path.includes('/auth/mfa') ||
+    path.includes('/auth/logout') ||
+    path.includes('/auth/password/change')
+  );
 }
 
 export type AuthenticatedRequest = FastifyRequest & {
@@ -51,7 +58,6 @@ export class SessionGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // 1. Check if route is marked @Public()
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -62,30 +68,21 @@ export class SessionGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<FastifyRequest>();
+    const sessionToken = extractRawSessionToken(request);
 
-    // 2. Cookie validation (Strict security: Cookie ONLY, NO Authorization header fallback)
-    // Supports __Host-hs_session (production HTTPS) and hs_session (dev/test)
-    const cookies = request.cookies || (request.raw as any)?.cookies || {};
-    let sessionToken = cookies[COOKIE_HOST_SESSION_NAME] || cookies[COOKIE_SESSION_NAME];
-
-    if (!sessionToken && typeof request.headers.cookie === 'string') {
-      const headerCookies = parseCookieHeader(request.headers.cookie);
-      sessionToken = headerCookies[COOKIE_HOST_SESSION_NAME] || headerCookies[COOKIE_SESSION_NAME];
-    }
-
-    if (!sessionToken || typeof sessionToken !== 'string' || sessionToken.trim() === '') {
+    if (!sessionToken) {
       throw ProblemDetailsException.unauthorized(
         'Authentication is required. Missing or empty hs_session cookie.',
         'AUTH_REQUIRED',
       );
     }
 
-    // 3. Load session from SessionService (Fail-closed on store failure)
     let sessionData;
     try {
-      sessionData = await this.sessionService.resolveSession(sessionToken.trim());
-    } catch (err: any) {
-      this.logger.error(`Session store failure during session verification: ${err.message}`);
+      sessionData = await this.sessionService.resolveSession(sessionToken);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'unknown error';
+      this.logger.error(`Session store failure during session verification: ${message}`);
       throw ProblemDetailsException.serviceUnavailable(
         'Session verification service is currently unavailable.',
         'SESSION_STORE_UNAVAILABLE',
@@ -99,52 +96,88 @@ export class SessionGuard implements CanActivate {
       );
     }
 
-    // 4. Live user and organization suspension check (Strictly required; fails closed)
-    try {
-      const { userStatus, orgStatus } = await this.databaseService.checkAccountStatus(
-        sessionData.userId,
-        sessionData.orgId,
-      );
+    const now = Date.now();
+    const cacheFresh =
+      Boolean(sessionData.statusCachedAt) &&
+      now - (sessionData.statusCachedAt ?? 0) < STATUS_CACHE_TTL_MS &&
+      Boolean(sessionData.cachedUserStatus);
 
-      if (userStatus === null) {
-        throw ProblemDetailsException.unauthorized(
-          'User account not found or has been removed.',
-          'USER_NOT_FOUND',
+    let userStatus: string | null;
+    let orgStatus: string | null;
+    let mustResetPassword = Boolean(sessionData.mustResetPassword);
+
+    if (cacheFresh) {
+      userStatus = sessionData.cachedUserStatus ?? null;
+      orgStatus = sessionData.cachedOrgStatus ?? null;
+    } else {
+      try {
+        const status = await this.databaseService.checkAccountStatus(
+          sessionData.userId,
+          sessionData.orgId,
+        );
+        userStatus = status.userStatus;
+        orgStatus = status.orgStatus;
+        mustResetPassword = Boolean(status.mustResetPassword);
+        await this.sessionService.cacheAccountStatus(sessionToken, status);
+      } catch (err: unknown) {
+        if (err instanceof ProblemDetailsException) {
+          throw err;
+        }
+        const message = err instanceof Error ? err.message : 'unknown error';
+        this.logger.error(`Database error during suspension check: ${message}`);
+        throw ProblemDetailsException.serviceUnavailable(
+          'Account status verification is currently unavailable.',
+          'ACCOUNT_CHECK_UNAVAILABLE',
         );
       }
+    }
 
-      if (userStatus === 'suspended') {
-        throw ProblemDetailsException.forbidden(
-          'Your user account is suspended.',
-          'USER_SUSPENDED',
-        );
-      }
-
-      if (userStatus === 'deleted') {
-        throw ProblemDetailsException.forbidden(
-          'Your user account has been deleted.',
-          'USER_DELETED',
-        );
-      }
-
-      if (sessionData.orgId && orgStatus === 'suspended') {
-        throw ProblemDetailsException.forbidden(
-          'Your organization is currently suspended.',
-          'ORGANIZATION_SUSPENDED',
-        );
-      }
-    } catch (err: any) {
-      if (err instanceof ProblemDetailsException) {
-        throw err;
-      }
-      this.logger.error(`Database error during suspension check: ${err.message}`);
-      throw ProblemDetailsException.serviceUnavailable(
-        'Account status verification is currently unavailable.',
-        'ACCOUNT_CHECK_UNAVAILABLE',
+    if (userStatus === null) {
+      throw ProblemDetailsException.unauthorized(
+        'User account not found or has been removed.',
+        'USER_NOT_FOUND',
       );
     }
 
-    // 5. Attach authenticated user to request
+    if (userStatus === 'suspended') {
+      throw ProblemDetailsException.forbidden(
+        'Your user account is suspended.',
+        'USER_SUSPENDED',
+      );
+    }
+
+    if (userStatus === 'deleted') {
+      throw ProblemDetailsException.forbidden(
+        'Your user account has been deleted.',
+        'USER_DELETED',
+      );
+    }
+
+    if (sessionData.orgId && orgStatus === 'suspended') {
+      throw ProblemDetailsException.forbidden(
+        'Your organization is currently suspended.',
+        'ORGANIZATION_SUSPENDED',
+      );
+    }
+
+    const path = requestPath(request);
+
+    if (mustResetPassword && !pathAllowedDuringPasswordReset(path)) {
+      throw ProblemDetailsException.forbidden(
+        'Password reset is required before continuing.',
+        'PASSWORD_RESET_REQUIRED',
+      );
+    }
+
+    if (sessionData.role === 'platform_admin' && sessionData.mfaVerified !== true) {
+      if (!pathAllowedDuringMfaEnrollment(path)) {
+        throw ProblemDetailsException.forbidden(
+          'Multi-factor authentication is required.',
+          'MFA_REQUIRED',
+        );
+      }
+    }
+
     const user: AuthenticatedUser = {
       userId: sessionData.userId,
       orgId: sessionData.orgId,
@@ -153,10 +186,10 @@ export class SessionGuard implements CanActivate {
     };
 
     request.user = user;
-    (request as any)[REQUEST_USER_KEY] = user;
-    (request.raw as any).user = user;
-    (request.raw as any)[REQUEST_USER_KEY] = user;
-    (request as any).session = sessionData;
+    (request as AuthenticatedRequest)[REQUEST_USER_KEY] = user;
+    (request.raw as { user?: AuthenticatedUser })[REQUEST_USER_KEY] = user;
+    (request.raw as { user?: AuthenticatedUser }).user = user;
+    (request as { session?: typeof sessionData }).session = sessionData;
 
     return true;
   }

@@ -26,23 +26,15 @@ export class TenantContextService {
   async setTenantContext(client: pg.PoolClient | any, context: TenantContext): Promise<void> {
     try {
       if (context.role === 'platform_admin') {
-        // Platform admin context: set role and platform flag
-        await client.query(`SET LOCAL app.current_role = 'platform_admin'`);
         await client.query(`SELECT set_config('app.current_role', $1, true)`, ['platform_admin']);
-        await client.query(`SELECT set_config('app.is_platform', 'true', true)`);
+        await client.query(`SELECT set_config('app.is_platform', $1, true)`, ['true']);
       } else {
-        // Tenant context: orgId is mandatory (fail-closed)
         if (!context.orgId) {
           throw new Error('Tenant context required: orgId cannot be null for non-platform role');
         }
-
-        // Execute SET LOCAL app.current_org_id and app.current_role
-        // Also call parameterized set_config to prevent SQL injection and enforce local transaction scope
-        await client.query(`SET LOCAL app.current_org_id = '${context.orgId}'`);
-        await client.query(`SET LOCAL app.current_role = '${context.role}'`);
         await client.query(`SELECT set_config('app.current_org_id', $1, true)`, [context.orgId]);
         await client.query(`SELECT set_config('app.org_id', $1, true)`, [context.orgId]);
-        await client.query(`SELECT set_config('app.current_role', $2, true)`, [context.role]);
+        await client.query(`SELECT set_config('app.current_role', $1, true)`, [context.role]);
       }
     } catch (err: any) {
       this.logger.error(`Failed to set tenant context in transaction: ${err.message}`);

@@ -14,13 +14,37 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./packages/contracts/db/init:/docker-entrypoint-initdb.d:ro
+      - ./packages/contracts/db/init/001_roles.sql:/docker-entrypoint-initdb.d/001_roles.sql:ro
+      - ./infra/postgres/002_statement_timeout.sql:/docker-entrypoint-initdb.d/002_statement_timeout.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-hs_owner} -d $${POSTGRES_DB:-hellosmart}"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 5s
+
+  pgbouncer:
+    image: edoburu/pgbouncer:1.23.1-p0
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGBOUNCER_APP_USER: hs_app
+      PGBOUNCER_APP_PASSWORD: hs_app_local
+      PGBOUNCER_PLATFORM_USER: hs_platform
+      PGBOUNCER_PLATFORM_PASSWORD: hs_platform_local
+    volumes:
+      - ./infra/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./infra/pgbouncer/entrypoint.sh:/entrypoint-hs.sh:ro
+    entrypoint: ["/bin/sh", "/entrypoint-hs.sh"]
+    ports:
+      - "127.0.0.1:6432:6432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 || exit 0"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   redis:
     image: redis:7-alpine

@@ -83,7 +83,11 @@ describe('@hs/api foundation', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/admin/organizations',
-      headers: { cookie: sessionAuth },
+      headers: {
+        cookie: sessionAuth,
+        'x-hs-csrf': '1',
+        origin: 'http://localhost:3000',
+      },
       payload: {
         name: 'Evil Corp',
         adminEmail: 'evil@example.test',
@@ -104,6 +108,20 @@ describe('@hs/api foundation', () => {
     expect(res.statusCode).toBe(200);
   });
 
+  it('requires Idempotency-Key on mutating company_admin routes', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/_test/mutate',
+      headers: {
+        cookie: sessionAuth,
+        'x-hs-csrf': '1',
+        origin: 'http://localhost:3000',
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect((res.json() as { code: string }).code).toBe('IDEMPOTENCY_KEY_REQUIRED');
+  });
+
   it('IdempotencyInterceptor replays identical response', async () => {
     const key = crypto.randomUUID();
     const first = await app.inject({
@@ -112,6 +130,8 @@ describe('@hs/api foundation', () => {
       headers: {
         cookie: sessionAuth,
         'idempotency-key': key,
+        'x-hs-csrf': '1',
+        origin: 'http://localhost:3000',
       },
     });
     expect(first.statusCode).toBe(200);
@@ -123,6 +143,8 @@ describe('@hs/api foundation', () => {
       headers: {
         cookie: sessionAuth,
         'idempotency-key': key,
+        'x-hs-csrf': '1',
+        origin: 'http://localhost:3000',
       },
     });
     expect(second.headers['x-idempotent-replayed']).toBe('true');

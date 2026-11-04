@@ -1,59 +1,40 @@
-import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional, type OnModuleDestroy } from '@nestjs/common';
 import pg from 'pg';
+import { PG_POOL, type PgPool } from '../../modules/database/database.tokens.js';
+import { ProblemDetailsException } from '../exceptions/problem-details.exception.js';
 
 export interface AccountStatusResult {
   userStatus: string | null;
   orgStatus: string | null;
+  mustResetPassword?: boolean;
 }
 
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
   private readonly logger = new Logger(DatabaseService.name);
   private pool: pg.Pool | null = null;
-  private customStatusChecker: ((userId: string, orgId: string | null) => Promise<AccountStatusResult>) | null = null;
+  private customStatusChecker:
+    | ((userId: string, orgId: string | null) => Promise<AccountStatusResult>)
+    | null = null;
 
-  constructor() {
-    const databaseUrl = process.env.DATABASE_URL;
-    if (databaseUrl) {
-      try {
-        this.pool = new pg.Pool({
-          connectionString: databaseUrl,
-          max: 10,
-          idleTimeoutMillis: 30000,
-        });
-        this.pool.on('error', (err) => {
-          this.logger.error(`Postgres pool error: ${err.message}`);
-        });
-      } catch (err: any) {
-        this.logger.error(`Failed to initialize Postgres pool: ${err.message}`);
-      }
-    }
+  constructor(@Optional() @Inject(PG_POOL) pool?: PgPool) {
+    this.pool = pool ?? null;
   }
 
-  /**
-   * For testing or injecting a mock status checker.
-   */
-  setStatusChecker(checker: ((userId: string, orgId: string | null) => Promise<AccountStatusResult>) | null = null): void {
+  setStatusChecker(
+    checker: ((userId: string, orgId: string | null) => Promise<AccountStatusResult>) | null = null,
+  ): void {
     this.customStatusChecker = checker;
   }
 
-  /**
-   * For testing or injecting a mock pool.
-   */
   setPool(pool: pg.Pool | null): void {
     this.pool = pool;
   }
 
-  /**
-   * Returns the underlying Postgres pool.
-   */
   getPool(): pg.Pool | null {
     return this.pool;
   }
 
-  /**
-   * Checks out a client from the pool.
-   */
   async getClient(): Promise<pg.PoolClient | null> {
     if (!this.pool) {
       return null;
@@ -61,48 +42,51 @@ export class DatabaseService implements OnModuleDestroy {
     return this.pool.connect();
   }
 
-  /**
-   * Checks whether the user and their associated organization are active or suspended.
-   * Uses a single query for maximum performance.
-   */
   async checkAccountStatus(userId: string, orgId: string | null): Promise<AccountStatusResult> {
     if (this.customStatusChecker) {
       return this.customStatusChecker(userId, orgId);
     }
 
     if (!this.pool) {
-      // In dev or environments without direct DB connection, default to active
-      return { userStatus: 'active', orgStatus: orgId ? 'trial_active' : null };
+      throw ProblemDetailsException.serviceUnavailable(
+        'Account status verification is currently unavailable.',
+        'ACCOUNT_CHECK_UNAVAILABLE',
+      );
     }
 
     try {
       const res = await this.pool.query(
         `SELECT
            u.status AS user_status,
-           u.org_status
+           u.org_status,
+           u.must_reset_password
          FROM app.find_user_by_id($1) AS u
          LIMIT 1`,
         [userId],
       );
 
       if (res.rowCount === 0 || !res.rows[0]?.user_status) {
-        return { userStatus: null, orgStatus: null };
+        return { userStatus: null, orgStatus: null, mustResetPassword: false };
       }
 
-      const row = res.rows[0];
+      const row = res.rows[0] as {
+        user_status: string;
+        org_status: string | null;
+        must_reset_password: boolean | null;
+      };
       return {
         userStatus: row.user_status,
         orgStatus: row.org_status ?? null,
+        mustResetPassword: Boolean(row.must_reset_password),
       };
-    } catch (err: any) {
-      this.logger.error(`Failed to check account status for user ${userId}: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to check account status for user ${userId}: ${message}`);
       throw err;
     }
   }
 
   async onModuleDestroy(): Promise<void> {
-    if (this.pool) {
-      await this.pool.end();
-    }
+    // Pool lifecycle is owned by DatabaseModule / PG_POOL.
   }
 }

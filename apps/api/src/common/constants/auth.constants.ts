@@ -1,5 +1,4 @@
 export const COOKIE_SESSION_NAME = 'hs_session';
-export const REDIS_SESSION_PREFIX = 'session:';
 export const IS_PUBLIC_KEY = 'isPublic';
 export const ROLES_KEY = 'roles';
 

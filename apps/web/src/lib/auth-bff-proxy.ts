@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveServerApiV1Base } from '@/lib/api-base-url';
 import { forwardApiSessionCookie } from '@/lib/forward-api-session-cookie';
+import { apiSessionCookieHeader, readSessionTokenFromCookies } from '@/lib/session-cookie';
 
 const STATE_CHANGING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -185,7 +186,7 @@ export async function proxyAuthedApiRequest(
     validatedOrigin = csrfCheck.validatedOrigin;
   }
 
-  const sessionToken = req.cookies.get('hs_session')?.value;
+  const sessionToken = readSessionTokenFromCookies(req);
   if (!sessionToken && isCandidateRoute && STATE_CHANGING.has(method)) {
     return NextResponse.json(
       {
@@ -206,11 +207,12 @@ export async function proxyAuthedApiRequest(
   };
 
   if (sessionToken) {
-    headers.Cookie = `hs_session=${sessionToken}`;
-    headers.Authorization = `Bearer ${sessionToken}`;
+    headers.Cookie = apiSessionCookieHeader(sessionToken);
   }
 
   if (STATE_CHANGING.has(method)) {
+    headers['Idempotency-Key'] =
+      req.headers.get('idempotency-key')?.trim() || crypto.randomUUID();
     if (validatedOrigin) {
       headers['X-HS-CSRF'] = '1';
       headers.Origin = validatedOrigin;
