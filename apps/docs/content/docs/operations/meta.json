@@ -5,6 +5,7 @@
     "onboarding",
     "dev-setup",
     "team",
-    "incident-response"
+    "incident-response",
+    "observability"
   ]
 }

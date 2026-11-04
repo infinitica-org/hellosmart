@@ -118,6 +118,7 @@ describe('Candidate Cap & Pending Invite Multiplier Tracking (S1-T05-3, BR-06)',
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -181,6 +182,7 @@ describe('Candidate Cap & Pending Invite Multiplier Tracking (S1-T05-3, BR-06)',
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -198,6 +200,7 @@ describe('Candidate Cap & Pending Invite Multiplier Tracking (S1-T05-3, BR-06)',
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -338,6 +341,7 @@ describe('Candidate Cap & Pending Invite Multiplier Tracking (S1-T05-3, BR-06)',
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -355,6 +359,7 @@ describe('Candidate Cap & Pending Invite Multiplier Tracking (S1-T05-3, BR-06)',
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -372,6 +377,7 @@ describe('Candidate Cap & Pending Invite Multiplier Tracking (S1-T05-3, BR-06)',
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -419,6 +425,7 @@ describe('Candidate Cap & Pending Invite Multiplier Tracking (S1-T05-3, BR-06)',
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -473,6 +480,7 @@ describe('Candidate Cap & Pending Invite Multiplier Tracking (S1-T05-3, BR-06)',
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -530,6 +538,7 @@ describe('Candidate Cap & Pending Invite Multiplier Tracking (S1-T05-3, BR-06)',
         headers: {
           cookie: `hs_session=${sessionTokenB}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -568,6 +577,7 @@ describe('Candidate Cap & Pending Invite Multiplier Tracking (S1-T05-3, BR-06)',
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           'content-type': 'text/csv',
           origin: 'http://localhost:3000',
         },

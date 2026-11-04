@@ -1,6 +1,7 @@
 /** Minimal surface used by session/idempotency stores and health checks. */
 export interface RedisLike {
   get(key: string): Promise<string | null>;
+  mGet?(keys: string[]): Promise<(string | null)[]>;
   set(
     key: string,
     value: string,

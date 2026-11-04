@@ -45,6 +45,10 @@ export const DEFAULT_MAIL_CONFIG: Config = {
   RETENTION_PURGE_BATCH_SIZE: 100,
   RETENTION_PURGE_DRY_RUN: false,
   INTERNATIONAL_TAX_TREATMENT: 'reject',
+  PG_POOL_MAX: 5,
+  PG_CONNECTION_TIMEOUT_MS: 5_000,
+  OTEL_SERVICE_NAME: 'hellosmart-api',
+  WORKER_HEALTH_PORT: 4001,
 };
 
 function escapeHtml(str: string): string {

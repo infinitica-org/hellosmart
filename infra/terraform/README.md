@@ -12,7 +12,7 @@ modules/
   edge/               CloudFront, WAF (managed rules + rate limits), ACM, Route 53
   messaging/          SQS (+DLQ), EventBridge bus + Scheduler, Step Functions
   secrets/            KMS CMKs per data class, Secrets Manager, rotation lambdas
-  observability/      CloudWatch dashboards/alarms, X-Ray, SNS → on-call
+  observability/      removed — logs/metrics/traces run in Compose (Grafana, Loki, Tempo, Prometheus)
   workspace-hosts/    Shared host ASG (Sysbox AMI), slot SGs, Network Firewall egress, budgets
   github-oidc/        CI roles (build, deploy-staging, deploy-prod, plan-only)
 envs/

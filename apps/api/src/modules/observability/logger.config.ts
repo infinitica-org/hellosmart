@@ -1,4 +1,5 @@
 import { pino, type DestinationStream, type Logger, type LoggerOptions } from 'pino';
+import { currentTraceFields } from './telemetry.js';
 
 export const SERVICE_NAME = 'hellosmart-api';
 
@@ -130,6 +131,7 @@ export function createLogger(
     serializers: defaultSerializers,
     timestamp: pino.stdTimeFunctions.epochTime,
     ...rest,
+    mixin: () => currentTraceFields(),
   };
 
   if (level !== undefined) {

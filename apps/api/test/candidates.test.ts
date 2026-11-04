@@ -155,6 +155,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${candidateToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -198,6 +199,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -221,6 +223,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -244,6 +247,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -267,6 +271,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -298,12 +303,13 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
           name: 'Sarah Connor',
           email: 'sarah@example.com',
-          assessment_id: '00000000-0000-0000-0000-000000000000',
+          assessment_id: '00000000-0000-4000-8000-000000000000',
         },
       });
 
@@ -321,6 +327,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -345,6 +352,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -369,6 +377,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -392,6 +401,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -418,6 +428,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -499,6 +510,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -524,6 +536,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -540,6 +553,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -568,6 +582,7 @@ describe('Candidates API (S1-T05-1)', () => {
           headers: {
             cookie: `hs_session=${sessionToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: 'http://localhost:3000',
           },
           payload: {
@@ -582,6 +597,7 @@ describe('Candidates API (S1-T05-1)', () => {
           headers: {
             cookie: `hs_session=${sessionToken}`,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
             origin: 'http://localhost:3000',
           },
           payload: {
@@ -615,6 +631,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -643,6 +660,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -680,6 +698,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -706,6 +725,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -734,6 +754,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -757,6 +778,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });
@@ -797,6 +819,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -814,6 +837,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });
@@ -838,6 +862,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -860,6 +885,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });
@@ -894,6 +920,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });
@@ -910,6 +937,7 @@ describe('Candidates API (S1-T05-1)', () => {
         url: `/api/v1/company/candidates/any-id/resend-invite`,
         headers: {
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });
@@ -944,6 +972,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${candidateSessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });
@@ -989,6 +1018,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });
@@ -1021,6 +1051,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -1056,6 +1087,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });
@@ -1087,6 +1119,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -1134,6 +1167,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });
@@ -1175,6 +1209,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -1215,6 +1250,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });
@@ -1236,6 +1272,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -1279,6 +1316,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });
@@ -1304,6 +1342,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -1323,6 +1362,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -1341,6 +1381,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });
@@ -1388,6 +1429,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });
@@ -1406,6 +1448,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
         payload: {
@@ -1430,6 +1473,7 @@ describe('Candidates API (S1-T05-1)', () => {
         headers: {
           cookie: `hs_session=${sessionToken}`,
           'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           origin: 'http://localhost:3000',
         },
       });

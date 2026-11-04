@@ -1,4 +1,5 @@
 import cookie from '@fastify/cookie';
+import compress from '@fastify/compress';
 import helmet from '@fastify/helmet';
 import multipart from '@fastify/multipart';
 import { NestFactory } from '@nestjs/core';
@@ -19,16 +20,19 @@ import {
 } from './modules/observability/index.js';
 import { registerCsvContentTypeParsers } from './modules/candidates/csv-stream-parser.js';
 import { registerWebhookRawBodyParser } from './modules/webhooks/calcom/calcom-webhook-parser.js';
+import { observePgPool, startTelemetry } from './modules/observability/telemetry.js';
+import { PG_POOL } from './modules/database/database.tokens.js';
 
 async function bootstrap(): Promise<void> {
   const config = loadConfig();
+  await startTelemetry(config.OTEL_SERVICE_NAME);
 
   const logger = createLogger({ level: config.LOG_LEVEL });
   setSharedLogger(logger);
   const appLogger = new AppLoggerService(logger);
 
   const adapter = new FastifyAdapter({
-    trustProxy: true, // behind ALB; client IP from X-Forwarded-For for audit + throttling
+    trustProxy: config.NODE_ENV === 'staging' || config.NODE_ENV === 'production' ? 1 : false,
     bodyLimit: DEFAULT_BODY_LIMIT_BYTES, // 1 MB; bulk uploads go to S3 via presigned URLs
     logger,
     disableRequestLogging: true,
@@ -49,6 +53,7 @@ async function bootstrap(): Promise<void> {
   app.useLogger(appLogger);
 
   await app.register(helmet, createHelmetOptions(config));
+  await app.register(compress, { encodings: ['gzip', 'deflate'] });
   await app.register(cookie, { secret: config.SESSION_SECRET });
   await app.register(multipart, {
     limits: {
@@ -63,8 +68,12 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix('api/v1');
   app.enableShutdownHooks();
 
-  appLogger.log('Starting HelloSmart API...', 'Bootstrap');
+  appLogger.log(
+    `Starting HelloSmart API env=${config.NODE_ENV} service=${config.OTEL_SERVICE_NAME} poolMax=${config.PG_POOL_MAX}`,
+    'Bootstrap',
+  );
   await app.listen(config.PORT, '0.0.0.0');
+  observePgPool(app.get(PG_POOL), config.OTEL_SERVICE_NAME);
   appLogger.log(
     `HelloSmart API listening on port ${config.PORT} [${config.NODE_ENV}]`,
     'Bootstrap',

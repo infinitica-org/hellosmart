@@ -4,6 +4,27 @@ import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 import { problem } from '../errors/app-http.exception.js';
 import { REQUEST_USER_KEY, type AuthenticatedRequest } from './session.guard.js';
 
+function collectClaimedOrgIds(request: AuthenticatedRequest): string[] {
+  const claimed = new Set<string>();
+  const params = request.params as Record<string, string | undefined>;
+  const query = request.query as Record<string, unknown>;
+  const body = request.body as Record<string, unknown> | undefined;
+
+  const maybeAdd = (value: unknown) => {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      claimed.add(value.trim());
+    }
+  };
+
+  maybeAdd(params.orgId);
+  maybeAdd(params.org_id);
+  maybeAdd(query?.orgId);
+  maybeAdd(query?.org_id);
+  maybeAdd(body?.orgId);
+  maybeAdd(body?.org_id);
+  return [...claimed];
+}
+
 @Injectable()
 export class OrgScopeGuard implements CanActivate {
   constructor(@Inject(Reflector) private readonly reflector: Reflector) {}
@@ -27,19 +48,20 @@ export class OrgScopeGuard implements CanActivate {
       return true;
     }
 
-    const params = request.params as Record<string, string | undefined>;
-    const routeOrgId = params.orgId ?? params.org_id;
-    if (!routeOrgId) {
+    const claimed = collectClaimedOrgIds(request);
+    if (claimed.length === 0) {
       return true;
     }
 
-    if (!user.orgId || user.orgId !== routeOrgId) {
-      throw problem({
-        title: 'Not Found',
-        status: 404,
-        detail: 'Resource not found',
-        code: 'TENANT_NOT_FOUND',
-      });
+    for (const claimedOrgId of claimed) {
+      if (!user.orgId || user.orgId !== claimedOrgId) {
+        throw problem({
+          title: 'Not Found',
+          status: 404,
+          detail: 'Resource not found',
+          code: 'TENANT_NOT_FOUND',
+        });
+      }
     }
     return true;
   }

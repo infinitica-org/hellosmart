@@ -33,7 +33,7 @@ description: "Sprint S0 through S6 scope, milestones, and architectural decision
 | D-15 | Region | **ap-south-1 (Mumbai)**, backups to ap-south-2 (Hyderabad) |
 | D-16 | Repo | One monorepo, pnpm + Turborepo, Python via uv |
 | D-17 | CI/CD | GitHub Actions. `dev` → QA on AWS EC2 (Docker Compose, Sysbox, LocalStack) automatically; `main` → AWS prod via OIDC + ECS blue/green after approval |
-| D-18 | Observability | CloudWatch, X-Ray/OpenTelemetry, Sentry, PagerDuty-style on-call (Opsgenie or CloudWatch alarms > SNS > phone) |
+| D-18 | Observability | OpenTelemetry, Prometheus, Loki, Tempo, Grafana, Blackbox uptime, Dozzle live tail |
 | D-19 | Ticketing | Zoho Sprints: one project, one release per sprint, epics per module |
 | D-20 | Development model | **AI-agent-driven development** under the AI-SDLC in Section 6. Humans specify, review, approve and own. |
 

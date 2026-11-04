@@ -1,0 +1,37 @@
+---
+title: "Observability kit"
+description: "Health checks, uptime probes, Grafana, Loki, Tempo, and Dozzle log tail."
+---
+
+<RoleBadge roles={["sde", "qa"]} />
+
+# Observability kit
+
+Portable Compose stack. It does not call a cloud logging API.
+
+## Start
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.obs.yml up -d
+```
+
+| UI | Bind |
+|---|---|
+| Grafana | http://127.0.0.1:3001 |
+| Dozzle (live tail only) | http://127.0.0.1:8888 |
+| Prometheus | http://127.0.0.1:9090 |
+
+On QA, SSH-tunnel `3001` and `8888`. Caddy does not publish them.
+
+## Health
+
+- Liveness: `GET /api/v1/health` — process up.
+- Readiness: `GET /api/v1/health/ready` — **503** if Postgres or Redis fails. Caddy and Blackbox use this URL.
+
+## Database and HTTP scale
+
+- App and worker `DATABASE_URL` go to **PgBouncer :6432** (`pool_mode = transaction`).
+- `DATABASE_MIGRATOR_URL` goes to **Postgres :5432**.
+- Caddy load-balances API replicas with `least_conn` and drops a replica that is not ready.
+
+`set_config('app.org_id', $1, true)` is transaction-local, so a pooled server connection cannot leak tenant context after `COMMIT`.

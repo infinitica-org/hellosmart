@@ -27,6 +27,8 @@
 
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
+    "obs:up": "docker compose -f docker-compose.yml -f docker-compose.obs.yml up -d",
+    "obs:down": "docker compose -f docker-compose.yml -f docker-compose.obs.yml down",
     "docs:dev": "pnpm --dir apps/docs dev",
     "docs:build": "pnpm --dir apps/docs build",
     "docs:sync-check": "node scripts/aidlc-docs-check.mjs",

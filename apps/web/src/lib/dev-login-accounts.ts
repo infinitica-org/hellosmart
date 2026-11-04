@@ -114,18 +114,6 @@ export const DEV_LOGIN_ACCOUNTS: Record<string, DevLoginAccount> = {
   },
 };
 
-export function devIdentifyLogin(email: string) {
-  const user = DEV_LOGIN_ACCOUNTS[email.trim().toLowerCase()];
-  if (!user) {
-    return { recognized: false as const };
-  }
-  return {
-    recognized: true as const,
-    role: user.role,
-    portal: user.portal,
-    name: user.name,
-    orgName: null as string | null,
-    mfaRequired: Boolean(user.requiresMfa),
-    accountStatus: (user.status === 'suspended' ? 'suspended' : 'active') as 'active' | 'suspended',
-  };
+export function devIdentifyLogin(_email: string) {
+  return { recognized: true as const };
 }

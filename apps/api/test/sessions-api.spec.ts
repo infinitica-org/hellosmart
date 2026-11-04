@@ -110,6 +110,8 @@ describe('S0-T16-1: Sessions API Integration', () => {
       url: `/api/v1/auth/sessions/${s2.sessionId}`,
       headers: {
         cookie: `hs_session=${s1.rawToken}`,
+        'x-hs-csrf': '1',
+        origin: 'http://localhost:3000',
       },
     });
 
@@ -148,6 +150,8 @@ describe('S0-T16-1: Sessions API Integration', () => {
       url: `/api/v1/auth/sessions/${s1.sessionId}`,
       headers: {
         cookie: `hs_session=${s1.rawToken}`,
+        'x-hs-csrf': '1',
+        origin: 'http://localhost:3000',
       },
     });
 
@@ -173,6 +177,8 @@ describe('S0-T16-1: Sessions API Integration', () => {
       url: `/api/v1/auth/sessions/${sessionUserB.sessionId}`,
       headers: {
         cookie: `hs_session=${sessionUserA.rawToken}`,
+        'x-hs-csrf': '1',
+        origin: 'http://localhost:3000',
       },
     });
 
@@ -195,6 +201,8 @@ describe('S0-T16-1: Sessions API Integration', () => {
       url: '/api/v1/auth/logout-all',
       headers: {
         cookie: `hs_session=${s1.rawToken}`,
+        'x-hs-csrf': '1',
+        origin: 'http://localhost:3000',
       },
     });
 

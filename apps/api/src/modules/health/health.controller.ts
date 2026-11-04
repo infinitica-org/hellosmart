@@ -1,5 +1,6 @@
-import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
+import type { FastifyReply } from 'fastify';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { HealthService } from './health.service.js';
 
@@ -15,11 +16,14 @@ export class HealthController {
     return this.health.liveness();
   }
 
-  /** Readiness: dependencies required to serve traffic. */
+  /** Readiness: dependencies required to serve traffic. 503 when Postgres or Redis fails. */
   @Public()
   @Get('ready')
-  @HttpCode(HttpStatus.OK)
-  async getReady(): Promise<ReturnType<HealthService['readiness']>> {
-    return this.health.readiness();
+  async getReady(@Res({ passthrough: true }) reply: FastifyReply): Promise<ReturnType<HealthService['readiness']>> {
+    const body = await this.health.readiness();
+    if (body.status !== 'ok') {
+      reply.status(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+    return body;
   }
 }

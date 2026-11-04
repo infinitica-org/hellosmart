@@ -1,8 +1,9 @@
 import type { NextResponse } from 'next/server';
+import { COOKIE_SESSION_NAME } from './session-cookie';
 
 /**
- * Copies hs_session from an upstream API Set-Cookie header onto the Next.js BFF response.
- * Node fetch often exposes a single combined Set-Cookie; NextResponse.cookies.set is more reliable than append.
+ * Copies the opaque session token onto the Next.js origin as `hs_session`.
+ * Does not re-emit `__Host-hs_session` from the API (that cookie is host-bound to the API).
  */
 export function forwardApiSessionCookie(apiRes: Response, res: NextResponse): void {
   const rawCookies: string[] =
@@ -16,7 +17,10 @@ export function forwardApiSessionCookie(apiRes: Response, res: NextResponse): vo
   }
 
   for (const raw of rawCookies) {
-    res.headers.append('set-cookie', raw);
+    const isHostSession = /(?:^|,\s*)__Host-hs_session=/i.test(raw);
+    if (!isHostSession) {
+      res.headers.append('set-cookie', raw);
+    }
 
     const match = raw.match(/(?:^|,\s*)(?:__Host-)?hs_session=([^;]*)/i);
     if (!match) {
@@ -52,6 +56,6 @@ export function forwardApiSessionCookie(apiRes: Response, res: NextResponse): vo
       cookieOptions.maxAge = maxAge;
     }
 
-    res.cookies.set('hs_session', value, cookieOptions);
+    res.cookies.set(COOKIE_SESSION_NAME, value, cookieOptions);
   }
 }

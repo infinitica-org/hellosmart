@@ -1,3 +1,5 @@
+import { recordHttpMetrics } from './telemetry.js';
+
 export const REQUEST_ID_HEADER = 'x-request-id';
 export const CORRELATION_ID_HEADER = 'x-correlation-id';
 export const SAFE_REQUEST_ID_REGEX = /^[a-zA-Z0-9_-]{1,64}$/;
@@ -69,6 +71,7 @@ const DEFAULT_HEALTH_CHECK_PATHS: readonly string[] = [
   '/healthz',
   '/api/v1/health',
   '/api/v1/healthz',
+  '/api/v1/health/ready',
 ];
 
 export interface FastifyLikeRequest {
@@ -76,6 +79,7 @@ export interface FastifyLikeRequest {
   method: string;
   url: string;
   raw?: { url?: string };
+  routeOptions?: { url?: string };
   log?: {
     info?: (obj: unknown, msg?: string) => void;
     warn?: (obj: unknown, msg?: string) => void;
@@ -212,6 +216,9 @@ export function registerLoggingHooks(
       }
       logData['err'] = errPayload;
     }
+
+    const routeTemplate = req.routeOptions?.url ?? safePath;
+    recordHttpMetrics(routeTemplate, req.method, statusCode, responseTime);
 
     // Call the request's child logger which already contains reqId and logger name
     const reqLogger = req.log;

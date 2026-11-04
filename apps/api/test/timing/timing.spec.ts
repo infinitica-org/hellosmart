@@ -449,6 +449,7 @@ describe('Stream 10: Timing, Boundary Expiry & Disconnect Logic (BR-08, BR-09, C
             cookie: `hs_session=${companyAdminToken}`,
             origin: testAppCtx.corsOrigin,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           },
           payload,
         });
@@ -500,6 +501,7 @@ describe('Stream 10: Timing, Boundary Expiry & Disconnect Logic (BR-08, BR-09, C
             cookie: `hs_session=${companyAdminToken}`,
             origin: testAppCtx.corsOrigin,
             'x-hs-csrf': '1',
+          'idempotency-key': crypto.randomUUID(),
           },
           payload: customPayload,
         });

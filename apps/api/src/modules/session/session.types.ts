@@ -15,6 +15,10 @@ export interface SessionRecord {
   ip?: string | null | undefined;
   userAgent?: string | null | undefined;
   mfaVerified?: boolean | undefined;
+  statusCachedAt?: number | undefined;
+  cachedUserStatus?: string | undefined;
+  cachedOrgStatus?: string | null | undefined;
+  mustResetPassword?: boolean | undefined;
 }
 
 export interface RoleSessionLimits {
@@ -45,6 +49,7 @@ export interface SessionStore {
   get(tokenHash: string): Promise<SessionRecord | null>;
   set(tokenHash: string, record: SessionRecord, ttlSeconds: number): Promise<void>;
   delete(tokenHash: string): Promise<void>;
+  touch?(tokenHash: string, record: SessionRecord, ttlSeconds: number): Promise<void>;
   registerAndEnforceCap(
     userId: string,
     tokenHash: string,
@@ -59,6 +64,7 @@ export interface SessionStore {
 }
 
 export interface IdempotencyRecord {
+  state?: 'pending' | 'complete';
   statusCode: number;
   body: string;
   contentType: string;
@@ -68,4 +74,6 @@ export interface IdempotencyRecord {
 export interface IdempotencyStore {
   get(key: string): Promise<IdempotencyRecord | null>;
   set(key: string, record: IdempotencyRecord, ttlSeconds: number): Promise<void>;
+  setNx?(key: string, record: IdempotencyRecord, ttlSeconds: number): Promise<boolean>;
+  delete?(key: string): Promise<void>;
 }

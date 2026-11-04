@@ -1,0 +1,21 @@
+groups:
+  - name: hellosmart-uptime
+    rules:
+      - alert: ProbeDown
+        expr: probe_success == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "Uptime probe failed for {{ $labels.instance }}"
+      - alert: Http5xxRatio
+        expr: |
+          sum(rate(hs_http_errors_total[5m]))
+            /
+          clamp_min(sum(rate(hs_http_requests_total[5m])), 0.001)
+            > 0.05
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "HTTP 5xx ratio above 5% for 5 minutes"
