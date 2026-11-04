@@ -225,14 +225,42 @@ describe('Candidates API & Contracts (Ticket #124)', () => {
     it('sends POST request to /resend-invite with single-use expiring token dispatch', async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ success: true, sentAt: '2026-10-31T12:00:00Z' }),
+        json: async () => ({ success: true, deliveryStatus: 'sent', processedAt: '2026-10-31T12:00:00Z' }),
       });
 
       const result = await resendCandidateInvite('candidate-99', mockFetch as unknown as typeof fetch);
       expect(result.success).toBe(true);
-      expect(result.sentAt).toBeDefined();
+      expect(result.deliveryStatus).toBe('sent');
+      expect(result.processedAt).toBeDefined();
       const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
       expect(url).toContain('/candidates/candidate-99/resend-invite');
+      expect(options.method).toBe('POST');
+    });
+
+    it('returns deliveryStatus: "failed" when email dispatch fails after commit', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, deliveryStatus: 'failed', processedAt: '2026-10-31T12:00:00Z' }),
+      });
+
+      const result = await resendCandidateInvite('candidate-99', mockFetch as unknown as typeof fetch);
+      expect(result.success).toBe(true);
+      expect(result.deliveryStatus).toBe('failed');
+      expect(result.processedAt).toBeDefined();
+    });
+
+    it('sends POST request to /assignments/:assignmentId/resend-invite when assignmentId is explicitly passed', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, deliveryStatus: 'sent', processedAt: '2026-10-31T12:00:00Z' }),
+      });
+
+      const result = await resendCandidateInvite('candidate-99', 'assignment-42', mockFetch as unknown as typeof fetch);
+      expect(result.success).toBe(true);
+      expect(result.deliveryStatus).toBe('sent');
+      expect(result.processedAt).toBeDefined();
+      const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
+      expect(url).toContain('/candidates/candidate-99/assignments/assignment-42/resend-invite');
       expect(options.method).toBe('POST');
     });
   });

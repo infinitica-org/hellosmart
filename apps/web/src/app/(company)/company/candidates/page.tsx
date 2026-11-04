@@ -54,6 +54,10 @@ export default function CompanyCandidatesPage() {
 
   // Compute metrics and existing emails set
   const metrics = useMemo(() => {
+    if (data?.metrics) {
+      return data.metrics;
+    }
+
     let invitedCount = 0;
     let activeCount = 0;
 
@@ -67,7 +71,7 @@ export default function CompanyCandidatesPage() {
       invited: invitedCount,
       active: activeCount,
     };
-  }, [candidates, total]);
+  }, [candidates, data?.metrics, total]);
 
   const existingEmails = useMemo(() => {
     return new Set(candidates.map((c) => c.email.toLowerCase()));
@@ -134,11 +138,18 @@ export default function CompanyCandidatesPage() {
 
   const handleResendInvite = async (candidate: CandidateDto) => {
     try {
-      await resendMutation.mutateAsync(candidate.id);
-      setNotification({
-        type: 'success',
-        message: ALERT_MESSAGES.CANDIDATES.RESEND_SUCCESS,
-      });
+      const result = await resendMutation.mutateAsync(candidate.id);
+      if (result.deliveryStatus === 'failed') {
+        setNotification({
+          type: 'info',
+          message: ALERT_MESSAGES.CANDIDATES.RESEND_DELIVERY_FAILED,
+        });
+      } else {
+        setNotification({
+          type: 'success',
+          message: ALERT_MESSAGES.CANDIDATES.RESEND_SUCCESS,
+        });
+      }
       void refetch();
     } catch {
       setNotification({
@@ -213,7 +224,7 @@ export default function CompanyCandidatesPage() {
           onStatusChange={handleStatusChange}
           onOpenInvite={() => setIsInviteOpen(true)}
           onOpenBulkUpload={() => setIsBulkOpen(true)}
-          disabled={isLoading}
+          disabled={false}
         />
 
         <CandidateTable
@@ -227,7 +238,7 @@ export default function CompanyCandidatesPage() {
           onResendInvite={handleResendInvite}
           onResetFilters={handleResetFilters}
           onOpenInvite={() => setIsInviteOpen(true)}
-          isResendingId={resendMutation.isPending ? resendMutation.variables : null}
+          isResendingId={resendMutation.isPending ? (typeof resendMutation.variables === 'string' ? resendMutation.variables : null) : null}
         />
       </Card>
 

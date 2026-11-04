@@ -79,6 +79,7 @@ erDiagram
         text mfa_secret_ref "AES-256-GCM envelope or env reference"
         bigint mfa_last_step "Atomic TOTP replay protection counter"
         string status "invited | active | suspended | deleted"
+        timestamptz counted_against_cap_at "First workspace launch quota timestamp (BR-06)"
         timestamptz locked_until
     }
 
@@ -116,7 +117,11 @@ erDiagram
         uuid org_id FK
         uuid assessment_id FK
         uuid candidate_id FK
-        string status "invited | ready | in_progress | submitted | expired"
+        string status "invited | window_not_open | ready | in_progress | disconnected | submitted | expired | revoked"
+        bytea invite_token_hash UK "sha256(raw_token), 7-day expiry"
+        timestamptz invite_expires_at
+        timestamptz invite_used_at
+        timestamptz invited_at
         timestamptz first_connect_at
         timestamptz deadline_at
         timestamptz submitted_at
@@ -248,7 +253,31 @@ GRANT EXECUTE ON FUNCTION app.find_user_for_login(citext) TO hs_app;
 
 ---
 
-## 5. Sales Lead Pipeline & Cal.com Webhooks (Stream 9)
+## 5. Candidate Quota & Pending Invite Multiplier Tracking (migration `0015_candidate_cap_tracking`)
+
+Under **BR-06**, candidate quotas and pending invite limits are enforced via two targeted indexes and an atomic timestamp column:
+
+1. **`app.users.counted_against_cap_at`**:
+   `timestamptz NULL` recording when a candidate user first launches a workspace session. Uncounted candidates consume a candidate quota slot only upon first workspace launch (`recordCandidateFirstLaunch`). Once counted, subsequent assignment launches within the same organization do not consume additional quota slots.
+
+2. **Candidate Cap Tracking Index (`users_candidate_cap_idx`)**:
+   ```sql
+   CREATE INDEX IF NOT EXISTS users_candidate_cap_idx
+     ON app.users (org_id, counted_against_cap_at)
+     WHERE role = 'candidate' AND deleted_at IS NULL;
+   ```
+   Provides efficient tenant-scoped index scans to count active, launched candidates against `app.entitlements.max_candidates`.
+
+3. **Pending Assignment Counting Index (`assignments_pending_counting_idx`)**:
+   ```sql
+   CREATE INDEX IF NOT EXISTS assignments_pending_counting_idx
+     ON app.assignments (org_id, status, invite_expires_at, first_connect_at)
+     WHERE status IN ('invited', 'window_not_open', 'ready') AND first_connect_at IS NULL;
+   ```
+   Accelerates Model A pending assignment evaluation: `FLOOR(max_candidates * pending_invite_multiplier)`. Excludes launched, expired, or completed assignments at the query planner level.
+---
+
+## 6. Sales Lead Pipeline & Cal.com Webhooks (Stream 9)
 
 In accordance with BR-04 and commercial requirements, inbound prospect bookings from Cal.com are ingested without exposing tenant or platform secrets.
 
@@ -346,9 +375,7 @@ erDiagram
 - `app.leads`: Sales lead pipeline table with RFC-standard ASCII email check constraint, sales owner org validation, and soft-delete enforcement.
 - `app.lead_bookings`: Lineage tracking table with composite foreign key ensuring `active_booking_id` can only reference bookings belonging to the same lead.
 
----
-
-## 9. Pricing Catalog, Promo Codes & Commercial Quotes (Stream 9)
+## 7. Pricing Catalog, Promo Codes & Commercial Quotes (Stream 9)
 
 ```mermaid
 erDiagram
