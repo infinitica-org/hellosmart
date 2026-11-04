@@ -36,7 +36,7 @@ async function bootstrap(): Promise<void> {
   });
 
   registerLoggingHooks(adapter.getInstance());
-  registerWebhookRawBodyParser(adapter.getInstance());
+  registerWebhookRawBodyParser(adapter);
 
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule.forRoot({ logger }),
