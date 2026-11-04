@@ -169,7 +169,7 @@ export function validateBffCsrfAndOrigin(req: NextRequest): { errorResponse: Nex
 export async function proxyAuthedApiRequest(
   req: NextRequest,
   upstreamPath: string,
-  options?: { method?: string; body?: string; enforceCsrf?: boolean },
+  options?: { method?: string; body?: string; enforceCsrf?: boolean; origin?: string },
 ): Promise<NextResponse> {
   const method = (options?.method ?? req.method).toUpperCase();
   const pathname = req.nextUrl.pathname;
@@ -214,9 +214,9 @@ export async function proxyAuthedApiRequest(
     if (validatedOrigin) {
       headers['X-HS-CSRF'] = '1';
       headers.Origin = validatedOrigin;
-    } else if (!isCandidateRoute) {
-      // Retain backward compatibility for legacy non-candidate internal proxy calls
+    } else {
       const appOrigin =
+        options?.origin ||
         process.env.NEXT_PUBLIC_APP_URL ||
         process.env.APP_BASE_URL ||
         'http://localhost:3000';

@@ -6,6 +6,8 @@ export * from './schemas/org.js';
 export * from './schemas/manifest.js';
 export * from './schemas/template.js';
 export * from './schemas/assessment.js';
+export * from './schemas/lead.js';
+export * from './schemas/quote.js';
 export * from './password-policy.js';
 export * from './data/common-passwords.data.js';
 export * from './constants/index.js';

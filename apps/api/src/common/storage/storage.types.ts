@@ -35,6 +35,8 @@ export interface StoragePort {
   getStream(key: string): Promise<StorageGetResult>;
   exists(key: string): Promise<boolean>;
   findKeyByObjectId(orgId: string, assignmentId: string, objectId: string): Promise<string | null>;
+  deleteByKeys(orgId: string, keys: string[]): Promise<{ deletedCount: number }>;
+  deleteByPrefix(orgId: string, prefix: string): Promise<{ deletedCount: number }>;
 }
 
 export interface StorageConfig {

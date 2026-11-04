@@ -275,3 +275,218 @@ Under **BR-06**, candidate quotas and pending invite limits are enforced via two
      WHERE status IN ('invited', 'window_not_open', 'ready') AND first_connect_at IS NULL;
    ```
    Accelerates Model A pending assignment evaluation: `FLOOR(max_candidates * pending_invite_multiplier)`. Excludes launched, expired, or completed assignments at the query planner level.
+---
+
+## 6. Sales Lead Pipeline & Cal.com Webhooks (Stream 9)
+
+In accordance with BR-04 and commercial requirements, inbound prospect bookings from Cal.com are ingested without exposing tenant or platform secrets.
+
+```mermaid
+erDiagram
+    LEADS ||--o{ LEAD_BOOKINGS : "holds"
+    ORGANIZATIONS ||--o{ LEADS : "converted_to"
+    WEBHOOK_DELIVERIES ||--o{ WEBHOOK_DELIVERY_OUTCOMES : "reconciles"
+
+    WEBHOOK_DELIVERIES {
+        uuid id PK
+        timestamptz delivered_at PK
+        string gateway
+        string event_key
+        string payload_hash
+        bytea raw_payload_bytes
+        jsonb headers
+    }
+
+    WEBHOOK_DELIVERY_OUTCOMES {
+        uuid id PK
+        uuid delivery_id FK
+        timestamptz delivered_at PK
+        string outcome
+        string reason
+        string error_code
+        timestamptz executed_at
+    }
+
+    WEBHOOK_INBOX {
+        uuid id PK
+        string gateway
+        string event_key UK
+        string event_type
+        string booking_uid
+        string payload_hash
+        jsonb sanitized_payload
+        string status
+        uuid first_delivery_id FK
+        timestamptz first_delivered_at
+        uuid last_delivery_id FK
+        timestamptz last_delivered_at
+        int delivery_count
+    }
+
+    BOOKING_TOMBSTONES {
+        string uid PK
+        string status
+        string cancellation_reason
+        timestamptz cancelled_at
+    }
+
+    LEADS {
+        uuid id PK
+        uuid org_id FK "NULL until company onboarding"
+        citext email UK
+        string name
+        string company
+        string calcom_booking_id
+        jsonb utm
+        string stage
+        uuid owner_user_id FK
+        uuid active_booking_id FK
+        timestamptz created_at
+        timestamptz updated_at
+        timestamptz deleted_at
+    }
+
+    LEAD_BOOKINGS {
+        uuid id PK
+        uuid lead_id FK
+        string calcom_booking_id
+        string uid UK
+        string predecessor_uid
+        string rescheduled_to_uid
+        string status
+        string title
+        string description
+        timestamptz start_time
+        timestamptz end_time
+        string location
+        string meeting_url
+        string cancellation_reason
+        jsonb raw_booking_data
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+### Table Specifications:
+- `app.webhook_deliveries`: Monthly range-partitioned ledger capturing exact raw wire bytes and allowlisted headers. Append-only.
+- `app.webhook_delivery_outcomes`: Co-partitioned with `webhook_deliveries` on `delivered_at`, enforcing composite foreign key and immutable outcome logging.
+- `app.webhook_inbox`: Canonical state engine enforcing event key uniqueness (`gateway, event_key`) and immutability triggers.
+- `app.booking_tombstones`: Fast-lookup registry ensuring out-of-order cancellations prevent delayed reschedules from resurrecting cancelled bookings.
+- `app.leads`: Sales lead pipeline table with RFC-standard ASCII email check constraint, sales owner org validation, and soft-delete enforcement.
+- `app.lead_bookings`: Lineage tracking table with composite foreign key ensuring `active_booking_id` can only reference bookings belonging to the same lead.
+
+## 7. Pricing Catalog, Promo Codes & Commercial Quotes (Stream 9)
+
+```mermaid
+erDiagram
+    PRICING_CATALOG ||--o{ QUOTE_LINES : "references product"
+    PROMO_CODES ||--o{ QUOTES : "applied to"
+    PROMO_CODES ||--o{ PROMO_REDEMPTIONS : "tracked redemptions"
+    QUOTES ||--|{ QUOTE_LINES : "contains"
+    QUOTES ||--o{ PROMO_REDEMPTIONS : "redeemed in"
+    LEADS ||--o{ QUOTES : "quoted for lead"
+    ORGANIZATIONS ||--o{ QUOTES : "quoted for org"
+
+    PRICING_CATALOG {
+        uuid id PK
+        string code UK
+        string name
+        string description
+        string category "plan | custom_template | addon"
+        string currency "INR | USD"
+        numeric unit_price
+        string billing_type "recurring | one_time"
+        string billing_interval "month | year | null"
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    PROMO_CODES {
+        uuid id PK
+        string code UK
+        string description
+        string discount_type "percentage | fixed"
+        numeric discount_value
+        string currency
+        int max_uses
+        int current_uses
+        string_array eligible_categories
+        string billing_type_restriction
+        timestamptz valid_from
+        timestamptz valid_until
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    QUOTES {
+        uuid id PK
+        string quote_number UK
+        uuid lead_id FK
+        uuid org_id FK
+        string currency "INR | USD"
+        string status "draft | issued | accepted | rejected | expired | superseded"
+        numeric subtotal
+        numeric discount_total
+        numeric taxable_amount
+        numeric cgst_total
+        numeric sgst_total
+        numeric igst_total
+        numeric tax_total
+        numeric grand_total
+        string tax_classification "intra_state | inter_state | export | exempt"
+        jsonb seller_jurisdiction
+        jsonb customer_jurisdiction
+        uuid promo_code_id FK
+        string notes
+        string public_token_hash UK
+        string encrypted_token
+        timestamptz accepted_at
+        string accepted_by_ip
+        string accepted_by_user_agent
+        string accepted_by_name
+        timestamptz issued_at
+        timestamptz expires_at
+        uuid created_by FK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    QUOTE_LINES {
+        uuid id PK
+        uuid quote_id FK
+        uuid catalog_product_id FK
+        string product_code
+        string product_name
+        string description
+        string category
+        string billing_type
+        string billing_interval
+        int quantity
+        numeric unit_price
+        numeric line_subtotal
+        numeric discount_amount
+        numeric taxable_amount
+        string tax_type "cgst_sgst | igst | none"
+        numeric tax_rate
+        numeric tax_amount
+        numeric line_total
+        timestamptz created_at
+    }
+
+    PROMO_REDEMPTIONS {
+        uuid id PK
+        uuid promo_code_id FK
+        uuid quote_id FK
+        numeric discount_applied
+        timestamptz redeemed_at
+    }
+```
+
+### Table Specifications:
+- `app.pricing_catalog`: Centralized product catalog for subscription plans, custom templates, and one-time add-ons.
+- `app.promo_codes`: Promotional discount codes with concurrency caps, expiration windows, currency validation, and category restrictions.
+- `app.quotes`: Commercial quotations linked to leads or organizations with full 18% Indian GST calculations (CGST/SGST/IGST), 14-day default expiry, and SHA-256 token hashing.
+- `app.quote_lines`: Immutable line item snapshots capturing unit prices, line discounts, and reconciled tax breakdowns at quote issuance.
+- `app.promo_redemptions`: Audit ledger tracking promotional code redemptions per quote.

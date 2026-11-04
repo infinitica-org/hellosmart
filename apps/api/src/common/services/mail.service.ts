@@ -40,6 +40,11 @@ export const DEFAULT_MAIL_CONFIG: Config = {
   STORAGE_LOCAL_ROOT: '.storage',
   STORAGE_S3_BUCKET: 'hs-local-artifacts',
   STORAGE_S3_REGION: 'us-east-1',
+  RETENTION_PURGE_ENABLED: false,
+  RETENTION_PURGE_HOUR_UTC: 3,
+  RETENTION_PURGE_BATCH_SIZE: 100,
+  RETENTION_PURGE_DRY_RUN: false,
+  INTERNATIONAL_TAX_TREATMENT: 'reject',
 };
 
 function escapeHtml(str: string): string {
