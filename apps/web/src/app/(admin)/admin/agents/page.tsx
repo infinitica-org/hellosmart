@@ -34,6 +34,9 @@ export default function AdminAgentsPage({ initialAgents }: AdminAgentsPageProps 
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const hasAgents = agents.length > 0;
+  const healthyCount = agents.filter((a) => a.status === 'healthy').length;
+
   const filteredAgents = agents.filter(
     (agent) =>
       agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -60,23 +63,39 @@ export default function AdminAgentsPage({ initialAgents }: AdminAgentsPageProps 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           label="ACTIVE REVIEWER AGENTS"
-          value={agents.length.toString()}
-          description="Independent evaluation engines ready (BR-18)"
-          icon={<Bot className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />}
+          value={hasAgents ? agents.length.toString() : '0'}
+          description={
+            hasAgents
+              ? 'Independent evaluation engines ready (BR-18)'
+              : 'No evaluation engines registered'
+          }
+          icon={<Bot className={`h-5 w-5 ${hasAgents ? 'text-primary' : 'text-neutral-400'}`} />}
           data-testid="stat-active-agents"
         />
         <StatCard
           label="SUPPORTED RUNTIMES"
-          value="Node, Python, Go"
-          description="Cloud VM & Chat workspace evaluation tracks"
-          icon={<Cpu className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
+          value={hasAgents ? 'Node, Python, Go' : '—'}
+          description={
+            hasAgents
+              ? 'Cloud VM & Chat workspace evaluation tracks'
+              : 'Workspace evaluation tracks in standby'
+          }
+          icon={<Cpu className={`h-5 w-5 ${hasAgents ? 'text-amber-600 dark:text-amber-400' : 'text-neutral-400'}`} />}
           data-testid="stat-supported-runtimes"
         />
         <StatCard
           label="CONSENSUS AGGREGATOR"
-          value="Healthy · 85%"
-          description="Disagreement threshold flags anomaly for human"
-          icon={<CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+          value={hasAgents ? `${healthyCount}/${agents.length} Healthy` : 'Standby'}
+          description={
+            hasAgents
+              ? 'Disagreement threshold flags anomaly for human (BR-19)'
+              : 'Aggregator idle until reviewer agents are deployed'
+          }
+          icon={
+            <CheckCircle2
+              className={`h-5 w-5 ${hasAgents ? 'text-emerald-600 dark:text-emerald-400' : 'text-neutral-400'}`}
+            />
+          }
           data-testid="stat-aggregator-health"
         />
       </div>
@@ -115,11 +134,11 @@ export default function AdminAgentsPage({ initialAgents }: AdminAgentsPageProps 
         {/* Agents Grid */}
         {filteredAgents.length === 0 ? (
           <EmptyState
-            title={searchQuery ? 'No Reviewer Agents Found' : 'Standard Evaluation Agents Active'}
+            title={searchQuery ? 'No Reviewer Agents Found' : 'No Reviewer Agents Registered'}
             description={
               searchQuery
                 ? `No agent matches your search query "${searchQuery}".`
-                : 'Multi-dimensional evaluation agents (Code Quality, Problem Solving, System Design, Communication, and Security) run independently on candidate sessions citing direct evidence (BR-18, BR-19).'
+                : 'Independent reviewer agents (BR-18) evaluate candidate workspaces post-session against assigned rubric dimensions. No agents are currently configured in this environment.'
             }
             action={
               searchQuery
@@ -182,15 +201,15 @@ export default function AdminAgentsPage({ initialAgents }: AdminAgentsPageProps 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
           <div className="space-y-1">
             <div className="font-semibold text-neutral-900">
-              BR-20 Invariant: Human-In-The-Loop Final Assessment
+              BR-18 and BR-19 Invariant: Independent Reviewer Agent Service
             </div>
             <p className="text-neutral-600">
-              Reviewer agents evaluate independently and mandate factual citations from candidate evidence. 
-              The system never auto-rejects candidates based on agent scores or telemetry signals.
+              Each rubric dimension is scored independently by an isolated reviewer agent citing mandatory evidence.
+              The consensus aggregator checks inter-agent agreement and flags anomalies for human decision.
             </p>
           </div>
           <div className="font-mono text-primary bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/25 shrink-0 font-medium">
-            Post-Session Review Mode
+            Evidence-Cited Scoring
           </div>
         </div>
       </Alert>
