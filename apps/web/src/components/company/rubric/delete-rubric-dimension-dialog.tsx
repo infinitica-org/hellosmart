@@ -26,8 +26,8 @@ export function DeleteRubricDimensionDialog({
       description="Are you sure you want to delete this scoring dimension from the assessment rubric?"
       className="max-w-md p-6 rounded-2xl bg-white shadow-2xl"
     >
-      <div className="my-4 p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1.5">
-        <div className="font-semibold text-rose-950">
+      <div className="my-4 p-4 rounded-xl bg-danger-muted border border-danger-border text-xs text-danger-foreground space-y-1.5">
+        <div className="font-semibold text-danger-foreground">
           Removing: {dimensionName} ({weight}% weight)
         </div>
         <p>
@@ -45,14 +45,14 @@ export function DeleteRubricDimensionDialog({
           Cancel
         </Button>
         <Button
-          variant="primary"
+          variant="danger"
           size="md"
           onClick={() => {
             onConfirm();
             onClose();
           }}
           data-testid="confirm-delete-dimension-btn"
-          className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-sm border-none"
+          className="rounded-xl shadow-sm"
         >
           Delete Dimension
         </Button>

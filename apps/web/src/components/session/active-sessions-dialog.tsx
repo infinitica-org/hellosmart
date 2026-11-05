@@ -79,15 +79,15 @@ export function ActiveSessionsDialog({
       role="dialog"
       aria-modal="true"
       aria-labelledby="active-sessions-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in"
     >
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-neutral-200 space-y-5">
+        <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
           <div className="space-y-0.5">
-            <h2 id="active-sessions-title" className="text-lg font-bold text-slate-900">
+            <h2 id="active-sessions-title" className="text-lg font-bold text-neutral-900">
               Active Sessions
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-neutral-500">
               Devices currently signed into your HelloSmart account.
             </p>
           </div>
@@ -95,25 +95,25 @@ export function ActiveSessionsDialog({
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+            className="p-1 rounded-md text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition"
           >
             ✕
           </button>
         </div>
 
         {error && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700" role="alert">
+          <div className="p-3 bg-danger-muted border border-danger-border rounded-lg text-xs text-danger-foreground" role="alert">
             {error}
           </div>
         )}
 
         {isLoading ? (
-          <div className="py-8 text-center space-y-2 text-slate-500 text-sm">
-            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-r-transparent" />
+          <div className="py-8 text-center space-y-2 text-neutral-500 text-sm">
+            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-primary border-r-transparent" />
             <p>Loading active sessions...</p>
           </div>
         ) : sessions.length === 0 ? (
-          <div className="py-8 text-center text-slate-500 text-sm">
+          <div className="py-8 text-center text-neutral-500 text-sm">
             No active sessions found.
           </div>
         ) : (
@@ -129,22 +129,22 @@ export function ActiveSessionsDialog({
                   key={targetId}
                   className={`p-3.5 rounded-xl border flex items-center justify-between transition ${
                     isCurrentSession
-                      ? 'bg-indigo-50/50 border-indigo-200'
-                      : 'bg-slate-50/60 border-slate-200/80 hover:bg-slate-50'
+                      ? 'bg-primary/5 border-primary/20'
+                      : 'bg-neutral-50/60 border-neutral-200/80 hover:bg-neutral-50'
                   }`}
                 >
                   <div className="space-y-1 min-w-0 pr-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-slate-900 truncate">
+                      <span className="text-sm font-semibold text-neutral-900 truncate">
                         {session.device || session.userAgent || 'Web Browser'}
                       </span>
                       {isCurrentSession && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary">
                           This device
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                    <div className="flex items-center gap-3 text-xs text-neutral-500">
                       <span>IP: {ip}</span>
                       <span>•</span>
                       <span>Active: {formatDate(lastActive)}</span>
@@ -156,7 +156,7 @@ export function ActiveSessionsDialog({
                       type="button"
                       onClick={() => handleRevoke(targetId)}
                       disabled={revokingId === targetId}
-                      className="px-3 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition disabled:opacity-50 cursor-pointer"
+                      className="px-3 py-1.5 text-xs font-medium text-danger-foreground bg-danger-muted hover:bg-danger-muted/80 border border-danger-border rounded-lg transition disabled:opacity-50 cursor-pointer"
                     >
                       {revokingId === targetId ? 'Revoking...' : 'Revoke'}
                     </button>
@@ -171,7 +171,7 @@ export function ActiveSessionsDialog({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+            className="px-4 py-2 text-sm font-medium text-neutral-700 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition"
           >
             Close
           </button>

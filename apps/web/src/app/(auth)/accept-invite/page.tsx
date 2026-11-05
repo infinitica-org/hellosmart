@@ -110,16 +110,16 @@ function AcceptInviteContent(): React.JSX.Element {
       <meta name="referrer" content="no-referrer" />
 
       <div className="w-full max-w-md mx-auto">
-        <div className="bg-white px-6 py-8 shadow-xl ring-1 ring-slate-900/5 sm:rounded-2xl sm:px-10">
+        <div className="bg-white px-6 py-8 shadow-xl ring-1 ring-neutral-900/5 sm:rounded-2xl sm:px-10">
           {/* State 1: Loading verification */}
           {isLoading && (
             <div className="text-center py-8 space-y-4" aria-live="polite">
               <div
-                className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent align-[-0.125em]"
+                className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em]"
                 role="status"
                 aria-label="Verifying invitation"
               />
-              <p className="text-sm font-medium text-slate-600">
+              <p className="text-sm font-medium text-neutral-600">
                 Verifying your invitation link...
               </p>
             </div>
@@ -135,18 +135,18 @@ function AcceptInviteContent(): React.JSX.Element {
                 !
               </div>
               <div className="space-y-2">
-                <h1 className="text-lg font-semibold text-slate-900">
+                <h1 className="text-lg font-semibold text-neutral-900">
                   Invitation Unavailable
                 </h1>
                 {/* Exact required copy from specification */}
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-neutral-600">
                   This link is no longer valid. Please ask your admin to resend the invite.
                 </p>
               </div>
               <div className="pt-2">
                 <a
                   href="/login"
-                  className="inline-flex justify-center items-center px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                  className="inline-flex justify-center items-center px-4 py-2 text-sm font-medium text-primary hover:text-primary-hover"
                 >
                   Return to Sign In &rarr;
                 </a>
@@ -164,10 +164,10 @@ function AcceptInviteContent(): React.JSX.Element {
                 !
               </div>
               <div className="space-y-2">
-                <h1 className="text-lg font-semibold text-slate-900">
+                <h1 className="text-lg font-semibold text-neutral-900">
                   Too Many Attempts
                 </h1>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-neutral-600">
                   Too many attempts have been made. Please wait a moment and try again.
                 </p>
               </div>
@@ -175,7 +175,7 @@ function AcceptInviteContent(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={() => window.location.reload()}
-                  className="inline-flex justify-center items-center px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                  className="inline-flex justify-center items-center px-4 py-2 text-sm font-medium text-primary hover:text-primary-hover"
                 >
                   Retry &rarr;
                 </button>
@@ -187,28 +187,28 @@ function AcceptInviteContent(): React.JSX.Element {
           {!isLoading && !isInvalid && !isRateLimited && invitation && token && !isSuccess && (
             <div className="space-y-6">
               <div className="text-center space-y-2">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
                   Set Your Password
                 </h1>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-neutral-500">
                   Welcome to{' '}
-                  <span className="font-semibold text-slate-800">
+                  <span className="font-semibold text-neutral-800">
                     {invitation.orgName}
                   </span>
                 </p>
               </div>
 
               {/* Invited user context badge */}
-              <div className="rounded-lg bg-slate-50 p-3.5 border border-slate-200/80 text-xs text-slate-600 space-y-1">
+              <div className="rounded-lg bg-neutral-50 p-3.5 border border-neutral-200/80 text-xs text-neutral-600 space-y-1">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-slate-500">Email:</span>
-                  <span className="font-semibold text-slate-900">
+                  <span className="font-medium text-neutral-500">Email:</span>
+                  <span className="font-semibold text-neutral-900">
                     {invitation.email}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-slate-500">Role:</span>
-                  <span className="capitalize font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                  <span className="font-medium text-neutral-500">Role:</span>
+                  <span className="capitalize font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
                     {roleLabel}
                   </span>
                 </div>
@@ -247,10 +247,10 @@ function AcceptInviteContent(): React.JSX.Element {
                 ✓
               </div>
               <div className="space-y-1">
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-lg font-semibold text-neutral-900">
                   Password Set Successfully
                 </h2>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-neutral-600">
                   Redirecting to sign in...
                 </p>
               </div>
@@ -267,7 +267,7 @@ export default function AcceptInvitePage(): React.JSX.Element {
     <Suspense
       fallback={
         <div className="w-full max-w-md mx-auto text-center py-12">
-          <p className="text-sm text-slate-500">Loading...</p>
+          <p className="text-sm text-neutral-500">Loading...</p>
         </div>
       }
     >

@@ -158,7 +158,7 @@ export function DeliverablesUploader({
           <button
             type="button"
             onClick={handleRemove}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            className="p-1.5 rounded-lg text-neutral-400 hover:text-danger hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
             title="Remove archive"
           >
             <X className="w-4 h-4" />
@@ -208,16 +208,16 @@ export function DeliverablesUploader({
       {uploadError && (
         <div
           data-testid="upload-error-alert"
-          className="flex items-center justify-between gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs text-red-700 dark:text-red-300"
+          className="flex items-center justify-between gap-2 p-3 rounded-lg bg-danger-muted border border-danger-border text-xs text-danger-foreground"
         >
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-danger shrink-0" />
             <span>{uploadError}</span>
           </div>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1 font-semibold hover:underline text-red-700 shrink-0"
+            className="flex items-center gap-1 font-semibold hover:underline text-danger-foreground shrink-0"
           >
             <RotateCcw className="w-3 h-3" />
             Retry

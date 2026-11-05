@@ -79,7 +79,7 @@ export function RubricDimensionCard({
             disabled={isOnlyDimension}
             title={isOnlyDimension ? 'At least one dimension is required' : 'Delete dimension'}
             data-testid={`delete-dimension-btn-${dimension.id}`}
-            className="h-8 px-2.5 text-xs rounded-lg border-neutral-200 text-neutral-500 hover:text-rose-600 hover:border-rose-300 disabled:opacity-40"
+            className="h-8 px-2.5 text-xs rounded-lg border-neutral-200 text-neutral-500 hover:text-danger hover:border-danger-border disabled:opacity-40"
           >
             Delete
           </Button>
@@ -147,7 +147,7 @@ export function RubricDimensionCard({
                 {dimension.redFlags.map((rf, idx) => (
                   <span
                     key={idx}
-                    className="py-0.5 px-2 rounded-md bg-rose-50 text-rose-800 border border-rose-200"
+                    className="py-0.5 px-2 rounded-md bg-danger-muted text-danger-foreground border border-danger-border"
                   >
                     🚩 {rf}
                   </span>

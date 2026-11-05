@@ -54,16 +54,16 @@ export function AssessmentNavbar({ userName, onExit }: AssessmentNavbarProps): R
         <div
           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-colors ${
             isDiagnostics
-              ? 'bg-orange-50 text-primary border border-orange-200/80 font-semibold'
+              ? 'bg-primary/10 text-primary border border-primary/20 font-semibold'
               : isConsent || isWorkspace
-                ? 'text-emerald-700 font-medium'
+                ? 'text-success-foreground font-medium'
                 : 'text-neutral-400'
           }`}
         >
           {isDiagnostics ? (
             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
           ) : isConsent || isWorkspace ? (
-            <Check className="w-3.5 h-3.5 text-emerald-600" />
+            <Check className="w-3.5 h-3.5 text-success" />
           ) : null}
           <span>1. Diagnostics</span>
         </div>
@@ -74,16 +74,16 @@ export function AssessmentNavbar({ userName, onExit }: AssessmentNavbarProps): R
         <div
           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-colors ${
             isConsent
-              ? 'bg-orange-50 text-primary border border-orange-200/80 font-semibold'
+              ? 'bg-primary/10 text-primary border border-primary/20 font-semibold'
               : isWorkspace
-                ? 'text-emerald-700 font-medium'
+                ? 'text-success-foreground font-medium'
                 : 'text-neutral-400'
           }`}
         >
           {isConsent ? (
             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
           ) : isWorkspace ? (
-            <Check className="w-3.5 h-3.5 text-emerald-600" />
+            <Check className="w-3.5 h-3.5 text-success" />
           ) : null}
           <span>2. Agreement</span>
         </div>
@@ -94,7 +94,7 @@ export function AssessmentNavbar({ userName, onExit }: AssessmentNavbarProps): R
         <div
           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-colors ${
             isWorkspace
-              ? 'bg-orange-50 text-primary border border-orange-200/80 font-semibold'
+              ? 'bg-primary/10 text-primary border border-primary/20 font-semibold'
               : 'text-neutral-400'
           }`}
         >

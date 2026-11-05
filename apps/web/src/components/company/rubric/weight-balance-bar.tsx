@@ -38,10 +38,10 @@ export function WeightBalanceBar({
     over: {
       badgeVariant: 'danger' as const,
       badgeText: 'Over Allocated',
-      barColor: 'bg-rose-500',
-      textColor: 'text-rose-800',
-      bgColor: 'bg-rose-50/60',
-      borderColor: 'border-rose-200',
+      barColor: 'bg-danger',
+      textColor: 'text-danger-foreground',
+      bgColor: 'bg-danger-muted/60',
+      borderColor: 'border-danger-border',
     },
   }[balance.status];
 

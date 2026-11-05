@@ -296,7 +296,7 @@ Please complete the requirements for this assessment and submit your solution de
             <h1 className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
               {assessment.title}
             </h1>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 dark:bg-orange-950/40 text-primary border border-orange-200/80 dark:border-orange-800/80">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20">
               Take-Home Workspace
             </span>
           </div>
@@ -319,22 +319,22 @@ Please complete the requirements for this assessment and submit your solution de
             {/* Live Autosave Indicator */}
             <div className="flex items-center gap-1.5" data-testid="autosave-indicator">
               {draftEngine.status === 'saving' ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-orange-50 dark:bg-orange-950/40 text-primary border border-orange-200/80">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Saving draft...
                 </span>
               ) : draftEngine.status === 'saved' ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-success-muted text-success-foreground border border-success-border">
+                  <CheckCircle2 className="w-3 h-3 text-success" />
                   All changes saved to cloud
                 </span>
               ) : draftEngine.status === 'dirty' ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-warning-muted text-warning-foreground border border-warning-border">
+                  <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
                   Unsaved changes
                 </span>
               ) : draftEngine.status === 'error' ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-600 border border-red-200">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-danger-muted text-danger-foreground border border-danger-border">
                   <AlertCircle className="w-3 h-3" />
                   Save failed (retrying)
                 </span>

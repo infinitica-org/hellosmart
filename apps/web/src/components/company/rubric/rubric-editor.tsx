@@ -182,8 +182,8 @@ export function RubricEditor({
               Rubric is 100% balanced and ready to save.
             </span>
           ) : (
-            <span className="text-xs font-medium text-rose-700 flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+            <span className="text-xs font-medium text-danger flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-danger animate-pulse" />
               {balance.message}. Total must be 100% to save.
             </span>
           )}

@@ -161,7 +161,7 @@ export function ProvisionModal({
         <DialogContent className="space-y-5">
           {errorMessage && (
             <div
-              className="p-3.5 rounded-xl border border-rose-800/80 bg-rose-950/40 text-rose-300 text-xs flex items-center gap-2"
+              className="p-3.5 rounded-xl border border-danger-border bg-danger-muted text-danger-foreground text-xs flex items-center gap-2"
               role="alert"
             >
               <AlertCircle className="w-4 h-4 flex-shrink-0" />

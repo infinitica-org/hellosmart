@@ -44,12 +44,12 @@ export function BrowserCheck({ result, isRunning = false }: BrowserCheckProps) {
             Detecting
           </Badge>
         ) : isPass ? (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shrink-0">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-success-muted text-success-foreground border border-success-border shrink-0">
             <CheckCircle2 className="w-3.5 h-3.5" />
             Supported
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 shrink-0">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-warning-muted text-warning-foreground border border-warning-border shrink-0">
             <AlertTriangle className="w-3.5 h-3.5" />
             Warning
           </span>
@@ -57,7 +57,7 @@ export function BrowserCheck({ result, isRunning = false }: BrowserCheckProps) {
       </div>
 
       {!isRunning && result.message && (
-        <p className={`mt-2 text-xs leading-relaxed ${isPass ? 'text-neutral-500' : 'text-amber-700'}`}>
+        <p className={`mt-2 text-xs leading-relaxed ${isPass ? 'text-neutral-500' : 'text-warning-foreground'}`}>
           {result.message}
         </p>
       )}
