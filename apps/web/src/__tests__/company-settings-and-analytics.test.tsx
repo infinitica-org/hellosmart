@@ -39,7 +39,7 @@ describe('Company Settings, Analytics & Submission Review (BUG-CP-11, BUG-CP-12)
         </CompanyStoreProvider>
       );
 
-      expect(html).toContain('AI Provider Keys (BR-16)');
+      expect(html).toContain('AI Provider Keys');
       expect(html).toContain('No AI provider keys vaulted yet');
     });
 

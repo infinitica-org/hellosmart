@@ -48,7 +48,7 @@ describe('AdminAgentsPage (BR-18, BR-19 Reviewer Agent Telemetry & Library)', ()
 
     expect(html).toContain('Reviewer Agent Library');
     expect(html).toContain('ACTIVE REVIEWER AGENTS');
-    expect(html).toContain('Independent evaluation engines ready (BR-18)');
+    expect(html).toContain('Independent evaluation engines ready');
     expect(html).toContain('SUPPORTED RUNTIMES');
     expect(html).toContain('Node, Python, Go');
     expect(html).toContain('CONSENSUS AGGREGATOR');
