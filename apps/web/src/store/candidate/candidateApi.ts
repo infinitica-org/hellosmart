@@ -53,6 +53,15 @@ export interface CandidateAssessmentItem {
   releaseResults?: boolean;
 }
 
+export interface CandidateRubricScore {
+  name: string;
+  weight?: number;
+  score: number;
+  rationale?: string;
+  evidence?: string[];
+  confidence?: number;
+}
+
 export interface CandidateAssessmentDetail extends CandidateAssessmentItem {
   deadline?: string | null;
   releaseResults?: boolean;
@@ -72,6 +81,7 @@ export interface CandidateAssessmentDetail extends CandidateAssessmentItem {
     instructions?: string;
     deliverables?: string[];
   };
+  rubricScores?: CandidateRubricScore[];
   firstConnectAt?: string | null;
   autoSubmitted?: boolean;
 }

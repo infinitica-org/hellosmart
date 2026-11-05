@@ -339,18 +339,10 @@ export default function QuoteBuilderPage() {
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800 space-y-1">
                 <div className="flex items-center gap-1.5 font-semibold">
                   <Check className="w-4 h-4 text-emerald-600" />
-                  <span>Email Dispatched to Mailpit!</span>
+                  <span>Email Dispatched Successfully!</span>
                 </div>
                 <p className="text-[11px] text-emerald-700">
-                  Customer quote notification was delivered. View and inspect the email live in Mailpit:{' '}
-                  <a
-                    href="http://localhost:8025"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline font-mono text-emerald-900 font-bold inline-flex items-center gap-0.5 hover:text-emerald-950"
-                  >
-                    http://localhost:8025 <ExternalLink className="w-3 h-3" />
-                  </a>
+                  Customer quotation notification and approval link were dispatched to the customer.
                 </p>
               </div>
             )}

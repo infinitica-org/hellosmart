@@ -1,66 +1,54 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, Button, Card, Input } from '@hs/ui';
-import { apiFetch } from '@/lib/api-client';
+import {
+  useGetMfaStatusQuery,
+  useStartMfaSetupMutation,
+  useConfirmMfaSetupMutation,
+  useRegenerateBackupCodesMutation,
+} from '@/store/admin/adminApi';
 import { MfaSetupQr } from '@/components/security/mfa-setup-qr';
 
-interface MfaStatus {
-  enrolled: boolean;
-  backupCodesRemaining: number;
-}
-
 export default function AdminSecuritySettingsPage(): React.JSX.Element {
-  const [status, setStatus] = useState<MfaStatus | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState(true);
+  const {
+    data: status,
+    isLoading: loadingStatus,
+    error: statusError,
+  } = useGetMfaStatusQuery();
+
+  const [triggerStartSetup, { isLoading: isStartingSetup }] = useStartMfaSetupMutation();
+  const [triggerConfirmSetup, { isLoading: isConfirmingSetup }] = useConfirmMfaSetupMutation();
+  const [triggerRegenerateBackupCodes, { isLoading: isRegenerating }] =
+    useRegenerateBackupCodesMutation();
+
   const [setupSecret, setSetupSecret] = useState<string | null>(null);
   const [otpauthUri, setOtpauthUri] = useState<string | null>(null);
   const [confirmCode, setConfirmCode] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
   const [regenerateCode, setRegenerateCode] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
-  const loadStatus = useCallback(async () => {
-    setLoadingStatus(true);
-    setError(null);
-    try {
-      const res = await apiFetch('/api/auth/mfa/status', { credentials: 'same-origin' });
-      const data = (await res.json()) as MfaStatus;
-      if (!res.ok) {
-        throw new Error((data as unknown as { detail?: string })?.detail || 'Failed to load MFA status');
-      }
-      setStatus(data);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load MFA status');
-    } finally {
-      setLoadingStatus(false);
-    }
-  }, []);
+  const busy = isStartingSetup || isConfirmingSetup || isRegenerating;
 
-  useEffect(() => {
-    void loadStatus();
-  }, [loadStatus]);
+  const getErrorMessage = (err: any, fallback: string): string => {
+    return (
+      err?.data?.detail ||
+      err?.data?.message ||
+      err?.message ||
+      fallback
+    );
+  };
 
   const startSetup = async () => {
-    setBusy(true);
     setError(null);
     setBackupCodes(null);
     try {
-      const res = await apiFetch('/api/auth/mfa/setup/start', {
-        method: 'POST',
-        credentials: 'same-origin',
-      });
-      const data = (await res.json()) as { secret?: string; otpauthUri?: string; detail?: string };
-      if (!res.ok) {
-        throw new Error(data.detail || 'Could not start MFA setup');
-      }
+      const data = await triggerStartSetup().unwrap();
       setSetupSecret(data.secret ?? null);
       setOtpauthUri(data.otpauthUri ?? null);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Could not start MFA setup');
-    } finally {
-      setBusy(false);
+      setError(getErrorMessage(err, 'Could not start MFA setup'));
     }
   };
 
@@ -70,28 +58,15 @@ export default function AdminSecuritySettingsPage(): React.JSX.Element {
       setError('Enter the 6-digit code from your authenticator app.');
       return;
     }
-    setBusy(true);
     setError(null);
     try {
-      const res = await apiFetch('/api/auth/mfa/setup/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ totpCode: confirmCode.trim() }),
-      });
-      const data = (await res.json()) as { backupCodes?: string[]; detail?: string };
-      if (!res.ok) {
-        throw new Error(data.detail || 'Could not confirm MFA setup');
-      }
+      const data = await triggerConfirmSetup({ totpCode: confirmCode.trim() }).unwrap();
       setBackupCodes(data.backupCodes ?? []);
       setSetupSecret(null);
       setOtpauthUri(null);
       setConfirmCode('');
-      await loadStatus();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Could not confirm MFA setup');
-    } finally {
-      setBusy(false);
+      setError(getErrorMessage(err, 'Could not confirm MFA setup'));
     }
   };
 
@@ -101,29 +76,22 @@ export default function AdminSecuritySettingsPage(): React.JSX.Element {
       setError('Enter the 6-digit code from your authenticator app.');
       return;
     }
-    setBusy(true);
     setError(null);
     setBackupCodes(null);
     try {
-      const res = await apiFetch('/api/auth/mfa/backup-codes/regenerate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ totpCode: regenerateCode.trim() }),
-      });
-      const data = (await res.json()) as { backupCodes?: string[]; detail?: string };
-      if (!res.ok) {
-        throw new Error(data.detail || 'Could not generate backup codes');
-      }
+      const data = await triggerRegenerateBackupCodes({ totpCode: regenerateCode.trim() }).unwrap();
       setBackupCodes(data.backupCodes ?? []);
       setRegenerateCode('');
-      await loadStatus();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Could not generate backup codes');
-    } finally {
-      setBusy(false);
+      setError(getErrorMessage(err, 'Could not generate backup codes'));
     }
   };
+
+  const displayError =
+    error ||
+    (statusError
+      ? getErrorMessage(statusError, 'Failed to load MFA status')
+      : null);
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -135,9 +103,9 @@ export default function AdminSecuritySettingsPage(): React.JSX.Element {
         </p>
       </div>
 
-      {error && (
+      {displayError && (
         <Alert variant="error" className="text-sm">
-          {error}
+          {displayError}
         </Alert>
       )}
 

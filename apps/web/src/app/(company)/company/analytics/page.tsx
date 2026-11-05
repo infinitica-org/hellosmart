@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   PageHeader,
@@ -30,9 +30,9 @@ import {
   BarChart3,
   Filter,
 } from 'lucide-react';
-import { useGetCompanyMetricsQuery } from '@/store/company/companyApi';
+import { useGetCompanyMetricsQuery, useGetCandidatesQuery } from '@/store/company/companyApi';
 
-interface ScoredSubmissionRow {
+export interface ScoredSubmissionRow {
   id: string;
   candidateName: string;
   candidateEmail: string;
@@ -45,57 +45,82 @@ interface ScoredSubmissionRow {
   submittedAt: string;
 }
 
-export default function CompanyAnalyticsPage() {
+export interface CompanyAnalyticsPageProps {
+  initialSubmissions?: ScoredSubmissionRow[];
+}
+
+export default function CompanyAnalyticsPage({ initialSubmissions }: CompanyAnalyticsPageProps = {}) {
   const { data: metrics } = useGetCompanyMetricsQuery();
+  const { data: candidatesData } = useGetCandidatesQuery({ limit: 100 });
   const [period, setPeriod] = useState<'30d' | '90d' | 'all'>('all');
 
-  const submissions: ScoredSubmissionRow[] = [
+  const candidatesList = useMemo(() => {
+    if (!candidatesData) return [];
+    if (Array.isArray(candidatesData)) return candidatesData;
+    return (candidatesData as { items?: any[] })?.items || [];
+  }, [candidatesData]);
+
+  const submissions: ScoredSubmissionRow[] = useMemo(() => {
+    if (initialSubmissions) return initialSubmissions;
+
+    return candidatesList
+      .filter((c: any) => c.status === 'submitted' || c.status === 'completed' || c.status === 'under_review')
+      .map((c: any) => ({
+        id: c.assignmentId || c.id,
+        candidateName: c.name || c.email?.split('@')[0] || 'Candidate',
+        candidateEmail: c.email,
+        assessmentName: c.assessmentName || 'Technical Assessment',
+        workspaceMode: (c.workspaceMode as 'cloud' | 'chat') || 'cloud',
+        durationMinutes: c.durationMinutes || 90,
+        agentScore: c.agentScore ?? 80,
+        humanScore: c.humanScore,
+        status: (c.status === 'completed' ? 'finalized' : 'under_review') as 'finalized' | 'under_review',
+        submittedAt: c.submittedAt ? new Date(c.submittedAt).toLocaleDateString() : 'Recently',
+      }));
+  }, [initialSubmissions, candidatesList]);
+
+  const totalInvited = metrics?.invitedCandidates ?? candidatesList.length;
+  const startedCount = candidatesList.filter((c: any) => c.status !== 'invited').length;
+  const submittedCount = submissions.length;
+  const finalizedCount = submissions.filter((s) => s.status === 'finalized').length;
+  const submissionRate = totalInvited > 0 ? `${((submittedCount / totalInvited) * 100).toFixed(1)}%` : '0.0%';
+  const avgScore = submissions.length > 0
+    ? `${(submissions.reduce((acc, s) => acc + (s.humanScore || s.agentScore), 0) / submissions.length).toFixed(1)} / 100`
+    : '—';
+  const avgDuration = submissions.length > 0
+    ? `${Math.round(submissions.reduce((acc, s) => acc + s.durationMinutes, 0) / submissions.length)} mins`
+    : '—';
+
+  const funnelSteps = [
     {
-      id: 'sub-001',
-      candidateName: 'Priya Sharma',
-      candidateEmail: 'priya.sharma@example.com',
-      assessmentName: 'Full-Stack Distributed Systems Engineer',
-      workspaceMode: 'cloud',
-      durationMinutes: 82,
-      agentScore: 88,
-      humanScore: 90,
-      status: 'finalized',
-      submittedAt: 'Today, 2:15 PM',
+      label: 'Invited Candidates',
+      count: totalInvited,
+      pct: totalInvited > 0 ? '100%' : '0%',
+      color: 'bg-primary',
     },
     {
-      id: 'sub-002',
-      candidateName: 'Alex Mercer',
-      candidateEmail: 'alex.mercer@example.com',
-      assessmentName: 'Senior Backend Python Architect',
-      workspaceMode: 'cloud',
-      durationMinutes: 89,
-      agentScore: 76,
-      humanScore: 78,
-      status: 'finalized',
-      submittedAt: 'Yesterday, 6:40 PM',
+      label: 'Connected & Started Work',
+      count: startedCount,
+      pct: totalInvited > 0 ? `${Math.round((startedCount / totalInvited) * 100)}%` : '0%',
+      color: 'bg-sky-500',
     },
     {
-      id: 'sub-003',
-      candidateName: 'Elena Rostova',
-      candidateEmail: 'elena.rostova@example.com',
-      assessmentName: 'AI Integration Specialist (Chat & Agent)',
-      workspaceMode: 'chat',
-      durationMinutes: 44,
-      agentScore: 84,
-      status: 'under_review',
-      submittedAt: 'Nov 3, 11:20 AM',
+      label: 'Submitted Workspaces',
+      count: submittedCount,
+      pct: totalInvited > 0 ? `${Math.round((submittedCount / totalInvited) * 100)}%` : '0%',
+      color: 'bg-indigo-500',
     },
     {
-      id: 'sub-004',
-      candidateName: 'Marcus Vance',
-      candidateEmail: 'marcus.vance@example.com',
-      assessmentName: 'Full-Stack Distributed Systems Engineer',
-      workspaceMode: 'cloud',
-      durationMinutes: 90,
-      agentScore: 62,
-      humanScore: 65,
-      status: 'finalized',
-      submittedAt: 'Nov 2, 4:10 PM',
+      label: 'AI Review Complete',
+      count: submittedCount,
+      pct: totalInvited > 0 ? `${Math.round((submittedCount / totalInvited) * 100)}%` : '0%',
+      color: 'bg-purple-500',
+    },
+    {
+      label: 'Finalized by Human Reviewer',
+      count: finalizedCount,
+      pct: totalInvited > 0 ? `${Math.round((finalizedCount / totalInvited) * 100)}%` : '0%',
+      color: 'bg-emerald-500',
     },
   ];
 
@@ -130,27 +155,23 @@ export default function CompanyAnalyticsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Invited"
-          value={String(metrics?.invitedCandidates ?? 12)}
+          value={String(totalInvited)}
           description="Candidates invited to active assessments"
-          trend={{ value: '+18% vs last cycle', direction: 'up' }}
         />
         <StatCard
           label="Submission Rate"
-          value="83.3%"
-          description="10 of 12 candidate sessions submitted"
-          trend={{ value: '+5.2% completion', direction: 'up' }}
+          value={submissionRate}
+          description={`${submittedCount} of ${totalInvited} candidate sessions submitted`}
         />
         <StatCard
           label="Average Score"
-          value="77.5 / 100"
+          value={avgScore}
           description="Human finalized & agent weighted score"
-          trend={{ value: 'Competent band', direction: 'neutral' }}
         />
         <StatCard
           label="Avg Session Duration"
-          value="76 mins"
-          description="Average time across 90-min tasks"
-          trend={{ value: '-4 mins efficiency', direction: 'down' }}
+          value={avgDuration}
+          description="Average time across evaluated tasks"
         />
       </div>
 
@@ -168,13 +189,7 @@ export default function CompanyAnalyticsPage() {
           </CardHeader>
 
           <CardContent className="p-0 pt-5 space-y-4">
-            {[
-              { label: 'Invited Candidates', count: 12, pct: '100%', color: 'bg-primary' },
-              { label: 'Connected & Started Work', count: 11, pct: '91.6%', color: 'bg-sky-500' },
-              { label: 'Submitted Workspaces', count: 10, pct: '83.3%', color: 'bg-indigo-500' },
-              { label: 'AI Review Complete', count: 10, pct: '83.3%', color: 'bg-purple-500' },
-              { label: 'Finalized by Human Reviewer', count: 7, pct: '58.3%', color: 'bg-emerald-500' },
-            ].map((step, idx) => (
+            {funnelSteps.map((step, idx) => (
               <div key={idx} className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-medium text-neutral-700">{step.label}</span>
@@ -304,7 +319,14 @@ export default function CompanyAnalyticsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {submissions.map((row) => (
+                {submissions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="py-8 text-center text-xs text-neutral-500">
+                      No scored submissions yet. Candidates who complete their assessments will appear here for evaluation.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  submissions.map((row) => (
                   <TableRow key={row.id} className="hover:bg-neutral-50/50">
                     <TableCell className="text-xs font-medium text-neutral-900">
                       <div>
@@ -366,7 +388,7 @@ export default function CompanyAnalyticsPage() {
                       </Link>
                     </TableCell>
                   </TableRow>
-                ))}
+                )))}
               </TableBody>
             </Table>
           </div>

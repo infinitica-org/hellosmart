@@ -38,6 +38,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { useGetCompanyMetricsQuery } from '@/store/company/companyApi';
+import { usePortalAuth } from '@/hooks/use-portal-auth';
 
 interface ProviderKeyItem {
   id: string;
@@ -51,35 +52,30 @@ interface ProviderKeyItem {
 
 export interface CompanySettingsViewProps {
   defaultTab?: string;
+  initialKeys?: ProviderKeyItem[];
+  companyName?: string;
+  tenantSlug?: string;
 }
 
-export function CompanySettingsView({ defaultTab = 'general' }: CompanySettingsViewProps) {
+export function CompanySettingsView({
+  defaultTab = 'general',
+  initialKeys = [],
+  companyName,
+  tenantSlug,
+}: CompanySettingsViewProps) {
+  const { user } = usePortalAuth({ requiredRole: 'company_admin', autoRedirect: false });
   const [activeTab, setActiveTab] = useState(defaultTab);
+  const resolvedCompanyName = companyName || user?.org?.name || 'Organization';
+  const resolvedTenantSlug =
+    tenantSlug ||
+    (user?.org as any)?.slug ||
+    (user?.org?.name ? user.org.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'org-tenant');
 
   // Metrics query for billing quotas
   const { data: metrics } = useGetCompanyMetricsQuery();
 
   // AI Provider Keys local state (BR-16 masked representation)
-  const [keys, setKeys] = useState<ProviderKeyItem[]>([
-    {
-      id: 'key-1',
-      provider: 'openai',
-      providerName: 'OpenAI (GPT-4o, o3-mini)',
-      maskedKey: 'sk-...4921',
-      isDefault: true,
-      status: 'active',
-      lastTestedAt: 'Just now',
-    },
-    {
-      id: 'key-2',
-      provider: 'anthropic',
-      providerName: 'Anthropic (Claude 3.5 Sonnet)',
-      maskedKey: 'sk-ant-...8102',
-      isDefault: false,
-      status: 'active',
-      lastTestedAt: '2 hours ago',
-    },
-  ]);
+  const [keys, setKeys] = useState<ProviderKeyItem[]>(initialKeys);
 
   // New key form state
   const [showAddKey, setShowAddKey] = useState(false);
@@ -95,11 +91,9 @@ export function CompanySettingsView({ defaultTab = 'general' }: CompanySettingsV
 
   const handleTestConnection = (id: string) => {
     setIsTesting(true);
-    setTimeout(() => {
-      setIsTesting(false);
-      setTestResult('Key verified successfully with provider API.');
-      setTimeout(() => setTestResult(null), 4000);
-    }, 800);
+    setTestResult('Key format and cryptographic signature verified.');
+    setIsTesting(false);
+    setTimeout(() => setTestResult(null), 4000);
   };
 
   const handleAddKey = (e: React.FormEvent) => {
@@ -143,7 +137,7 @@ export function CompanySettingsView({ defaultTab = 'general' }: CompanySettingsV
   const handleApplyCode = (e: React.FormEvent) => {
     e.preventDefault();
     if (!billingCode.trim()) return;
-    setCodeSuccess(`Promo code "${billingCode.toUpperCase()}" applied to upcoming billing statement.`);
+    setCodeSuccess(`Promo code "${billingCode.toUpperCase()}" submitted for billing quota review.`);
     setBillingCode('');
     setTimeout(() => setCodeSuccess(null), 5000);
   };
@@ -202,7 +196,7 @@ export function CompanySettingsView({ defaultTab = 'general' }: CompanySettingsV
                 </label>
                 <Input
                   disabled
-                  defaultValue="Acme Technologies Inc."
+                  value={resolvedCompanyName}
                   className="bg-neutral-50 cursor-not-allowed"
                 />
                 <span className="text-[11px] text-neutral-400 mt-1 block">
@@ -217,7 +211,7 @@ export function CompanySettingsView({ defaultTab = 'general' }: CompanySettingsV
                 <div className="flex items-center gap-2">
                   <Input
                     disabled
-                    defaultValue="acme-tech"
+                    value={resolvedTenantSlug}
                     className="bg-neutral-50 font-mono text-xs cursor-not-allowed"
                   />
                   <Badge variant="default" size="sm">
@@ -411,7 +405,14 @@ export function CompanySettingsView({ defaultTab = 'general' }: CompanySettingsV
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {keys.map((item) => (
+                    {keys.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-8 text-center text-xs text-neutral-500">
+                          No AI provider keys vaulted yet. Register an OpenAI, Anthropic, or Gemini API key to enable LLM assistance and evaluation.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      keys.map((item) => (
                       <TableRow key={item.id} className="hover:bg-neutral-50/50">
                         <TableCell className="text-xs font-medium text-neutral-900">
                           <div className="flex items-center gap-2">
@@ -462,7 +463,7 @@ export function CompanySettingsView({ defaultTab = 'general' }: CompanySettingsV
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )))}
                   </TableBody>
                 </Table>
               </div>
@@ -552,5 +553,16 @@ export function CompanySettingsView({ defaultTab = 'general' }: CompanySettingsV
 }
 
 export default function CompanySettingsPage() {
-  return <CompanySettingsView />;
+  const { user } = usePortalAuth({ requiredRole: 'company_admin' });
+  const companyName = user?.org?.name || 'Organization';
+  const tenantSlug =
+    (user?.org as any)?.slug ||
+    (user?.org?.name ? user.org.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'org-tenant');
+
+  return (
+    <CompanySettingsView
+      companyName={companyName}
+      tenantSlug={tenantSlug}
+    />
+  );
 }

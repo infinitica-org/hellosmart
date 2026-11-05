@@ -32,10 +32,42 @@ describe('Company Settings, Analytics & Submission Review (BUG-CP-11, BUG-CP-12)
       expect(html).toContain('Protected (BR-01)');
     });
 
-    it('renders AI provider key vault with masked key format (BR-16)', () => {
+    it('renders empty key vault state when no keys registered', () => {
       const html = renderToString(
         <CompanyStoreProvider>
-          <CompanySettingsView defaultTab="keys" />
+          <CompanySettingsView defaultTab="keys" initialKeys={[]} />
+        </CompanyStoreProvider>
+      );
+
+      expect(html).toContain('AI Provider Keys (BR-16)');
+      expect(html).toContain('No AI provider keys vaulted yet');
+    });
+
+    it('renders AI provider key vault with masked key format (BR-16)', () => {
+      const sampleKeys = [
+        {
+          id: 'key-1',
+          provider: 'openai' as const,
+          providerName: 'OpenAI (GPT-4o, o3-mini)',
+          maskedKey: 'sk-...4921',
+          isDefault: true,
+          status: 'active' as const,
+          lastTestedAt: 'Just now',
+        },
+        {
+          id: 'key-2',
+          provider: 'anthropic' as const,
+          providerName: 'Anthropic (Claude 3.5 Sonnet)',
+          maskedKey: 'sk-ant-...8102',
+          isDefault: false,
+          status: 'active' as const,
+          lastTestedAt: '2 hours ago',
+        },
+      ];
+
+      const html = renderToString(
+        <CompanyStoreProvider>
+          <CompanySettingsView defaultTab="keys" initialKeys={sampleKeys} />
         </CompanyStoreProvider>
       );
 
@@ -74,10 +106,47 @@ describe('Company Settings, Analytics & Submission Review (BUG-CP-11, BUG-CP-12)
       expect(html).toContain('Recent Scored Submissions');
     });
 
-    it('renders recent scored submissions with review links', () => {
+    it('renders empty scored submissions state when no evaluations completed', () => {
       const html = renderToString(
         <CompanyStoreProvider>
-          <CompanyAnalyticsPage />
+          <CompanyAnalyticsPage initialSubmissions={[]} />
+        </CompanyStoreProvider>
+      );
+
+      expect(html).toContain('No scored submissions yet');
+    });
+
+    it('renders recent scored submissions with review links', () => {
+      const sampleSubmissions = [
+        {
+          id: 'sub-001',
+          candidateName: 'Priya Sharma',
+          candidateEmail: 'priya.sharma@example.com',
+          assessmentName: 'Full-Stack Distributed Systems Engineer',
+          workspaceMode: 'cloud' as const,
+          durationMinutes: 82,
+          agentScore: 88,
+          humanScore: 90,
+          status: 'finalized' as const,
+          submittedAt: 'Today, 2:15 PM',
+        },
+        {
+          id: 'sub-002',
+          candidateName: 'Alex Mercer',
+          candidateEmail: 'alex.mercer@example.com',
+          assessmentName: 'Senior Backend Python Architect',
+          workspaceMode: 'cloud' as const,
+          durationMinutes: 89,
+          agentScore: 76,
+          humanScore: 78,
+          status: 'finalized' as const,
+          submittedAt: 'Yesterday, 6:40 PM',
+        },
+      ];
+
+      const html = renderToString(
+        <CompanyStoreProvider>
+          <CompanyAnalyticsPage initialSubmissions={sampleSubmissions} />
         </CompanyStoreProvider>
       );
 
@@ -89,9 +158,54 @@ describe('Company Settings, Analytics & Submission Review (BUG-CP-11, BUG-CP-12)
   });
 
   describe('Candidate Submission Review Page (BR-18, BR-20)', () => {
+    const sampleSubmission = {
+      id: 'sub-001',
+      candidateName: 'Priya Sharma',
+      candidateEmail: 'priya.sharma@example.com',
+      assessmentName: 'Full-Stack Distributed Systems Engineer',
+      workspaceMode: 'cloud' as const,
+      durationMinutes: 82,
+      submittedAt: 'Today at 2:15 PM UTC',
+      autoSubmitted: false,
+      isFinalized: false,
+      currentVersion: 1,
+      overallScore: 82,
+      humanScore: 85,
+      notes: 'Candidate showed strong modular architectural patterns and clean domain isolation.',
+      releaseResults: false,
+      rubricScores: [
+        {
+          name: 'Code Quality & Clean Architecture',
+          weight: 30,
+          score: 86,
+          confidence: 94,
+          rationale: 'Extracted modular domain services cleanly.',
+          evidence: ['src/modules/orders/orders.service.ts#L42-L89'],
+        },
+        {
+          name: 'System Design & Scalability',
+          weight: 25,
+          score: 82,
+          confidence: 90,
+          rationale: 'Applied asynchronous event worker model.',
+          evidence: ['src/workers/order-processor.ts#L15-L68'],
+        },
+        {
+          name: 'AI Tooling & Prompt Strategy',
+          weight: 25,
+          score: 80,
+          confidence: 92,
+          rationale: 'Effective conversational prompt refinement.',
+          evidence: ['workspace/transcripts/ai-chat.jsonl#L45-L68'],
+        },
+      ],
+    };
+
     it('renders candidate dossier and untrusted input banner (BR-18)', () => {
       const html = renderToString(
-        <CandidateSubmissionReviewPage />
+        <CompanyStoreProvider>
+          <CandidateSubmissionReviewPage initialSubmission={sampleSubmission} />
+        </CompanyStoreProvider>
       );
 
       expect(html).toContain('Priya Sharma');
@@ -101,7 +215,9 @@ describe('Company Settings, Analytics & Submission Review (BUG-CP-11, BUG-CP-12)
 
     it('renders AI reviewer agent rubric score cards with evidence citations', () => {
       const html = renderToString(
-        <CandidateSubmissionReviewPage />
+        <CompanyStoreProvider>
+          <CandidateSubmissionReviewPage initialSubmission={sampleSubmission} />
+        </CompanyStoreProvider>
       );
 
       expect(html).toContain('Code Quality &amp; Clean Architecture');
@@ -113,7 +229,9 @@ describe('Company Settings, Analytics & Submission Review (BUG-CP-11, BUG-CP-12)
 
     it('renders human review panel with override score and release results toggle (BR-20)', () => {
       const html = renderToString(
-        <CandidateSubmissionReviewPage />
+        <CompanyStoreProvider>
+          <CandidateSubmissionReviewPage initialSubmission={sampleSubmission} />
+        </CompanyStoreProvider>
       );
 
       expect(html).toContain('Human Review &amp; Final Decision (BR-20)');
