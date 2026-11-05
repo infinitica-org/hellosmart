@@ -10,6 +10,15 @@ import {
   Button,
   Badge,
   Alert,
+  TextField,
+  SelectField,
+  SearchInput,
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogContent,
+  DialogFooter,
 } from '@hs/ui';
 import {
   Plus,
@@ -251,123 +260,133 @@ export default function QuoteBuilderPage() {
       />
 
       {/* Quote Created Success Modal */}
-      {createdResult && (
-        <div className="fixed inset-0 z-50 bg-neutral-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <Card className="max-w-lg w-full p-6 space-y-5 shadow-2xl relative">
-            {/* Modal Exit Button (X) */}
-            <button
-              type="button"
-              onClick={() => {
-                setCreatedResult(null);
-                setEmailSent(false);
-                setEmailError(null);
-              }}
-              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-700 p-1.5 rounded-lg hover:bg-neutral-100 transition-colors"
-              aria-label="Close modal"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center gap-2 text-emerald-600">
-              <Check className="w-5 h-5 rounded-full bg-emerald-100 p-0.5" />
-              <h2 className="text-base font-semibold text-neutral-900">Quotation Created Successfully!</h2>
-            </div>
-
-            <div className="bg-neutral-50 rounded-xl p-4 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Quote Number:</span>
-                <span className="font-mono font-bold text-neutral-900">{createdResult.quote.quoteNumber}</span>
+      <Dialog
+        open={Boolean(createdResult)}
+        onClose={() => {
+          setCreatedResult(null);
+          setEmailSent(false);
+          setEmailError(null);
+        }}
+        size="md"
+      >
+        {createdResult && (
+          <div>
+            <DialogHeader>
+              <div className="flex items-center gap-2 text-success">
+                <Check className="w-5 h-5 rounded-full bg-success/15 p-0.5" />
+                <DialogTitle>Quotation Created Successfully</DialogTitle>
               </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Customer:</span>
-                <span className="font-medium text-neutral-800">
-                  {createdResult.quote.customerName || createdResult.quote.customerCompany || selectedLead?.name || selectedLead?.email}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Recipient Email:</span>
-                <span className="font-mono text-neutral-700">
-                  {createdResult.quote.customerEmail || selectedLead?.email}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Grand Total (incl. GST):</span>
-                <span className="font-mono font-bold text-primary text-sm">
-                  {createdResult.quote.currency} {parseFloat(createdResult.quote.grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-            </div>
+              <DialogDescription>
+                Commercial quote has been generated with server-side tax classification.
+              </DialogDescription>
+            </DialogHeader>
 
-            {/* Public Review Link */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-neutral-700">Customer Review URL (SP-010)</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}${createdResult.publicUrl}`}
-                  className="w-full text-xs font-mono bg-neutral-100 border border-neutral-300 rounded-lg p-2 text-neutral-700 truncate"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyLink}
-                  leftIcon={copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                >
-                  {copied ? 'Copied' : 'Copy'}
-                </Button>
-                <a
-                  href={createdResult.publicUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button variant="ghost" size="sm" leftIcon={<ExternalLink className="w-3.5 h-3.5" />}>
-                    Open
-                  </Button>
-                </a>
-              </div>
-            </div>
-
-            {/* Email Dispatch Feedback */}
-            {emailError && (
-              <Alert variant="error" className="text-xs">
-                {emailError}
-              </Alert>
-            )}
-
-            {emailSent && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800 space-y-1">
-                <div className="flex items-center gap-1.5 font-semibold">
-                  <Check className="w-4 h-4 text-emerald-600" />
-                  <span>Email Dispatched Successfully!</span>
+            <DialogContent className="space-y-4">
+              <div className="bg-neutral-50 rounded-xl p-4 space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">Quote Number:</span>
+                  <span className="font-mono font-bold text-neutral-900">{createdResult.quote.quoteNumber}</span>
                 </div>
-                <p className="text-[11px] text-emerald-700">
-                  Customer quotation notification and approval link were dispatched to the customer.
-                </p>
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">Customer:</span>
+                  <span className="font-medium text-neutral-800">
+                    {createdResult.quote.customerName || createdResult.quote.customerCompany || selectedLead?.name || selectedLead?.email}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">Recipient Email:</span>
+                  <span className="font-mono text-neutral-700">
+                    {createdResult.quote.customerEmail || selectedLead?.email}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">Grand Total (incl. GST):</span>
+                  <span className="font-mono font-bold text-primary text-sm">
+                    {createdResult.quote.currency} {parseFloat(createdResult.quote.grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
               </div>
-            )}
 
-            {/* Customer Email Sending Workflow */}
-            <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
-              <Link href={ROUTES.ADMIN.SALES_QUOTES}>
-                <Button variant="ghost" size="sm">
-                  View All Quotes
+              {/* Public Review Link */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-neutral-700">Customer Review URL</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}${createdResult.publicUrl}`}
+                    className="w-full text-xs font-mono bg-neutral-100 border border-neutral-300 rounded-lg p-2 text-neutral-700 truncate"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyLink}
+                    leftIcon={copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+                  >
+                    {copied ? 'Copied' : 'Copy'}
+                  </Button>
+                  <a
+                    href={createdResult.publicUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button variant="ghost" size="sm" leftIcon={<ExternalLink className="w-3.5 h-3.5" />}>
+                      Open
+                    </Button>
+                  </a>
+                </div>
+              </div>
+
+              {/* Email Dispatch Feedback */}
+              {emailError && (
+                <Alert variant="error" className="text-xs">
+                  {emailError}
+                </Alert>
+              )}
+
+              {emailSent && (
+                <div className="bg-success/10 border border-success/20 rounded-lg p-3 text-xs text-success-foreground space-y-1">
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    <Check className="w-4 h-4 text-success" />
+                    <span>Email Dispatched to Mailpit!</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-600">
+                    Customer quote notification was delivered. View and inspect the email live in Mailpit:{' '}
+                    <a
+                      href="http://localhost:8025"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline font-mono text-primary font-bold inline-flex items-center gap-0.5"
+                    >
+                      http://localhost:8025 <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </p>
+                </div>
+              )}
+            </DialogContent>
+
+            <DialogFooter>
+              <div className="w-full flex items-center justify-between">
+                <Link href={ROUTES.ADMIN.SALES_QUOTES}>
+                  <Button variant="ghost" size="sm">
+                    View All Quotes
+                  </Button>
+                </Link>
+
+                <Button
+                  variant={emailSent ? 'outline' : 'primary'}
+                  size="sm"
+                  onClick={handleSendEmail}
+                  isLoading={isSendingEmail}
+                  leftIcon={emailSent ? <Check className="w-3.5 h-3.5 text-success" /> : <Send className="w-3.5 h-3.5" />}
+                >
+                  {emailSent ? 'Send Again to Mailpit' : 'Send Quote Email'}
                 </Button>
-              </Link>
-
-              <Button
-                variant={emailSent ? 'outline' : 'primary'}
-                size="sm"
-                onClick={handleSendEmail}
-                isLoading={isSendingEmail}
-                leftIcon={emailSent ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Send className="w-3.5 h-3.5" />}
-              >
-                {emailSent ? 'Send Again to Mailpit' : 'Send Quote Email'}
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+              </div>
+            </DialogFooter>
+          </div>
+        )}
+      </Dialog>
 
       {formError && (
         <Alert variant="error" className="text-xs">
@@ -393,54 +412,40 @@ export default function QuoteBuilderPage() {
             <div className="space-y-3">
               {/* Customer Search Bar */}
               <div>
-                <label className="text-xs font-medium text-neutral-700">Search Customer</label>
-                <div className="relative mt-1">
-                  <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Search customer by name, email, or company..."
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="w-full text-xs rounded-lg border border-neutral-300 pl-8 pr-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                  />
-                  {customerSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setCustomerSearch('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
+                <SearchInput
+                  size="sm"
+                  placeholder="Search customer by name, email, or company..."
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  onClear={() => setCustomerSearch('')}
+                  shortcutKey={false}
+                  autoShortcut={false}
+                />
               </div>
 
               {/* Customer Dropdown */}
-              <div>
-                <label className="text-xs font-medium text-neutral-700">
-                  Prospective Lead / Client *
-                  {customerSearch.trim() && (
-                    <span className="ml-2 font-normal text-neutral-500 text-[11px]">
-                      ({filteredLeads.length} matching)
-                    </span>
-                  )}
-                </label>
-                <select
-                  className="w-full text-xs rounded-lg border border-neutral-300 p-2 bg-white mt-1"
-                  value={leadId}
-                  onChange={(e) => setLeadId(e.target.value)}
-                  required
-                >
-                  <option value="">-- Select a Cal.com Sales Lead --</option>
-                  {filteredLeads.map((lead) => (
-                    <option key={lead.id} value={lead.id}>
-                      {lead.name ? `${lead.name} (${lead.email})` : lead.email}
-                      {lead.company ? ` — ${lead.company}` : ''}
-                      {lead.stage ? ` [${lead.stage}]` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SelectField
+                label={
+                  <span>
+                    Prospective Lead / Client
+                    {customerSearch.trim() && (
+                      <span className="ml-2 font-normal text-neutral-500 text-[11px]">
+                        ({filteredLeads.length} matching)
+                      </span>
+                    )}
+                  </span>
+                }
+                value={leadId}
+                onChange={(e) => setLeadId(e.target.value)}
+                required
+                options={[
+                  { value: '', label: '-- Select a Cal.com Sales Lead --' },
+                  ...filteredLeads.map((lead) => ({
+                    value: lead.id,
+                    label: `${lead.name ? `${lead.name} (${lead.email})` : lead.email}${lead.company ? ` — ${lead.company}` : ''}${lead.stage ? ` [${lead.stage}]` : ''}`,
+                  })),
+                ]}
+              />
 
               {/* Selected Customer Preview Card */}
               {selectedLead && (
@@ -544,68 +549,59 @@ export default function QuoteBuilderPage() {
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-neutral-700">Customer State (GST Rule) *</label>
-                <select
-                  className="w-full text-xs rounded-lg border border-neutral-300 p-2 bg-white"
-                  value={customerState}
-                  onChange={(e) => setCustomerState(e.target.value)}
-                >
-                  <option value="KA">Karnataka (Intra-state: CGST 9% + SGST 9%)</option>
-                  <option value="MH">Maharashtra (Inter-state: IGST 18%)</option>
-                  <option value="DL">Delhi (Inter-state: IGST 18%)</option>
-                  <option value="TN">Tamil Nadu (Inter-state: IGST 18%)</option>
-                  <option value="TG">Telangana (Inter-state: IGST 18%)</option>
-                  <option value="UP">Uttar Pradesh (Inter-state: IGST 18%)</option>
-                </select>
-              </div>
+              <SelectField
+                label="Customer State (GST Rule)"
+                value={customerState}
+                onChange={(e) => setCustomerState(e.target.value)}
+                required
+                options={[
+                  { value: 'KA', label: 'Karnataka (Intra-state: CGST 9% + SGST 9%)' },
+                  { value: 'MH', label: 'Maharashtra (Inter-state: IGST 18%)' },
+                  { value: 'DL', label: 'Delhi (Inter-state: IGST 18%)' },
+                  { value: 'TN', label: 'Tamil Nadu (Inter-state: IGST 18%)' },
+                  { value: 'TG', label: 'Telangana (Inter-state: IGST 18%)' },
+                  { value: 'UP', label: 'Uttar Pradesh (Inter-state: IGST 18%)' },
+                ]}
+              />
 
-              <div>
-                <label className="text-xs font-medium text-neutral-700">City</label>
-                <Input
-                  size="sm"
-                  value={customerCity}
-                  onChange={(e) => setCustomerCity(e.target.value)}
-                />
-              </div>
+              <TextField
+                label="City"
+                size="sm"
+                value={customerCity}
+                onChange={(e) => setCustomerCity(e.target.value)}
+              />
 
-              <div>
-                <label className="text-xs font-medium text-neutral-700">PIN Code</label>
-                <Input
-                  size="sm"
-                  value={customerPin}
-                  onChange={(e) => setCustomerPin(e.target.value)}
-                />
-              </div>
+              <TextField
+                label="PIN Code"
+                size="sm"
+                value={customerPin}
+                onChange={(e) => setCustomerPin(e.target.value)}
+              />
 
-              <div>
-                <label className="text-xs font-medium text-neutral-700">Customer GSTIN (Optional)</label>
-                <Input
-                  size="sm"
-                  placeholder="e.g. 29AAAAA0000A1Z5"
-                  value={customerGstin}
-                  onChange={(e) => setCustomerGstin(e.target.value)}
-                />
-              </div>
+              <TextField
+                label="Customer GSTIN (Optional)"
+                size="sm"
+                placeholder="e.g. 29AAAAA0000A1Z5"
+                value={customerGstin}
+                onChange={(e) => setCustomerGstin(e.target.value)}
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div>
-                <label className="text-xs font-medium text-neutral-700 flex items-center gap-1">
-                  <Tag className="w-3.5 h-3.5 text-neutral-500" />
-                  <span>Promo Code (Optional)</span>
-                </label>
-                <Input
+                <TextField
+                  label="Promo Code (Optional)"
                   size="sm"
                   placeholder="e.g. STREAM9_DEMO"
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  leftIcon={<Tag className="w-3.5 h-3.5 text-neutral-500" />}
                 />
 
                 {/* Promo Validation Feedback */}
                 {matchedPromo ? (
-                  <div className="mt-1 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px] text-success font-medium">
+                    <Check className="w-3.5 h-3.5 text-success" />
                     <span>
                       Active: {matchedPromo.code} &mdash;{' '}
                       {matchedPromo.discountType === 'percentage'
@@ -615,7 +611,7 @@ export default function QuoteBuilderPage() {
                     </span>
                   </div>
                 ) : promoCode.trim() ? (
-                  <div className="mt-1 text-[11px] text-amber-600">
+                  <div className="mt-1 text-[11px] text-warning">
                     Promo code &quot;{promoCode.trim().toUpperCase()}&quot; not found or inactive.
                   </div>
                 ) : null}
@@ -634,7 +630,7 @@ export default function QuoteBuilderPage() {
                           onClick={() => setPromoCode(p.code)}
                           className={`text-[10px] font-mono px-2 py-0.5 rounded-full border transition-colors ${
                             promoCode.toUpperCase() === p.code
-                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold'
+                              ? 'bg-success/15 text-success-foreground border-success/30 font-bold'
                               : 'bg-neutral-100 text-neutral-700 border-neutral-200 hover:bg-neutral-200'
                           }`}
                         >
@@ -650,8 +646,8 @@ export default function QuoteBuilderPage() {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-neutral-700">Validity (Days)</label>
-                <Input
+                <TextField
+                  label="Validity (Days)"
                   size="sm"
                   type="number"
                   value={expiresInDays}
@@ -661,8 +657,8 @@ export default function QuoteBuilderPage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-neutral-700">Internal Commercial Notes</label>
-              <Input
+              <TextField
+                label="Internal Commercial Notes"
                 size="sm"
                 placeholder="Optional notes or contractual stipulations..."
                 value={notes}

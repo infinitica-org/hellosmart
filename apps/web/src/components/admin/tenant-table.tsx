@@ -18,6 +18,7 @@ import {
   DropdownMenuItem,
   AlertDialog,
   useToast,
+  IconButton,
   CheckCircle2,
   AlertTriangle,
   MoreHorizontal,
@@ -264,14 +265,13 @@ export function TenantTable({
                     <div className="flex items-center justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
+                          <IconButton
+                            variant="outline"
+                            size="sm"
                             aria-label={`Actions for ${org.name}`}
-                            className="h-8 w-8 rounded-md border border-neutral-200 bg-white hover:bg-neutral-50 hover:border-neutral-300 text-neutral-400 hover:text-neutral-700 shadow-2xs flex items-center justify-center transition-all cursor-pointer select-none focus:outline-none"
+                            icon={<MoreHorizontal className="w-4 h-4" />}
                             data-testid={`tenant-actions-${org.slug}`}
-                          >
-                            <MoreHorizontal className="w-4 h-4 pointer-events-none" />
-                          </button>
+                          />
                         </DropdownMenuTrigger>
 
                         <DropdownMenuContent
@@ -280,9 +280,9 @@ export function TenantTable({
                         >
                           {isSuspended ? (
                             <DropdownMenuItem
-                              icon={<CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                              icon={<CheckCircle2 className="h-4 w-4 text-success" />}
                               onClick={() => handleOpenConfirm(org, targetReinstateStatus)}
-                              className="text-xs text-emerald-700 hover:text-emerald-800 dark:text-emerald-400"
+                              className="text-xs text-success-foreground"
                               data-testid={`reinstate-btn-${org.slug}`}
                             >
                               Reinstate Company

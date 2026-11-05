@@ -5,10 +5,16 @@ import Link from 'next/link';
 import {
   PageHeader,
   Card,
-  Input,
+  SearchInput,
   Button,
   Badge,
   EmptyState,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
 } from '@hs/ui';
 import { Search, Plus, ExternalLink, Calendar, RefreshCw } from 'lucide-react';
 import { useGetLeadsQuery } from '@/store/admin/adminApi';
@@ -51,7 +57,7 @@ export default function LeadsAndBookingsPage() {
       <PageHeader
         title="Leads & Cal.com Bookings"
         description="Prospective customer leads ingested from Cal.com webhooks with UTM attribution and booking history."
-        badge={{ text: 'SP-001', variant: 'default' }}
+        badge={{ text: 'Lead Ingestion', variant: 'info' }}
         actions={
           <Button
             variant="outline"
@@ -68,13 +74,14 @@ export default function LeadsAndBookingsPage() {
         {/* Controls: Search & Stage filter pills */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div className="w-full sm:w-72">
-            <Input
+            <SearchInput
               size="sm"
               placeholder="Search by name, email, company..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onClear={search ? () => setSearch('') : undefined}
-              leftIcon={<Search className="w-4 h-4 text-neutral-400" />}
+              onClear={() => setSearch('')}
+              shortcutKey={false}
+              autoShortcut={false}
             />
           </div>
 
@@ -102,30 +109,30 @@ export default function LeadsAndBookingsPage() {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-neutral-600">
-              <thead className="bg-neutral-50 text-neutral-700 uppercase font-semibold border-b border-neutral-200">
-                <tr>
-                  <th className="py-3 px-4">Contact</th>
-                  <th className="py-3 px-4">Company</th>
-                  <th className="py-3 px-4">Stage</th>
-                  <th className="py-3 px-4">Active Booking</th>
-                  <th className="py-3 px-4">UTM Attribution</th>
-                  <th className="py-3 px-4">Added</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="py-3 px-4">Contact</TableHead>
+                  <TableHead className="py-3 px-4">Company</TableHead>
+                  <TableHead className="py-3 px-4">Stage</TableHead>
+                  <TableHead className="py-3 px-4">Active Booking</TableHead>
+                  <TableHead className="py-3 px-4">UTM Attribution</TableHead>
+                  <TableHead className="py-3 px-4">Added</TableHead>
+                  <TableHead className="py-3 px-4 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {filteredLeads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-neutral-50/50 transition-colors">
-                    <td className="py-3 px-4">
+                  <TableRow key={lead.id} className="hover:bg-neutral-50/50 transition-colors">
+                    <TableCell className="py-3 px-4">
                       <div className="font-medium text-neutral-900">{lead.name || 'Unnamed'}</div>
                       <div className="text-neutral-500 font-mono text-[11px]">{lead.email}</div>
-                    </td>
-                    <td className="py-3 px-4 font-medium text-neutral-800">
+                    </TableCell>
+                    <TableCell className="py-3 px-4 font-medium text-neutral-800">
                       {lead.company || '—'}
-                    </td>
-                    <td className="py-3 px-4">{getStageBadge(lead.stage)}</td>
-                    <td className="py-3 px-4">
+                    </TableCell>
+                    <TableCell className="py-3 px-4">{getStageBadge(lead.stage)}</TableCell>
+                    <TableCell className="py-3 px-4">
                       {lead.activeBooking ? (
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-1 text-neutral-900 font-medium">
@@ -139,8 +146,8 @@ export default function LeadsAndBookingsPage() {
                       ) : (
                         <span className="text-neutral-400">None</span>
                       )}
-                    </td>
-                    <td className="py-3 px-4">
+                    </TableCell>
+                    <TableCell className="py-3 px-4">
                       {lead.utm && Object.keys(lead.utm).length > 0 ? (
                         <div className="space-y-0.5 text-[11px]">
                           {lead.utm.source && (
@@ -157,11 +164,11 @@ export default function LeadsAndBookingsPage() {
                       ) : (
                         <span className="text-neutral-400">Direct</span>
                       )}
-                    </td>
-                    <td className="py-3 px-4 text-neutral-500 text-[11px]">
+                    </TableCell>
+                    <TableCell className="py-3 px-4 text-neutral-500 text-[11px]">
                       {new Date(lead.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 px-4 text-right">
+                    </TableCell>
+                    <TableCell className="py-3 px-4 text-right">
                       <Link
                         href={`${ROUTES.ADMIN.SALES_QUOTE_NEW}?leadId=${encodeURIComponent(lead.id)}`}
                       >
@@ -174,11 +181,11 @@ export default function LeadsAndBookingsPage() {
                           Quote
                         </Button>
                       </Link>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </Card>

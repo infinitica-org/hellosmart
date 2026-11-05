@@ -8,7 +8,7 @@ import {
   StatCard,
   Card,
   SearchInput,
-  TextureButton,
+  Button,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -203,17 +203,16 @@ export function AdminCompaniesView({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Provision New Company Button (Brand orange, identical to '+ Invite Candidate') */}
-            <TextureButton
-              variant="brand"
-              size="sm"
+            {/* Provision New Company Button */}
+            <Button
+              variant="primary"
+              size="md"
               onClick={() => setIsProvisionModalOpen(true)}
-              className="h-10 text-sm font-medium rounded-md"
+              leftIcon={<Plus className="w-4 h-4" />}
               data-testid="provision-company-btn"
             >
-              <Plus className="w-4 h-4 mr-1.5" />
               Provision New Company
-            </TextureButton>
+            </Button>
           </div>
         </div>
 
@@ -263,7 +262,7 @@ export function AdminCompaniesView({
               Enforced Platform Governance &amp; Tenancy Rules
             </div>
             <p className="text-neutral-600">
-              BR-01 Strict Tenant Isolation &bull; BR-04 Manual Org Provisioning Only &bull; BR-05 Server-Enforced Entitlements &bull; BR-31 Append-Only Audit Logging
+              Strict Tenant Isolation &bull; Manual Org Provisioning Only &bull; Server-Enforced Entitlements &bull; Append-Only Audit Logging
             </p>
           </div>
           <div className="font-mono text-primary bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/25 shrink-0 font-medium">

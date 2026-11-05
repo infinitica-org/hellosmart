@@ -125,7 +125,7 @@ export default function SalesOverviewPage() {
         <StatCard
           label="Pending Approvals"
           value={isQuotesLoading ? '…' : pendingApprovals.toString()}
-          description="Awaiting customer review (SP-010)"
+          description="Awaiting customer review"
         />
         <StatCard
           label="Accepted Quotes"

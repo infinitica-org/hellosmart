@@ -5,10 +5,16 @@ import Link from 'next/link';
 import {
   PageHeader,
   Card,
-  Input,
+  SearchInput,
   Button,
   Badge,
   EmptyState,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
 } from '@hs/ui';
 import {
   Search,
@@ -57,8 +63,8 @@ export default function CustomerApprovalsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Customer Quote Approvals"
-        description="Audit-grade tracker for one-click customer approvals, signatory evidence, timestamps, and statutory GST acceptance (SP-010)."
-        badge={{ text: 'SP-010', variant: 'default' }}
+        description="Audit-grade tracker for one-click customer approvals, signatory evidence, timestamps, and statutory GST acceptance."
+        badge={{ text: 'Approvals', variant: 'info' }}
         actions={
           <Button
             variant="outline"
@@ -75,13 +81,14 @@ export default function CustomerApprovalsPage() {
         {/* Search & Tabs */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div className="w-full sm:w-72">
-            <Input
+            <SearchInput
               size="sm"
               placeholder="Search quote # or signatory..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onClear={search ? () => setSearch('') : undefined}
-              leftIcon={<Search className="w-4 h-4 text-neutral-400" />}
+              onClear={() => setSearch('')}
+              shortcutKey={false}
+              autoShortcut={false}
             />
           </div>
 
@@ -132,33 +139,33 @@ export default function CustomerApprovalsPage() {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-neutral-600">
-              <thead className="bg-neutral-50 text-neutral-700 uppercase font-semibold border-b border-neutral-200">
-                <tr>
-                  <th className="py-3 px-4">Quote Number</th>
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Amount (incl. GST)</th>
-                  <th className="py-3 px-4">Approval Status</th>
-                  <th className="py-3 px-4">Signatory Evidence</th>
-                  <th className="py-3 px-4">Accepted Timestamp</th>
-                  <th className="py-3 px-4 text-right">Audit</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="py-3 px-4">Quote Number</TableHead>
+                  <TableHead className="py-3 px-4">Customer</TableHead>
+                  <TableHead className="py-3 px-4">Amount (incl. GST)</TableHead>
+                  <TableHead className="py-3 px-4">Approval Status</TableHead>
+                  <TableHead className="py-3 px-4">Signatory Evidence</TableHead>
+                  <TableHead className="py-3 px-4">Accepted Timestamp</TableHead>
+                  <TableHead className="py-3 px-4 text-right">Audit</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {filteredQuotes.map((q) => (
-                  <tr key={q.id} className="hover:bg-neutral-50/50 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-neutral-900">
+                  <TableRow key={q.id} className="hover:bg-neutral-50/50 transition-colors">
+                    <TableCell className="py-3 px-4 font-mono font-bold text-neutral-900">
                       {q.quoteNumber}
-                    </td>
-                    <td className="py-3 px-4">
+                    </TableCell>
+                    <TableCell className="py-3 px-4">
                       <div className="font-medium text-neutral-900">{q.customerName || 'Unnamed'}</div>
                       <div className="text-neutral-500 text-[11px]">{q.customerCompany || 'Individual'}</div>
-                    </td>
-                    <td className="py-3 px-4 font-mono font-semibold text-neutral-900">
+                    </TableCell>
+                    <TableCell className="py-3 px-4 font-mono font-semibold text-neutral-900">
                       {q.currency} {parseFloat(q.grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-3 px-4">{getStatusBadge(q.status)}</td>
-                    <td className="py-3 px-4">
+                    </TableCell>
+                    <TableCell className="py-3 px-4">{getStatusBadge(q.status)}</TableCell>
+                    <TableCell className="py-3 px-4">
                       {q.acceptedByName ? (
                         <div className="space-y-0.5">
                           <div className="font-medium text-neutral-900">{q.acceptedByName}</div>
@@ -169,26 +176,26 @@ export default function CustomerApprovalsPage() {
                       ) : (
                         <span className="text-neutral-400 italic">Pending signature</span>
                       )}
-                    </td>
-                    <td className="py-3 px-4 text-neutral-500 text-[11px]">
+                    </TableCell>
+                    <TableCell className="py-3 px-4 text-neutral-500 text-[11px]">
                       {q.acceptedAt ? (
-                        <div className="font-mono text-emerald-700">
+                        <div className="font-mono text-success">
                           {new Date(q.acceptedAt).toLocaleString()}
                         </div>
                       ) : (
                         <span className="text-neutral-400">—</span>
                       )}
-                    </td>
-                    <td className="py-3 px-4 text-right">
+                    </TableCell>
+                    <TableCell className="py-3 px-4 text-right">
                       <span className="inline-flex items-center gap-1 font-mono text-[10px] bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded border border-neutral-200">
-                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                        <ShieldCheck className="w-3 h-3 text-success" />
                         <span>Audit Log</span>
                       </span>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </Card>

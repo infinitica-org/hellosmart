@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import {
   PageHeader,
   Card,
-  Input,
+  TextField,
+  SelectField,
   Button,
   Badge,
   Alert,
@@ -66,7 +67,7 @@ export default function GstCalculatorPage() {
       <PageHeader
         title="18% Domestic GST Engine Calculator"
         description="Statutory Goods and Services Tax (GST) engine enforcing dual-snapshot immutability, rounded paise math, and fail-closed international classification."
-        badge={{ text: 'SP-009', variant: 'default' }}
+        badge={{ text: 'GST Engine', variant: 'info' }}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -78,58 +79,47 @@ export default function GstCalculatorPage() {
           </div>
 
           <div className="space-y-3">
-            <div>
-              <label className="text-xs font-medium text-neutral-700">Line Subtotal (INR ₹)</label>
-              <Input
-                size="sm"
-                type="number"
-                step="0.01"
-                value={subtotal}
-                onChange={(e) => setSubtotal(e.target.value)}
-                required
-              />
-            </div>
+            <TextField
+              label="Line Subtotal (INR ₹)"
+              size="sm"
+              type="number"
+              step="0.01"
+              value={subtotal}
+              onChange={(e) => setSubtotal(e.target.value)}
+              required
+            />
 
-            <div>
-              <label className="text-xs font-medium text-neutral-700">Promo Discount (INR ₹)</label>
-              <Input
-                size="sm"
-                type="number"
-                step="0.01"
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
-              />
-            </div>
+            <TextField
+              label="Promo Discount (INR ₹)"
+              size="sm"
+              type="number"
+              step="0.01"
+              value={discount}
+              onChange={(e) => setDiscount(e.target.value)}
+            />
 
-            <div>
-              <label className="text-xs font-medium text-neutral-700">Customer Country</label>
-              <select
-                className="w-full text-xs rounded-lg border border-neutral-300 p-2 bg-white"
-                value={customerCountry}
-                onChange={(e) => setCustomerCountry(e.target.value)}
-              >
-                <option value="IN">India (Domestic Supply)</option>
-                <option value="US">United States (Export - Requires LUT)</option>
-                <option value="GB">United Kingdom (Export - Requires LUT)</option>
-                <option value="SG">Singapore (Export - Requires LUT)</option>
-              </select>
-            </div>
+            <SelectField
+              label="Customer Country"
+              value={customerCountry}
+              onChange={(e) => setCustomerCountry(e.target.value)}
+              options={[
+                { value: 'IN', label: 'India (Domestic Supply)' },
+                { value: 'US', label: 'United States (Export - Requires LUT)' },
+                { value: 'GB', label: 'United Kingdom (Export - Requires LUT)' },
+                { value: 'SG', label: 'Singapore (Export - Requires LUT)' },
+              ]}
+            />
 
             {customerCountry === 'IN' && (
-              <div>
-                <label className="text-xs font-medium text-neutral-700">Customer State / UT</label>
-                <select
-                  className="w-full text-xs rounded-lg border border-neutral-300 p-2 bg-white"
-                  value={customerState}
-                  onChange={(e) => setCustomerState(e.target.value)}
-                >
-                  {INDIAN_STATES.map((st) => (
-                    <option key={st.code} value={st.code}>
-                      {st.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SelectField
+                label="Customer State / UT"
+                value={customerState}
+                onChange={(e) => setCustomerState(e.target.value)}
+                options={INDIAN_STATES.map((st) => ({
+                  value: st.code,
+                  label: st.name,
+                }))}
+              />
             )}
 
             <Button

@@ -10,7 +10,7 @@ import {
   Badge,
   Alert,
   EmptyState,
-  TextureButton,
+  Button,
 } from '@hs/ui';
 
 export interface AgentInfo {
@@ -118,16 +118,16 @@ export default function AdminAgentsPage({ initialAgents }: AdminAgentsPageProps 
           </div>
 
           <div className="flex items-center gap-2">
-            <TextureButton
-              variant="secondary"
-              size="sm"
+            <Button
+              variant="outline"
+              size="md"
               onClick={handleRefresh}
-              className="h-10 text-xs sm:text-sm font-medium rounded-md"
+              isLoading={isRefreshing}
+              leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
               data-testid="agents-refresh-btn"
             >
-              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               Verify Agent Health
-            </TextureButton>
+            </Button>
           </div>
         </div>
 
