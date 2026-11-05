@@ -3,6 +3,7 @@ import { createCustomBaseQuery } from '../api/baseApi';
 import type {
   CandidateDto,
   CreateCandidateDto,
+  AssessmentSummaryDto,
 } from '@hs/contracts';
 import type {
   CandidateFilters,
@@ -165,6 +166,20 @@ export const companyApi = createApi({
       },
     }),
 
+    getAssessments: builder.query<AssessmentSummaryDto[], void>({
+      query: () => 'company/assessments',
+      providesTags: (result) => {
+        const items = Array.isArray(result) ? result : [];
+        return [
+          ...items.map(({ id }) => ({
+            type: 'Assessments' as const,
+            id,
+          })),
+          { type: 'Assessments', id: 'LIST' },
+        ];
+      },
+    }),
+
     createAssessment: builder.mutation<AssessmentDto, CreateAssessmentDto>({
       query: (body) => ({
         url: 'company/assessments',
@@ -191,6 +206,8 @@ export const {
   useResendCandidateInviteMutation,
   useGetCompanyTemplatesQuery,
   useLazyGetCompanyTemplatesQuery,
+  useGetAssessmentsQuery,
+  useLazyGetAssessmentsQuery,
   useCreateAssessmentMutation,
   useGetCompanyMetricsQuery,
   useLazyGetCompanyMetricsQuery,

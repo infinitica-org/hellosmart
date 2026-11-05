@@ -8,6 +8,7 @@ import {
   Card,
   Button,
   Input,
+  Badge,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -15,8 +16,24 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@hs/ui';
-import { Plus, Search, ChevronDown, Check, X, Filter } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  ChevronDown,
+  Check,
+  X,
+  Filter,
+  Terminal,
+  Clock,
+  Users,
+  Sliders,
+  AlertCircle,
+  RefreshCw,
+  Loader2,
+  Calendar,
+} from 'lucide-react';
 import { UI_LABELS, ROUTES } from '@/constants';
+import { useGetAssessmentsQuery } from '@/store/company/companyApi';
 
 const ASSESSMENT_STATUS_OPTIONS = [
   { value: 'all', label: 'All Statuses' },
@@ -30,6 +47,14 @@ export default function CompanyAssessmentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    data: rawAssessments,
+    isLoading,
+    isFetching,
+    error: rtkError,
+    refetch,
+  } = useGetAssessmentsQuery();
 
   // Keyboard shortcut: Cmd+K / Ctrl+K to focus search input
   useEffect(() => {
@@ -49,6 +74,21 @@ export default function CompanyAssessmentsPage() {
 
   const isFiltered = searchQuery.trim().length > 0 || statusFilter !== 'all';
 
+  const error = rtkError ? (rtkError as any).data || rtkError : null;
+
+  const filteredAssessments = (rawAssessments || []).filter((item) => {
+    if (statusFilter !== 'all' && item.status !== statusFilter) {
+      return false;
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchName = item.name?.toLowerCase().includes(q);
+      const matchTemplate = item.templateId?.toLowerCase().includes(q);
+      return matchName || matchTemplate;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       {/* Page Header with Create Assessment Action (Never wrapping) */}
@@ -57,17 +97,31 @@ export default function CompanyAssessmentsPage() {
         description={UI_LABELS.PAGE_HEADERS.ASSESSMENT_HUB_DESCRIPTION}
         badge={{ text: 'Templates & Rubrics', variant: 'info' }}
         actions={
-          <Link href={ROUTES.COMPANY.TEMPLATES} className="shrink-0">
+          <div className="flex items-center gap-2">
             <Button
-              variant="primary"
+              type="button"
+              variant="outline"
               size="sm"
-              leftIcon={<Plus className="w-4 h-4 shrink-0" />}
-              className="rounded-xl px-4 text-xs sm:text-sm font-medium whitespace-nowrap shrink-0 shadow-sm inline-flex items-center"
-              data-testid="create-assessment-header-btn"
+              onClick={() => void refetch()}
+              disabled={isLoading || isFetching}
+              className="flex items-center gap-2 text-xs border-neutral-200 hover:bg-neutral-50"
+              aria-label="Refresh assessments"
             >
-              Create Assessment
+              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+              Refresh
             </Button>
-          </Link>
+            <Link href={ROUTES.COMPANY.TEMPLATES} className="shrink-0">
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<Plus className="w-4 h-4 shrink-0" />}
+                className="rounded-xl px-4 text-xs sm:text-sm font-medium whitespace-nowrap shrink-0 shadow-sm inline-flex items-center"
+                data-testid="create-assessment-header-btn"
+              >
+                Create Assessment
+              </Button>
+            </Link>
+          </div>
         }
       />
 
@@ -202,27 +256,145 @@ export default function CompanyAssessmentsPage() {
         )}
       </div>
 
-      {/* Main Assessment List Card with Card Header Title */}
+      {/* Error State */}
+      {!isLoading && error && (
+        <Card className="p-6 border-red-200 bg-red-50/50 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-red-900">Failed to load assessments</h3>
+              <p className="text-xs text-red-700 mt-1">
+                {error.message || 'Unable to connect to the assessment service. Please try again.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              className="border-red-300 text-red-700 hover:bg-red-100/60"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              Try Again
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Main Assessment List Card */}
       <Card className="p-6 sm:p-8 rounded-2xl border border-neutral-200/80 bg-white shadow-2xs">
         {/* Card Header Title */}
-        <div className="pb-4 mb-6 border-b border-neutral-100">
-          <h2 className="text-base sm:text-lg font-semibold text-neutral-900">
-            Active Assessments
-          </h2>
-          <p className="text-xs text-neutral-500 mt-0.5">
-            Manage published role simulations, rubrics, and candidate evaluations.
-          </p>
+        <div className="flex items-center justify-between pb-4 mb-6 border-b border-neutral-100">
+          <div>
+            <h2 className="text-base sm:text-lg font-semibold text-neutral-900">
+              Active Assessments
+            </h2>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              Manage published role simulations, rubrics, and candidate evaluations.
+            </p>
+          </div>
+          {isFetching && (
+            <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <span>Updating…</span>
+            </div>
+          )}
         </div>
 
-        {/* Empty State */}
-        <EmptyState
-          title="No assessments published"
-          description="Create and publish your first assessment from an assigned role template to start evaluating candidates in realistic work simulations."
-          action={{
-            label: 'Create Assessment',
-            href: ROUTES.COMPANY.TEMPLATES,
-          }}
-        />
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="py-12 flex flex-col items-center justify-center gap-3 text-neutral-400">
+            <Loader2 className="w-6 h-6 animate-spin text-neutral-500" />
+            <p className="text-xs">Loading assessments from database…</p>
+          </div>
+        ) : filteredAssessments.length > 0 ? (
+          <div className="space-y-4" data-testid="company-assessments-list">
+            {filteredAssessments.map((assessment) => {
+              const statusVariant =
+                assessment.status === 'published'
+                  ? 'success'
+                  : assessment.status === 'closed'
+                  ? 'warning'
+                  : 'default';
+
+              const duration = assessment.timing?.durationMinutes || 90;
+
+              return (
+                <div
+                  key={assessment.id}
+                  className="group p-5 rounded-xl border border-neutral-200/80 bg-white hover:border-neutral-300 hover:shadow-xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  data-testid={`assessment-item-${assessment.id}`}
+                >
+                  <div className="space-y-2 min-w-0">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h3 className="text-sm font-semibold text-neutral-900 group-hover:text-primary transition-colors">
+                        {assessment.name}
+                      </h3>
+                      <Badge variant={statusVariant} size="sm" dot>
+                        <span className="capitalize">{assessment.status}</span>
+                      </Badge>
+                      <Badge variant="info" size="sm">
+                        <Terminal className="w-3 h-3 mr-1 inline" />
+                        <span className="capitalize">{assessment.workspaceMode} VM</span>
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-xs text-neutral-500 flex-wrap">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-neutral-400" />
+                        {duration} mins duration
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5 text-neutral-400" />
+                        {assessment.candidateCount ?? 0} candidates assigned
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-neutral-400" />
+                        v{assessment.templateVersion}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-neutral-100">
+                    <Link href={ROUTES.COMPANY.RUBRIC(assessment.id)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        leftIcon={<Sliders className="w-3.5 h-3.5" />}
+                        className="text-xs h-8 px-3 rounded-lg border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+                      >
+                        Rubric
+                      </Button>
+                    </Link>
+                    <Link href={ROUTES.COMPANY.CANDIDATES}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        leftIcon={<Users className="w-3.5 h-3.5" />}
+                        className="text-xs h-8 px-3 rounded-lg text-neutral-800 hover:bg-neutral-100"
+                      >
+                        Candidates
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState
+            title="No assessments published"
+            description="Create and publish your first assessment from an assigned role template to start evaluating candidates in realistic work simulations."
+            action={{
+              label: 'Create Assessment',
+              href: ROUTES.COMPANY.TEMPLATES,
+            }}
+          />
+        )}
       </Card>
     </div>
   );

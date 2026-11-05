@@ -47,10 +47,8 @@ export class AssessmentsController {
         errors: flattenZodErrors(parsed.error),
       });
     }
-
     return await this.assessmentsService.create(parsed.data, actor);
   }
-
   @Get()
   async list(@Req() request: AuthenticatedRequest) {
     const actor = request[REQUEST_USER_KEY];

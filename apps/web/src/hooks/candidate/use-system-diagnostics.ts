@@ -190,6 +190,7 @@ export function useSystemDiagnostics(autoRun = true) {
     const res = await fetch(`${endpoint}?t=${Date.now()}`, {
       method: 'GET',
       cache: 'no-store',
+      credentials: 'include',
       headers: {
         Accept: 'application/json',
       },

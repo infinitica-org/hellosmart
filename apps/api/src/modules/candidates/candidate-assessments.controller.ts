@@ -9,6 +9,8 @@ import {
   Req,
 } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
+import { SkipThrottle } from '@nestjs/throttler';
+import { Public } from '../../common/decorators/public.decorator.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import {
@@ -141,6 +143,8 @@ export class CandidateAssessmentsController {
     return this.service.uploadArtifact(request, actor, requestMeta(request));
   }
 
+  @Public()
+  @SkipThrottle()
   @Get('ping')
   async ping() {
     return {
