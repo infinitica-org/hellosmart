@@ -121,7 +121,7 @@ export function ActiveSessionsDialog({
             {sessions.map((session) => {
               const targetId = session.id || session.sessionId;
               const isCurrentSession = Boolean(session.isCurrent ?? session.current);
-              const ip = session.ipAddress || session.ip || '127.0.0.1';
+              const ip = session.ipAddress || session.ip || '—';
               const lastActive = session.lastActiveAt || session.lastSeenAt || session.createdAt;
 
               return (
