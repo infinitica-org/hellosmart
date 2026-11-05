@@ -11,6 +11,7 @@ import {
   Terminal,
   User,
   Layers,
+  KeyRound,
   CreditCard,
   Briefcase,
   File,
@@ -61,7 +62,7 @@ export const adminNavigation: PortalNavigation = [
   {
     label: 'Security',
     href: ROUTES.ADMIN.SECURITY,
-    icon: <ShieldCheck className="w-4 h-4" strokeWidth={2} />,
+    icon: <KeyRound className="w-4 h-4" strokeWidth={2} />,
   },
 ];
 
@@ -97,7 +98,7 @@ export const adminGroups: NavigationGroup[] = [
       {
         label: 'Security',
         href: ROUTES.ADMIN.SECURITY,
-        icon: <ShieldCheck className="w-4 h-4" strokeWidth={2} />,
+        icon: <KeyRound className="w-4 h-4" strokeWidth={2} />,
       },
     ],
   },

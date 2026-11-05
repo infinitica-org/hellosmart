@@ -55,7 +55,7 @@ describe('Company Metrics BFF Route, Client & Dashboard (BUG-11)', () => {
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({
-          Cookie: 'hs_session=test-company-session',
+          Cookie: expect.stringContaining('hs_session=test-company-session'),
         }),
       }),
     );

@@ -1,13 +1,17 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   PageHeader,
   EmptyState,
   Card,
   Button,
   Input,
+  Badge,
+  Skeleton,
+  AssessmentStatusBadge,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -15,21 +19,47 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@hs/ui';
-import { Plus, Search, ChevronDown, Check, X, Filter } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  ChevronDown,
+  Check,
+  X,
+  Filter,
+  Sliders,
+  Clock,
+  Laptop,
+  MessageSquare,
+  Users,
+  ArrowRight,
+} from 'lucide-react';
 import { UI_LABELS, ROUTES } from '@/constants';
+import { useGetAssessmentsQuery } from '@/store/company/companyApi';
+import type { AssessmentSummaryDto } from '@hs/contracts';
 
 const ASSESSMENT_STATUS_OPTIONS = [
   { value: 'all', label: 'All Statuses' },
   { value: 'draft', label: 'Draft' },
+  { value: 'dry_run_passed', label: 'Dry Run Passed' },
   { value: 'published', label: 'Published' },
   { value: 'closed', label: 'Closed' },
   { value: 'archived', label: 'Archived' },
 ];
 
-export default function CompanyAssessmentsPage() {
-  const [searchQuery, setSearchQuery] = useState('');
+function CompanyAssessmentsContent() {
+  const searchParams = useSearchParams();
+  const qParam = searchParams.get('q') || '';
+
+  const [searchQuery, setSearchQuery] = useState(qParam);
   const [statusFilter, setStatusFilter] = useState('all');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync search with URL search param if changed
+  useEffect(() => {
+    if (qParam && qParam !== searchQuery) {
+      setSearchQuery(qParam);
+    }
+  }, [qParam]);
 
   // Keyboard shortcut: Cmd+K / Ctrl+K to focus search input
   useEffect(() => {
@@ -44,6 +74,28 @@ export default function CompanyAssessmentsPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const { data: rawAssessments, isLoading, isError, error, refetch } = useGetAssessmentsQuery();
+
+  const assessments: AssessmentSummaryDto[] = useMemo(() => {
+    if (!rawAssessments) return [];
+    if (Array.isArray(rawAssessments)) return rawAssessments;
+    return (rawAssessments as { items?: AssessmentSummaryDto[] })?.items || [];
+  }, [rawAssessments]);
+
+  const filteredAssessments = useMemo(() => {
+    return assessments.filter((item) => {
+      const matchesSearch =
+        searchQuery.trim() === '' ||
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.templateId.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesStatus =
+        statusFilter === 'all' || item.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [assessments, searchQuery, statusFilter]);
+
   const currentStatusLabel =
     ASSESSMENT_STATUS_OPTIONS.find((opt) => opt.value === statusFilter)?.label || 'All Statuses';
 
@@ -51,7 +103,7 @@ export default function CompanyAssessmentsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header with Create Assessment Action (Never wrapping) */}
+      {/* Page Header with Create Assessment Action */}
       <PageHeader
         title={UI_LABELS.PAGE_HEADERS.ASSESSMENT_HUB_TITLE}
         description={UI_LABELS.PAGE_HEADERS.ASSESSMENT_HUB_DESCRIPTION}
@@ -202,28 +254,182 @@ export default function CompanyAssessmentsPage() {
         )}
       </div>
 
-      {/* Main Assessment List Card with Card Header Title */}
+      {/* Main Assessment List Card */}
       <Card className="p-6 sm:p-8 rounded-2xl border border-neutral-200/80 bg-white shadow-2xs">
-        {/* Card Header Title */}
-        <div className="pb-4 mb-6 border-b border-neutral-100">
-          <h2 className="text-base sm:text-lg font-semibold text-neutral-900">
-            Active Assessments
-          </h2>
-          <p className="text-xs text-neutral-500 mt-0.5">
-            Manage published role simulations, rubrics, and candidate evaluations.
-          </p>
+        <div className="flex items-center justify-between pb-4 mb-6 border-b border-neutral-100">
+          <div>
+            <h2 className="text-base sm:text-lg font-semibold text-neutral-900">
+              Active Assessments
+            </h2>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              Manage published role simulations, rubrics, and candidate evaluations.
+            </p>
+          </div>
+          {assessments.length > 0 && (
+            <span className="text-xs font-medium text-neutral-500">
+              Showing {filteredAssessments.length} of {assessments.length}
+            </span>
+          )}
         </div>
 
-        {/* Empty State */}
-        <EmptyState
-          title="No assessments published"
-          description="Create and publish your first assessment from an assigned role template to start evaluating candidates in realistic work simulations."
-          action={{
-            label: 'Create Assessment',
-            href: ROUTES.COMPANY.TEMPLATES,
-          }}
-        />
+        {/* Loading State */}
+        {isLoading && (
+          <div className="space-y-4">
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
+          </div>
+        )}
+
+        {/* Error State */}
+        {!isLoading && isError && (
+          <div className="p-6 rounded-xl bg-danger-muted/20 border border-danger-border text-center space-y-3">
+            <p className="text-sm text-danger-foreground">
+              Failed to load assessments. {error && 'data' in error ? String((error as any).data?.detail || '') : ''}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => void refetch()}>
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {/* Empty State: No assessments created yet */}
+        {!isLoading && !isError && assessments.length === 0 && (
+          <EmptyState
+            title="No assessments published"
+            description="Create and publish your first assessment from an assigned role template to start evaluating candidates in realistic work simulations."
+            action={{
+              label: 'Create Assessment',
+              href: ROUTES.COMPANY.TEMPLATES,
+            }}
+          />
+        )}
+
+        {/* Filtered Empty State: None match current filters */}
+        {!isLoading && !isError && assessments.length > 0 && filteredAssessments.length === 0 && (
+          <div className="py-12 text-center space-y-3">
+            <p className="text-sm text-neutral-600 font-medium">
+              No assessments match your active search or filters.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSearchQuery('');
+                setStatusFilter('all');
+              }}
+            >
+              Clear Filters
+            </Button>
+          </div>
+        )}
+
+        {/* Assessment Items Grid / List */}
+        {!isLoading && !isError && filteredAssessments.length > 0 && (
+          <div className="divide-y divide-neutral-100">
+            {filteredAssessments.map((assessment) => {
+              const isCloud = assessment.workspaceMode === 'cloud';
+              const duration = assessment.timing?.durationMinutes || 90;
+
+              return (
+                <div
+                  key={assessment.id}
+                  className="py-4.5 first:pt-0 last:pb-0 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-neutral-50/50 p-3 rounded-xl transition-colors"
+                >
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <Link
+                        href={`/company/assessments/${encodeURIComponent(assessment.id)}`}
+                        className="text-sm font-semibold text-neutral-900 hover:text-primary transition-colors truncate"
+                      >
+                        {assessment.name}
+                      </Link>
+                      <AssessmentStatusBadge status={assessment.status} size="sm" />
+                      <Badge variant="default" size="sm" className="font-mono text-[10px]">
+                        v{assessment.templateVersion}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs text-neutral-500 flex-wrap">
+                      <span className="flex items-center gap-1">
+                        {isCloud ? (
+                          <Laptop className="w-3.5 h-3.5 text-neutral-400" />
+                        ) : (
+                          <MessageSquare className="w-3.5 h-3.5 text-neutral-400" />
+                        )}
+                        <span>{isCloud ? 'Cloud VM' : 'Chat Workspace'}</span>
+                      </span>
+
+                      <span>•</span>
+
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-neutral-400" />
+                        <span>{duration}m</span>
+                      </span>
+
+                      <span>•</span>
+
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5 text-neutral-400" />
+                        <span>{assessment.candidateCount ?? 0} candidates</span>
+                      </span>
+
+                      <span className="hidden sm:inline">•</span>
+
+                      <span className="hidden sm:inline text-neutral-400">
+                        Template: {assessment.templateId}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
+                    <Link
+                      href={`/company/assessments/${encodeURIComponent(assessment.id)}/rubric?templateId=${encodeURIComponent(assessment.templateId)}&versionId=${encodeURIComponent(assessment.templateVersionId)}`}
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        leftIcon={<Sliders className="w-3.5 h-3.5 text-neutral-500" />}
+                        className="text-xs h-8"
+                      >
+                        Rubric
+                      </Button>
+                    </Link>
+
+                    <Link href={`/company/assessments/${encodeURIComponent(assessment.id)}`}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                        className="text-xs h-8"
+                      >
+                        Details
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
     </div>
+  );
+}
+
+export default function CompanyAssessmentsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-6">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-28 w-full rounded-2xl" />
+          <Skeleton className="h-64 w-full rounded-2xl" />
+        </div>
+      }
+    >
+      <CompanyAssessmentsContent />
+    </Suspense>
   );
 }

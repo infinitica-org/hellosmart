@@ -13,6 +13,7 @@ import {
   Mail,
 } from '@hs/ui';
 import { CreateCandidateDtoSchema, type CreateCandidateDto } from '@hs/contracts';
+import { useGetAssessmentsQuery } from '@/store/company/companyApi';
 import { ApiError } from '@/lib/api-client';
 import { PLACEHOLDERS, UI_LABELS } from '@/constants';
 
@@ -36,13 +37,20 @@ export function InviteCandidateDialog({
 }: InviteCandidateDialogProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState('');
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
+
+  const { data: rawAssessments } = useGetAssessmentsQuery();
+  const assessments = Array.isArray(rawAssessments)
+    ? rawAssessments
+    : (rawAssessments as { items?: any[] } | undefined)?.items || [];
 
   const handleClose = () => {
     if (isSubmitting) return;
     setName('');
     setEmail('');
+    setSelectedAssessmentId('');
     setFormErrors({});
     setApiError(null);
     onOpenChange(false);
@@ -55,6 +63,7 @@ export function InviteCandidateDialog({
     const validation = CreateCandidateDtoSchema.safeParse({
       name: name.trim(),
       email: email.trim().toLowerCase(),
+      assessment_id: selectedAssessmentId || undefined,
     });
 
     if (!validation.success) {
@@ -198,6 +207,30 @@ export function InviteCandidateDialog({
           {formErrors.email && (
             <p className="text-xs text-red-500">{formErrors.email}</p>
           )}
+        </div>
+
+        {/* Assessment Assignment Selector (BR-24, S1-T05-1) */}
+        <div className="space-y-1.5">
+          <Label htmlFor="candidate-assessment">
+            Assign Assessment
+          </Label>
+          <select
+            id="candidate-assessment"
+            value={selectedAssessmentId}
+            onChange={(e) => setSelectedAssessmentId(e.target.value)}
+            disabled={isSubmitting}
+            className="w-full h-9 px-3 text-sm rounded-md border border-neutral-200 bg-white text-neutral-800 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900/10 transition-colors shadow-2xs"
+          >
+            <option value="">No assessment assigned (General onboarding)</option>
+            {assessments.map((asm: any) => (
+              <option key={asm.id} value={asm.id}>
+                {asm.name} ({asm.status})
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-neutral-500">
+            Assigning an assessment allows the candidate to start their work simulation directly upon login.
+          </p>
         </div>
       </form>
     </Dialog>

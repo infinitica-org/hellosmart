@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AlertDialog, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@hs/ui';
 import { Laptop, ShieldAlert } from 'lucide-react';
 import { Sidebar } from '@/components/layout/sidebar';
@@ -27,6 +27,8 @@ export interface PortalShellProps {
   mainClassName?: string;
   topbarTitle?: React.ReactNode;
   idleTimeoutSeconds?: number;
+  searchValue?: string;
+  onSearchChange?: (val: string) => void;
 }
 
 export function PortalShell({
@@ -43,12 +45,54 @@ export function PortalShell({
   mainClassName = 'flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto',
   topbarTitle,
   idleTimeoutSeconds,
+  searchValue: controlledSearchValue,
+  onSearchChange,
 }: PortalShellProps): React.JSX.Element {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
   const [showLogoutAll, setShowLogoutAll] = useState(false);
   const [loggingOutAll, setLoggingOutAll] = useState(false);
   const pathname = usePathname();
+  let router: any = null;
+  let searchParams: any = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    router = useRouter();
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    searchParams = useSearchParams();
+  } catch {
+    router = null;
+    searchParams = null;
+  }
+
+  const urlSearch = searchParams?.get('q') || '';
+  const [internalSearch, setInternalSearch] = useState(urlSearch);
+
+  useEffect(() => {
+    setInternalSearch(urlSearch);
+  }, [urlSearch]);
+
+  const activeSearchValue =
+    controlledSearchValue !== undefined ? controlledSearchValue : internalSearch;
+
+  const handleSearchChange = (val: string) => {
+    if (onSearchChange) {
+      onSearchChange(val);
+      return;
+    }
+    setInternalSearch(val);
+    if (router && pathname) {
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      if (val.trim()) {
+        params.set('q', val);
+      } else {
+        params.delete('q');
+      }
+      const newQuery = params.toString();
+      const targetUrl = newQuery ? `${pathname}?${newQuery}` : pathname;
+      router.replace(targetUrl, { scroll: false });
+    }
+  };
 
   const allNavItems = groups ? groups.flatMap((g) => g.items) : (items || []);
   const activeNavItem = allNavItems.find((item) => {
@@ -78,17 +122,17 @@ export function PortalShell({
   const accountHref = roleLower.includes('candidate')
     ? ROUTES.CANDIDATE.PROFILE
     : roleLower.includes('admin')
-      ? ROUTES.ADMIN.SETTINGS
+      ? ROUTES.ADMIN.SECURITY
       : ROUTES.COMPANY.SETTINGS;
 
   const preferencesHref = roleLower.includes('candidate')
     ? ROUTES.CANDIDATE.PROFILE
     : roleLower.includes('admin')
-      ? ROUTES.ADMIN.SETTINGS
+      ? ROUTES.ADMIN.SECURITY
       : ROUTES.COMPANY.SETTINGS;
 
   const billingHref = roleLower.includes('admin')
-    ? ROUTES.ADMIN.SETTINGS
+    ? ROUTES.ADMIN.SECURITY
     : roleLower.includes('candidate')
       ? ROUTES.CANDIDATE.DASHBOARD
       : ROUTES.COMPANY.SETTINGS;
@@ -143,6 +187,8 @@ export function PortalShell({
           showLogo={false}
           showNotifications={true}
           searchPlaceholder={searchPlaceholder}
+          searchValue={activeSearchValue}
+          onSearchChange={handleSearchChange}
           accountHref={accountHref}
           preferencesHref={preferencesHref}
           billingHref={billingHref}

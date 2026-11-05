@@ -1,13 +1,36 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { PageHeader, EmptyState, StatCard, Card, Alert, Button } from '@hs/ui';
-import { getCompanyMetrics } from '@/lib/api-client';
-import type { CompanyMetricsDto } from '@hs/contracts';
+import {
+  PageHeader,
+  EmptyState,
+  StatCard,
+  Card,
+  Alert,
+  Button,
+  Badge,
+  AssessmentStatusBadge,
+} from '@hs/ui';
+import {
+  Laptop,
+  MessageSquare,
+  Clock,
+  Users,
+  ArrowRight,
+  Sliders,
+} from 'lucide-react';
+import {
+  useGetCompanyMetricsQuery,
+  useGetAssessmentsQuery,
+  type CompanyMetricsDto,
+} from '@/store/company/companyApi';
+import type { AssessmentSummaryDto } from '@hs/contracts';
+import { ROUTES } from '@/constants';
 
 export interface CompanyDashboardViewProps {
   metrics?: CompanyMetricsDto | null | undefined;
+  assessments?: AssessmentSummaryDto[] | null | undefined;
   loading?: boolean | undefined;
   error?: string | null | undefined;
   onRefresh?: (() => void) | undefined;
@@ -15,10 +38,13 @@ export interface CompanyDashboardViewProps {
 
 export function CompanyDashboardView({
   metrics = null,
+  assessments = [],
   loading = false,
   error = null,
   onRefresh,
 }: CompanyDashboardViewProps) {
+  const activeAssessments = assessments || [];
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -99,23 +125,100 @@ export function CompanyDashboardView({
               Assigned templates are private to your organization (BR-02).
             </p>
           </div>
-          <Link href="/company/assessments">
+          <Link href={ROUTES.COMPANY.ASSESSMENTS}>
             <Button variant="outline" size="sm">
               Manage Assessments →
             </Button>
           </Link>
         </div>
 
-        {/* Clean Empty State */}
-        <EmptyState
-          title="No assessments created yet"
-          description="No assessments published yet. Create your first assessment from assigned private templates and invite candidates to start real work simulation."
-          data-testid="company-empty-state"
-          action={{
-            label: 'Create Assessment',
-            href: '/company/assessments',
-          }}
-        />
+        {/* Live Assessments List or Clean Empty State */}
+        {activeAssessments.length > 0 ? (
+          <div className="divide-y divide-neutral-100">
+            {activeAssessments.slice(0, 5).map((assessment) => {
+              const isCloud = assessment.workspaceMode === 'cloud';
+              const duration = assessment.timing?.durationMinutes || 90;
+
+              return (
+                <div
+                  key={assessment.id}
+                  className="py-4.5 first:pt-0 last:pb-0 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-neutral-50/50 p-3 rounded-xl transition-colors"
+                >
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <Link
+                        href={`/company/assessments/${encodeURIComponent(assessment.id)}`}
+                        className="text-sm font-semibold text-neutral-900 hover:text-primary transition-colors truncate"
+                      >
+                        {assessment.name}
+                      </Link>
+                      <AssessmentStatusBadge status={assessment.status} size="sm" />
+                      <Badge variant="default" size="sm" className="font-mono text-[10px]">
+                        v{assessment.templateVersion}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs text-neutral-500">
+                      <span className="flex items-center gap-1">
+                        {isCloud ? (
+                          <Laptop className="w-3.5 h-3.5 text-neutral-400" />
+                        ) : (
+                          <MessageSquare className="w-3.5 h-3.5 text-neutral-400" />
+                        )}
+                        <span>{isCloud ? 'Cloud VM' : 'Chat'}</span>
+                      </span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-neutral-400" />
+                        <span>{duration}m</span>
+                      </span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5 text-neutral-400" />
+                        <span>{assessment.candidateCount ?? 0} candidates</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end md:self-auto">
+                    <Link
+                      href={`/company/assessments/${encodeURIComponent(assessment.id)}/rubric?templateId=${encodeURIComponent(assessment.templateId)}&versionId=${encodeURIComponent(assessment.templateVersionId)}`}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        leftIcon={<Sliders className="w-3.5 h-3.5 text-neutral-500" />}
+                        className="text-xs h-8"
+                      >
+                        Rubric
+                      </Button>
+                    </Link>
+                    <Link href={`/company/assessments/${encodeURIComponent(assessment.id)}`}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                        className="text-xs h-8"
+                      >
+                        Details
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState
+            title="No assessments created yet"
+            description="No assessments published yet. Create your first assessment from assigned private templates and invite candidates to start real work simulation."
+            data-testid="company-empty-state"
+            action={{
+              label: 'Create Assessment',
+              href: ROUTES.COMPANY.ASSESSMENTS,
+            }}
+          />
+        )}
       </Card>
 
       {/* Review Workflow Guideline */}
@@ -139,33 +242,42 @@ export function CompanyDashboardView({
 }
 
 export default function CompanyDashboardPage() {
-  const [metrics, setMetrics] = useState<CompanyMetricsDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: metrics,
+    isLoading: loadingMetrics,
+    error: metricsError,
+    refetch: refetchMetrics,
+  } = useGetCompanyMetricsQuery();
 
-  const loadMetrics = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getCompanyMetrics();
-      setMetrics(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load pipeline metrics');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const {
+    data: rawAssessments,
+    isLoading: loadingAssessments,
+    refetch: refetchAssessments,
+  } = useGetAssessmentsQuery();
 
-  useEffect(() => {
-    void loadMetrics();
-  }, [loadMetrics]);
+  const assessments: AssessmentSummaryDto[] = React.useMemo(() => {
+    if (!rawAssessments) return [];
+    if (Array.isArray(rawAssessments)) return rawAssessments;
+    return (rawAssessments as { items?: AssessmentSummaryDto[] })?.items || [];
+  }, [rawAssessments]);
+
+  const loading = loadingMetrics || loadingAssessments;
+  const error = metricsError
+    ? 'data' in metricsError
+      ? String((metricsError as any).data?.detail || 'Failed to load pipeline metrics')
+      : 'Failed to load pipeline metrics'
+    : null;
 
   return (
     <CompanyDashboardView
       metrics={metrics}
+      assessments={assessments}
       loading={loading}
       error={error}
-      onRefresh={() => void loadMetrics()}
+      onRefresh={() => {
+        void refetchMetrics();
+        void refetchAssessments();
+      }}
     />
   );
 }

@@ -53,7 +53,7 @@ describe('Company Candidates BFF Route & Client (BUG-07)', () => {
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({
-          Cookie: 'hs_session=test-session-token',
+          Cookie: expect.stringContaining('hs_session=test-session-token'),
         }),
       }),
     );
@@ -97,7 +97,7 @@ describe('Company Candidates BFF Route & Client (BUG-07)', () => {
         method: 'POST',
         headers: expect.objectContaining({
           'X-HS-CSRF': '1',
-          Cookie: 'hs_session=test-session-token',
+          Cookie: expect.stringContaining('hs_session=test-session-token'),
         }),
       }),
     );

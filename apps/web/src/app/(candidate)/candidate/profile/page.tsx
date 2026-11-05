@@ -185,7 +185,7 @@ export function CandidateProfileView({
 }
 
 export default function CandidateProfilePage() {
-  const { user, loading, signOut } = usePortalAuth();
+  const { user, loading, signOut } = usePortalAuth({ requiredRole: 'candidate' });
   const [timezone, setTimezone] = useState<string>('UTC');
 
   useEffect(() => {

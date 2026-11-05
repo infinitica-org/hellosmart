@@ -162,6 +162,29 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
       const body = JSON.parse(res.body);
       expect(body.code).toBe('UNSUPPORTED_MEDIA_TYPE');
     });
+
+    it('accepts application/json with candidates array', async () => {
+      const sessionToken = await createCompanySession();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/company/candidates/bulk',
+        headers: {
+          cookie: `hs_session=${sessionToken}`,
+          'x-hs-csrf': '1',
+          origin: 'http://localhost:3000',
+          'content-type': 'application/json',
+          'idempotency-key': crypto.randomUUID(),
+        },
+        payload: JSON.stringify({
+          candidates: [{ name: 'Json Candidate', email: 'json.cand@example.com' }],
+        }),
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.created).toBeDefined();
+    });
   });
 
   describe('2. Valid CSV Upload and Partial Success', () => {
@@ -187,6 +210,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: csvData,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
 
@@ -226,6 +252,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: csvData,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
 
@@ -268,6 +297,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: bomBuffer,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.successfulRows).toBe(1);
@@ -292,6 +324,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: csvData,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.successfulRows).toBe(2);
@@ -315,6 +350,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: csvData,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.successfulRows).toBe(1);
@@ -388,6 +426,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: csvData,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
 
@@ -451,6 +492,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: csvData,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
 
@@ -488,6 +532,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: fullCsv,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
 
@@ -529,6 +576,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: csvData,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
 
@@ -606,6 +656,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: csvData,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const rawBody = res.body;
 
@@ -637,6 +690,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: csvData,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
 
@@ -695,6 +751,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: csvData,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.successfulRows).toBe(2);
@@ -719,6 +778,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: csvData,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.failedRows).toBe(1);
@@ -928,6 +990,9 @@ describe('Streaming Bulk Candidate CSV Pipeline (S1-T05-2)', () => {
         payload: csvData,
       });
 
+      if (res.statusCode !== 200) {
+        console.error('FAILED BULK JSON RESPONSE:', res.body);
+      }
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
 

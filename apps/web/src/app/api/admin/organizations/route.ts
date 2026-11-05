@@ -24,7 +24,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     // 1. Fetch real organizations & platform metrics from NestJS backend API
     const [orgsRes, metricsRes] = await Promise.all([
-      fetch(`${apiV1Base}/admin/organizations?limit=100`, {
+      fetch(`${apiV1Base}/admin/organizations?pageSize=100`, {
         headers: {
           Cookie: `hs_session=${sessionToken}`,
           Authorization: `Bearer ${sessionToken}`,
@@ -56,23 +56,38 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             : item.status === 'paid_active'
               ? 'active'
               : (item.status as OrganizationStatus),
-        plan: item.status === 'trial_active' ? 'trial' : 'pro',
+        plan: item.status === 'paid_active' ? 'pro' : 'trial',
         candidatesCount: item.candidateCount ?? 0,
         createdAt: item.createdAt,
         adminEmail: item.adminEmail || '',
         adminName: item.adminName || '',
-        maxTemplates: 5,
-        maxCandidates: 25,
+        maxTemplates: item.maxTemplates ?? 5,
+        maxCandidates: item.maxCandidates ?? 25,
         trialDays: 14,
       }));
 
       const metrics = metricsData || {
         totalCompanies: organizations.length,
-        activeTrials: organizations.filter((o) => o.status === 'trial').length,
+        activeTrials: organizations.filter((o) => o.status === 'trial' || o.status === 'trial_active').length,
         totalCandidates: organizations.reduce((sum, o) => sum + (o.candidatesCount || 0), 0),
       };
 
       return NextResponse.json({ organizations, metrics }, { status: 200 });
+    } else {
+      const isTestOrDev =
+        process.env.NODE_ENV === 'test' ||
+        process.env.ENABLE_DEV_ACCOUNTS === 'true';
+      if (!isTestOrDev) {
+        const errData = await orgsRes.json().catch(() => null);
+        return NextResponse.json(
+          {
+            title: errData?.title || 'Failed to retrieve organizations',
+            detail: errData?.detail || 'Unexpected backend error',
+            status: orgsRes.status,
+          },
+          { status: orgsRes.status }
+        );
+      }
     }
   } catch {
     // Backend offline / unreachable; fall through to test store below
@@ -190,6 +205,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           planId: input.plan === 'trial' ? 'plan_trial' : 'plan_pro',
           retentionDays: 90,
           whiteLabel: false,
+          maxTemplates: input.maxTemplates,
+          maxCandidates: input.maxCandidates,
+          trialDays: input.trialDays,
         }),
         cache: 'no-store',
         signal: AbortSignal.timeout(4000),
@@ -207,7 +225,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               : created.status === 'paid_active'
                 ? 'active'
                 : created.status,
-          plan: created.planId === 'plan_trial' ? 'trial' : 'pro',
+          plan: created.planId === 'plan_pro' || created.status === 'paid_active' ? 'pro' : 'trial',
           candidatesCount: 0,
           createdAt: created.createdAt,
           adminEmail: input.adminEmail,
@@ -236,6 +254,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             status: 409,
           },
           { status: 409 }
+        );
+      }
+
+      const isTestOrDev =
+        process.env.NODE_ENV === 'test' ||
+        process.env.ENABLE_DEV_ACCOUNTS === 'true';
+      if (!isTestOrDev) {
+        const errData = await apiRes.json().catch(() => null);
+        return NextResponse.json(
+          {
+            title: errData?.title || 'Provisioning Error',
+            detail: errData?.detail || 'Failed to provision organization on backend',
+            status: apiRes.status,
+          },
+          { status: apiRes.status }
         );
       }
     } catch {
@@ -358,7 +391,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
               : updated.status === 'paid_active'
                 ? 'active'
                 : updated.status,
-          plan: updated.planId === 'plan_trial' ? 'trial' : 'pro',
+          plan: updated.planId === 'plan_pro' || updated.status === 'paid_active' ? 'pro' : 'trial',
           candidatesCount: 0,
           createdAt: updated.createdAt,
           adminEmail: '',
@@ -375,6 +408,21 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
             message: `Organization "${mappedOrg.name}" status updated to ${status}.`,
           },
           { status: 200 }
+        );
+      }
+
+      const isTestOrDev =
+        process.env.NODE_ENV === 'test' ||
+        process.env.ENABLE_DEV_ACCOUNTS === 'true';
+      if (!isTestOrDev) {
+        const errData = await patchRes.json().catch(() => null);
+        return NextResponse.json(
+          {
+            title: errData?.title || 'Status Update Error',
+            detail: errData?.detail || 'Failed to update organization status on backend',
+            status: patchRes.status,
+          },
+          { status: patchRes.status }
         );
       }
     } catch {

@@ -265,6 +265,29 @@ export class AssessmentsRepository {
   }
 
   /**
+   * Update rubric configuration in brief_overrides (BR-01, BR-18).
+   */
+  async updateRubric(
+    client: PoolClient,
+    orgId: string,
+    assessmentId: string,
+    dimensions: any[],
+  ): Promise<boolean> {
+    const query = `
+      UPDATE app.assessments
+      SET brief_overrides = jsonb_set(
+        COALESCE(brief_overrides, '{}'::jsonb),
+        '{rubric}',
+        $1::jsonb
+      ),
+      updated_at = now()
+      WHERE id = $2 AND org_id = $3
+    `;
+    const res = await client.query(query, [JSON.stringify(dimensions), assessmentId, orgId]);
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  /**
    * Count active assessments for org entitlement limit check (BR-05).
    */
   async countByOrg(client: PoolClient, orgId: string): Promise<number> {

@@ -75,19 +75,30 @@ export class AdminOrganizationsService {
         const orgId = crypto.randomUUID();
         const adminId = crypto.randomUUID();
         const retentionDays = dto.retentionDays ?? 90;
-        const trialEnds = new Date(Date.now() + DEFAULT_TRIAL_DAYS * 24 * 60 * 60 * 1000);
+        const isPaidPlan =
+          dto.planId === 'plan_pro' ||
+          dto.planId === 'pro' ||
+          dto.planId === 'paid' ||
+          dto.planId === 'paid_active';
+        const initialStatus = isPaidPlan ? 'paid_active' : 'trial_active';
+        const trialDays = dto.trialDays ?? DEFAULT_TRIAL_DAYS;
+        const trialEnds = isPaidPlan
+          ? null
+          : new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
+        const maxTemplates = dto.maxTemplates ?? DEFAULT_MAX_TEMPLATES;
+        const maxCandidates = dto.maxCandidates ?? DEFAULT_MAX_CANDIDATES;
 
         const orgInsert = await tx.query<OrganizationRow>(
           `INSERT INTO app.organizations (id, name, slug, status, custom_domain, retention_days, created_by)
-           VALUES ($1, $2, $3, 'trial_active', $4, $5, $6)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
            RETURNING id, name, slug, status, logo_key, custom_domain, retention_days, created_at`,
-          [orgId, dto.name.trim(), slug, dto.customDomain ?? null, retentionDays, actor.userId],
+          [orgId, dto.name.trim(), slug, initialStatus, dto.customDomain ?? null, retentionDays, actor.userId],
         );
 
         await tx.query(
           `INSERT INTO app.entitlements (org_id, max_templates, max_candidates, trial_ends_at)
            VALUES ($1, $2, $3, $4)`,
-          [orgId, DEFAULT_MAX_TEMPLATES, DEFAULT_MAX_CANDIDATES, trialEnds],
+          [orgId, maxTemplates, maxCandidates, trialEnds],
         );
 
         await tx.query(
@@ -267,7 +278,17 @@ export class AdminOrganizationsService {
 
         if (query.search && query.search.trim().length > 0) {
           params.push(`%${query.search.trim()}%`);
-          conditions.push(`(o.name ILIKE $${params.length} OR o.slug ILIKE $${params.length})`);
+          conditions.push(`(
+            o.name ILIKE $${params.length} 
+            OR o.slug ILIKE $${params.length}
+            OR EXISTS (
+              SELECT 1 FROM app.users u 
+              WHERE u.org_id = o.id 
+                AND u.role = 'company_admin' 
+                AND u.deleted_at IS NULL 
+                AND u.email ILIKE $${params.length}
+            )
+          )`);
         }
 
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -285,6 +306,26 @@ export class AdminOrganizationsService {
             o.status,
             o.created_at,
             e.trial_ends_at,
+            COALESCE(e.max_templates, 3)::int AS max_templates,
+            COALESCE(e.max_candidates, 10)::int AS max_candidates,
+            (
+              SELECT u.email
+              FROM app.users u
+              WHERE u.org_id = o.id
+                AND u.role = 'company_admin'
+                AND u.deleted_at IS NULL
+              ORDER BY u.created_at ASC
+              LIMIT 1
+            ) AS admin_email,
+            (
+              SELECT u.name
+              FROM app.users u
+              WHERE u.org_id = o.id
+                AND u.role = 'company_admin'
+                AND u.deleted_at IS NULL
+              ORDER BY u.created_at ASC
+              LIMIT 1
+            ) AS admin_name,
             COALESCE(
               (
                 SELECT COUNT(*)::int
@@ -311,6 +352,10 @@ export class AdminOrganizationsService {
           created_at: Date | string;
           trial_ends_at: Date | string | null;
           candidate_count: number;
+          admin_email?: string | null;
+          admin_name?: string | null;
+          max_templates?: number | null;
+          max_candidates?: number | null;
         }
 
         const itemsResult = await tx.query<OrgListRow>(itemsSql, queryParams);
@@ -321,6 +366,10 @@ export class AdminOrganizationsService {
           slug: row.slug,
           status: row.status as any,
           candidateCount: Number(row.candidate_count ?? 0),
+          adminEmail: row.admin_email || '',
+          adminName: row.admin_name || '',
+          maxTemplates: Number(row.max_templates ?? 3),
+          maxCandidates: Number(row.max_candidates ?? 10),
           createdAt:
             row.created_at instanceof Date
               ? row.created_at.toISOString()

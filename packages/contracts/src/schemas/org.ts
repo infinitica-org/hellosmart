@@ -25,6 +25,9 @@ export const CreateOrgDtoSchema = z.object({
   customDomain: z.string().max(255).optional(),
   adminEmail: z.string().email('Invalid admin email format').max(254),
   adminName: z.string().min(1, 'Admin name is required').max(120),
+  maxTemplates: z.coerce.number().int().min(1).max(100).optional(),
+  maxCandidates: z.coerce.number().int().min(1).max(1000).optional(),
+  trialDays: z.coerce.number().int().min(1).max(365).optional(),
 });
 export type CreateOrgDto = z.infer<typeof CreateOrgDtoSchema>;
 
@@ -56,6 +59,10 @@ export const OrgListItemDtoSchema = z.object({
   candidateCount: z.number().int().min(0),
   createdAt: z.string().datetime(),
   trialEndsAt: z.string().datetime().nullable().optional(),
+  adminEmail: z.string().optional(),
+  adminName: z.string().optional(),
+  maxTemplates: z.number().int().optional(),
+  maxCandidates: z.number().int().optional(),
 });
 export type OrgListItemDto = z.infer<typeof OrgListItemDtoSchema>;
 
