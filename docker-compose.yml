@@ -1,33 +1,106 @@
-# Local development stack. Mirrors AWS services with local equivalents so no one needs cloud credentials.
+# Local development stack for HelloSmart.ai
+# Mirrors AWS and infrastructure dependencies with local container equivalents.
 name: hellosmart
+
 services:
   postgres:
-    image: postgres:16.4-alpine
+    image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: hellosmart
-      POSTGRES_USER: hs_owner
-      POSTGRES_PASSWORD: hs_owner_local
-    ports: ["127.0.0.1:5432:5432"]
+      POSTGRES_DB: ${POSTGRES_DB:-hellosmart}
+      POSTGRES_USER: ${POSTGRES_USER:-hs_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hs_owner_local}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./packages/contracts/db/init:/docker-entrypoint-initdb.d:ro
-    healthcheck: { test: ["CMD", "pg_isready", "-U", "hs_owner"], interval: 5s, retries: 10 }
+      - ./packages/contracts/db/init/001_roles.sql:/docker-entrypoint-initdb.d/001_roles.sql:ro
+      - ./infra/postgres/002_statement_timeout.sql:/docker-entrypoint-initdb.d/002_statement_timeout.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-hs_owner} -d $${POSTGRES_DB:-hellosmart}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  pgbouncer:
+    image: edoburu/pgbouncer:1.23.1-p0
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGBOUNCER_APP_USER: hs_app
+      PGBOUNCER_APP_PASSWORD: hs_app_local
+      PGBOUNCER_PLATFORM_USER: hs_platform
+      PGBOUNCER_PLATFORM_PASSWORD: hs_platform_local
+    volumes:
+      - ./infra/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./infra/pgbouncer/entrypoint.sh:/entrypoint-hs.sh:ro
+    entrypoint: ["/bin/sh", "/entrypoint-hs.sh"]
+    ports:
+      - "127.0.0.1:6432:6432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 || exit 0"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   redis:
-    image: redis:7.4-alpine
-    command: ["redis-server", "--requirepass", "hs_redis_local"]
-    ports: ["127.0.0.1:6379:6379"]
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-hs_redis_local}", "--appendonly", "yes"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-hs_redis_local}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD:-hs_redis_local} ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
   localstack:
     image: localstack/localstack:3.8
+    restart: unless-stopped
     environment:
       SERVICES: s3,sqs,kms,secretsmanager,ssm,events,stepfunctions,ses,sns
-    ports: ["127.0.0.1:4566:4566"]
+    ports:
+      - "127.0.0.1:4566:4566"
+
   mailpit:
     image: axllent/mailpit:v1.20
-    ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
+
+  # Web UI for browsing local PostgreSQL (Adminer). Open http://127.0.0.1:8080 after `pnpm db:viewer`.
+  adminer:
+    image: adminer:4.8.1
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+
   mock-api:
     image: stoplight/prism:5.12.0
+    restart: unless-stopped
     command: ["mock", "-h", "0.0.0.0", "-d", "/contracts/openapi/openapi.yaml"]
-    volumes: ["./packages/contracts:/contracts:ro"]
-    ports: ["127.0.0.1:4010:4010"]
+    volumes:
+      - ./packages/contracts:/contracts:ro
+    ports:
+      - "127.0.0.1:4010:4010"
+
 volumes:
   pgdata:
+    name: hellosmart_pgdata
+  redis_data:
+    name: hellosmart_redis_data

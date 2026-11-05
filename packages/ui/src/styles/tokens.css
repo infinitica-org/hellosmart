@@ -1,0 +1,359 @@
+/**
+ * HelloSmart Design Tokens
+ * Dashboard language: Meraki-style operations UI — midnight chrome,
+ * cool gray canvas, tight radii, quiet borders. Brand accent stays #fe7330.
+ */
+
+:root {
+  /* Canvas & surfaces */
+  --hs-canvas: #f4f6f8;
+  --hs-canvas-alt: #eef1f4;
+  --hs-surface: #ffffff;
+  --hs-surface-subtle: #f7f9fb;
+  --hs-surface-muted: #eef1f4;
+
+  /* Midnight chrome (header / global nav) */
+  --hs-chrome: #0b1f3a;
+  --hs-chrome-hover: #0e2a4d;
+  --hs-chrome-muted: #1a3a5c;
+  --hs-chrome-text: #ffffff;
+  --hs-chrome-text-muted: #b7c4d4;
+  --hs-nav: #0b2f5c;
+  --hs-nav-accent: #1b6bba;
+
+  /* Foreground */
+  --hs-foreground: #1c2430;
+  --hs-foreground-muted: #5b6775;
+  --hs-foreground-subtle: #8a95a3;
+
+  /* Brand */
+  --hs-primary: #fe7330;
+  --hs-primary-hover: #ea580c;
+  --hs-primary-active: #c2410c;
+  --hs-primary-tint: rgba(254, 115, 48, 0.08);
+  --hs-primary-muted: rgba(254, 115, 48, 0.12);
+  --hs-primary-border: rgba(254, 115, 48, 0.28);
+  --hs-primary-glow: rgba(254, 115, 48, 0.12);
+
+  /* Status — device-health language (green online / red offline) */
+  --hs-success: #1aa053;
+  --hs-success-bg: #e8f7ee;
+  --hs-success-border: #b7e3c8;
+  --hs-success-text: #0f6b38;
+
+  --hs-warning: #d97706;
+  --hs-warning-bg: #fff7e8;
+  --hs-warning-border: #f3d7a1;
+  --hs-warning-text: #9a4d05;
+
+  --hs-danger: #d64545;
+  --hs-danger-bg: #fdeeee;
+  --hs-danger-border: #f3c4c4;
+  --hs-danger-text: #9b1c1c;
+
+  --hs-info: #1b6bba;
+  --hs-info-bg: #eaf3fb;
+  --hs-info-border: #b7d4ee;
+  --hs-info-text: #0b2f5c;
+
+  /* Borders */
+  --hs-border-subtle: #eef1f4;
+  --hs-border-default: #d8dee6;
+  --hs-border-strong: #c3ccd6;
+
+  /* Aliases */
+  --background: var(--hs-canvas);
+  --foreground: var(--hs-foreground);
+  --card-bg: var(--hs-surface);
+  --card-border: var(--hs-border-default);
+  --primary: var(--hs-primary);
+  --primary-hover: var(--hs-primary-hover);
+  --primary-glow: var(--hs-primary-glow);
+  --font-sans: 'Google Sans Flex', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --hs-font-sans: 'Google Sans Flex', 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Tight enterprise radii */
+  --hs-radius-sm: 0.25rem;
+  --hs-radius-md: 0.375rem;
+  --hs-radius-lg: 0.5rem;
+  --hs-radius-xl: 0.625rem;
+  --hs-radius-2xl: 0.75rem;
+  --hs-radius-full: 9999px;
+
+  /* ==========================================================================
+     Texture Button Tokens (Beveled 3D Gradient System & Variable Calling)
+     ========================================================================== */
+  --tb-border-width: 1.5px;
+  --tb-border-width-icon: 1px;
+  --tb-scale-active: 0.98;
+
+  /* Texture Button Outer Radii */
+  --tb-radius-sm: var(--hs-radius-md, 0.5rem);        /* 8px */
+  --tb-radius-default: var(--hs-radius-lg, 0.75rem);   /* 12px */
+  --tb-radius-lg: 0.875rem;                            /* 14px */
+  --tb-radius-pill: var(--hs-radius-full, 9999px);
+
+  /* Texture Button Inner Radii */
+  --tb-inner-radius-sm: var(--hs-radius-sm, 0.375rem); /* 6px */
+  --tb-inner-radius-default: 0.625rem;                 /* 10px */
+  --tb-inner-radius-lg: var(--hs-radius-lg, 0.75rem);  /* 12px */
+  --tb-inner-radius-pill: var(--hs-radius-full, 9999px);
+
+  /* Texture Button Paddings & Spacings */
+  --tb-px-sm: 0.875rem;       /* 14px */
+  --tb-py-sm: 0.375rem;       /* 6px */
+  --tb-px-default: 1.125rem;  /* 18px */
+  --tb-py-default: 0.5rem;    /* 8px */
+  --tb-px-lg: 1.5rem;         /* 24px */
+  --tb-py-lg: 0.625rem;       /* 10px */
+  --tb-px-pill: 1.25rem;      /* 20px */
+  --tb-py-pill: 0.5rem;       /* 8px */
+  --tb-px-pill-lg: 1.75rem;   /* 28px */
+  --tb-py-pill-lg: 0.75rem;   /* 12px */
+  --tb-px-hero: 2rem;         /* 32px */
+  --tb-px-hero-lg: 2.25rem;   /* 36px */
+  --tb-py-hero: 0.75rem;      /* 12px */
+  --tb-py-hero-lg: 0.875rem;  /* 14px */
+  --tb-p-icon: 0.5rem;        /* 8px */
+
+  /* Texture Button Gradients (Outer Borders / Bevel Gradients) */
+  --tb-gradient-primary-outer: linear-gradient(180deg, rgba(64, 64, 64, 0.8) 0%, #171717 50%, #000000 100%);
+  --tb-gradient-brand-outer: linear-gradient(180deg, #fdba74 0%, var(--hs-primary, #fe7330) 50%, #c2410c 100%);
+  --tb-gradient-accent-outer: linear-gradient(180deg, rgba(165, 180, 252, 0.9) 0%, #4f46e5 100%);
+  --tb-gradient-destructive-outer: linear-gradient(180deg, rgba(252, 165, 165, 0.9) 0%, #dc2626 100%);
+  --tb-gradient-secondary-outer: linear-gradient(180deg, #f5f5f5 0%, rgba(229, 229, 229, 0.9) 100%);
+  --tb-gradient-minimal-outer: linear-gradient(180deg, #ffffff 0%, rgba(229, 229, 229, 0.7) 50%, rgba(212, 212, 212, 0.8) 100%);
+
+  /* Texture Button Gradients (Inner Interactive Surface Gradients) */
+  --tb-gradient-primary-inner: linear-gradient(180deg, #262626 0%, #171717 50%, #000000 100%);
+  --tb-gradient-primary-inner-hover: linear-gradient(180deg, #404040 0%, #171717 100%);
+  --tb-gradient-brand-inner: linear-gradient(180deg, var(--hs-primary, #fe7330) 0%, #ea580c 50%, #c2410c 100%);
+  --tb-gradient-brand-inner-hover: linear-gradient(180deg, #fb923c 0%, #c2410c 100%);
+  --tb-gradient-accent-inner: linear-gradient(180deg, #818cf8 0%, #4f46e5 100%);
+  --tb-gradient-accent-inner-hover: linear-gradient(180deg, #a5b4fc 0%, #4338ca 100%);
+  --tb-gradient-destructive-inner: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  --tb-gradient-destructive-inner-hover: linear-gradient(180deg, #f87171 0%, #b91c1c 100%);
+  --tb-gradient-secondary-inner: linear-gradient(180deg, #fafafa 0%, rgba(229, 229, 229, 0.8) 100%);
+  --tb-gradient-secondary-inner-hover: linear-gradient(180deg, #ffffff 0%, #f5f5f5 100%);
+  --tb-gradient-minimal-inner: linear-gradient(180deg, #ffffff 0%, var(--hs-surface-subtle, #f8fafc) 50%, rgba(241, 245, 249, 0.9) 100%);
+  --tb-gradient-minimal-inner-hover: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  --tb-gradient-icon-inner: linear-gradient(180deg, #ffffff 0%, #f5f5f5 100%);
+  
+  --hs-shadow-xs: 0 1px 1px rgba(11, 31, 58, 0.04);
+  --hs-shadow-card: 0 1px 2px rgba(11, 31, 58, 0.05);
+  --hs-shadow-hover: 0 2px 8px rgba(11, 31, 58, 0.08);
+  --hs-glass-bg: #ffffff;
+  --hs-glass-border: var(--hs-border-default);
+  --hs-glass-blur: 0px;
+  --hs-header-height: 3.5rem;
+}
+
+/* Global utility classes for interactive focus, elevated surfaces, and brand badges */
+.hs-focus-ring {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+.hs-focus-ring:focus-visible {
+  outline-color: var(--hs-nav-accent);
+  box-shadow: 0 0 0 2px rgba(27, 107, 186, 0.22);
+}
+
+.hs-surface-card {
+  background-color: var(--hs-surface);
+  border: 1px solid var(--hs-border-default);
+  border-radius: var(--hs-radius-md);
+  box-shadow: none;
+}
+
+.hs-surface-card:hover {
+  border-color: var(--hs-border-strong);
+}
+
+.hs-chrome {
+  background-color: var(--hs-chrome);
+  color: var(--hs-chrome-text);
+  position: relative;
+}
+
+.hs-chrome::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--hs-primary) 0%, var(--hs-nav-accent) 52%, var(--hs-nav) 100%);
+}
+
+.hs-nav-active {
+  background: rgba(11, 47, 92, 0.06);
+  color: var(--hs-nav);
+  border-left: 3px solid var(--hs-primary);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Texture Button Component Classes (Gradient & Token Driven)
+   ========================================================================== */
+.tb-outer-primary,
+.tb-outer-black,
+.tb-outer-dark {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: var(--tb-gradient-primary-outer);
+  box-shadow: 0 10px 15px -3px rgba(10, 10, 10, 0.2);
+}
+.tb-outer-primary:hover,
+.tb-outer-black:hover,
+.tb-outer-dark:hover {
+  box-shadow: 0 20px 25px -5px rgba(10, 10, 10, 0.3);
+}
+
+.tb-outer-brand,
+.tb-outer-orange {
+  border: 1px solid var(--hs-primary-border, rgba(254, 115, 48, 0.4));
+  background: var(--tb-gradient-brand-outer);
+  box-shadow: 0 10px 15px -3px var(--hs-primary-glow, rgba(254, 115, 48, 0.25));
+}
+.tb-outer-brand:hover,
+.tb-outer-orange:hover {
+  box-shadow: 0 20px 25px -5px var(--hs-primary-glow, rgba(254, 115, 48, 0.35));
+}
+
+.tb-outer-accent {
+  border: 1px solid rgba(129, 140, 248, 0.4);
+  background: var(--tb-gradient-accent-outer);
+  box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+}
+
+.tb-outer-destructive {
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: var(--tb-gradient-destructive-outer);
+  box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.2);
+}
+
+.tb-outer-secondary {
+  border: 1px solid rgba(212, 212, 212, 0.7);
+  background: var(--tb-gradient-secondary-outer);
+  box-shadow: var(--hs-shadow-xs, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+}
+
+.tb-outer-minimal,
+.tb-outer-white {
+  border: 1px solid rgba(212, 212, 212, 0.8);
+  background: var(--tb-gradient-minimal-outer);
+  box-shadow: var(--hs-shadow-xs, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tb-outer-minimal:hover,
+.tb-outer-white:hover {
+  border-color: #a3a3a3;
+}
+
+.tb-outer-icon {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: var(--hs-shadow-xs, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+}
+.tb-outer-icon:hover {
+  background: #f5f5f5;
+}
+
+/* Inner Span Variants */
+.tb-inner-primary,
+.tb-inner-black,
+.tb-inner-dark {
+  background: var(--tb-gradient-primary-inner);
+  color: #ffffff;
+  box-shadow: inset 0 1px 2px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 2px 0 rgba(0, 0, 0, 0.4);
+}
+.tb-inner-primary:hover,
+.tb-inner-black:hover,
+.tb-inner-dark:hover {
+  background: var(--tb-gradient-primary-inner-hover);
+}
+.tb-inner-primary:active,
+.tb-inner-black:active,
+.tb-inner-dark:active {
+  background: #000000;
+}
+
+.tb-inner-brand,
+.tb-inner-orange {
+  background: var(--tb-gradient-brand-inner);
+  color: #ffffff;
+  box-shadow: inset 0 1px 2px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 2px 0 rgba(0, 0, 0, 0.3);
+}
+.tb-inner-brand:hover,
+.tb-inner-orange:hover {
+  background: var(--tb-gradient-brand-inner-hover);
+}
+.tb-inner-brand:active,
+.tb-inner-orange:active {
+  background: #c2410c;
+}
+
+.tb-inner-accent {
+  background: var(--tb-gradient-accent-inner);
+  color: #ffffff;
+  box-shadow: inset 0 1px 2px 0 rgba(255, 255, 255, 0.2);
+}
+.tb-inner-accent:hover {
+  background: var(--tb-gradient-accent-inner-hover);
+}
+
+.tb-inner-destructive {
+  background: var(--tb-gradient-destructive-inner);
+  color: #ffffff;
+  box-shadow: inset 0 1px 2px 0 rgba(255, 255, 255, 0.2);
+}
+.tb-inner-destructive:hover {
+  background: var(--tb-gradient-destructive-inner-hover);
+}
+
+.tb-inner-secondary {
+  background: var(--tb-gradient-secondary-inner);
+  color: #262626;
+}
+.tb-inner-secondary:hover {
+  background: var(--tb-gradient-secondary-inner-hover);
+}
+
+.tb-inner-minimal,
+.tb-inner-white {
+  background: var(--tb-gradient-minimal-inner);
+  color: #0f172a;
+}
+.tb-inner-minimal:hover,
+.tb-inner-white:hover {
+  background: var(--tb-gradient-minimal-inner-hover);
+}
+.tb-inner-minimal:active,
+.tb-inner-white:active {
+  background: #e2e8f0;
+}
+
+.tb-inner-icon {
+  background: var(--tb-gradient-icon-inner);
+  color: #404040;
+}
+
+/* ==========================================================================
+   Smooth Tab Content Transition
+   ========================================================================== */
+@keyframes hsTabFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hs-tab-content-animate {
+  animation: hsTabFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}

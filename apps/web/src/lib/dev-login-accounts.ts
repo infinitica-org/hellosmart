@@ -1,0 +1,119 @@
+export interface DevLoginAccount {
+  email: string;
+  role: 'platform_admin' | 'company_admin' | 'candidate';
+  portal: 'admin' | 'company' | 'candidate';
+  name: string;
+  requiresMfa?: boolean;
+  mustResetPassword?: boolean;
+  status?: 'active' | 'suspended';
+}
+
+export const DEV_LOGIN_ACCOUNTS: Record<string, DevLoginAccount> = {
+  'admin@hellosmart.ai': {
+    email: 'admin@hellosmart.ai',
+    role: 'platform_admin',
+    portal: 'admin',
+    name: 'Platform Administrator',
+    requiresMfa: true,
+    status: 'active',
+  },
+  'platform.admin@hellosmart.ai': {
+    email: 'platform.admin@hellosmart.ai',
+    role: 'platform_admin',
+    portal: 'admin',
+    name: 'Platform Administrator',
+    requiresMfa: true,
+    status: 'active',
+  },
+  'admin.super@seed.example.test': {
+    email: 'admin.super@seed.example.test',
+    role: 'platform_admin',
+    portal: 'admin',
+    name: 'Super Admin',
+    requiresMfa: true,
+    status: 'active',
+  },
+  'company@example.com': {
+    email: 'company@example.com',
+    role: 'company_admin',
+    portal: 'company',
+    name: 'Acme Corp Admin',
+    requiresMfa: false,
+    status: 'active',
+  },
+  'admin@asterridge.com': {
+    email: 'admin@asterridge.com',
+    role: 'company_admin',
+    portal: 'company',
+    name: 'Aster Ridge Admin',
+    requiresMfa: false,
+    status: 'active',
+  },
+  'owner@aster.seed.example.test': {
+    email: 'owner@aster.seed.example.test',
+    role: 'company_admin',
+    portal: 'company',
+    name: 'Aster Owner',
+    requiresMfa: false,
+    status: 'active',
+  },
+  'company.admin@seed.example.test': {
+    email: 'company.admin@seed.example.test',
+    role: 'company_admin',
+    portal: 'company',
+    name: 'Company Admin',
+    requiresMfa: false,
+    status: 'active',
+  },
+  'candidate@example.com': {
+    email: 'candidate@example.com',
+    role: 'candidate',
+    portal: 'candidate',
+    name: 'Jane Doe',
+    requiresMfa: false,
+    status: 'active',
+  },
+  'complete@seed.example.test': {
+    email: 'complete@seed.example.test',
+    role: 'candidate',
+    portal: 'candidate',
+    name: 'Complete Candidate',
+    requiresMfa: false,
+    status: 'active',
+  },
+  'alex.turner@seed.example.test': {
+    email: 'alex.turner@seed.example.test',
+    role: 'candidate',
+    portal: 'candidate',
+    name: 'Alex Turner',
+    requiresMfa: false,
+    status: 'active',
+  },
+  'candidate.new@seed.example.test': {
+    email: 'candidate.new@seed.example.test',
+    role: 'candidate',
+    portal: 'candidate',
+    name: 'New Candidate',
+    requiresMfa: false,
+    mustResetPassword: true,
+    status: 'active',
+  },
+  'suspended@example.com': {
+    email: 'suspended@example.com',
+    role: 'company_admin',
+    portal: 'company',
+    name: 'Suspended Account',
+    status: 'suspended',
+  },
+  'admin.suspended@seed.example.test': {
+    email: 'admin.suspended@seed.example.test',
+    role: 'platform_admin',
+    portal: 'admin',
+    name: 'Suspended Admin',
+    status: 'suspended',
+  },
+};
+
+export function devIdentifyLogin(_email: string) {
+  return { recognized: true as const };
+}

@@ -54,7 +54,7 @@ If still ambiguous, **do not guess on anything touching security, tenancy, conse
 ## 1. Product summary
 
 - **Product:** HelloSmart.ai, an AI-native hiring platform. Companies assess candidates by having them do **real work, with AI tools, in a controlled workspace**. Independent AI **reviewer agents** monitor and score the work against the company's own rubric; humans make the final call.
-- **Category:** AI-native work simulation for hiring. Tagline: "Hire by doing."
+- **Category:** AI-native hiring platform. Tagline: "Hire by doing."
 - **Business model (MMP):** sales-assisted and "behind the curtain". Prospect books a meeting via cal.com, HelloSmart quotes and provisions the company on the standard multi-tenant route. Own-domain routing, white label and custom templates are **paid add-ons**. Templates built for a company are **private to that company**.
 - **Primary loop to ship:** template, assessment, candidate session, agent review, company result, plus quoting and payment collection.
 
@@ -749,7 +749,7 @@ Each item is a trackable task. Checkbox = not yet built. Format: **ID** requirem
 #### Landing and booking
 
 - [ ] **SP-001** Landing page with product pitch and category `Must · MMP`
-  - *Acceptance:* States category (AI-native work simulation), vision, how it works and use cases; single primary CTA 'Book a meeting'.
+  - *Acceptance:* States category (AI-native hiring platform), vision, how it works and use cases; single primary CTA 'Book a meeting'.
 - [ ] **SP-002** cal.com meeting booking `Must · MMP`
   - *Acceptance:* Embedded cal.com booking; UTM and source captured; booking confirmation email.
 - [ ] **SP-003** Booking webhook creates a lead in admin `Should · MMP`

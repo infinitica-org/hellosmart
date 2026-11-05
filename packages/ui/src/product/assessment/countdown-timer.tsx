@@ -1,0 +1,93 @@
+'use client';
+
+import React, { useState, useEffect, forwardRef, HTMLAttributes } from 'react';
+import { Clock } from 'lucide-react';
+
+export interface CountdownTimerProps extends HTMLAttributes<HTMLDivElement> {
+  deadlineUtc: string | Date;
+  pauseTimerOnDisconnect?: boolean | undefined;
+  onExpire?: (() => void) | undefined;
+  warningThresholdMinutes?: number | undefined;
+}
+
+export const CountdownTimer = forwardRef<HTMLDivElement, CountdownTimerProps>(
+  (
+    {
+      deadlineUtc,
+      pauseTimerOnDisconnect = false,
+      onExpire,
+      warningThresholdMinutes = 15,
+      className = '',
+      ...props
+    },
+    ref
+  ) => {
+    const targetMs = new Date(deadlineUtc).getTime();
+    const [mounted, setMounted] = useState(false);
+    const [timeLeftMs, setTimeLeftMs] = useState<number>(0);
+
+    useEffect(() => {
+      setMounted(true);
+      setTimeLeftMs(Math.max(0, targetMs - Date.now()));
+
+      const interval = setInterval(() => {
+        const remaining = Math.max(0, targetMs - Date.now());
+        setTimeLeftMs(remaining);
+
+        if (remaining <= 0) {
+          clearInterval(interval);
+          onExpire?.();
+        }
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }, [targetMs, onExpire]);
+
+    const totalSeconds = Math.floor(timeLeftMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const isWarning = totalSeconds > 0 && totalSeconds <= warningThresholdMinutes * 60;
+    const isCritical = totalSeconds > 0 && totalSeconds <= 300; // 5 min
+    const isExpired = totalSeconds === 0;
+
+    const colorClasses = isExpired
+      ? 'bg-danger-muted text-danger-foreground border-danger-border'
+      : isCritical
+      ? 'bg-danger-muted text-danger-foreground border-danger-border animate-pulse'
+      : isWarning
+      ? 'bg-warning-muted text-warning-foreground border-warning-border'
+      : 'bg-white text-neutral-900 border-neutral-200 shadow-xs';
+
+    return (
+      <div
+        ref={ref}
+        className={`inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-md border font-mono select-none shadow-sm ${colorClasses} ${className}`}
+        {...props}
+      >
+        <Clock className="w-4 h-4 shrink-0 text-primary" />
+
+        <span className="text-sm font-bold tracking-wider">
+          {hours > 0 && `${pad(hours)}:`}
+          {pad(minutes)}:{pad(seconds)}
+        </span>
+
+        {isCritical && !isExpired && (
+          <span className="text-[10px] font-sans font-semibold uppercase bg-danger text-white px-1.5 py-0.5 rounded">
+            Low
+          </span>
+        )}
+
+        {isExpired && (
+          <span className="text-[10px] font-sans font-semibold uppercase bg-danger text-white px-1.5 py-0.5 rounded">
+            Ended
+          </span>
+        )}
+      </div>
+    );
+  }
+);
+CountdownTimer.displayName = 'CountdownTimer';
+

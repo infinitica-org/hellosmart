@@ -43,6 +43,8 @@ pnpm dev
 ```
 Check that http://localhost:3000 (web), http://localhost:4010 (mock API) and http://localhost:8025 (mail) load.
 
+API (`pnpm --filter @hs/api dev` with `.env` from `.env.example`): `GET http://localhost:4000/api/v1/health` (liveness) and `GET /api/v1/health/ready` (Postgres + Redis). Auth: `POST /api/v1/auth/login`, `POST /api/v1/auth/mfa/verify`, `GET /api/v1/me`, `POST /api/v1/auth/logout` (HttpOnly `hs_session` cookie, 12h rolling TTL in Redis). Platform admin provisioning: `POST /api/v1/admin/organizations`, `PATCH /api/v1/admin/organizations/:id/status` (`platform_admin` + MFA session). Local Redis uses password `hs_redis_local` (see `REDIS_URL` in `.env.example`). Platform admin MFA uses `PLATFORM_ADMIN_MFA_SECRET` (see seed).
+
 ## 4. Your first ticket
 1. Take a Zoho item tagged `good-first` in your epic.
 2. `/new-task <ID>`, get the brief approved.

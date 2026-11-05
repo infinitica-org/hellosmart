@@ -3,13 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "hs-seed": "dist/index.js",
+    "hs-verify": "dist/verify.js"
+  },
   "scripts": {
-    "seed": "node src/seed.js",
-    "typecheck": "tsc --noEmit"
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "seed": "pnpm build && node dist/index.js",
+    "seed:direct": "pnpm build && node dist/seed.js",
+    "verify": "pnpm build && node dist/verify.js",
+    "test": "node --test --test-concurrency=1 test/credentials.test.ts test/entities.test.ts test/guard.test.ts test/upsert.test.ts test/invitations.test.ts test/seed.test.ts test/verify.test.ts test/auth-compatibility.test.ts test/seed-safety.test.ts"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "2.0.0",
+    "pg": "8.13.1"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "8.11.10",
+    "otplib": "12.0.1",
     "typescript": "5.6.3"
   }
 }

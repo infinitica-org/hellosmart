@@ -10,6 +10,11 @@ x-app: &app
   tmpfs: [/tmp]
   security_opt: ["no-new-privileges:true"]
   cap_drop: [ALL]
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "50m"
+      max-file: "5"
 
 services:
   caddy:
@@ -21,6 +26,11 @@ services:
       - caddy_data:/data
     env_file: .env.qa
     networks: [internal]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   web:
     <<: *app
@@ -28,11 +38,26 @@ services:
   api:
     <<: *app
     image: ${REGISTRY}/hs-api:${TAG}
-    depends_on: [postgres, redis, localstack]
+    depends_on: [postgres, redis, localstack, pgbouncer]
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SERVICE_NAME: hellosmart-api
+  api-2:
+    <<: *app
+    image: ${REGISTRY}/hs-api:${TAG}
+    depends_on: [postgres, redis, localstack, pgbouncer]
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SERVICE_NAME: hellosmart-api
   worker:
     <<: *app
-    image: ${REGISTRY}/hs-worker:${TAG}
-    depends_on: [postgres, redis, localstack]
+    image: ${REGISTRY}/hs-api:${TAG}
+    command: ["node", "dist/worker.js"]
+    depends_on: [postgres, redis, localstack, pgbouncer]
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SERVICE_NAME: hellosmart-worker
+      WORKER_HEALTH_PORT: "4001"
   ai-proxy:
     <<: *app
     image: ${REGISTRY}/hs-ai-proxy:${TAG}
@@ -51,6 +76,16 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./db-init:/docker-entrypoint-initdb.d:ro
     networks: [internal]
+  pgbouncer:
+    image: edoburu/pgbouncer:1.23.1-p0
+    restart: unless-stopped
+    env_file: .env.qa
+    volumes:
+      - ./infra/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./infra/pgbouncer/entrypoint.sh:/entrypoint-hs.sh:ro
+    entrypoint: ["/bin/sh", "/entrypoint-hs.sh"]
+    networks: [internal]
+    depends_on: [postgres]
   redis:
     image: redis:7.4-alpine
     restart: unless-stopped
@@ -70,6 +105,78 @@ services:
     restart: unless-stopped
     networks: [internal]
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./infra/observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    networks: [internal]
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    networks: [internal]
+  blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    restart: unless-stopped
+    volumes:
+      - ./infra/observability/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    networks: [internal]
+  loki:
+    image: grafana/loki:3.3.2
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./infra/observability/loki-config.yaml:/etc/loki/config.yaml:ro
+      - loki_data:/loki
+    networks: [internal]
+  tempo:
+    image: grafana/tempo:2.6.1
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./infra/observability/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    networks: [internal]
+  alloy:
+    image: grafana/alloy:v1.5.1
+    restart: unless-stopped
+    command: ["run", "/etc/alloy/config.alloy", "--storage.path=/tmp/alloy"]
+    volumes:
+      - ./infra/observability/alloy.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [internal]
+  grafana:
+    image: grafana/grafana:11.3.1
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports: ["127.0.0.1:3001:3000"]
+    networks: [internal]
+  dozzle:
+    image: amir20/dozzle:v8.12.1
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports: ["127.0.0.1:8888:8080"]
+    environment:
+      DOZZLE_NO_ANALYTICS: "true"
+    networks: [internal]
+
 networks:
   internal: {}
 
@@ -77,3 +184,7 @@ volumes:
   caddy_data:
   pgdata:
   localstack:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+  grafana_data:

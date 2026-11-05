@@ -25,6 +25,9 @@ export const CreateOrgDtoSchema = z.object({
   customDomain: z.string().max(255).optional(),
   adminEmail: z.string().email('Invalid admin email format').max(254),
   adminName: z.string().min(1, 'Admin name is required').max(120),
+  maxTemplates: z.coerce.number().int().min(1).max(100).optional(),
+  maxCandidates: z.coerce.number().int().min(1).max(1000).optional(),
+  trialDays: z.coerce.number().int().min(1).max(365).optional(),
 });
 export type CreateOrgDto = z.infer<typeof CreateOrgDtoSchema>;
 
@@ -47,3 +50,57 @@ export const OrgDtoSchema = z.object({
   createdAt: z.string().datetime(),
 });
 export type OrgDto = z.infer<typeof OrgDtoSchema>;
+
+export const OrgListItemDtoSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).max(120),
+  slug: z.string().min(1).max(64),
+  status: OrgStatusEnum,
+  candidateCount: z.number().int().min(0),
+  createdAt: z.string().datetime(),
+  trialEndsAt: z.string().datetime().nullable().optional(),
+  adminEmail: z.string().optional(),
+  adminName: z.string().optional(),
+  maxTemplates: z.number().int().optional(),
+  maxCandidates: z.number().int().optional(),
+});
+export type OrgListItemDto = z.infer<typeof OrgListItemDtoSchema>;
+
+export const OrgListQueryDtoSchema = z.object({
+  page: z.coerce.number().int().min(1, 'Page must be at least 1').default(1),
+  pageSize: z.coerce
+    .number()
+    .int()
+    .min(1, 'Page size must be at least 1')
+    .max(100, 'Page size cannot exceed 100')
+    .default(20),
+  status: OrgStatusEnum.optional(),
+  search: z.string().trim().max(100, 'Search query cannot exceed 100 characters').optional(),
+});
+export type OrgListQueryDto = z.infer<typeof OrgListQueryDtoSchema>;
+
+export const PaginatedOrgListDtoSchema = z.object({
+  items: z.array(OrgListItemDtoSchema),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1).max(100),
+  total: z.number().int().min(0),
+});
+export type PaginatedOrgListDto = z.infer<typeof PaginatedOrgListDtoSchema>;
+
+export const AdminMetricsDtoSchema = z.object({
+  totalCompanies: z.number().int().min(0, 'Total companies cannot be negative'),
+  activeTrials: z.number().int().min(0, 'Active trials cannot be negative'),
+  totalCandidates: z.number().int().min(0, 'Total candidates cannot be negative'),
+});
+export type AdminMetricsDto = z.infer<typeof AdminMetricsDtoSchema>;
+
+export const CompanyMetricsDtoSchema = z.object({
+  configuredAssessments: z.number().int().min(0),
+  invitedCandidates: z.number().int().min(0),
+  activeCandidates: z.number().int().min(0),
+  submissionsToReview: z.number().int().min(0),
+  maxCandidates: z.number().int().min(0),
+  remainingQuota: z.number().int().min(0),
+});
+export type CompanyMetricsDto = z.infer<typeof CompanyMetricsDtoSchema>;
+

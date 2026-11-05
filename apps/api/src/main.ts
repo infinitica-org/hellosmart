@@ -1,36 +1,83 @@
-import helmet from '@fastify/helmet';
 import cookie from '@fastify/cookie';
+import compress from '@fastify/compress';
+import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module.js';
 import { loadConfig } from './config/config.js';
+import {
+  createHelmetOptions,
+  createCorsOptions,
+  DEFAULT_BODY_LIMIT_BYTES,
+} from './config/security.config.js';
+import {
+  createLogger,
+  AppLoggerService,
+  resolveRequestId,
+  registerLoggingHooks,
+  setSharedLogger,
+} from './modules/observability/index.js';
+import { registerCsvContentTypeParsers } from './modules/candidates/csv-stream-parser.js';
+import { registerWebhookRawBodyParser } from './modules/webhooks/calcom/calcom-webhook-parser.js';
+import { observePgPool, startTelemetry } from './modules/observability/telemetry.js';
+import { PG_POOL } from './modules/database/database.tokens.js';
 
 async function bootstrap(): Promise<void> {
-  const config = loadConfig(); // fails fast on missing/invalid env (zod)
+  const config = loadConfig();
+  await startTelemetry(config.OTEL_SERVICE_NAME);
+
+  const logger = createLogger({ level: config.LOG_LEVEL });
+  setSharedLogger(logger);
+  const appLogger = new AppLoggerService(logger);
+
+  const adapter = new FastifyAdapter({
+    trustProxy: config.NODE_ENV === 'staging' || config.NODE_ENV === 'production' ? 1 : false,
+    bodyLimit: DEFAULT_BODY_LIMIT_BYTES, // 1 MB; bulk uploads go to S3 via presigned URLs
+    logger,
+    disableRequestLogging: true,
+    genReqId: resolveRequestId,
+    ignoreTrailingSlash: true,
+  });
+
+  registerLoggingHooks(adapter.getInstance());
+  registerCsvContentTypeParsers(adapter.getInstance());
+  registerWebhookRawBodyParser(adapter);
 
   const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-    new FastifyAdapter({
-      trustProxy: true, // behind ALB; client IP from X-Forwarded-For for audit + throttling
-      bodyLimit: 1_048_576, // 1 MB; bulk uploads go to S3 via presigned URLs
-      genReqId: () => crypto.randomUUID(),
-    }),
+    AppModule.forRoot({ logger }),
+    adapter,
     { bufferLogs: true },
   );
 
-  await app.register(helmet, {
-    contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
-    hsts: { maxAge: 63_072_000, includeSubDomains: true, preload: true },
-    referrerPolicy: { policy: 'no-referrer' },
-    crossOriginResourcePolicy: { policy: 'same-site' },
-  });
-  await app.register(cookie, { secret: config.SESSION_SECRET });
+  app.useLogger(appLogger);
 
-  app.enableCors({ origin: config.CORS_ORIGINS, credentials: true });
+  await app.register(helmet, createHelmetOptions(config));
+  await app.register(compress, { encodings: ['gzip', 'deflate'] });
+  await app.register(cookie, { secret: config.SESSION_SECRET });
+  await app.register(multipart, {
+    limits: {
+      fileSize: 52_428_800, // 50 MB
+      files: 1,
+      fields: 10,
+    },
+    attachFieldsToBody: false,
+  });
+
+  app.enableCors(createCorsOptions(config));
   app.setGlobalPrefix('api/v1');
   app.enableShutdownHooks();
 
+  appLogger.log(
+    `Starting HelloSmart API env=${config.NODE_ENV} service=${config.OTEL_SERVICE_NAME} poolMax=${config.PG_POOL_MAX}`,
+    'Bootstrap',
+  );
   await app.listen(config.PORT, '0.0.0.0');
+  observePgPool(app.get(PG_POOL), config.OTEL_SERVICE_NAME);
+  appLogger.log(
+    `HelloSmart API listening on port ${config.PORT} [${config.NODE_ENV}]`,
+    'Bootstrap',
+  );
 }
 
 void bootstrap();

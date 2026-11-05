@@ -4,21 +4,29 @@
 -- hs_migrator : runs migrations (DDL); used only by the migration task.
 -- hs_app      : runtime role for api/worker. DML only. Subject to RLS (NOT BYPASSRLS).
 -- hs_readonly : analytics / support read access. Subject to RLS.
+-- hs_platform : platform admin operations. Subject to RLS (NOT BYPASSRLS).
 
 CREATE ROLE hs_migrator LOGIN PASSWORD 'hs_migrator_local';
 CREATE ROLE hs_app LOGIN PASSWORD 'hs_app_local' NOBYPASSRLS;
 CREATE ROLE hs_readonly LOGIN PASSWORD 'hs_readonly_local' NOBYPASSRLS;
+CREATE ROLE hs_platform LOGIN PASSWORD 'hs_platform_local' NOBYPASSRLS;
 
-GRANT CONNECT ON DATABASE hellosmart TO hs_migrator, hs_app, hs_readonly;
+GRANT CONNECT ON DATABASE hellosmart TO hs_migrator, hs_app, hs_readonly, hs_platform;
 CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION hs_migrator;
 CREATE SCHEMA IF NOT EXISTS audit AUTHORIZATION hs_migrator;
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
+-- Extensions (citext, pgcrypto) live in public; migrator and app need USAGE to reference types.
+GRANT USAGE ON SCHEMA public TO hs_migrator, hs_app, hs_readonly, hs_platform;
 
-GRANT USAGE ON SCHEMA app, audit TO hs_app, hs_readonly;
+GRANT USAGE ON SCHEMA app, audit TO hs_app, hs_readonly, hs_platform;
 ALTER DEFAULT PRIVILEGES FOR ROLE hs_migrator IN SCHEMA app
-  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO hs_app;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO hs_app, hs_platform;
 ALTER DEFAULT PRIVILEGES FOR ROLE hs_migrator IN SCHEMA app
   GRANT SELECT ON TABLES TO hs_readonly;
 -- audit is append-only for the app: INSERT + SELECT, never UPDATE/DELETE.
 ALTER DEFAULT PRIVILEGES FOR ROLE hs_migrator IN SCHEMA audit
-  GRANT SELECT, INSERT ON TABLES TO hs_app;
+  GRANT SELECT, INSERT ON TABLES TO hs_app, hs_platform;
+ALTER DEFAULT PRIVILEGES FOR ROLE hs_migrator IN SCHEMA app
+  GRANT USAGE, SELECT ON SEQUENCES TO hs_app, hs_platform;
+ALTER DEFAULT PRIVILEGES FOR ROLE hs_migrator IN SCHEMA audit
+  GRANT USAGE, SELECT ON SEQUENCES TO hs_app, hs_platform;

@@ -7,8 +7,7 @@
 -- The API sets the context per transaction: SELECT set_config('app.org_id', $1, true);
 -- Platform-admin cross-org access uses app.is_platform() and is audit-logged.
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-CREATE EXTENSION IF NOT EXISTS citext;
+-- Extensions (pgcrypto, citext) are created by platform bootstrap / pnpm db:migrate (superuser), not hs_migrator.
 
 CREATE OR REPLACE FUNCTION app.current_org_id() RETURNS uuid
 LANGUAGE sql STABLE AS $$

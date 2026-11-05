@@ -10,6 +10,10 @@ import {
   CreateOrgDtoSchema,
   UpdateOrgStatusDtoSchema,
   OrgDtoSchema,
+  OrgListItemDtoSchema,
+  OrgListQueryDtoSchema,
+  PaginatedOrgListDtoSchema,
+  AdminMetricsDtoSchema,
   ProblemDetailsSchema,
 } from '../dist/index.js';
 
@@ -79,6 +83,18 @@ describe('Contracts - Zod Schemas Unit Tests', () => {
     it('validates MFA verification DTO', () => {
       const valid = MfaVerifyDtoSchema.parse({ preAuthToken: 'preauth_xyz', totpCode: '654321' });
       assert.equal(valid.totpCode, '654321');
+
+      const backup = MfaVerifyDtoSchema.parse({
+        preAuthToken: 'preauth_xyz',
+        backupCode: 'ABCD-EFGH',
+      });
+      assert.equal(backup.backupCode, 'ABCD-EFGH');
+
+      const backupNoDash = MfaVerifyDtoSchema.parse({
+        preAuthToken: 'preauth_xyz',
+        backupCode: 'abcd efgh',
+      });
+      assert.equal(backupNoDash.backupCode, 'ABCD-EFGH');
 
       assert.throws(() => {
         MfaVerifyDtoSchema.parse({ preAuthToken: '', totpCode: 'abc' });
@@ -199,6 +215,156 @@ describe('Contracts - Zod Schemas Unit Tests', () => {
       });
       assert.equal(org.status, 'paid_active');
       assert.equal(org.customDomain, 'assess.asterridge.com');
+    });
+
+    describe('S0-T11-1 Organization List & Admin Metrics Schemas', () => {
+      it('validates OrgListItemDto for Aster Ridge (paid_active)', () => {
+        const item = OrgListItemDtoSchema.parse({
+          id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          name: 'Aster Ridge Inc.',
+          slug: 'aster-ridge',
+          status: 'paid_active',
+          candidateCount: 18,
+          createdAt: '2026-09-15T08:00:00.000Z',
+          trialEndsAt: null,
+        });
+        assert.equal(item.name, 'Aster Ridge Inc.');
+        assert.equal(item.status, 'paid_active');
+        assert.equal(item.candidateCount, 18);
+        assert.equal(item.trialEndsAt, null);
+      });
+
+      it('validates OrgListItemDto for Brindle & Co (trial_active with trialEndsAt)', () => {
+        const item = OrgListItemDtoSchema.parse({
+          id: '00000000-0000-4000-8000-000000000001',
+          name: 'Brindle & Co',
+          slug: 'brindle-co',
+          status: 'trial_active',
+          candidateCount: 24,
+          createdAt: '2026-10-01T10:00:00.000Z',
+          trialEndsAt: '2026-11-01T10:00:00.000Z',
+        });
+        assert.equal(item.name, 'Brindle & Co');
+        assert.equal(item.status, 'trial_active');
+        assert.equal(item.candidateCount, 24);
+        assert.equal(item.trialEndsAt, '2026-11-01T10:00:00.000Z');
+      });
+
+      it('rejects OrgListItemDto with invalid UUID or negative candidateCount', () => {
+        assert.throws(() => {
+          OrgListItemDtoSchema.parse({
+            id: 'not-a-uuid',
+            name: 'Apex Labs',
+            slug: 'apex-labs',
+            status: 'suspended',
+            candidateCount: 0,
+            createdAt: '2026-08-01T12:00:00.000Z',
+          });
+        });
+
+        assert.throws(() => {
+          OrgListItemDtoSchema.parse({
+            id: '00000000-0000-4000-8000-000000000001',
+            name: 'Apex Labs',
+            slug: 'apex-labs',
+            status: 'suspended',
+            candidateCount: -5,
+            createdAt: '2026-08-01T12:00:00.000Z',
+          });
+        });
+      });
+
+      it('rejects OrgListItemDto with invalid status enum value', () => {
+        assert.throws(() => {
+          OrgListItemDtoSchema.parse({
+            id: '00000000-0000-4000-8000-000000000001',
+            name: 'Apex Labs',
+            slug: 'apex-labs',
+            status: 'unknown_status',
+            candidateCount: 0,
+            createdAt: '2026-08-01T12:00:00.000Z',
+          });
+        });
+      });
+
+      it('validates OrgListQueryDto defaults and coercion', () => {
+        const query = OrgListQueryDtoSchema.parse({});
+        assert.equal(query.page, 1);
+        assert.equal(query.pageSize, 20);
+        assert.equal(query.status, undefined);
+        assert.equal(query.search, undefined);
+
+        const coerced = OrgListQueryDtoSchema.parse({
+          page: '3',
+          pageSize: '50',
+          status: 'trial_active',
+          search: '  Brindle  ',
+        });
+        assert.equal(coerced.page, 3);
+        assert.equal(coerced.pageSize, 50);
+        assert.equal(coerced.status, 'trial_active');
+        assert.equal(coerced.search, 'Brindle');
+      });
+
+      it('strictly rejects OrgListQueryDto when pageSize exceeds 100 or is negative', () => {
+        assert.throws(() => {
+          OrgListQueryDtoSchema.parse({ pageSize: 101 });
+        }, /Page size cannot exceed 100/);
+
+        assert.throws(() => {
+          OrgListQueryDtoSchema.parse({ pageSize: 0 });
+        }, /Page size must be at least 1/);
+
+        assert.throws(() => {
+          OrgListQueryDtoSchema.parse({ page: 0 });
+        }, /Page must be at least 1/);
+      });
+
+      it('strictly rejects OrgListQueryDto with invalid status filter', () => {
+        assert.throws(() => {
+          OrgListQueryDtoSchema.parse({ status: 'invalid_status_enum' });
+        });
+      });
+
+      it('validates PaginatedOrgListDto structure', () => {
+        const paginated = PaginatedOrgListDtoSchema.parse({
+          items: [
+            {
+              id: '00000000-0000-4000-8000-000000000001',
+              name: 'Brindle & Co',
+              slug: 'brindle-co',
+              status: 'trial_active',
+              candidateCount: 24,
+              createdAt: '2026-10-01T10:00:00.000Z',
+              trialEndsAt: '2026-11-01T10:00:00.000Z',
+            },
+          ],
+          page: 1,
+          pageSize: 20,
+          total: 1,
+        });
+        assert.equal(paginated.items.length, 1);
+        assert.equal(paginated.total, 1);
+      });
+
+      it('validates AdminMetricsDto and rejects negative values', () => {
+        const metrics = AdminMetricsDtoSchema.parse({
+          totalCompanies: 3,
+          activeTrials: 1,
+          totalCandidates: 42,
+        });
+        assert.equal(metrics.totalCompanies, 3);
+        assert.equal(metrics.activeTrials, 1);
+        assert.equal(metrics.totalCandidates, 42);
+
+        assert.throws(() => {
+          AdminMetricsDtoSchema.parse({
+            totalCompanies: -1,
+            activeTrials: 0,
+            totalCandidates: 10,
+          });
+        }, /Total companies cannot be negative/);
+      });
     });
   });
 });
