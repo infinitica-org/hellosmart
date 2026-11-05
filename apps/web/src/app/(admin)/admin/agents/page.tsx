@@ -13,7 +13,7 @@ import {
   TextureButton,
 } from '@hs/ui';
 
-interface AgentInfo {
+export interface AgentInfo {
   id: string;
   name: string;
   version: string;
@@ -25,69 +25,16 @@ interface AgentInfo {
   model: string;
 }
 
-const standardAgents: AgentInfo[] = [
-  {
-    id: 'agent_code_quality',
-    name: 'Code Quality & Maintainability Agent',
-    version: 'v1.2.0',
-    mode: 'post_session',
-    status: 'healthy',
-    description: 'Inspects AST structure, style guide conformance, cyclomatic complexity, and test maintainability.',
-    signals: ['Clean Architecture', 'Formatting', 'Error Handling', 'Type Safety'],
-    defaultWeight: 25,
-    model: 'Gemini 1.5 Pro (Pinned)',
-  },
-  {
-    id: 'agent_problem_solving',
-    name: 'Problem Solving & Correctness Agent',
-    version: 'v1.4.1',
-    mode: 'post_session',
-    status: 'healthy',
-    description: 'Executes candidate test cases against edge constraints and verifies functional algorithm correctness.',
-    signals: ['Edge Case Coverage', 'Boundary Validation', 'Algorithmic Optimization'],
-    defaultWeight: 30,
-    model: 'Gemini 1.5 Pro (Pinned)',
-  },
-  {
-    id: 'agent_sys_architecture',
-    name: 'System Design & Architecture Agent',
-    version: 'v1.1.0',
-    mode: 'post_session',
-    status: 'healthy',
-    description: 'Evaluates separation of concerns, data modeling, concurrency invariants, and dependency bounds.',
-    signals: ['Modularity', 'Schema Fidelity', 'Interface Abstraction'],
-    defaultWeight: 25,
-    model: 'Gemini 1.5 Pro (Pinned)',
-  },
-  {
-    id: 'agent_communication',
-    name: 'Communication & Rationale Agent',
-    version: 'v1.0.5',
-    mode: 'post_session',
-    status: 'healthy',
-    description: 'Analyzes chat interactions, trade-off explanations, and evidence articulation throughout the task.',
-    signals: ['Clarity of Thought', 'Trade-off Articulation', 'AI Collaboration Fluency'],
-    defaultWeight: 20,
-    model: 'Gemini 1.5 Flash (Pinned)',
-  },
-  {
-    id: 'agent_security_auditor',
-    name: 'Security & Integrity Auditor',
-    version: 'v1.0.0',
-    mode: 'post_session',
-    status: 'healthy',
-    description: 'Scans candidate submissions for hardcoded credentials, malicious egress vectors, and sandbox escape probes.',
-    signals: ['Secret Exposure', 'Egress Guard', 'Command Injection Risk'],
-    defaultWeight: 0,
-    model: 'Gemini 1.5 Pro (Pinned)',
-  },
-];
+export interface AdminAgentsPageProps {
+  initialAgents?: AgentInfo[];
+}
 
-export default function AdminAgentsPage() {
+export default function AdminAgentsPage({ initialAgents }: AdminAgentsPageProps = {}) {
+  const [agents, setAgents] = useState<AgentInfo[]>(initialAgents || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const filteredAgents = standardAgents.filter(
+  const filteredAgents = agents.filter(
     (agent) =>
       agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       agent.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -96,7 +43,7 @@ export default function AdminAgentsPage() {
 
   const handleRefresh = () => {
     setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 600);
+    setIsRefreshing(false);
   };
 
   return (
@@ -113,7 +60,7 @@ export default function AdminAgentsPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           label="ACTIVE REVIEWER AGENTS"
-          value={standardAgents.length.toString()}
+          value={agents.length.toString()}
           description="Independent evaluation engines ready (BR-18)"
           icon={<Bot className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />}
           data-testid="stat-active-agents"
@@ -168,12 +115,20 @@ export default function AdminAgentsPage() {
         {/* Agents Grid */}
         {filteredAgents.length === 0 ? (
           <EmptyState
-            title="No Reviewer Agents Found"
-            description={`No agent matches your search query "${searchQuery}".`}
-            action={{
-              label: 'Reset Filter',
-              onClick: () => setSearchQuery(''),
-            }}
+            title={searchQuery ? 'No Reviewer Agents Found' : 'Standard Evaluation Agents Active'}
+            description={
+              searchQuery
+                ? `No agent matches your search query "${searchQuery}".`
+                : 'Multi-dimensional evaluation agents (Code Quality, Problem Solving, System Design, Communication, and Security) run independently on candidate sessions citing direct evidence (BR-18, BR-19).'
+            }
+            action={
+              searchQuery
+                ? {
+                    label: 'Reset Filter',
+                    onClick: () => setSearchQuery(''),
+                  }
+                : undefined
+            }
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
