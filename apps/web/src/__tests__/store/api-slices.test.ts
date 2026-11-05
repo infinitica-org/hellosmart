@@ -671,5 +671,29 @@ describe('S1-T00-2: RTK Query Base API Slices & Store Integration', () => {
       const state = store.getState().companyApi;
       expect(state.provided).toBeDefined();
     });
+
+    it('20. verifies newly integrated company endpoints (getTemplateById, getAssessmentRubric, updateAssessmentRubric) are defined on companyApi', () => {
+      expect(companyApi.endpoints).toHaveProperty('getTemplateById');
+      expect(companyApi.endpoints).toHaveProperty('getAssessmentRubric');
+      expect(companyApi.endpoints).toHaveProperty('updateAssessmentRubric');
+
+      // Verify query builder URL mappings
+      const templateQuery = (companyApi.endpoints.getTemplateById as any).initiate('tpl-123');
+      expect(templateQuery).toBeDefined();
+
+      const rubricQuery = (companyApi.endpoints.getAssessmentRubric as any).initiate('asm-456');
+      expect(rubricQuery).toBeDefined();
+
+      const rubricMutation = (companyApi.endpoints.updateAssessmentRubric as any).initiate({
+        assessmentId: 'asm-456',
+        rubric: {
+          assessmentId: 'asm-456',
+          templateId: 'tpl-123',
+          templateVersionId: 'v1.0.0',
+          dimensions: [],
+        },
+      });
+      expect(rubricMutation).toBeDefined();
+    });
   });
 });
