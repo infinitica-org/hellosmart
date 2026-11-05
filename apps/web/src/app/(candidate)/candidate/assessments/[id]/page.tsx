@@ -85,7 +85,7 @@ export default function CandidateAssessmentTakePage(props?: PageProps) {
   const [connectionState, setConnectionState] = useState<WorkspaceConnectionState>('not_connected');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [draftCode, setDraftCode] = useState<string>(
-    `// Solution Implementation\n// All changes are continuously autosaved (RPO <= 30s, BR-11)\n\nexport function executeTask() {\n  return {\n    status: 'completed',\n    timestamp: new Date().toISOString(),\n  };\n}\n`,
+    '// Solution Implementation\n// All changes are continuously autosaved (RPO <= 30s, BR-11)\n',
   );
   const [showSubmitModal, setShowSubmitModal] = useState<boolean>(false);
 
@@ -308,24 +308,25 @@ export default function CandidateAssessmentTakePage(props?: PageProps) {
               {assessment.companyName || 'the hiring team'}.
             </Alert>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <RubricScoreCard
-                name="System Implementation & Correctness"
-                weight={60}
-                score={92}
-                rationale="Solution demonstrates high modularity, correct boundary checks, and robust error handling."
-                evidence={['git:commit-38a4', 'test:suite-passed']}
-                confidence={95}
-              />
-              <RubricScoreCard
-                name="Code Quality & Architecture"
-                weight={40}
-                score={88}
-                rationale="Clean domain separation with type-safe contracts and comprehensive test coverage."
-                evidence={['src/solution.ts:1-24', 'diff:clean-types']}
-                confidence={90}
-              />
-            </div>
+            {assessment.rubricScores && assessment.rubricScores.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {assessment.rubricScores.map((scoreItem, idx) => (
+                  <RubricScoreCard
+                    key={scoreItem.name || idx}
+                    name={scoreItem.name}
+                    weight={scoreItem.weight ?? 0}
+                    score={scoreItem.score}
+                    rationale={scoreItem.rationale ?? ''}
+                    evidence={scoreItem.evidence ?? []}
+                    confidence={scoreItem.confidence}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Card className="p-6 text-center text-sm text-neutral-500" data-testid="no-rubric-scores-empty">
+                Evaluation results have been released. Rubric dimension scorecards will appear once published by the evaluation team.
+              </Card>
+            )}
           </div>
         ) : (
           <Card className="p-6 sm:p-8 space-y-6" data-testid="results-under-review-section">
