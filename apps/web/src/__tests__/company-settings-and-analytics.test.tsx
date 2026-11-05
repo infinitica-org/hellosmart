@@ -27,9 +27,9 @@ describe('Company Settings, Analytics & Submission Review (BUG-CP-11, BUG-CP-12)
       );
 
       expect(html).toContain('Settings &amp; Integrations');
-      expect(html).toContain('Candidate Data Retention (BR-31, BR-32)');
+      expect(html).toContain('Candidate Data Retention');
       expect(html).toContain('90 Days (GDPR &amp; DPDP Compliant)');
-      expect(html).toContain('Protected (BR-01)');
+      expect(html).toContain('Protected');
     });
 
     it('renders empty key vault state when no keys registered', () => {
@@ -71,8 +71,8 @@ describe('Company Settings, Analytics & Submission Review (BUG-CP-11, BUG-CP-12)
         </CompanyStoreProvider>
       );
 
-      expect(html).toContain('AI Provider Keys (BR-16)');
-      expect(html).toContain('Zero-Trust Key Isolation Architecture (BR-13, BR-16)');
+      expect(html).toContain('AI Provider Keys');
+      expect(html).toContain('Zero-Trust Key Isolation Architecture');
       // Checks that keys are masked with last-4 format and never exposed in full
       expect(html).toContain('sk-...4921');
       expect(html).toContain('sk-ant-...8102');
@@ -86,8 +86,8 @@ describe('Company Settings, Analytics & Submission Review (BUG-CP-11, BUG-CP-12)
       );
 
       expect(html).toContain('Billing &amp; Quotas');
-      expect(html).toContain('Candidate Allowance (BR-06)');
-      expect(html).toContain('Redeem Promo / Custom Payment Code (BR-29)');
+      expect(html).toContain('Candidate Allowance');
+      expect(html).toContain('Redeem Promo / Custom Payment Code');
     });
   });
 
@@ -209,7 +209,7 @@ describe('Company Settings, Analytics & Submission Review (BUG-CP-11, BUG-CP-12)
       );
 
       expect(html).toContain('Priya Sharma');
-      expect(html).toContain('Untrusted Candidate Artifacts Notice (BR-18)');
+      expect(html).toContain('Untrusted Candidate Artifacts Notice');
       expect(html).toContain('All code snippets, git commits, and candidate chat messages below are untrusted candidate inputs');
     });
 
@@ -234,7 +234,7 @@ describe('Company Settings, Analytics & Submission Review (BUG-CP-11, BUG-CP-12)
         </CompanyStoreProvider>
       );
 
-      expect(html).toContain('Human Review &amp; Final Decision (BR-20)');
+      expect(html).toContain('Human Review &amp; Final Decision');
       expect(html).toContain('Final Human Score (0 - 100)');
       expect(html).toContain('Release Evaluation Report to Candidate');
       expect(html).toContain('Finalize Decision');

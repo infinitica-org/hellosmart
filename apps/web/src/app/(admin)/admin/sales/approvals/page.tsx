@@ -182,7 +182,7 @@ export default function CustomerApprovalsPage() {
                     <td className="py-3 px-4 text-right">
                       <span className="inline-flex items-center gap-1 font-mono text-[10px] bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded border border-neutral-200">
                         <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                        <span>BR-31</span>
+                        <span>Audit Log</span>
                       </span>
                     </td>
                   </tr>

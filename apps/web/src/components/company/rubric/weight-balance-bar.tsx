@@ -22,18 +22,18 @@ export function WeightBalanceBar({
     balanced: {
       badgeVariant: 'success' as const,
       badgeText: 'Balanced (100%)',
-      barColor: 'bg-emerald-500',
-      textColor: 'text-emerald-700',
-      bgColor: 'bg-emerald-50/60',
-      borderColor: 'border-emerald-200',
+      barColor: 'bg-success',
+      textColor: 'text-success-foreground',
+      bgColor: 'bg-success-muted/60',
+      borderColor: 'border-success-border',
     },
     under: {
       badgeVariant: 'warning' as const,
       badgeText: 'Under Allocated',
-      barColor: 'bg-amber-500',
-      textColor: 'text-amber-800',
-      bgColor: 'bg-amber-50/60',
-      borderColor: 'border-amber-200',
+      barColor: 'bg-warning',
+      textColor: 'text-warning-foreground',
+      bgColor: 'bg-warning-muted/60',
+      borderColor: 'border-warning-border',
     },
     over: {
       badgeVariant: 'danger' as const,
@@ -96,8 +96,8 @@ export function WeightBalanceBar({
       <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
         <div className={`font-medium ${statusStyles.textColor}`}>
           {balance.isBalanced ? (
-            <span className="flex items-center gap-1.5 text-emerald-700">
-              <Check className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
+            <span className="flex items-center gap-1.5 text-success">
+              <Check className="w-4 h-4 text-success stroke-[2.5]" />
               {balance.message}
             </span>
           ) : (

@@ -159,7 +159,7 @@ function TemplateCatalogContent(): React.JSX.Element {
         <div className="bg-white rounded-2xl border border-neutral-200/80 p-8 sm:p-12">
           <EmptyState
             title="No templates assigned yet"
-            description="Role simulation blueprints are assigned privately to your organization by HelloSmart (BR-02). Request blueprints for custom hiring scenarios."
+            description="Role simulation blueprints are assigned privately to your organization by HelloSmart. Request blueprints for custom hiring scenarios."
             data-testid="org-templates-empty-state"
             action={{
               label: 'Request Custom Blueprints',

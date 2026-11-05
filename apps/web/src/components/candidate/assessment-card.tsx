@@ -12,7 +12,7 @@ import {
   Badge,
   Card,
 } from '@hs/ui';
-import { Building2, Clock, CheckCircle2, AlertCircle, Play, RotateCcw, FileText, Lock, Terminal, ShieldCheck, Loader2 } from 'lucide-react';
+import { Building2, Clock, CheckCircle2, AlertCircle, Play, RotateCcw, FileText, Lock, Terminal, ShieldCheck, Loader2, Calendar } from 'lucide-react';
 import { WindowCountdown } from './window-countdown';
 import { fetchCandidateAssessmentDetails, fetchCandidateAssignments } from '@/lib/candidate-api';
 
@@ -50,6 +50,24 @@ export interface AssessmentCardProps {
   /** Triggered when live countdown hits zero to refresh assessment state from server */
   onCountdownZero?: (assessment: CandidateAssessment) => void;
   className?: string;
+}
+
+function formatAssessmentDate(dateString?: string | null, fallback = 'Flexible'): string {
+  if (!dateString) return fallback;
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return fallback;
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(date);
+  } catch {
+    return fallback;
+  }
 }
 
 function formatSubmittedDate(dateString?: string | null): string {
@@ -172,8 +190,8 @@ export function AssessmentCard({
   // Error state if assessment could not be fetched
   if (error || !data) {
     return (
-      <div className={`rounded-xl bg-red-50/50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 p-4 text-xs text-red-700 dark:text-red-400 flex items-center gap-2.5 ${className}`}>
-        <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+      <div className={`rounded-xl bg-danger-muted border border-danger-border p-4 text-xs text-danger-foreground flex items-center gap-2.5 ${className}`}>
+        <AlertCircle className="w-4 h-4 shrink-0 text-danger" />
         <span>{error || 'Assessment details unavailable'}</span>
       </div>
     );
@@ -186,6 +204,7 @@ export function AssessmentCard({
     durationMinutes,
     status,
     windowStartUtc,
+    windowEndUtc,
     submittedAt,
     workspaceMode = 'cloud',
   } = data;
@@ -213,7 +232,7 @@ export function AssessmentCard({
             data-testid="status-badge-ready"
             className="gap-1.5"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse" aria-hidden="true" />
             Ready to Start
           </Badge>
         );
@@ -225,7 +244,7 @@ export function AssessmentCard({
             data-testid="status-badge-in_progress"
             className="gap-1.5"
           >
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" aria-hidden="true" />
+            <span className="w-2 h-2 rounded-full bg-warning animate-pulse" aria-hidden="true" />
             In Progress
           </Badge>
         );
@@ -300,7 +319,7 @@ export function AssessmentCard({
             onClick={() => onResumeAssessment?.(data)}
             data-testid="btn-resume-assessment"
             leftIcon={<RotateCcw className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
-            className="whitespace-nowrap shadow-xs hover:shadow transition-all bg-amber-600 hover:bg-amber-700 text-white"
+            className="whitespace-nowrap shadow-xs hover:shadow transition-all"
           >
             Resume Assessment
           </Button>
@@ -380,21 +399,39 @@ export function AssessmentCard({
             </div>
           )}
 
-          {/* Bottom Telemetry Strip: 3 clean columns */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+          {/* Bottom Telemetry Strip: 4 clean responsive cards including Start Date and End Date */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
             <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200/70 dark:border-neutral-800">
               <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500 mb-0.5">
-                <Terminal className="w-3.5 h-3.5" />
-                <span className="font-medium text-[11px]">Environment</span>
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                <span className="font-medium text-[11px]">Start Date</span>
               </div>
-              <span className="text-neutral-800 dark:text-neutral-200 font-semibold text-xs block">
-                {workspaceMode === 'cloud' ? 'Cloud VM (Browser IDE)' : 'Guided AI Chat'}
+              <span
+                className="text-neutral-800 dark:text-neutral-200 font-semibold text-xs block truncate"
+                title={formatAssessmentDate(windowStartUtc, 'Available Immediately')}
+                data-testid="assessment-start-date"
+              >
+                {formatAssessmentDate(windowStartUtc, 'Available Immediately')}
               </span>
             </div>
 
             <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200/70 dark:border-neutral-800">
               <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500 mb-0.5">
-                <Clock className="w-3.5 h-3.5" />
+                <Calendar className="w-3.5 h-3.5 text-neutral-500" />
+                <span className="font-medium text-[11px]">End Date</span>
+              </div>
+              <span
+                className="text-neutral-800 dark:text-neutral-200 font-semibold text-xs block truncate"
+                title={formatAssessmentDate(windowEndUtc, 'No Expiration')}
+                data-testid="assessment-end-date"
+              >
+                {formatAssessmentDate(windowEndUtc, 'No Expiration')}
+              </span>
+            </div>
+
+            <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200/70 dark:border-neutral-800">
+              <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500 mb-0.5">
+                <Clock className="w-3.5 h-3.5 text-neutral-400" />
                 <span className="font-medium text-[11px]">Time Allowance</span>
               </div>
               <span className="text-neutral-800 dark:text-neutral-200 font-semibold text-xs block">
@@ -404,11 +441,11 @@ export function AssessmentCard({
 
             <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200/70 dark:border-neutral-800">
               <div className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500 mb-0.5">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span className="font-medium text-[11px]">Integrity Policy</span>
+                <Terminal className="w-3.5 h-3.5 text-neutral-400" />
+                <span className="font-medium text-[11px]">Environment</span>
               </div>
               <span className="text-neutral-800 dark:text-neutral-200 font-semibold text-xs block">
-                Continuous Autosave (RPO ≤ 30s)
+                {workspaceMode === 'cloud' ? 'Cloud VM (Browser IDE)' : 'Guided AI Chat'}
               </span>
             </div>
           </div>

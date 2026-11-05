@@ -54,7 +54,7 @@ export function WizardProgress({
                   isCurrent
                     ? 'bg-primary text-white shadow-xs'
                     : isCompleted
-                      ? 'bg-emerald-500 text-white'
+                      ? 'bg-success text-white'
                       : 'bg-neutral-200 text-neutral-600'
                 }`}
               >

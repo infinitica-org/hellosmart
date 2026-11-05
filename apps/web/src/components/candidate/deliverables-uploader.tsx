@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
+import { Button } from '@hs/ui';
 import { UploadCloud, FileArchive, CheckCircle2, AlertCircle, X, RotateCcw, Loader2 } from 'lucide-react';
 import type { UploadedArtifactMetadata } from '@hs/contracts';
 import { uploadDeliverableArtifact } from '@/lib/candidate-api';
@@ -137,9 +138,9 @@ export function DeliverablesUploader({
       />
 
       {artifact ? (
-        <div className="flex items-center justify-between p-4 rounded-xl border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/60 dark:bg-emerald-950/30 text-xs">
+        <div className="flex items-center justify-between p-4 rounded-xl border border-success-border bg-success-muted text-xs">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-success/15 text-success flex items-center justify-center shrink-0">
               <FileArchive className="w-4 h-4" />
             </div>
             <div className="min-w-0 space-y-0.5">
@@ -147,7 +148,7 @@ export function DeliverablesUploader({
                 <span className="font-semibold text-neutral-900 dark:text-neutral-100 truncate">
                   {artifact.originalName}
                 </span>
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-success shrink-0" />
               </div>
               <span className="text-neutral-500 text-[11px] block">
                 {formatBytes(artifact.sizeBytes)} &bull; Uploaded to secure storage
@@ -155,17 +156,19 @@ export function DeliverablesUploader({
             </div>
           </div>
 
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={handleRemove}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-danger hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            className="p-1.5 h-8 w-8 !rounded-lg text-neutral-400 hover:text-danger hover:bg-neutral-100 dark:hover:bg-neutral-800"
             title="Remove archive"
           >
             <X className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       ) : uploadProgress !== null ? (
-        <div className="p-5 rounded-xl border border-primary/40 bg-orange-50/40 dark:bg-neutral-900 space-y-2 text-xs">
+        <div className="p-5 rounded-xl border border-primary/40 bg-primary/5 dark:bg-neutral-900 space-y-2 text-xs">
           <div className="flex items-center justify-between text-neutral-700 dark:text-neutral-300">
             <span className="font-medium flex items-center gap-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
@@ -188,12 +191,12 @@ export function DeliverablesUploader({
           onClick={() => fileInputRef.current?.click()}
           className={`border border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${
             isDragging
-              ? 'border-primary bg-orange-50/60 dark:bg-orange-950/20'
+              ? 'border-primary bg-primary/10 dark:bg-primary/20'
               : 'border-neutral-300 dark:border-neutral-700 hover:border-primary/60 hover:bg-neutral-50/80 dark:hover:bg-neutral-800/40 bg-neutral-50/40 dark:bg-neutral-900/40'
           }`}
           data-testid="dropzone-container"
         >
-          <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-950/50 text-primary mx-auto flex items-center justify-center mb-2">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 dark:bg-primary/20 text-primary mx-auto flex items-center justify-center mb-2">
             <UploadCloud className="w-4 h-4" />
           </div>
           <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200">
@@ -214,14 +217,16 @@ export function DeliverablesUploader({
             <AlertCircle className="w-4 h-4 text-danger shrink-0" />
             <span>{uploadError}</span>
           </div>
-          <button
+          <Button
             type="button"
+            variant="link"
+            size="sm"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1 font-semibold hover:underline text-danger-foreground shrink-0"
+            className="flex items-center gap-1 font-semibold text-danger-foreground hover:underline p-0 h-auto shrink-0"
+            leftIcon={<RotateCcw className="w-3 h-3" />}
           >
-            <RotateCcw className="w-3 h-3" />
             Retry
-          </button>
+          </Button>
         </div>
       )}
     </div>

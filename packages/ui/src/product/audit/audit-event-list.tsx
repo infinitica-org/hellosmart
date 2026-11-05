@@ -26,7 +26,7 @@ export const AuditEventList = forwardRef<HTMLDivElement, AuditEventListProps>(
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-success" />
             <span className="text-xs font-semibold text-neutral-900">
-              Append-Only Audit Trail (BR-31)
+              Append-Only Audit Trail
             </span>
           </div>
           <span className="text-[11px] text-neutral-500 font-mono">

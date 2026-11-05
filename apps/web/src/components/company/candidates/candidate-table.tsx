@@ -9,6 +9,7 @@ import {
   TableHead,
   TableCell,
   Badge,
+  Button,
   EmptyState,
   Spinner,
   Pagination,
@@ -75,7 +76,7 @@ export function CandidateTable({
           description={
             isFiltered
               ? 'Try modifying your search keywords or resetting status filters to view more candidates.'
-              : 'Add candidate invitations individually or in bulk with single-use expiring links (BR-24).'
+              : 'Add candidate invitations individually or in bulk with single-use expiring links.'
           }
           action={
             isFiltered
@@ -144,7 +145,7 @@ export function CandidateTable({
                   {/* Cap Allocation Status (BR-06) */}
                   <TableCell>
                     {candidate.countedAgainstCapAt ? (
-                      <div className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      <div className="text-xs font-medium text-success">
                         Counted (Workspace launched)
                       </div>
                     ) : (
@@ -170,13 +171,15 @@ export function CandidateTable({
                     <div className="flex items-center justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button
+                          <Button
                             type="button"
+                            variant="outline"
+                            size="sm"
                             aria-label={`Actions for ${candidate.name}`}
-                            className="h-8 w-8 rounded-md border border-neutral-200 bg-white hover:bg-neutral-50 hover:border-neutral-300 text-neutral-600 hover:text-neutral-900 shadow-xs flex items-center justify-center transition-all cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-neutral-200"
+                            className="h-8 w-8 p-0 !rounded-md"
                           >
                             <MoreHorizontal className="w-4 h-4 pointer-events-none" />
-                          </button>
+                          </Button>
                         </DropdownMenuTrigger>
 
                         <DropdownMenuContent

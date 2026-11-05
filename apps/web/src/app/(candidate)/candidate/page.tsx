@@ -41,22 +41,6 @@ export default function CandidateDashboardPage() {
         description="Complete practical work simulation tasks in a controlled cloud environment with real developer tools."
         badge={{ text: 'Candidate Portal', variant: 'info' }}
         data-testid="candidate-page-header"
-        actions={
-          data && data.length > 0 ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void refetch()}
-              disabled={isLoading || isRefetching}
-              className="flex items-center gap-2 text-xs border-neutral-200 hover:bg-neutral-50"
-              aria-label="Refresh assessments"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          ) : undefined
-        }
       />
 
       {/* Error State */}

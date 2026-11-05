@@ -42,6 +42,7 @@ export * from './navigation/pagination';
 export * from './navigation/sidebar';
 export * from './navigation/topbar';
 export * from './navigation/footer';
+export * from './navigation/assessment-navbar';
 
 // Overlays & Popups
 export * from './overlays/dialog';

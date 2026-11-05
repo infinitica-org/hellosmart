@@ -171,7 +171,7 @@ export default function CandidateSubmissionReviewPage({
             </Badge>
           ) : (
             <Badge variant="default" size="sm" className="text-neutral-600">
-              Results Private (BR-20)
+              Results Private
             </Badge>
           )}
         </div>
@@ -240,7 +240,7 @@ export default function CandidateSubmissionReviewPage({
         <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
         <div className="text-xs space-y-1">
           <p className="font-semibold text-amber-950">
-            Untrusted Candidate Artifacts Notice (BR-18)
+            Untrusted Candidate Artifacts Notice
           </p>
           <p className="text-amber-800 leading-relaxed">
             All code snippets, git commits, and candidate chat messages below are untrusted candidate inputs and have been sanitized to mitigate prompt-injection attempts. AI reviewer scores are advisory; human review overrides take precedence.

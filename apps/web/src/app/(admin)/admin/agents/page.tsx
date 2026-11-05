@@ -66,7 +66,7 @@ export default function AdminAgentsPage({ initialAgents }: AdminAgentsPageProps 
           value={hasAgents ? agents.length.toString() : '0'}
           description={
             hasAgents
-              ? 'Independent evaluation engines ready (BR-18)'
+              ? 'Independent evaluation engines ready'
               : 'No evaluation engines registered'
           }
           icon={<Bot className={`h-5 w-5 ${hasAgents ? 'text-primary' : 'text-neutral-400'}`} />}
@@ -88,7 +88,7 @@ export default function AdminAgentsPage({ initialAgents }: AdminAgentsPageProps 
           value={hasAgents ? `${healthyCount}/${agents.length} Healthy` : 'Standby'}
           description={
             hasAgents
-              ? 'Disagreement threshold flags anomaly for human (BR-19)'
+              ? 'Disagreement threshold flags anomaly for human'
               : 'Aggregator idle until reviewer agents are deployed'
           }
           icon={
@@ -197,7 +197,22 @@ export default function AdminAgentsPage({ initialAgents }: AdminAgentsPageProps 
       </Card>
 
       {/* Invariant Alert */}
-      
+      <Alert variant="info" className="text-xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
+          <div className="space-y-1">
+            <div className="font-semibold text-neutral-900">
+              Human-In-The-Loop Final Assessment
+            </div>
+            <p className="text-neutral-600">
+              Reviewer agents evaluate independently and mandate factual citations from candidate evidence. 
+              The system never auto-rejects candidates based on agent scores or telemetry signals.
+            </p>
+          </div>
+          <div className="font-mono text-primary bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/25 shrink-0 font-medium">
+            Post-Session Review Mode
+          </div>
+        </div>
+      </Alert>
     </div>
   );
 }

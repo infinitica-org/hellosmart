@@ -109,14 +109,16 @@ export function RubricDimensionCard({
           </Badge>
         </div>
 
-        <button
+        <Button
           type="button"
+          variant="link"
+          size="sm"
           onClick={() => setIsExpanded(!isExpanded)}
           data-testid={`toggle-expand-btn-${dimension.id}`}
-          className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
+          className="p-0 h-auto text-xs font-semibold"
         >
           {isExpanded ? 'Hide Criteria & Anchors ↑' : 'View Criteria & Anchors ↓'}
-        </button>
+        </Button>
       </div>
 
       {/* ─── Expandable Details Section ─── */}
@@ -130,7 +132,7 @@ export function RubricDimensionCard({
                 {dimension.signals.map((s, idx) => (
                   <span
                     key={idx}
-                    className="py-0.5 px-2 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200"
+                    className="py-0.5 px-2 rounded-md bg-success-muted text-success-foreground border border-success-border"
                   >
                     ✓ {s}
                   </span>

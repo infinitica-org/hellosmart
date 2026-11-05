@@ -193,8 +193,8 @@ export default function CandidateAssessmentsPage() {
                       {isSubmitted ? (
                         task.releaseResults ? (
                           <>
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span className="text-emerald-700">Results Released</span>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                            <span className="text-success-foreground font-medium">Results Released</span>
                           </>
                         ) : (
                           <>

@@ -298,7 +298,7 @@ export function BulkUploadDialog({
               </div>
               <ul className="list-disc pl-4 space-y-0.5">
                 <li>Required columns: <code className="text-neutral-800 dark:text-neutral-200">name</code> and <code className="text-neutral-800 dark:text-neutral-200">email</code>.</li>
-                <li>Each candidate will be sent a single-use expiring invitation link (BR-24).</li>
+                <li>Each candidate will be sent a single-use expiring invitation link.</li>
                 <li>Duplicate emails and invalid entries will be flagged before import.</li>
               </ul>
             </div>
@@ -324,29 +324,29 @@ export function BulkUploadDialog({
 
             {/* Metrics cards */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 text-center dark:border-emerald-900 dark:bg-emerald-950/20">
-                <div className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+              <div className="rounded-lg border border-success-border bg-success-muted p-3 text-center">
+                <div className="text-lg font-bold text-success">
                   {preview.validRows.length}
                 </div>
-                <div className="text-xs text-emerald-600 dark:text-emerald-500">
+                <div className="text-xs text-success font-medium">
                   Ready to Import
                 </div>
               </div>
 
-              <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 text-center dark:border-amber-900 dark:bg-amber-950/20">
-                <div className="text-lg font-bold text-amber-700 dark:text-amber-400">
+              <div className="rounded-lg border border-warning-border bg-warning-muted p-3 text-center">
+                <div className="text-lg font-bold text-warning">
                   {preview.duplicateRows.length}
                 </div>
-                <div className="text-xs text-amber-600 dark:text-amber-500">
+                <div className="text-xs text-warning font-medium">
                   Duplicates (Skipped)
                 </div>
               </div>
 
-              <div className="rounded-lg border border-red-200 bg-red-50/50 p-3 text-center dark:border-red-900 dark:bg-red-950/20">
-                <div className="text-lg font-bold text-red-700 dark:text-red-400">
+              <div className="rounded-lg border border-danger-border bg-danger-muted p-3 text-center">
+                <div className="text-lg font-bold text-danger">
                   {preview.invalidRows.length}
                 </div>
-                <div className="text-xs text-red-600 dark:text-red-500">
+                <div className="text-xs text-danger font-medium">
                   Invalid (Skipped)
                 </div>
               </div>
@@ -354,7 +354,7 @@ export function BulkUploadDialog({
 
             {/* Error / duplicate alert with export */}
             {(preview.invalidRows.length > 0 || preview.duplicateRows.length > 0) && (
-              <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+              <div className="flex items-center justify-between rounded-md border border-warning-border bg-warning-muted p-3 text-xs text-warning-foreground">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
                   <span>
@@ -391,26 +391,26 @@ export function BulkUploadDialog({
                       <td className="p-2 font-medium">{row.name}</td>
                       <td className="p-2 text-neutral-600 dark:text-neutral-400">{row.email}</td>
                       <td className="p-2">
-                        <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                        <span className="inline-flex items-center gap-1 text-success font-medium">
                           <Check className="h-3 w-3" /> Valid
                         </span>
                       </td>
                     </tr>
                   ))}
                   {preview.invalidRows.slice(0, 4).map((err) => (
-                    <tr key={`inv-${err.rowNumber}`} className="bg-red-50/30 dark:bg-red-950/10">
+                    <tr key={`inv-${err.rowNumber}`} className="bg-danger-muted/30">
                       <td className="p-2 text-neutral-500">{err.rowNumber}</td>
                       <td className="p-2 font-medium">{err.name || '<empty>'}</td>
                       <td className="p-2 text-neutral-600 dark:text-neutral-400">{err.email || '<empty>'}</td>
-                      <td className="p-2 text-red-600 font-medium">{err.reason}</td>
+                      <td className="p-2 text-danger font-medium">{err.reason}</td>
                     </tr>
                   ))}
                   {preview.duplicateRows.slice(0, 4).map((dup) => (
-                    <tr key={`dup-${dup.rowNumber}`} className="bg-amber-50/30 dark:bg-amber-950/10">
+                    <tr key={`dup-${dup.rowNumber}`} className="bg-warning-muted/30">
                       <td className="p-2 text-neutral-500">{dup.rowNumber}</td>
                       <td className="p-2 font-medium">{dup.name}</td>
                       <td className="p-2 text-neutral-600 dark:text-neutral-400">{dup.email}</td>
-                      <td className="p-2 text-amber-600 font-medium">{dup.reason}</td>
+                      <td className="p-2 text-warning font-medium">{dup.reason}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -423,7 +423,7 @@ export function BulkUploadDialog({
         {step === 'summary' && importResult && (
           <div className="space-y-4 py-2">
             <div className="flex flex-col items-center justify-center text-center">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-success-muted text-success">
                 <Check className="h-6 w-6" />
               </div>
               <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
@@ -435,11 +435,11 @@ export function BulkUploadDialog({
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 text-center dark:border-emerald-900 dark:bg-emerald-950/20">
-                <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
+              <div className="rounded-lg border border-success-border bg-success-muted p-4 text-center">
+                <div className="text-2xl font-bold text-success">
                   {importResult.created.length}
                 </div>
-                <div className="text-xs text-emerald-600 dark:text-emerald-500 font-medium">
+                <div className="text-xs text-success font-medium">
                   Successfully Invited
                 </div>
               </div>

@@ -10,6 +10,7 @@ import {
   DialogFooter,
   Button,
   Checkbox,
+  Card,
 } from '@hs/ui';
 import {
   CheckCircle2,
@@ -69,7 +70,7 @@ export function SubmissionConfirmationDialog({
       <DialogContent>
         <div className="space-y-4 py-2 text-xs">
           {/* Deliverables Verification Checklist */}
-          <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/40 p-4 space-y-3">
+          <Card className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/40 p-4 space-y-3">
             <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 flex items-center justify-between">
               <span>Deliverables Checklist</span>
               <span className="text-[11px] font-normal text-neutral-500">
@@ -91,9 +92,9 @@ export function SubmissionConfirmationDialog({
                 </div>
               </div>
               {hasRepo && hasBranch ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
               ) : (
-                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
               )}
             </div>
 
@@ -113,9 +114,9 @@ export function SubmissionConfirmationDialog({
                 </div>
               </div>
               {hasNotes ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
               ) : (
-                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
               )}
             </div>
 
@@ -134,14 +135,14 @@ export function SubmissionConfirmationDialog({
                   </span>
                 </div>
               </div>
-              {hasArtifact && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
+              {hasArtifact && <CheckCircle2 className="w-4 h-4 text-success shrink-0" />}
             </div>
-          </div>
+          </Card>
 
           {/* Missing Deliverables Warning */}
           {(!hasRepo || !hasBranch || !hasNotes) && (
-            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-lg bg-warning-muted border border-warning-border text-warning-foreground text-xs flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
               <span>
                 Please complete all required deliverables (Repository URL, branch name, and architecture notes) before final submission.
               </span>

@@ -36,7 +36,7 @@ export function TemplateDetailsStep({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">
-            Selected Blueprint (BR-03 Version Pinned)
+            Selected Blueprint (Version Pinned)
           </span>
           <Link
             href={ROUTES.COMPANY.TEMPLATES}

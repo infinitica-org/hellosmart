@@ -29,6 +29,9 @@ export interface PortalShellProps {
   idleTimeoutSeconds?: number;
   searchValue?: string;
   onSearchChange?: (val: string) => void;
+  showSearch?: boolean;
+  showNotifications?: boolean;
+  showHelp?: boolean;
 }
 
 export function PortalShell({
@@ -47,6 +50,9 @@ export function PortalShell({
   idleTimeoutSeconds,
   searchValue: controlledSearchValue,
   onSearchChange,
+  showSearch,
+  showNotifications,
+  showHelp,
 }: PortalShellProps): React.JSX.Element {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
@@ -168,6 +174,7 @@ export function PortalShell({
         portalTitle={portalTitle}
         brandTitle={portalTitle}
         portalRole={userRole}
+        showHelp={showHelp !== undefined ? showHelp : !roleLower.includes('candidate')}
         {...(companyName ? { companyName } : {})}
         items={items}
         groups={groups}
@@ -185,7 +192,14 @@ export function PortalShell({
         <Topbar
           variant="dashboard"
           showLogo={false}
-          showNotifications={true}
+          showNotifications={
+            showNotifications !== undefined
+              ? showNotifications
+              : !roleLower.includes('candidate')
+          }
+          showSearch={
+            showSearch !== undefined ? showSearch : !roleLower.includes('candidate')
+          }
           searchPlaceholder={searchPlaceholder}
           searchValue={activeSearchValue}
           onSearchChange={handleSearchChange}
@@ -202,7 +216,9 @@ export function PortalShell({
             void onLogout();
           }}
           onMenuClick={() => setMobileOpen(true)}
-          profileMenuItems={profileMenuItems}
+          profileMenuItems={
+            roleLower.includes('candidate') ? null : profileMenuItems
+          }
         />
 
         <main className={mainClassName}>{children}</main>

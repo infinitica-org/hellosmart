@@ -165,14 +165,14 @@ export function InviteCandidateDialog({
                 }
               }}
               disabled={isSubmitting}
-              className={`pl-9 text-sm ${formErrors.name ? 'border-red-500 focus:border-red-500' : ''}`}
+              className={`pl-9 text-sm ${formErrors.name ? 'border-danger focus:border-danger' : ''}`}
             />
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
               <User className="h-4 w-4" />
             </div>
           </div>
           {formErrors.name && (
-            <p className="text-xs text-red-500">{formErrors.name}</p>
+            <p className="text-xs text-danger">{formErrors.name}</p>
           )}
         </div>
 
@@ -198,14 +198,14 @@ export function InviteCandidateDialog({
                 }
               }}
               disabled={isSubmitting}
-              className={`pl-9 text-sm ${formErrors.email ? 'border-red-500 focus:border-red-500' : ''}`}
+              className={`pl-9 text-sm ${formErrors.email ? 'border-danger focus:border-danger' : ''}`}
             />
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
               <Mail className="h-4 w-4" />
             </div>
           </div>
           {formErrors.email && (
-            <p className="text-xs text-red-500">{formErrors.email}</p>
+            <p className="text-xs text-danger">{formErrors.email}</p>
           )}
         </div>
 

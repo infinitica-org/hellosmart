@@ -84,15 +84,17 @@ export function DeliverablesEditor({
                 <span className="truncate">{item}</span>
               </div>
 
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => handleRemove(idx)}
-                className="text-neutral-400 hover:text-red-500 transition-colors p-1"
+                className="text-neutral-400 hover:text-danger hover:bg-danger-muted/30 p-1 h-7 w-7 !rounded-lg"
                 aria-label={`Remove deliverable ${idx + 1}`}
                 data-testid={`remove-deliverable-${idx}`}
               >
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

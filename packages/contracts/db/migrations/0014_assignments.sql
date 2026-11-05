@@ -62,6 +62,12 @@ CREATE TABLE IF NOT EXISTS app.assignments (
     CHECK (invite_expires_at IS NULL OR (invite_issued_at IS NOT NULL AND invite_expires_at > invite_issued_at AND invite_expires_at <= invite_issued_at + interval '7 days'))
 );
 
+-- Ensure columns exist in case app.assignments was previously created by an earlier schema step
+ALTER TABLE app.assignments ADD COLUMN IF NOT EXISTS invite_token_hash bytea UNIQUE;
+ALTER TABLE app.assignments ADD COLUMN IF NOT EXISTS invite_issued_at timestamptz;
+ALTER TABLE app.assignments ADD COLUMN IF NOT EXISTS invite_expires_at timestamptz;
+ALTER TABLE app.assignments ADD COLUMN IF NOT EXISTS invite_used_at timestamptz;
+
 CREATE INDEX IF NOT EXISTS assignments_org_idx ON app.assignments (org_id);
 CREATE INDEX IF NOT EXISTS assignments_assessment_idx ON app.assignments (assessment_id);
 CREATE INDEX IF NOT EXISTS assignments_candidate_idx ON app.assignments (candidate_id);

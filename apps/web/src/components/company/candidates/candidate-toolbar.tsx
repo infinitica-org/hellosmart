@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import {
   SearchInput,
-  TextureButton,
+  Button,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -80,12 +80,12 @@ export function CandidateToolbar({
       </div>
 
       {/* Filter Dropdown & Action Buttons */}
-      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+      <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
         {/* Status Dropdown Filter */}
         <DropdownMenu>
           <DropdownMenuTrigger
             disabled={disabled}
-            className={`h-10 px-3.5 text-xs sm:text-sm font-medium rounded-md border transition-all flex items-center gap-2 shadow-2xs select-none ${
+            className={`h-10 px-4 text-xs sm:text-sm font-medium rounded-md border transition-all inline-flex items-center gap-2 shadow-2xs select-none shrink-0 ${
               status !== 'all'
                 ? 'border-neutral-900 bg-neutral-900 text-white'
                 : 'border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700'
@@ -95,7 +95,7 @@ export function CandidateToolbar({
             <Users
               className={`w-4 h-4 shrink-0 ${status !== 'all' ? 'text-white' : 'text-neutral-400'}`}
             />
-            <span>{currentLabel}</span>
+            <span className="whitespace-nowrap">{currentLabel}</span>
             <ChevronDown
               className={`w-3.5 h-3.5 shrink-0 ${status !== 'all' ? 'text-white/80' : 'text-neutral-400'}`}
             />
@@ -127,28 +127,28 @@ export function CandidateToolbar({
         </DropdownMenu>
 
         {/* Bulk Upload Button */}
-        <TextureButton
+        <Button
           variant="secondary"
-          size="sm"
+          size="md"
+          leftIcon={<Upload className="w-4 h-4 shrink-0" />}
           onClick={onOpenBulkUpload}
           disabled={disabled}
-          className="h-10 text-xs sm:text-sm font-medium rounded-md"
+          className="h-10 px-4 text-xs sm:text-sm font-medium rounded-md whitespace-nowrap shrink-0 shadow-2xs"
         >
-          <Upload className="w-4 h-4 mr-1.5" />
           Bulk Upload
-        </TextureButton>
+        </Button>
 
         {/* Invite Candidate Button */}
-        <TextureButton
-          variant="brand"
-          size="sm"
+        <Button
+          variant="primary"
+          size="md"
+          leftIcon={<Plus className="w-4 h-4 shrink-0" />}
           onClick={onOpenInvite}
           disabled={disabled}
-          className="h-10 text-sm sm:text-sm font-medium rounded-md"
+          className="h-10 px-4 text-xs sm:text-sm font-medium rounded-md whitespace-nowrap shrink-0 shadow-2xs"
         >
-          <Plus className="w-4 h-4 mr-1.5" />
           Invite Candidate
-        </TextureButton>
+        </Button>
       </div>
     </div>
   );

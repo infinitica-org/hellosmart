@@ -20,8 +20,8 @@ export function BrowserCheck({ result, isRunning = false }: BrowserCheckProps) {
           <div
             className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
               isPass
-                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
-                : 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'
+                ? 'bg-success-muted text-success'
+                : 'bg-warning-muted text-warning'
             }`}
           >
             <Globe className="w-4 h-4" />
@@ -44,15 +44,15 @@ export function BrowserCheck({ result, isRunning = false }: BrowserCheckProps) {
             Detecting
           </Badge>
         ) : isPass ? (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-success-muted text-success-foreground border border-success-border shrink-0">
+          <Badge variant="success" size="sm" className="gap-1.5 shrink-0">
             <CheckCircle2 className="w-3.5 h-3.5" />
             Supported
-          </span>
+          </Badge>
         ) : (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-warning-muted text-warning-foreground border border-warning-border shrink-0">
+          <Badge variant="warning" size="sm" className="gap-1.5 shrink-0">
             <AlertTriangle className="w-3.5 h-3.5" />
             Warning
-          </span>
+          </Badge>
         )}
       </div>
 

@@ -119,7 +119,7 @@ export function ProvisionModal({
 
       toast({
         title: 'Company Provisioned Successfully',
-        description: `"${formData.name}" has been created with ${formData.plan.toUpperCase()} entitlements (BR-04, BR-05).`,
+        description: `"${formData.name}" has been created with ${formData.plan.toUpperCase()} entitlements.`,
         variant: 'success',
       });
 
@@ -154,7 +154,7 @@ export function ProvisionModal({
         <DialogHeader>
           <DialogTitle>Provision New Company</DialogTitle>
           <DialogDescription>
-            Platform Admins manually provision customer tenants and configure server-side entitlements (BR-04, BR-05).
+            Platform Admins manually provision customer tenants and configure server-side entitlements.
           </DialogDescription>
         </DialogHeader>
 
@@ -199,7 +199,7 @@ export function ProvisionModal({
               placeholder="admin@acme.com"
               value={formData.adminEmail}
               onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
-              helperText="Account creation link sent with forced password reset (BR-24)"
+              helperText="Account creation link sent with forced password reset"
               required
               data-testid="provision-email-input"
             />

@@ -91,7 +91,7 @@ export function RedFlagsEditor({
       </div>
 
       <FormDescription>
-        Negative indicators flagged for human evaluators. Candidates are never auto-rejected (BR-20).
+        Negative indicators flagged for human evaluators. Candidates are never auto-rejected.
       </FormDescription>
     </FormField>
   );

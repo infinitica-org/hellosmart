@@ -27,7 +27,7 @@ function NewAssessmentContent(): React.JSX.Element {
         />
 
         <Card className="p-8 sm:p-12 text-center rounded-2xl border border-neutral-200/80 bg-white space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+          <div className="w-12 h-12 rounded-2xl bg-warning-muted border border-warning-border text-warning flex items-center justify-center mx-auto">
             <AlertTriangle className="w-6 h-6" strokeWidth={2} />
           </div>
 
@@ -78,7 +78,7 @@ function NewAssessmentContent(): React.JSX.Element {
             <div className="font-semibold text-neutral-900">Blueprint Unavailable</div>
             <p className="text-neutral-600">
               {error?.message ||
-                'The selected template is not assigned to your organization or the version was archived (BR-02).'}
+                'The selected template is not assigned to your organization or the version was archived.'}
             </p>
             <div className="pt-2">
               <Link href="/company/templates">

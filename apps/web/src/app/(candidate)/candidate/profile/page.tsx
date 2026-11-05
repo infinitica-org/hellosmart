@@ -58,7 +58,7 @@ export function CandidateProfileView({
         title="My Profile"
         description="Candidate account details, contact email, and session verification preferences."
         badge={{
-          text: isResetRequired ? 'Reset Required (BR-24)' : 'Candidate Account',
+          text: isResetRequired ? 'Reset Required' : 'Candidate Account',
           variant: isResetRequired ? 'warning' : 'default',
         }}
         data-testid="profile-page-header"
@@ -70,7 +70,7 @@ export function CandidateProfileView({
             <div>
               <p className="font-semibold text-neutral-900">First-Time Login: Password Reset Required</p>
               <p className="text-xs text-neutral-700 mt-0.5">
-                Per security rule BR-24, you must choose a secure permanent password before completing assessments.
+                You must choose a secure permanent password before completing assessments.
               </p>
             </div>
             <Link href="/change-password" className="shrink-0">
@@ -134,7 +134,7 @@ export function CandidateProfileView({
           <div className="p-4 rounded-xl bg-neutral-50 border border-neutral-200/80 space-y-1">
             <span className="text-neutral-500 block font-light">Status</span>
             <span className="text-neutral-800 font-medium" data-testid="profile-status">
-              {isResetRequired ? 'Password Reset Required (BR-24)' : 'Ready for Assessment'}
+              {isResetRequired ? 'Password Reset Required' : 'Ready for Assessment'}
             </span>
             <span className="text-[11px] text-neutral-400 block">Server-enforced session authentication</span>
           </div>
@@ -144,7 +144,7 @@ export function CandidateProfileView({
             <span className="text-neutral-800 font-medium" data-testid="profile-timezone">
               {timezone}
             </span>
-            <span className="text-[11px] text-neutral-400 block">Timing windows evaluated in UTC (BR-08)</span>
+            <span className="text-[11px] text-neutral-400 block">Timing windows evaluated in UTC</span>
           </div>
 
           <div className="p-4 rounded-xl bg-neutral-50 border border-neutral-200/80 space-y-1">
@@ -152,7 +152,7 @@ export function CandidateProfileView({
             <span className="text-neutral-800 font-medium" data-testid="profile-org">
               {companyName}
             </span>
-            <span className="text-[11px] text-neutral-400 block">Assigned private templates (BR-02)</span>
+            <span className="text-[11px] text-neutral-400 block">Assigned private templates</span>
           </div>
 
           <div className="p-4 rounded-xl bg-neutral-50 border border-neutral-200/80 space-y-1">
@@ -160,7 +160,7 @@ export function CandidateProfileView({
             <span className="text-neutral-800 font-mono font-normal" data-testid="profile-id">
               {candidateId}
             </span>
-            <span className="text-[11px] text-neutral-400 block">Strict tenant isolation boundary (BR-01)</span>
+            <span className="text-[11px] text-neutral-400 block">Strict tenant isolation boundary</span>
           </div>
         </div>
       </Card>
@@ -171,7 +171,7 @@ export function CandidateProfileView({
           <div>
             <h3 className="text-sm font-semibold text-neutral-900">Work Simulation Assessments</h3>
             <p className="text-xs text-neutral-500 font-normal mt-0.5">
-              Launch assigned technical evaluations in the governed cloud workspace with continuous autosave (BR-11).
+              Launch assigned technical evaluations in the governed cloud workspace with continuous autosave.
             </p>
           </div>
           <Link href={ROUTES.CANDIDATE.DASHBOARD}>

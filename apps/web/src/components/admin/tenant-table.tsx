@@ -83,7 +83,7 @@ export function TenantTable({
 
       toast({
         title: targetStatus === 'suspended' ? 'Company Suspended' : 'Company Reinstated',
-        description: `"${org.name}" status updated to ${targetStatus} (BR-07).`,
+        description: `"${org.name}" status updated to ${targetStatus}.`,
         variant: targetStatus === 'suspended' ? 'warning' : 'success',
       });
 
@@ -135,7 +135,7 @@ export function TenantTable({
           description={
             isFiltered
               ? 'Try modifying your search keywords or resetting status filters to view more organizations.'
-              : 'Tenants must be provisioned by a Platform Admin (BR-04, no public self-signup in MMP).'
+              : 'Tenants must be provisioned by a Platform Admin (no public self-signup in MMP).'
           }
           action={
             isFiltered && onResetFilters
@@ -347,7 +347,7 @@ export function TenantTable({
         }
         description={
           confirmDialog.targetStatus === 'suspended'
-            ? 'Suspending this company immediately blocks new candidate workspace launches, assessment publishing, and AI proxy routing (BR-07). Running candidate sessions will complete gracefully.'
+            ? 'Suspending this company immediately blocks new candidate workspace launches, assessment publishing, and AI proxy routing. Running candidate sessions will complete gracefully.'
             : 'Reinstating this company restores full access to the company portal, candidate workspace launches, and assigned assessment templates.'
         }
         confirmLabel={confirmDialog.targetStatus === 'suspended' ? 'Suspend Company' : 'Reinstate Company'}

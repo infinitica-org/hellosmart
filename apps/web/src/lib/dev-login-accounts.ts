@@ -73,6 +73,14 @@ export const DEV_LOGIN_ACCOUNTS: Record<string, DevLoginAccount> = {
     requiresMfa: false,
     status: 'active',
   },
+  'candidate.aster-ridge.001@example.com': {
+    email: 'candidate.aster-ridge.001@example.com',
+    role: 'candidate',
+    portal: 'candidate',
+    name: 'Aster Ridge Candidate 001',
+    requiresMfa: false,
+    status: 'active',
+  },
   'complete@seed.example.test': {
     email: 'complete@seed.example.test',
     role: 'candidate',

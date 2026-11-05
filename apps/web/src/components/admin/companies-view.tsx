@@ -98,14 +98,14 @@ export function AdminCompaniesView({
         <StatCard
           label="TOTAL COMPANIES"
           value={metrics.totalCompanies.toString()}
-          description="Customer Companies provisioned (BR-04)"
+          description="Customer Companies provisioned"
           icon={<Building2 className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />}
           data-testid="metric-total-companies"
         />
         <StatCard
           label="ACTIVE TRIALS"
           value={metrics.activeTrials.toString()}
-          description="Organizations evaluating blueprints (BR-07)"
+          description="Organizations evaluating blueprints"
           icon={<Mail className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
           data-testid="metric-active-trials"
         />

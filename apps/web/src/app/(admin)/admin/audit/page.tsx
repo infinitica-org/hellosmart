@@ -97,7 +97,7 @@ export default function AdminAuditPage({ initialLogs }: AdminAuditPageProps = {}
       {/* Page Header */}
       <PageHeader
         title="Platform Audit Trail"
-        description="Immutable, append-only security and operational audit trail across all platform organizations (BR-31)."
+        description="Immutable, append-only security and operational audit trail across all platform organizations."
         badge={{ text: 'Append-Only', variant: 'default' }}
         data-testid="admin-audit-header"
       />
@@ -107,7 +107,7 @@ export default function AdminAuditPage({ initialLogs }: AdminAuditPageProps = {}
         <StatCard
           label="TOTAL AUDIT ENTRIES"
           value={logs.length > 0 ? logs.length.toLocaleString() : '0'}
-          description="Immutable recorded events (BR-31)"
+          description="Immutable recorded events"
           icon={<Database className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />}
           data-testid="stat-audit-total"
         />
@@ -249,7 +249,7 @@ export default function AdminAuditPage({ initialLogs }: AdminAuditPageProps = {}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
           <div className="space-y-1">
             <div className="font-semibold text-neutral-900">
-              BR-31 Invariant: Append-Only Cryptographic Audit Log
+              Append-Only Cryptographic Audit Log
             </div>
             <p className="text-neutral-600">
               Platform audit entries are strictly immutable. Administrative actions, tenant state changes, and authentication

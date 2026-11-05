@@ -43,7 +43,7 @@ export function AssessmentConfigurationStep({
       {/* ─── Timing Mode & Parameters Card ─── */}
       <div className="bg-white p-6 sm:p-8 rounded-2xl border border-card-border shadow-xs space-y-6">
         <h4 className="text-sm font-bold uppercase tracking-wider text-neutral-500 font-mono">
-          Assessment Timing &amp; Availability (BR-08)
+          Assessment Timing &amp; Availability
         </h4>
 
         {/* Timing Type Selector */}
@@ -119,7 +119,7 @@ export function AssessmentConfigurationStep({
             className="h-11 rounded-xl text-sm border-neutral-200 focus:border-primary focus:ring-1 focus:ring-primary/20 max-w-xs font-mono"
           />
           <FormDescription>
-            Enforced server-side. Workspace auto-submits when time expires (BR-08). Range: 15–480 minutes.
+            Enforced server-side. Workspace auto-submits when time expires. Range: 15–480 minutes.
           </FormDescription>
           {errors['timing.durationMinutes'] && (
             <FormError>{errors['timing.durationMinutes']}</FormError>

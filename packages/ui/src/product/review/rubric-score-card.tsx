@@ -74,7 +74,7 @@ export const RubricScoreCard = forwardRef<HTMLDivElement, RubricScoreCardProps>(
           {evidence.length > 0 && (
             <div className="pt-2 border-t border-neutral-200">
               <div className="text-[10px] uppercase font-semibold text-neutral-500 tracking-wider mb-2">
-                Mandatory Cited Evidence (BR-18):
+                Mandatory Cited Evidence:
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {evidence.map((refStr, idx) => (

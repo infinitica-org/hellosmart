@@ -362,7 +362,7 @@ export default function CompanyAnalyticsPage({ initialSubmissions }: CompanyAnal
 
                     <TableCell className="text-xs font-bold text-neutral-900">
                       {row.humanScore ? (
-                        <span className="text-emerald-700 font-semibold">{row.humanScore} / 100</span>
+                        <span className="text-success font-semibold">{row.humanScore} / 100</span>
                       ) : (
                         <span className="text-neutral-400 font-normal italic">Pending</span>
                       )}

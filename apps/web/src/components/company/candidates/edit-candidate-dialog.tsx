@@ -185,13 +185,13 @@ export function EditCandidateDialog({
                 }
               }}
               disabled={isSubmitting}
-              className={`pl-9 text-sm ${errors.name ? 'border-red-500 focus:border-red-500' : ''}`}
+              className={`pl-9 text-sm ${errors.name ? 'border-danger focus:border-danger' : ''}`}
             />
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
               <User className="h-4 w-4" />
             </div>
           </div>
-          {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
+          {errors.name && <p className="text-xs text-danger">{errors.name}</p>}
         </div>
 
         {/* Email input */}
@@ -215,20 +215,20 @@ export function EditCandidateDialog({
                 }
               }}
               disabled={isSubmitting || !isEmailEditable}
-              className={`pl-9 text-sm ${!isEmailEditable ? 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800' : ''} ${errors.email ? 'border-red-500 focus:border-red-500' : ''}`}
+              className={`pl-9 text-sm ${!isEmailEditable ? 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800' : ''} ${errors.email ? 'border-danger focus:border-danger' : ''}`}
             />
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
               <Mail className="h-4 w-4" />
             </div>
           </div>
-          {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
+          {errors.email && <p className="text-xs text-danger">{errors.email}</p>}
 
           {!isEmailEditable ? (
             <p className="text-xs text-neutral-500">
               Email cannot be changed after candidate activation (CO-015).
             </p>
           ) : (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
+            <p className="text-xs text-warning">
               Changing an invited email requires sending a fresh invitation link.
             </p>
           )}

@@ -93,7 +93,7 @@ export default function CompanyAssessmentDetailPage({ params }: AssessmentDetail
       {/* Page Header */}
       <PageHeader
         title={assessment.name}
-        description={`Role blueprint pinned to template version v${assessment.templateVersion} (BR-03).`}
+        description={`Role blueprint pinned to template version v${assessment.templateVersion}.`}
         badge={{ text: isCloud ? 'Cloud VM' : 'Chat Workspace', variant: 'default' }}
         actions={
           <div className="flex items-center gap-2">
@@ -163,7 +163,7 @@ export default function CompanyAssessmentDetailPage({ params }: AssessmentDetail
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5">
               <Clock className="w-4 h-4 text-neutral-400" />
-              Timing & Policy (BR-08, BR-09)
+              Timing & Policy
             </span>
             <Badge variant="default" size="sm">
               {assessment.timing?.type || 'duration'}
@@ -195,7 +195,7 @@ export default function CompanyAssessmentDetailPage({ params }: AssessmentDetail
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5">
               <Cpu className="w-4 h-4 text-neutral-400" />
-              AI Assistant Policy (BR-13)
+              AI Assistant Policy
             </span>
             <Badge variant={assessment.aiPolicy?.enabled !== false ? 'success' : 'default'} size="sm" dot>
               {assessment.aiPolicy?.enabled !== false ? 'AI Enabled' : 'AI Disabled'}
