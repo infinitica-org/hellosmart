@@ -2,8 +2,9 @@
 
 import React, { forwardRef, ReactNode } from 'react';
 import { HelloSmartLogo, HELLOSMART_LOGO_SRC } from '../hellosmart/logo';
+import { EmailFooter, EmailFooterVariant } from '../mail/mail-footer';
 
-export type FooterVariant = 'auth' | 'simple' | 'marketing';
+export type FooterVariant = 'auth' | 'simple' | 'marketing' | 'email';
 
 export interface FooterLink {
   label: string;
@@ -22,8 +23,12 @@ export interface FooterProps extends React.HTMLAttributes<HTMLElement> {
    * - 'auth': Compact, centered footer optimized for Login, Password Change, and Auth flows
    * - 'simple': Minimal single-line bottom footer
    * - 'marketing': Multi-column rich footer with brand description and category columns
+   * - 'email': Dedicated email-style footer matching the design system
    */
   variant?: FooterVariant | undefined;
+
+  /** Email footer style sub-variant (Default: 'social') */
+  emailVariant?: EmailFooterVariant | undefined;
 
   /** Brand display name (Default: 'HelloSmart.ai') */
   brandName?: string | undefined;
@@ -143,6 +148,7 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
   (
     {
       variant = 'auth',
+      emailVariant = 'social',
       brandName = 'HelloSmart.ai',
       brandTitle,
       logoSrc = HELLOSMART_LOGO_SRC,
@@ -375,7 +381,28 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
     }
 
     // --------------------------------------------------------------------------
-    // 3. Marketing Variant (Multi-Column Layout)
+    // 3. Email Variant (Matching Design System Email Footers)
+    // --------------------------------------------------------------------------
+    if (variant === 'email') {
+      return (
+        <EmailFooter
+          ref={ref as React.Ref<HTMLDivElement>}
+          variant={emailVariant}
+          brandName={brandName}
+          copyrightYear={copyrightYear}
+          showPoweredBy={showPoweredBy}
+          poweredByText={poweredByText}
+          poweredByHref={poweredByHref}
+          className={className}
+          {...props}
+        >
+          {children}
+        </EmailFooter>
+      );
+    }
+
+    // --------------------------------------------------------------------------
+    // 4. Marketing Variant (Multi-Column Layout)
     // --------------------------------------------------------------------------
     const shouldShowLogo = showLogo ?? true;
 

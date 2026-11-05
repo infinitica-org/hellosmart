@@ -278,6 +278,211 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/candidate/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List assessments assigned to authenticated candidate */
+        get: operations["getCandidateAssignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/candidate/assessments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get assessment details and brief for candidate */
+        get: operations["getCandidateAssessment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/candidate/assessments/{id}/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record legal consent before workspace launch */
+        post: operations["recordAssessmentConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/candidate/assessments/{id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start or reconnect to assessment workspace session */
+        post: operations["startAssessmentSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/candidate/assessments/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit candidate deliverables for assessment */
+        post: operations["submitAssessmentDeliverables"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/candidate/assessments/{id}/timing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get authoritative countdown timer state */
+        get: operations["getAssessmentTiming"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/candidate/assessments/{id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieve candidate workspace draft */
+        get: operations["getAssessmentDraft"];
+        put?: never;
+        /** Autosave candidate workspace draft (30s cadence) */
+        post: operations["saveAssessmentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/candidate/artifacts/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload deliverable archive to object storage */
+        post: operations["uploadDeliverableArtifact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/candidate/ping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Diagnostics endpoint for candidate system preflight check */
+        get: operations["pingCandidate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload candidate submission artifact (max 50MB streaming) */
+        post: operations["uploadArtifact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/download-url/{assignmentId}/{objectId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generate presigned download URL for submission artifact */
+        get: operations["getArtifactDownloadUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stream deliverable artifact via local storage download token */
+        get: operations["downloadArtifactLocal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -450,6 +655,154 @@ export interface components {
             success: boolean;
             /** @example All sessions revoked successfully */
             message: string;
+        };
+        CandidateAssignment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assessmentId: string;
+            title: string;
+            companyName: string;
+            durationMinutes: number;
+            /** @enum {string} */
+            status: "invited" | "window_not_open" | "ready" | "in_progress" | "disconnected" | "submitted" | "expired" | "revoked";
+            /** Format: date-time */
+            windowStartUtc?: string | null;
+            /** Format: date-time */
+            windowEndUtc?: string | null;
+            /** Format: date-time */
+            submittedAt?: string | null;
+            /** @enum {string} */
+            workspaceMode?: "cloud" | "chat";
+            /** Format: uuid */
+            workspaceId?: string | null;
+            instructions?: string | null;
+            description?: string | null;
+        };
+        CandidateAssessmentDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assignmentId: string;
+            name: string;
+            companyName: string;
+            durationMinutes: number;
+            /** @enum {string} */
+            workspaceMode: "cloud" | "chat";
+            /** @enum {string} */
+            status: "invited" | "window_not_open" | "ready" | "in_progress" | "disconnected" | "submitted" | "expired" | "revoked";
+            instructions?: string | null;
+            scenario?: string | null;
+            deliverables?: string[];
+            aiPolicy?: {
+                enabled?: boolean;
+                allowedModels?: string[];
+                capPerCandidate?: {
+                    /** @enum {string} */
+                    unit?: "tokens" | "cents";
+                    value?: number;
+                };
+                rpm?: number;
+            };
+            /** Format: date-time */
+            windowStartUtc?: string | null;
+            /** Format: date-time */
+            windowEndUtc?: string | null;
+        };
+        RecordConsentPayload: {
+            /** @example v1.0 */
+            textVersion: string;
+        };
+        ConsentRecord: {
+            /** Format: uuid */
+            consentId: string;
+            /** Format: uuid */
+            assignmentId: string;
+            textVersion: string;
+            /** Format: date-time */
+            acceptedAt: string;
+        };
+        WorkspaceSession: {
+            /** Format: uuid */
+            sessionId: string;
+            /** Format: uuid */
+            assignmentId: string;
+            /** @enum {string} */
+            mode: "cloud" | "chat";
+            /** @enum {string} */
+            status: "queued" | "provisioning" | "not_connected" | "connected" | "disconnected" | "ended" | "destroyed" | "failed";
+            /** Format: uri */
+            gatewayUrl: string;
+            ticket: string;
+            /** Format: date-time */
+            serverTimeUtc: string;
+            /** Format: date-time */
+            deadlineUtc: string;
+            remainingMs: number;
+            /** @default true */
+            requireFullscreen: boolean;
+        };
+        SubmitDeliverablesPayload: {
+            /** Format: uri */
+            repositoryUrl: string;
+            branchName: string;
+            uploadedArtifactId?: string | null;
+            architectureNotes: string;
+            /** @enum {boolean} */
+            confirmChecklist: true;
+        };
+        SubmissionReceipt: {
+            /** Format: uuid */
+            submissionId: string;
+            /** Format: uuid */
+            assignmentId: string;
+            /** @example sub_rec_7f8a9b0c */
+            receiptId: string;
+            /** Format: date-time */
+            submittedAt: string;
+        };
+        AssessmentTimingState: {
+            /** Format: uuid */
+            assessmentId: string;
+            /** Format: date-time */
+            serverTimeUtc: string;
+            /** Format: date-time */
+            deadlineUtc: string;
+            durationMinutes: number;
+            remainingMs: number;
+            /** @default false */
+            pauseTimerOnDisconnect: boolean;
+            /** @default false */
+            isExpired: boolean;
+        };
+        UploadedArtifact: {
+            /** Format: uuid */
+            id: string;
+            originalName: string;
+            mimeType: string;
+            sizeBytes: number;
+            /** Format: uri */
+            downloadUrl: string;
+            /** Format: date-time */
+            uploadedAt: string;
+        };
+        CandidateDraft: {
+            /** Format: uuid */
+            assignmentId: string;
+            repositoryUrl: string;
+            branchName: string;
+            uploadedArtifact?: components["schemas"]["UploadedArtifact"];
+            architectureNotes: string;
+            version: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CandidateDraftPayload: {
+            repositoryUrl: string;
+            branchName: string;
+            uploadedArtifact?: components["schemas"]["UploadedArtifact"];
+            architectureNotes: string;
+            version?: number;
         };
     };
     responses: {
@@ -1000,6 +1353,400 @@ export interface operations {
             404: components["responses"]["Problem"];
             409: components["responses"]["Problem"];
             423: components["responses"]["Problem"];
+        };
+    };
+    getCandidateAssignments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of assigned assessments for candidate */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateAssignment"][];
+                };
+            };
+            401: components["responses"]["Problem"];
+        };
+    };
+    getCandidateAssessment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Assessment details, instructions, and workspace configuration */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateAssessmentDetail"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+        };
+    };
+    recordAssessmentConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordConsentPayload"];
+            };
+        };
+        responses: {
+            /** @description Legal consent recorded durably */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentRecord"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
+    };
+    startAssessmentSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    ticket?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Assessment workspace session started or reconnected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceSession"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+        };
+    };
+    submitAssessmentDeliverables: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitDeliverablesPayload"];
+            };
+        };
+        responses: {
+            /** @description Final deliverables submitted and finalized */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionReceipt"];
+                };
+            };
+            400: components["responses"]["Problem"];
+            401: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
+    };
+    getAssessmentTiming: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative countdown timer state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentTimingState"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+        };
+    };
+    getAssessmentDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Candidate draft state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateDraft"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+        };
+    };
+    saveAssessmentDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandidateDraftPayload"];
+            };
+        };
+        responses: {
+            /** @description Draft saved successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateDraft"];
+                };
+            };
+            401: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
+    };
+    uploadDeliverableArtifact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Deliverable archive (.zip, .tar, .tar.gz, .tgz up to 50MB)
+                     */
+                    file: string;
+                    /**
+                     * Format: uuid
+                     * @description Optional assignment ID to link artifact with candidate draft
+                     */
+                    assignmentId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Artifact uploaded successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadedArtifact"];
+                };
+            };
+            400: components["responses"]["Problem"];
+            401: components["responses"]["Problem"];
+            403: components["responses"]["Problem"];
+            409: components["responses"]["Problem"];
+            413: components["responses"]["Problem"];
+            415: components["responses"]["Problem"];
+            422: components["responses"]["Problem"];
+        };
+    };
+    pingCandidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Diagnostic health status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example true */
+                        ok: boolean;
+                        /** @example 1730626800000 */
+                        timestamp: number;
+                        /** @example hellosmart-candidate-api */
+                        service: string;
+                    };
+                };
+            };
+        };
+    };
+    uploadArtifact: {
+        parameters: {
+            query?: {
+                /** @description Assessment assignment ID */
+                assignmentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: uuid
+                     * @description Assessment assignment ID
+                     */
+                    assignmentId?: string;
+                    /**
+                     * Format: binary
+                     * @description Candidate deliverable artifact (.zip, .pdf, .docx, .tar.gz, etc.)
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Artifact uploaded successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        objectId: string;
+                        key: string;
+                        filename: string;
+                        size: number;
+                        sha256: string;
+                        /** Format: date-time */
+                        uploadedAt: string;
+                    };
+                };
+            };
+            400: components["responses"]["Problem"];
+            401: components["responses"]["Problem"];
+            403: components["responses"]["Problem"];
+            413: components["responses"]["Problem"];
+        };
+    };
+    getArtifactDownloadUrl: {
+        parameters: {
+            query?: {
+                /** @description Target organization ID (required for platform_admin cross-tenant download) */
+                orgId?: string;
+            };
+            header?: never;
+            path: {
+                assignmentId: string;
+                objectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Presigned download URL generated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uri */
+                        url: string;
+                        /** @example 900 */
+                        expiresInSeconds: number;
+                    };
+                };
+            };
+            400: components["responses"]["Problem"];
+            401: components["responses"]["Problem"];
+            403: components["responses"]["Problem"];
+            404: components["responses"]["Problem"];
+        };
+    };
+    downloadArtifactLocal: {
+        parameters: {
+            query: {
+                /** @description HMAC-SHA256 signed download token */
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deliverable binary stream */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            400: components["responses"]["Problem"];
         };
     };
 }

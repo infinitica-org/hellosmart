@@ -83,3 +83,7 @@ export * from './icons/lucide';
 
 // HelloSmart Product Domain Components
 export * from './product';
+
+// HelloSmart Email Design System Components & Templates
+export * from './mail';
+

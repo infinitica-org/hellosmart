@@ -1,128 +1,138 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
-import { PageHeader, EmptyState, Badge, Button, Card } from '@hs/ui';
-import {
-  useGetCandidateAssessmentsQuery,
-  type CandidateAssessmentItem,
-} from '@/store/candidate/candidateApi';
-import { Laptop, MessageSquare, Clock } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { PageHeader, EmptyState, Button, Card } from '@hs/ui';
+import { AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { AssessmentCard, type CandidateAssessment } from '@/components/candidate/assessment-card';
+import { useGetCandidateAssignmentsQuery } from '@/store/candidate/candidateApi';
+import { ROUTES } from '@/constants/routes';
 
 export default function CandidateDashboardPage() {
-  const { data: rawAssignments } = useGetCandidateAssessmentsQuery();
+  const router = useRouter();
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error: rtkError,
+    refetch,
+  } = useGetCandidateAssignmentsQuery();
 
-  const assignments: CandidateAssessmentItem[] = React.useMemo(() => {
-    if (!rawAssignments) return [];
-    if (Array.isArray(rawAssignments)) return rawAssignments;
-    return (rawAssignments as { items?: CandidateAssessmentItem[] })?.items || [];
-  }, [rawAssignments]);
+  const isRefetching = !isLoading && isFetching;
+  const error = rtkError ? (rtkError as any).data || rtkError : null;
+
+  const handleStart = (assessment: CandidateAssessment) => {
+    router.push(ROUTES.CANDIDATE.DIAGNOSTICS(assessment.id));
+  };
+
+  const handleResume = (assessment: CandidateAssessment) => {
+    const targetId = assessment.workspaceId || assessment.id;
+    router.push(ROUTES.CANDIDATE.WORKSPACE(targetId));
+  };
+
+  const handleCountdownZero = (_assessment: CandidateAssessment) => {
+    void refetch();
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <PageHeader
         title="Candidate Assessment Workspace"
         description="Complete practical work simulation tasks in a controlled cloud environment with real developer tools."
         badge={{ text: 'Candidate Portal', variant: 'info' }}
         data-testid="candidate-page-header"
+        actions={
+          data && data.length > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              disabled={isLoading || isRefetching}
+              className="flex items-center gap-2 text-xs border-neutral-200 hover:bg-neutral-50"
+              aria-label="Refresh assessments"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          ) : undefined
+        }
       />
 
-      {/* Main Area: Show Assigned Assessment Card(s) or Clean Empty State */}
-      {assignments.length > 0 ? (
-        <div className="space-y-4">
-          {assignments.map((task) => {
-            const isReady = task.status === 'ready' || task.status === 'invited';
-            const isInProgress = task.status === 'in_progress' || task.status === 'disconnected';
-            const isSubmitted = task.status === 'submitted';
-            const isCloud = task.workspaceMode === 'cloud';
+      {/* Error State */}
+      {!isLoading && error && (
+        <Card
+          data-testid="candidate-error-state"
+          className="p-6 sm:p-8 border-red-200 bg-red-50/50 space-y-4"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-red-900">Failed to load assessments</h3>
+              <p className="text-xs text-red-700 mt-1">
+                {error.message || 'Unable to connect to the assessment service. Please try again.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              className="border-red-300 text-red-700 hover:bg-red-100/60"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              Try Again
+            </Button>
+          </div>
+        </Card>
+      )}
 
-            return (
-              <Card key={task.id} className="p-6 sm:p-8 space-y-5 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-neutral-100">
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-base font-medium text-neutral-900">{task.title}</h2>
-                      <Badge
-                        variant={
-                          isReady
-                            ? 'success'
-                            : isInProgress
-                            ? 'warning'
-                            : isSubmitted
-                            ? 'default'
-                            : 'default'
-                        }
-                        dot
-                      >
-                        {isReady
-                          ? 'Ready to Start'
-                          : isInProgress
-                          ? 'In Progress'
-                          : isSubmitted
-                          ? 'Submitted'
-                          : task.status}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-neutral-500 mt-1 font-light">
-                      Issued by{' '}
-                      <span className="text-neutral-800 font-medium">
-                        {task.companyName || 'Hiring Company'}
-                      </span>{' '}
-                      &bull; {task.durationMinutes} minutes duration
-                    </p>
-                  </div>
-
-                  <Link href={`/candidate/assessments/${task.id}`}>
-                    <Button
-                      type="button"
-                      variant="primary"
-                      data-testid="start-assessment-button"
-                      className="flex-shrink-0 bg-primary hover:bg-primary-hover text-white border-transparent font-medium"
-                    >
-                      {isReady
-                        ? 'Start Assessment →'
-                        : isInProgress
-                        ? 'Resume Assessment →'
-                        : 'View Details →'}
-                    </Button>
-                  </Link>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                  <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/80">
-                    <span className="text-neutral-500 block mb-0.5 font-light">Environment</span>
-                    <span className="text-neutral-800 font-medium inline-flex items-center gap-1.5">
-                      {isCloud ? (
-                        <Laptop className="w-3.5 h-3.5 text-neutral-500" />
-                      ) : (
-                        <MessageSquare className="w-3.5 h-3.5 text-neutral-500" />
-                      )}
-                      <span>{isCloud ? 'Cloud VM' : 'Chat Workspace'}</span>
-                    </span>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/80">
-                    <span className="text-neutral-500 block mb-0.5 font-light">Duration</span>
-                    <span className="text-neutral-800 font-medium inline-flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-neutral-500" />
-                      <span>{task.durationMinutes} Minutes</span>
-                    </span>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200/80">
-                    <span className="text-neutral-500 block mb-0.5 font-light">AI Assistance</span>
-                    <span className="text-neutral-800 font-medium">Governed AI Proxy</span>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
+      {/* Main Content: Assigned Tasks or Empty State */}
+      {data && data.length > 0 ? (
+        <div className="space-y-5" data-testid="candidate-assessments-list">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-medium text-neutral-900">Assigned Tasks</h2>
+              <p className="text-xs text-neutral-500 font-normal mt-0.5">
+                Active invitations from hiring companies.
+              </p>
+            </div>
+            {isFetching && (
+              <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Refreshing…</span>
+              </div>
+            )}
+          </div>
+          {data.map((assessment) => (
+            <AssessmentCard
+              key={assessment.id}
+              assessment={assessment}
+              onStartAssessment={handleStart}
+              onResumeAssessment={handleResume}
+              onCountdownZero={handleCountdownZero}
+            />
+          ))}
         </div>
       ) : (
-        <Card className="p-6 sm:p-8 shadow-xs space-y-6">
-          <div>
-            <h2 className="text-base font-medium text-neutral-900">Assigned Tasks</h2>
-            <p className="text-xs text-neutral-500 font-normal mt-0.5">
-              Active invitations from hiring companies.
-            </p>
+        <Card className="p-6 sm:p-8 shadow-xs space-y-6" data-testid="candidate-empty-container">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-medium text-neutral-900">Assigned Tasks</h2>
+              <p className="text-xs text-neutral-500 font-normal mt-0.5">
+                Active invitations from hiring companies.
+              </p>
+            </div>
+            {isLoading && (
+              <div className="flex items-center gap-1.5 text-xs text-neutral-400" data-testid="candidate-loading-indicator">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Loading…</span>
+              </div>
+            )}
           </div>
 
           <EmptyState

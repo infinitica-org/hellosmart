@@ -121,6 +121,10 @@ export interface TopbarProps {
   onAccountClick?: () => void;
   onPreferencesClick?: () => void;
   onBillingClick?: () => void;
+  /** Plan name or status badge text (e.g. "Active plan", "Trial plan", "Platform", "Verified"). */
+  planName?: string | null | undefined;
+  /** Whether to show the billing link in the user menu. Defaults to false for candidates and true for company/admin */
+  showBilling?: boolean | undefined;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -164,24 +168,8 @@ export interface TopbarUserProfileDropdownProps {
   accountHref?: string | undefined;
   preferencesHref?: string | undefined;
   billingHref?: string | undefined;
-  onAccountClick?: (() => void) | undefined;
-  onPreferencesClick?: (() => void) | undefined;
-  onBillingClick?: (() => void) | undefined;
-  renderLink?: TopbarProps['renderLink'];
-}
-
-export interface TopbarUserProfileDropdownProps {
-  userName?: string | undefined;
-  userEmail?: string | undefined;
-  userAvatar?: string | undefined;
-  userRole?: string | undefined;
-  companyName?: string | undefined;
-  onLogout?: (() => void) | undefined;
-  profileMenuItems?: ReactNode | undefined;
-  profileTriggerTestId?: string | undefined;
-  accountHref?: string | undefined;
-  preferencesHref?: string | undefined;
-  billingHref?: string | undefined;
+  planName?: string | null | undefined;
+  showBilling?: boolean | undefined;
   onAccountClick?: (() => void) | undefined;
   onPreferencesClick?: (() => void) | undefined;
   onBillingClick?: (() => void) | undefined;
@@ -200,36 +188,74 @@ function TopbarUserProfileDropdown({
   accountHref,
   preferencesHref,
   billingHref,
+  planName,
+  showBilling,
   onAccountClick,
   onPreferencesClick,
   onBillingClick,
   renderLink,
 }: TopbarUserProfileDropdownProps) {
-  // Resolve link destinations based on role or fallback
-  const isCandidate = userRole?.toLowerCase().includes('candidate');
-  const isAdmin = userRole?.toLowerCase().includes('admin');
+  // Resolve link destinations accurately based on role
+  const roleLower = userRole?.toLowerCase() || '';
+  const isCandidate = roleLower.includes('candidate');
+  const isPlatformAdmin = roleLower.includes('platform') || roleLower.includes('super');
+  const isCompany = roleLower.includes('company');
 
   const defaultAccountHref = isCandidate
     ? '/candidate/profile'
-    : isAdmin
+    : isPlatformAdmin
       ? '/admin/settings'
       : '/company/settings';
 
   const defaultPreferencesHref = isCandidate
     ? '/candidate/profile'
-    : isAdmin
+    : isPlatformAdmin
       ? '/admin/settings'
       : '/company/settings';
 
-  const defaultBillingHref = isAdmin
-    ? '/admin/settings'
-    : isCandidate
-      ? '/candidate'
+  const defaultBillingHref = isCandidate
+    ? undefined
+    : isPlatformAdmin
+      ? '/admin/settings'
       : '/company/settings';
 
   const resolvedAccountHref = accountHref ?? defaultAccountHref;
   const resolvedPreferencesHref = preferencesHref ?? defaultPreferencesHref;
-  const resolvedBillingHref = billingHref ?? defaultBillingHref;
+  const resolvedBillingHref = billingHref !== undefined ? billingHref : defaultBillingHref;
+
+  // Resolve whether Billing item should be rendered:
+  // Candidates NEVER have billing unless explicitly forced.
+  // Company & Platform Admin show billing if resolvedBillingHref exists.
+  const shouldShowBilling = showBilling !== undefined
+    ? showBilling
+    : (!isCandidate && Boolean(resolvedBillingHref));
+
+  // Resolve role pill subtitle & plan badge:
+  let resolvedPlanLabel: string | null = null;
+  let planColorClass = 'text-emerald-600 dark:text-emerald-400 font-medium';
+
+  if (planName !== undefined) {
+    resolvedPlanLabel = planName;
+    if (planName && /trial/i.test(planName)) {
+      planColorClass = 'text-amber-600 dark:text-amber-400 font-medium';
+    } else if (planName && (/platform/i.test(planName) || /system/i.test(planName))) {
+      planColorClass = 'text-blue-600 dark:text-blue-400 font-medium';
+    } else if (planName && /verified/i.test(planName)) {
+      planColorClass = 'text-neutral-500 dark:text-neutral-400 font-medium';
+    }
+  } else if (isCandidate) {
+    // Candidates are job seekers taking assessments, not SaaS billing subscribers
+    resolvedPlanLabel = 'Verified';
+    planColorClass = 'text-neutral-500 dark:text-neutral-400 font-medium';
+  } else if (isPlatformAdmin) {
+    // Platform super admins manage the whole system, not a tenant subscription
+    resolvedPlanLabel = 'Platform';
+    planColorClass = 'text-blue-600 dark:text-blue-400 font-medium';
+  } else {
+    // Company admin on active subscription
+    resolvedPlanLabel = 'Active plan';
+    planColorClass = 'text-emerald-600 dark:text-emerald-400 font-medium';
+  }
 
   const renderDropdownLink = ({
     label,
@@ -298,9 +324,13 @@ function TopbarUserProfileDropdown({
             {userName || 'Account'}
           </p>
           <p className="text-[11px] text-neutral-400 leading-tight truncate max-w-[160px] flex items-center gap-1.5 mt-0.5">
-            <span>{userRole || 'Admin'}</span>
-            <span className="text-neutral-300 dark:text-neutral-600">•</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-medium">Active plan</span>
+            <span>{userRole || (isCandidate ? 'Candidate' : isPlatformAdmin ? 'Super Admin' : 'Company Admin')}</span>
+            {resolvedPlanLabel && (
+              <>
+                <span className="text-neutral-300 dark:text-neutral-600">•</span>
+                <span className={planColorClass}>{resolvedPlanLabel}</span>
+              </>
+            )}
           </p>
         </div>
       </DropdownMenuTrigger>
@@ -350,13 +380,15 @@ function TopbarUserProfileDropdown({
             testId: 'preferences-menu-item',
           })}
 
-          {renderDropdownLink({
-            label: 'Billing',
-            icon: <CreditCard className="w-4 h-4 shrink-0" />,
-            href: resolvedBillingHref,
-            onClick: onBillingClick,
-            testId: 'billing-menu-item',
-          })}
+          {shouldShowBilling && resolvedBillingHref && (
+            renderDropdownLink({
+              label: 'Billing',
+              icon: <CreditCard className="w-4 h-4 shrink-0" />,
+              href: resolvedBillingHref,
+              onClick: onBillingClick,
+              testId: 'billing-menu-item',
+            })
+          )}
 
           {profileMenuItems}
         </div>

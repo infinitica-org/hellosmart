@@ -198,12 +198,13 @@ DropdownMenuContent.displayName = 'DropdownMenuContent';
 export interface DropdownMenuItemProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   icon?: ReactNode | undefined;
+  rightSlot?: ReactNode | undefined;
   variant?: ('default' | 'danger') | undefined;
   href?: string | undefined;
 }
 
 export const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemProps>(
-  ({ children, icon, variant = 'default', className = '', onClick, disabled, href, ...props }, ref) => {
+  ({ children, icon, rightSlot, variant = 'default', className = '', onClick, disabled, href, ...props }, ref) => {
     const { setOpen } = useDropdown();
 
     const handleClick = (e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => {
@@ -227,7 +228,8 @@ export const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemPr
           className={`flex w-full items-center gap-3 px-3 py-2.5 text-sm transition-colors cursor-pointer select-none disabled:opacity-40 disabled:pointer-events-none focus:outline-none ${variantStyles} ${className}`}
         >
           {icon && <span className="flex-shrink-0 text-neutral-500 dark:text-neutral-400">{icon}</span>}
-          <span className="flex-1 text-left">{children}</span>
+          <span className="flex-1 text-left truncate">{children}</span>
+          {rightSlot && <span className="flex-shrink-0 ml-auto flex items-center">{rightSlot}</span>}
         </a>
       );
     }
@@ -243,7 +245,8 @@ export const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemPr
         {...props}
       >
         {icon && <span className="flex-shrink-0 text-neutral-500 dark:text-neutral-400">{icon}</span>}
-        <span className="flex-1 text-left">{children}</span>
+        <span className="flex-1 text-left truncate">{children}</span>
+        {rightSlot && <span className="flex-shrink-0 ml-auto flex items-center">{rightSlot}</span>}
       </button>
     );
   }

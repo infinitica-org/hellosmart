@@ -68,7 +68,7 @@ export class AssignmentsService {
         timing,
         deadlineAt: row.deadline_at ? new Date(row.deadline_at) : null,
         now,
-      }) as TimingStatus & { windowStatus: typeof decision.status };
+      }) as TimingStatus;
     });
   }
 

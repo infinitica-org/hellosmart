@@ -510,7 +510,7 @@ export default function CandidateAssessmentTakePage(props?: PageProps) {
                 <div className="space-y-2 pt-2 border-t border-neutral-100">
                   <span className="text-xs font-medium text-neutral-900">Required Deliverables:</span>
                   <ul className="text-xs text-neutral-600 space-y-1 list-disc list-inside">
-                    {assessment.briefOverrides.deliverables.map((item, idx) => (
+                    {assessment.briefOverrides.deliverables.map((item: any, idx: number) => (
                       <li key={idx}>{item}</li>
                     ))}
                   </ul>

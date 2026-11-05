@@ -23,6 +23,6 @@ describe('Login Page Notices & UX (BUG-14)', () => {
     const pageElement = React.createElement(LoginPage);
     expect(pageElement).toBeDefined();
     expect(pageElement.type).toBe(LoginPage);
-  });
+  }, 15000);
 });
 

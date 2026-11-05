@@ -44,10 +44,28 @@ export * from './fake-workspace.js';
 export * from './fake-secrets.js';
 export * from './fake-http.js';
 export * from './fake-llm.js';
+export * from './storage/storage.interface.js';
+export * from './storage/fake-storage.adapter.js';
+export * from './storage/s3-storage.adapter.js';
 
 import { FakeEmailSender } from './fake-email.js';
 import { FakePaymentGateway } from './fake-payment.js';
 import { FakeSafeHttp } from './fake-http.js';
+import { MemoryStorageAdapter } from './storage/fake-storage.adapter.js';
+import { S3CompatibleStorageAdapter, type S3StorageConfig } from './storage/s3-storage.adapter.js';
+import type { StorageAdapter } from './storage/storage.interface.js';
+
+export type StorageProvider = 'fake' | 'memory' | 's3';
+
+export function createStorageAdapter(
+  provider: StorageProvider = 'memory',
+  config?: S3StorageConfig,
+): StorageAdapter {
+  if (provider === 's3' && config) {
+    return new S3CompatibleStorageAdapter(config);
+  }
+  return new MemoryStorageAdapter();
+}
 import { FakeSecretStore } from './fake-secrets.js';
 import { FakeWorkspaceRuntime } from './fake-workspace.js';
 

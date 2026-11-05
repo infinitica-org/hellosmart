@@ -1,5 +1,18 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { createCustomBaseQuery } from '../api/baseApi';
+import { getApiBaseUrl } from '@/lib/api-client';
+import type {
+  WorkspaceSession,
+} from '@/lib/candidate-api';
+import type { CandidateAssessment } from '@/components/candidate/assessment-card';
+import type {
+  AssessmentTimingResponse,
+  CandidateDraft,
+  SubmitAssessmentDto,
+  SubmitAssessmentResponse,
+  AssessmentConsentResponse,
+  UploadedArtifactMetadata,
+} from '@hs/contracts';
 
 /**
  * Cache tags owned and accessible to the Candidate portal.
@@ -11,6 +24,10 @@ export const CANDIDATE_TAG_TYPES = [
   'Assessments',
   'Workspace',
   'Submissions',
+  'CandidateAssignments',
+  'ActiveSession',
+  'AssessmentDetail',
+  'CandidateDraft',
 ] as const;
 
 export type CandidateTagType = (typeof CANDIDATE_TAG_TYPES)[number];
@@ -37,6 +54,9 @@ export interface CandidateAssessmentItem {
 }
 
 export interface CandidateAssessmentDetail extends CandidateAssessmentItem {
+  deadline?: string | null;
+  releaseResults?: boolean;
+  submittedAt?: string | null;
   timing?: {
     type?: string;
     durationMinutes?: number;
@@ -84,11 +104,19 @@ export interface AssessmentSubmissionResponse {
  */
 export const candidateApi = createApi({
   reducerPath: 'candidateApi',
-  baseQuery: createCustomBaseQuery({ reducerPath: 'candidateApi' }),
+  baseQuery: createCustomBaseQuery({
+    baseUrl: getApiBaseUrl(),
+    reducerPath: 'candidateApi',
+  }),
   tagTypes: CANDIDATE_TAG_TYPES,
   endpoints: (builder) => ({
+    getCandidateAssignments: builder.query<CandidateAssessment[], void>({
+      query: () => '/candidate/assignments',
+      providesTags: ['CandidateAssignments', 'Assessments'],
+    }),
+
     getCandidateAssessments: builder.query<CandidateAssessmentItem[], void>({
-      query: () => 'candidate/assessments',
+      query: () => '/candidate/assignments',
       providesTags: (result) => {
         const items = Array.isArray(result)
           ? result
@@ -103,9 +131,30 @@ export const candidateApi = createApi({
       },
     }),
 
+    getCandidateAssessment: builder.query<CandidateAssessmentDetail, string>({
+      query: (id) => `/candidate/assessments/${encodeURIComponent(id)}`,
+      providesTags: (_result, _error, id) => [{ type: 'AssessmentDetail', id }],
+    }),
+
     getAssessmentById: builder.query<CandidateAssessmentDetail, string>({
-      query: (id) => `candidate/assessments/${encodeURIComponent(id)}`,
-      providesTags: (_result, _error, id) => [{ type: 'Assessments', id }],
+      query: (id) => `/candidate/assessments/${encodeURIComponent(id)}`,
+      providesTags: (_result, _error, id) => [{ type: 'Assessments', id }, { type: 'AssessmentDetail', id }],
+    }),
+
+    recordConsent: builder.mutation<
+      AssessmentConsentResponse,
+      { id: string; textVersion: string }
+    >({
+      query: ({ id, textVersion }) => ({
+        url: `/candidate/assessments/${encodeURIComponent(id)}/consent`,
+        method: 'POST',
+        body: { textVersion },
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        'CandidateAssignments',
+        'Assessments',
+        { type: 'AssessmentDetail', id },
+      ],
     }),
 
     acceptConsent: builder.mutation<
@@ -113,7 +162,7 @@ export const candidateApi = createApi({
       { assignmentId: string; textVersion?: string }
     >({
       query: ({ assignmentId, textVersion }) => ({
-        url: `candidate/workspace/${encodeURIComponent(assignmentId)}/consent`,
+        url: `/candidate/workspace/${encodeURIComponent(assignmentId)}/consent`,
         method: 'POST',
         body: { textVersion: textVersion || 'v1.0' },
       }),
@@ -124,14 +173,73 @@ export const candidateApi = createApi({
       ],
     }),
 
+    startAssessment: builder.mutation<
+      WorkspaceSession,
+      { id: string; ticket?: string }
+    >({
+      query: ({ id, ticket }) => ({
+        url: `/candidate/assessments/${encodeURIComponent(id)}/start`,
+        method: 'POST',
+        body: ticket ? { ticket } : {},
+      }),
+      invalidatesTags: ['CandidateAssignments', 'Assessments', 'ActiveSession', 'Workspace'],
+    }),
+
+    getAssessmentTiming: builder.query<AssessmentTimingResponse, string>({
+      query: (id) => `/candidate/assessments/${encodeURIComponent(id)}/timing`,
+    }),
+
+    getAssessmentDraft: builder.query<CandidateDraft, string>({
+      query: (id) => `/candidate/assessments/${encodeURIComponent(id)}/draft`,
+      providesTags: (_result, _error, id) => [{ type: 'CandidateDraft', id }],
+    }),
+
+    saveAssessmentDraft: builder.mutation<
+      CandidateDraft,
+      { id: string; payload: Partial<CandidateDraft> }
+    >({
+      query: ({ id, payload }) => ({
+        url: `/candidate/assessments/${encodeURIComponent(id)}/draft`,
+        method: 'POST',
+        body: payload,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'CandidateDraft', id }],
+    }),
     saveDraft: builder.mutation<{ success: boolean; savedAt: string }, WorkspaceDraftPayload>({
       query: (body) => ({
-        url: `candidate/workspace/${encodeURIComponent(body.workspaceId)}/draft`,
+        url: `/candidate/assessments/${encodeURIComponent(body.workspaceId)}/draft`,
         method: 'POST',
         body,
       }),
       invalidatesTags: (_result, _error, { workspaceId }) => [
         { type: 'Workspace', id: workspaceId },
+        { type: 'CandidateDraft', id: workspaceId },
+      ],
+    }),
+
+    uploadArtifact: builder.mutation<UploadedArtifactMetadata, FormData>({
+      query: (formData) => ({
+        url: '/candidate/artifacts/upload',
+        method: 'POST',
+        body: formData,
+      }),
+    }),
+
+    submitDeliverables: builder.mutation<
+      SubmitAssessmentResponse,
+      { id: string; payload: SubmitAssessmentDto }
+    >({
+      query: ({ id, payload }) => ({
+        url: `/candidate/assessments/${encodeURIComponent(id)}/submit`,
+        method: 'POST',
+        body: payload,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        'CandidateAssignments',
+        'Assessments',
+        'ActiveSession',
+        'Submissions',
+        { type: 'CandidateDraft', id },
       ],
     }),
 
@@ -140,7 +248,7 @@ export const candidateApi = createApi({
       AssessmentSubmissionPayload
     >({
       query: (body) => ({
-        url: `candidate/workspace/${encodeURIComponent(body.workspaceId)}/submit`,
+        url: `/candidate/assessments/${encodeURIComponent(body.workspaceId)}/submit`,
         method: 'POST',
         body,
       }),
@@ -150,15 +258,29 @@ export const candidateApi = createApi({
         { type: 'Submissions', id: 'LIST' },
       ],
     }),
+
+    pingCandidate: builder.query<{ ok: boolean; timestamp: number }, void>({
+      query: () => '/candidate/ping',
+    }),
   }),
 });
 
 export const {
+  useGetCandidateAssignmentsQuery,
   useGetCandidateAssessmentsQuery,
   useLazyGetCandidateAssessmentsQuery,
+  useGetCandidateAssessmentQuery,
   useGetAssessmentByIdQuery,
   useLazyGetAssessmentByIdQuery,
+  useRecordConsentMutation,
   useAcceptConsentMutation,
+  useStartAssessmentMutation,
+  useGetAssessmentTimingQuery,
+  useGetAssessmentDraftQuery,
+  useSaveAssessmentDraftMutation,
   useSaveDraftMutation,
+  useUploadArtifactMutation,
+  useSubmitDeliverablesMutation,
   useSubmitAssessmentMutation,
+  usePingCandidateQuery,
 } = candidateApi;

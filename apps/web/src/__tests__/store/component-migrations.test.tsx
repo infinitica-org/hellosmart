@@ -20,6 +20,19 @@ import { TenantTable } from '@/components/admin/tenant-table';
 import { ProvisionModal } from '@/components/admin/provision-modal';
 import { ToastProvider } from '@hs/ui';
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+  }),
+  usePathname: () => '/candidate',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 describe('S1-T00-3: Component API Migration & RTK Endpoint Tests', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -251,6 +264,8 @@ describe('S1-T00-3: Component API Migration & RTK Endpoint Tests', () => {
       expect(candidatesList).toBeDefined();
       expect(candidatesList).toHaveLength(1);
       expect(candidatesList?.[0]?.email).toBe('jane@example.com');
+      expect(candidatesList?.[0]?.email).toBe('jane@example.com');
+
     });
 
     it('executes getCompanyMetrics query providing dedicated Metrics tag (decoupled from Candidates tag)', async () => {

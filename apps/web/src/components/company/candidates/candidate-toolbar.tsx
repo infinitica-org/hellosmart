@@ -114,14 +114,12 @@ export function CandidateToolbar({
                 <DropdownMenuItem
                   key={opt.value}
                   onClick={() => onStatusChange(opt.value)}
+                  rightSlot={isSelected ? <Check className="w-4 h-4 text-neutral-900 shrink-0" /> : undefined}
                   className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer ${
                     isSelected ? 'font-semibold text-neutral-900 bg-neutral-100' : 'text-neutral-700'
                   }`}
                 >
-                  <div className="flex items-center justify-between w-full gap-2">
-                    <span>{opt.label}</span>
-                    {isSelected && <Check className="w-4 h-4 text-neutral-900 shrink-0" />}
-                  </div>
+                  {opt.label}
                 </DropdownMenuItem>
               );
             })}
