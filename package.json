@@ -2,7 +2,10 @@
   "name": "hellosmart",
   "private": true,
   "packageManager": "pnpm@9.12.3",
-  "engines": { "node": ">=22.11.0", "pnpm": ">=9.12.0" },
+  "engines": {
+    "node": ">=22.11.0",
+    "pnpm": ">=9.12.0"
+  },
   "scripts": {
     "dev": "turbo run dev --parallel",
     "build": "turbo run build",
@@ -15,18 +18,35 @@
     "contracts:check": "pnpm --filter @hs/contracts check",
     "db:migrate": "pnpm --filter @hs/api db:migrate",
     "db:seed": "pnpm --filter @hs/fixtures seed",
+    "db:viewer": "docker compose up -d postgres adminer",
+
+    "dev:up": "docker compose up -d",
+    "dev:down": "docker compose down",
+
+    "db:verify-seed": "pnpm --filter @hs/fixtures verify",
+
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
+    "obs:up": "docker compose -f docker-compose.yml -f docker-compose.obs.yml up -d",
+    "obs:down": "docker compose -f docker-compose.yml -f docker-compose.obs.yml down",
     "docs:dev": "pnpm --dir apps/docs dev",
     "docs:build": "pnpm --dir apps/docs build",
     "docs:sync-check": "node scripts/aidlc-docs-check.mjs",
+    "matrix:verify": "node scripts/verify-traceability.mjs",
     "secrets:scan": "gitleaks detect --no-banner --redact",
     "format": "prettier --write ."
   },
   "devDependencies": {
     "@hs/config": "workspace:*",
+    "@playwright/test": "^1.51.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "prettier": "3.3.3",
     "turbo": "2.2.3",
     "typescript": "5.6.3"
+  },
+  "overrides": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
   }
 }

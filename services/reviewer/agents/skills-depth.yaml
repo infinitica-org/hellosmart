@@ -1,0 +1,34 @@
+# Ported from ProjAgentScan (src/agents/skills_depth), AD-014b. Five criteria (declared vs
+# evidenced, technology breadth, framework depth, implementation-complexity evidence, evidence
+# grounding) condensed into one scale -- see code-quality.yaml's header comment for why. The
+# evidence builder (evidence_sources/skills_depth.py) carries over ProjAgentScan's
+# `_is_import_only_module` gaming-vulnerability fix: a dummy file that only imports declared
+# packages and does nothing else does not count as "using" them (docs/memory/pitfalls.md #26).
+id: skills-depth
+version: 1.0.0
+model: claude-sonnet-5-5
+evidence_channels: [artifact]
+scale: { min: 1, max: 5 }
+anchors:
+  1: Most declared dependencies are never imported anywhere with real code around them; little
+     to no technology breadth beyond a single layer; functions are stubs or placeholders.
+  3: Roughly half of declared dependencies are genuinely used; one or two architectural layers
+     are represented; some real implementation alongside some stubs.
+  5: Nearly all declared dependencies are genuinely used (imported and referenced in files that
+     also do other real work); multiple distinct architectural layers (web/API, database,
+     testing, data processing, ...); libraries are used with real depth, not one superficial
+     call; little to no placeholder/stub code.
+signals:
+  - a declared dependency is imported in a file that also contains other real code (not an
+    import-only dummy file)
+  - distinct architectural layers represented (web/API, database/ORM, testing, data processing, CLI)
+  - a framework is used for more than one superficial call (routes, middleware, real queries, etc.)
+  - few or no pass-only / NotImplementedError stub functions
+red_flags:
+  - a declared dependency imported only in a file whose entire body is import statements
+  - many functions that are stubs, placeholders, or raise NotImplementedError
+disallowed_inferences:
+  - Count use, not declaration -- a library in a manifest is not a skill unless imported and exercised with real surrounding code.
+  - Do not credit a dependency imported only in an otherwise-empty file as "used"; that is the documented gaming vector this agent's evidence builder specifically guards against.
+  - Do not judge skills not in the evidence; say the evidence is insufficient rather than guessing.
+output_schema: AgentScore

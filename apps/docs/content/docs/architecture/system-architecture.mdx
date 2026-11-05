@@ -45,6 +45,7 @@ flowchart TB
 
     subgraph DataStorage["State & Storage Tier"]
         Postgres[("PostgreSQL 16 + citext + pgcrypto\n(Row-Level Security Enabled)")]
+        PgBouncer["PgBouncer transaction pool :6432"]
         RedisCluster[("Redis 7 (Session Store & BullMQ Queues)")]
         S3Storage[("AWS S3 (Snapshots, Terminal Logs, Audio/Video)")]
     end
@@ -54,7 +55,7 @@ flowchart TB
     ALB --> API
     ALB --> WSGateway
 
-    API --> Postgres
+    API --> PgBouncer --> Postgres
     API --> RedisCluster
     API --> Worker
     
@@ -69,6 +70,7 @@ flowchart TB
     AIProxy -->|Metered & Filtered| ExternalLLM["External LLM Providers (OpenAI, Anthropic)"]
 
     Worker --> Reviewer
+    Worker --> PgBouncer
     Reviewer --> S3Storage
     Reviewer --> Postgres
 ```
@@ -94,7 +96,13 @@ Acts as the single gatekeeper between candidate workspaces and external AI provi
 - **Audit Logging**: Saves complete prompt and completion transcripts to S3 and Postgres for reviewer agents to evaluate.
 
 ### Background Job Workers (`apps/worker`)
-Powered by BullMQ and Redis:
-- **Auto-Submit Scheduler**: Schedules precise auto-submission tasks when assignment timers expire (BR-08).
-- **Workspace Garbage Collector**: Destroys abandoned or timed-out workspaces after persisting a final state snapshot (BR-22, BR-23).
-- **Retention Deletion**: Purges candidate PII and recording artifacts after the organization's retention window (default 90 days).
+Same image as `@hs/api`, command `node dist/worker.js`. BullMQ on Redis (`hs:{env}:ops`). Product jobs (auto-submit, cleanup, retention) are not registered yet; a repeating ping job plus `/api/v1/health/ready` keep the process observable.
+
+### Connection pooling and HTTP scale
+- **PgBouncer** (`transaction` mode, `max_prepared_statements = 200`) sits in front of Postgres. App and worker use port 6432. Migrations use Postgres 5432.
+- Client `PG_POOL_MAX` defaults to 5. PgBouncer `default_pool_size` is 20.
+- **Caddy** load-balances API replicas (`least_conn`) and health-checks `/api/v1/health/ready`.
+- Redis is a direct client (sessions, throttles, BullMQ). No Redis proxy.
+
+### Observability
+Pino JSON on stdout, OTLP to the Compose collector, Loki (7 days), Tempo, Prometheus Blackbox, Grafana, Dozzle for live tail. See [Observability kit](/docs/operations/observability).

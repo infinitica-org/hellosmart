@@ -2,7 +2,7 @@
 # QA helper, run on the QA host in /srv/hellosmart as user deploy.
 #   ./qa.sh deploy <sha>   pull images for <sha>, migrate, restart, smoke
 #   ./qa.sh reset          wipe QA data, migrate, seed fixtures
-#   ./qa.sh logs <svc>     tail logs
+#   ./qa.sh logs <svc>     tail logs (live follow is Dozzle on 127.0.0.1:8888)
 set -euo pipefail
 cd "$(dirname "$0")"
 COMPOSE=(docker compose -f docker-compose.qa.yml --env-file .env.qa)

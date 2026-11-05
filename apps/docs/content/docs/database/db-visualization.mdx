@@ -17,6 +17,9 @@ HelloSmart uses **PostgreSQL 16** with `citext` and `pgcrypto` extensions. Multi
 erDiagram
     ORGANIZATIONS ||--o{ ENTITLEMENTS : "governs"
     ORGANIZATIONS ||--o{ USERS : "contains"
+    ORGANIZATIONS ||--o{ INVITATIONS : "issues"
+    USERS ||--o{ INVITATIONS : "receives"
+    USERS ||--o{ PASSWORD_HISTORY : "retains"
     ORGANIZATIONS ||--o{ TEMPLATE_ASSIGNMENTS : "licensed_to"
     ORGANIZATIONS ||--o{ ASSESSMENTS : "creates"
     ORGANIZATIONS ||--o{ CANDIDATES : "owns"
@@ -73,8 +76,29 @@ erDiagram
         string role "platform_admin | company_admin | candidate"
         string password_hash "argon2id"
         boolean must_reset_password
+        text mfa_secret_ref "AES-256-GCM envelope or env reference"
+        bigint mfa_last_step "Atomic TOTP replay protection counter"
         string status "invited | active | suspended | deleted"
+        timestamptz counted_against_cap_at "First workspace launch quota timestamp (BR-06)"
         timestamptz locked_until
+    }
+
+    INVITATIONS {
+        uuid id PK
+        uuid org_id FK
+        uuid user_id FK
+        citext email
+        string role "company_admin | candidate"
+        bytea token_hash UK "sha256(raw_token)"
+        timestamptz expires_at "Strictly <= 72h"
+        timestamptz used_at
+    }
+
+    PASSWORD_HISTORY {
+        uuid id PK
+        uuid user_id FK
+        string password_hash "argon2id"
+        timestamptz created_at
     }
 
     ASSESSMENTS {
@@ -93,11 +117,27 @@ erDiagram
         uuid org_id FK
         uuid assessment_id FK
         uuid candidate_id FK
-        string status "invited | ready | in_progress | submitted | expired"
+        string status "invited | window_not_open | ready | in_progress | disconnected | submitted | expired | revoked"
+        bytea invite_token_hash UK "sha256(raw_token), 7-day expiry"
+        timestamptz invite_expires_at
+        timestamptz invite_used_at
+        timestamptz invited_at
         timestamptz first_connect_at
         timestamptz deadline_at
         timestamptz submitted_at
         boolean auto_submitted
+    }
+
+    CONSENTS {
+        uuid id PK
+        uuid assignment_id FK
+        uuid org_id FK
+        uuid candidate_id FK
+        string mode "cloud | chat"
+        string text_version
+        timestamptz accepted_at
+        string ip_address
+        string user_agent
     }
 
     WORKSPACES {
@@ -111,13 +151,30 @@ erDiagram
         timestamptz last_activity_at
     }
 
+    DRAFTS {
+        uuid assignment_id PK,FK
+        uuid org_id FK
+        uuid candidate_id FK
+        string repository_url
+        string branch_name
+        jsonb uploaded_artifact
+        text architecture_notes
+        int version
+        timestamptz updated_at
+    }
+
     SUBMISSIONS {
         uuid id PK
         uuid assignment_id FK
-        string artifacts_ref "S3 bucket key"
-        string final_snapshot_ref
+        uuid org_id FK
+        uuid candidate_id FK
+        string repository_url
+        string branch_name
+        jsonb uploaded_artifact
+        text architecture_notes
         timestamptz submitted_at
         boolean auto_submitted
+        string receipt_id UK
     }
 
     AGENT_SCORES {
@@ -149,6 +206,8 @@ CREATE POLICY tenant_isolation ON app.assessments
   WITH CHECK (org_id = app.current_org_id() OR app.is_platform());
 ```
 
+`app.is_platform()` enforces dual-factor authorization (migration `0005_platform_role`): it requires both `current_setting('app.is_platform', true) = 'true'` AND authenticated database session role `SESSION_USER IN ('hs_platform', 'hs_migrator')`. Connections authenticated as `hs_app` evaluate to `false` even if an attacker attempts to set `app.is_platform = true`, neutralizing forged-context escalation attacks at the database kernel level.
+
 ### Context Injection on Every Transaction
 Before running any application query, the NestJS Fastify API sets the current organization context in the PostgreSQL transaction:
 
@@ -162,7 +221,17 @@ When `app.current_org_id()` is evaluated by PostgreSQL, any rows belonging to ot
 
 ## 3. Tamper-Evident Audit Ledger (`audit.events`)
 
-For SOC 2 Type II compliance and BR-31 invariants, the audit log uses a **cryptographic SHA-256 hash chain**:
+For SOC 2 Type II compliance and BR-31 invariants, the audit log uses a **cryptographic SHA-256 hash chain** and enforces **Row-Level Security** (migration `0004_rls_access_paths`):
+
+```sql
+ALTER TABLE audit.events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit.events FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation ON audit.events
+  FOR ALL
+  USING (org_id = app.current_org_id() OR app.is_platform())
+  WITH CHECK (org_id = app.current_org_id() OR app.is_platform());
+```
 
 | Column | Type | Description |
 |---|---|---|
@@ -174,4 +243,284 @@ For SOC 2 Type II compliance and BR-31 invariants, the audit log uses a **crypto
 | `prev_hash` | `bytea` | SHA-256 digest of previous audit row |
 | `hash` | `bytea` | `SHA256(prev_hash || row_payload)` |
 
-Because each row's hash includes the previous row's hash, **no row can be modified, deleted, or back-dated without invalidating the entire subsequent audit chain**.
+Because each row's hash includes the previous row's hash, **no row can be modified, deleted, or back-dated without invalidating the entire subsequent audit chain**. `hs_app` only has `INSERT` and `SELECT` privileges; `UPDATE` and `DELETE` are blocked both by permission grants and by the `audit.trg_events_immutable` trigger.
+
+---
+
+## 4. Pre-Login Stored Functions & Safe Elevation
+
+Pre-login operations (login lookup and invitation acceptance) cannot supply a verified `org_id` context because the user is not yet authenticated. Instead of elevating permissions in Node.js application code via `withPlatform`, HelloSmart uses pinned, audited `SECURITY DEFINER` routines (migration `0004_rls_access_paths`):
+
+1. **`app.find_user_for_login(p_email)`**:
+   Returns authentication credentials (`id`, `org_id`, `email`, `name`, `role`, `password_hash`, `must_reset_password`, `mfa_secret_ref`, `status`, `failed_logins`, `locked_until`, `org_name`, `org_status`, `logo_key`) without exposing sensitive user table columns to unauthenticated RLS context. Pinned to `search_path = pg_catalog, app, public`. Excludes soft-deleted accounts (`deleted_at IS NULL`).
+2. **`app.find_user_by_id(p_user_id)`**:
+   Securely resolves a user record by primary key across tenant boundaries after authentication, pinned to `search_path = pg_catalog, app, public`.
+3. **`app.find_invitation_by_token_hash(p_token_hash)`** (alias `app.lookup_invitation`):
+   Returns public invitation metadata (email, role, organization name) for the invite acceptance UI, without granting access to the underlying `app.invitations` table. Requires an unexpired, unconsumed invitation with exact 32-byte SHA-256 token hash.
+4. **`app.accept_invitation(p_token_hash, p_password_hash, p_ip, p_user_agent, p_request_id)`**:
+   Atomically burns the invitation token, marks the user status as `active`, sets the password hash, and records an immutable audit log entry in `audit.events` inside a single database transaction. Eliminates any need for the API to execute `set_config('app.is_platform', 'true')` in client code.
+5. **`app.consume_totp_step(p_user_id, p_step)`** (migration `0007_mfa_hardening`):
+   Atomically consumes a TOTP time-step (`mfa_last_step`) using conditional update (`WHERE mfa_last_step IS NULL OR mfa_last_step < p_step`). Guarantees concurrent TOTP replay protection across distributed API nodes with zero race conditions.
+6. **`app.get_user_mfa_last_step(p_user_id)`**:
+   Returns the last consumed time-step counter for verification and security audit inspection.
+7. **`app.upgrade_user_mfa_secret(p_user_id, p_encrypted_secret)`**:
+   Enables opportunistic zero-downtime migration of legacy plaintext Base32 secrets or envelopes encrypted with previous keys to the active AES-256-GCM encryption key upon successful login.
+8. **`app.set_mfa_enrollment_pending` / `app.confirm_mfa_enrollment`** (migration `0008_mfa_enrollment`):
+   Stores a pending encrypted TOTP secret during platform-admin MFA setup, then promotes it to `mfa_secret_ref` after the user confirms an authenticator code.
+9. **`app.mfa_backup_codes` table** (migration `0008_mfa_enrollment`):
+   Stores SHA-256 hashes of one-time backup codes; `app.consume_mfa_backup_code` marks a code used at login when the authenticator app is unavailable.
+10. **`app.get_mfa_enrollment_pending(p_user_id)`** (migration `0009_mfa_enrollment_pending_read`):
+   Reads pending MFA setup material under `SECURITY DEFINER` so platform-admin rows remain visible when RLS would otherwise hide `org_id IS NULL` users.
+
+### Principle of Least Privilege
+All `SECURITY DEFINER` routines revoke `EXECUTE` privileges from `PUBLIC` and grant execute permissions exclusively to the non-owner application role `hs_app`:
+
+```sql
+REVOKE EXECUTE ON FUNCTION app.find_user_for_login(citext) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.find_user_for_login(citext) TO hs_app;
+```
+
+---
+
+## 5. Candidate Quota & Pending Invite Multiplier Tracking (migration `0015_candidate_cap_tracking`)
+
+Under **BR-06**, candidate quotas and pending invite limits are enforced via two targeted indexes and an atomic timestamp column:
+
+1. **`app.users.counted_against_cap_at`**:
+   `timestamptz NULL` recording when a candidate user first launches a workspace session. Uncounted candidates consume a candidate quota slot only upon first workspace launch (`recordCandidateFirstLaunch`). Once counted, subsequent assignment launches within the same organization do not consume additional quota slots.
+
+2. **Candidate Cap Tracking Index (`users_candidate_cap_idx`)**:
+   ```sql
+   CREATE INDEX IF NOT EXISTS users_candidate_cap_idx
+     ON app.users (org_id, counted_against_cap_at)
+     WHERE role = 'candidate' AND deleted_at IS NULL;
+   ```
+   Provides efficient tenant-scoped index scans to count active, launched candidates against `app.entitlements.max_candidates`.
+
+3. **Pending Assignment Counting Index (`assignments_pending_counting_idx`)**:
+   ```sql
+   CREATE INDEX IF NOT EXISTS assignments_pending_counting_idx
+     ON app.assignments (org_id, status, invite_expires_at, first_connect_at)
+     WHERE status IN ('invited', 'window_not_open', 'ready') AND first_connect_at IS NULL;
+   ```
+   Accelerates Model A pending assignment evaluation: `FLOOR(max_candidates * pending_invite_multiplier)`. Excludes launched, expired, or completed assignments at the query planner level.
+---
+
+## 6. Sales Lead Pipeline & Cal.com Webhooks (Stream 9)
+
+In accordance with BR-04 and commercial requirements, inbound prospect bookings from Cal.com are ingested without exposing tenant or platform secrets.
+
+```mermaid
+erDiagram
+    LEADS ||--o{ LEAD_BOOKINGS : "holds"
+    ORGANIZATIONS ||--o{ LEADS : "converted_to"
+    WEBHOOK_DELIVERIES ||--o{ WEBHOOK_DELIVERY_OUTCOMES : "reconciles"
+
+    WEBHOOK_DELIVERIES {
+        uuid id PK
+        timestamptz delivered_at PK
+        string gateway
+        string event_key
+        string payload_hash
+        bytea raw_payload_bytes
+        jsonb headers
+    }
+
+    WEBHOOK_DELIVERY_OUTCOMES {
+        uuid id PK
+        uuid delivery_id FK
+        timestamptz delivered_at PK
+        string outcome
+        string reason
+        string error_code
+        timestamptz executed_at
+    }
+
+    WEBHOOK_INBOX {
+        uuid id PK
+        string gateway
+        string event_key UK
+        string event_type
+        string booking_uid
+        string payload_hash
+        jsonb sanitized_payload
+        string status
+        uuid first_delivery_id FK
+        timestamptz first_delivered_at
+        uuid last_delivery_id FK
+        timestamptz last_delivered_at
+        int delivery_count
+    }
+
+    BOOKING_TOMBSTONES {
+        string uid PK
+        string status
+        string cancellation_reason
+        timestamptz cancelled_at
+    }
+
+    LEADS {
+        uuid id PK
+        uuid org_id FK "NULL until company onboarding"
+        citext email UK
+        string name
+        string company
+        string calcom_booking_id
+        jsonb utm
+        string stage
+        uuid owner_user_id FK
+        uuid active_booking_id FK
+        timestamptz created_at
+        timestamptz updated_at
+        timestamptz deleted_at
+    }
+
+    LEAD_BOOKINGS {
+        uuid id PK
+        uuid lead_id FK
+        string calcom_booking_id
+        string uid UK
+        string predecessor_uid
+        string rescheduled_to_uid
+        string status
+        string title
+        string description
+        timestamptz start_time
+        timestamptz end_time
+        string location
+        string meeting_url
+        string cancellation_reason
+        jsonb raw_booking_data
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+### Table Specifications:
+- `app.webhook_deliveries`: Monthly range-partitioned ledger capturing exact raw wire bytes and allowlisted headers. Append-only.
+- `app.webhook_delivery_outcomes`: Co-partitioned with `webhook_deliveries` on `delivered_at`, enforcing composite foreign key and immutable outcome logging.
+- `app.webhook_inbox`: Canonical state engine enforcing event key uniqueness (`gateway, event_key`) and immutability triggers.
+- `app.booking_tombstones`: Fast-lookup registry ensuring out-of-order cancellations prevent delayed reschedules from resurrecting cancelled bookings.
+- `app.leads`: Sales lead pipeline table with RFC-standard ASCII email check constraint, sales owner org validation, and soft-delete enforcement.
+- `app.lead_bookings`: Lineage tracking table with composite foreign key ensuring `active_booking_id` can only reference bookings belonging to the same lead.
+
+## 7. Pricing Catalog, Promo Codes & Commercial Quotes (Stream 9)
+
+```mermaid
+erDiagram
+    PRICING_CATALOG ||--o{ QUOTE_LINES : "references product"
+    PROMO_CODES ||--o{ QUOTES : "applied to"
+    PROMO_CODES ||--o{ PROMO_REDEMPTIONS : "tracked redemptions"
+    QUOTES ||--|{ QUOTE_LINES : "contains"
+    QUOTES ||--o{ PROMO_REDEMPTIONS : "redeemed in"
+    LEADS ||--o{ QUOTES : "quoted for lead"
+    ORGANIZATIONS ||--o{ QUOTES : "quoted for org"
+
+    PRICING_CATALOG {
+        uuid id PK
+        string code UK
+        string name
+        string description
+        string category "plan | custom_template | addon"
+        string currency "INR | USD"
+        numeric unit_price
+        string billing_type "recurring | one_time"
+        string billing_interval "month | year | null"
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    PROMO_CODES {
+        uuid id PK
+        string code UK
+        string description
+        string discount_type "percentage | fixed"
+        numeric discount_value
+        string currency
+        int max_uses
+        int current_uses
+        string_array eligible_categories
+        string billing_type_restriction
+        timestamptz valid_from
+        timestamptz valid_until
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    QUOTES {
+        uuid id PK
+        string quote_number UK
+        uuid lead_id FK
+        uuid org_id FK
+        string currency "INR | USD"
+        string status "draft | issued | accepted | rejected | expired | superseded"
+        numeric subtotal
+        numeric discount_total
+        numeric taxable_amount
+        numeric cgst_total
+        numeric sgst_total
+        numeric igst_total
+        numeric tax_total
+        numeric grand_total
+        string tax_classification "intra_state | inter_state | export | exempt"
+        jsonb seller_jurisdiction
+        jsonb customer_jurisdiction
+        uuid promo_code_id FK
+        string notes
+        string public_token_hash UK
+        string encrypted_token
+        timestamptz accepted_at
+        string accepted_by_ip
+        string accepted_by_user_agent
+        string accepted_by_name
+        timestamptz issued_at
+        timestamptz expires_at
+        uuid created_by FK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    QUOTE_LINES {
+        uuid id PK
+        uuid quote_id FK
+        uuid catalog_product_id FK
+        string product_code
+        string product_name
+        string description
+        string category
+        string billing_type
+        string billing_interval
+        int quantity
+        numeric unit_price
+        numeric line_subtotal
+        numeric discount_amount
+        numeric taxable_amount
+        string tax_type "cgst_sgst | igst | none"
+        numeric tax_rate
+        numeric tax_amount
+        numeric line_total
+        timestamptz created_at
+    }
+
+    PROMO_REDEMPTIONS {
+        uuid id PK
+        uuid promo_code_id FK
+        uuid quote_id FK
+        numeric discount_applied
+        timestamptz redeemed_at
+    }
+```
+
+### Table Specifications:
+- `app.pricing_catalog`: Centralized product catalog for subscription plans, custom templates, and one-time add-ons.
+- `app.promo_codes`: Promotional discount codes with concurrency caps, expiration windows, currency validation, and category restrictions.
+- `app.quotes`: Commercial quotations linked to leads or organizations with full 18% Indian GST calculations (CGST/SGST/IGST), 14-day default expiry, and SHA-256 token hashing.
+- `app.quote_lines`: Immutable line item snapshots capturing unit prices, line discounts, and reconciled tax breakdowns at quote issuance.
+- `app.promo_redemptions`: Audit ledger tracking promotional code redemptions per quote.
+- `app.workspaces`: Candidate runtime sessions for an assignment. Disconnect time is stored here so BR-09 pause math uses the server clock.
+- `app.activity_events`: Append-style connect, disconnect, resume, and fullscreen-exit events with client IP.
+- `app.submissions`: Final artifact snapshot. `auto_submitted` is true when the deadline worker closed the assignment.
+- `app.jobs`: Database queue for transactional email and other background work, with `run_after` for exponential backoff.
+- `app.email_logs`: Delivery ledger (`sent`, `failed`, `bounced`) with provider message id. Passwords and raw tokens are not stored.

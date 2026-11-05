@@ -10,7 +10,7 @@ SYSBOX_SHA256="${SYSBOX_SHA256:?set SYSBOX_SHA256 to the checksum published on t
 echo "==> base packages + unattended security upgrades"
 apt-get update
 apt-get -y upgrade
-apt-get -y install ca-certificates curl gnupg ufw fail2ban unattended-upgrades auditd jq
+apt-get -y install ca-certificates curl gnupg ufw fail2ban unattended-upgrades auditd jq nodejs
 dpkg-reconfigure -f noninteractive unattended-upgrades
 
 echo "==> deploy user (no password, docker group, restricted sudo)"

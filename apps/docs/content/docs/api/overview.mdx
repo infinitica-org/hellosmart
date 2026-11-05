@@ -84,6 +84,16 @@ POST /api/v1/auth/logout
 ```
 
 ```http
+POST /api/v1/auth/password/change
+Content-Type: application/json
+
+{
+  "currentPassword": "OldPassword123!",
+  "newPassword": "NewStrongPassword456!"
+}
+```
+
+```http
 GET /api/v1/me
 ```
 
@@ -147,9 +157,69 @@ Content-Type: application/json
 
 ---
 
-## 4. Webhooks Architecture
+## 4. Webhooks & Object Storage Architecture
 
 HelloSmart processes incoming asynchronous webhooks idempotently:
 
 - **Razorpay**: Reconciles subscription renewals and one-time quote purchases at `/api/v1/webhooks/razorpay`. Verifies HMAC-SHA256 signature using `RAZORPAY_WEBHOOK_SECRET`.
-- **cal.com**: Ingests prospective enterprise customer discovery meetings at `/api/v1/webhooks/calcom` to automatically transition leads in our sales pipeline.
+- **cal.com**: Ingests prospective enterprise customer discovery meetings at `/api/v1/webhooks/calcom` to automatically transition leads in our sales pipeline. Validates `cal-signature-256` using constant-time HMAC comparison.
+
+### Artifact & Storage API Endpoints
+- `POST /api/v1/storage/upload`: Multipart file upload for candidate submission artifacts.
+- `GET /api/v1/storage/download-url/{assignmentId}/{objectId}`: Generates a presigned or HMAC-signed artifact retrieval URL.
+- `GET /api/v1/storage/download`: Streams requested submission artifact with signed token validation.
+
+### Commercial Quoting, Pricing & Promo API Endpoints (Stream 9)
+- `POST /api/v1/admin/quotes`: Generate itemized commercial quote with 18% GST and secure public access token.
+- `GET /api/v1/admin/quotes`: List commercial quotations (filterable by leadId, orgId, status).
+- `GET /api/v1/admin/quotes/{id}`: Retrieve detailed quotation with line snapshots and tax breakdowns.
+- `GET /api/v1/admin/pricing-catalog`: List subscription plans, custom templates, and add-on products.
+- `GET /api/v1/admin/pricing-catalog/{id}`: Retrieve detailed pricing catalog product information by ID.
+- `POST /api/v1/admin/pricing-catalog`: Create a new product in the centralized pricing catalog.
+- `PATCH /api/v1/admin/pricing-catalog/{id}`: Update dynamic product attributes, currency, prices, or billing schedules.
+- `POST /api/v1/admin/pricing-catalog/{id}/activate`: Activate product for quote generation.
+- `POST /api/v1/admin/pricing-catalog/{id}/deactivate`: Deactivate product to prevent inclusion in future quotes.
+- `GET /api/v1/admin/promo-codes`: List active and scheduled promotional discount codes.
+- `POST /api/v1/admin/promo-codes`: Create percentage or fixed monetary promotional codes.
+- `GET /api/v1/quotes/{token}`: Customer review screen endpoint. Retrieves immutable quote snapshot, line items, and GST breakdown using the secure public access token (PHS-I128 / SP-010).
+- `POST /api/v1/quotes/{token}/accept`: One-click customer quote acceptance. Atomically and idempotently accepts an issued quote, persists customer acceptance evidence and an append-only audit event in `audit.events` (PHS-I128 / SP-010).
+
+### Timing, disconnect, and accommodations (BR-08, BR-09, CO-031)
+- `GET /api/v1/candidate/assessment/timing?assignmentId=`: Server clock snapshot `{ deadlineAtUtc, remainingSeconds, isExpired }` plus the IANA timezone stored beside the UTC deadline.
+- `POST /api/v1/candidate/assignments/{id}/connect`: Starts or resumes a session. Outside the window the response is HTTP 403 `WINDOW_NOT_OPEN` (with `secondsUntilWindowStart`) or `WINDOW_EXPIRED`.
+- `POST /api/v1/candidate/workspaces/{id}/events`: Records disconnect and resume. The timer keeps running unless `pauseTimerOnDisconnect` is true.
+- `POST /api/v1/candidate/assignments/{id}/submit`: Manual submit. Races with the auto-submit worker are settled by `SELECT FOR UPDATE SKIP LOCKED`.
+- `POST /api/v1/company/assignments/{id}/extend-time`: Company admin adds minutes and a reason. The change is written to `audit.events` in the same transaction (BR-31).
+
+---
+
+## 5. Security Controls & Request Hardening (S0-T14-1)
+
+The API enforces strict defense-in-depth security controls on all incoming and outgoing HTTP traffic:
+
+### A. HTTP Security Headers
+- **HSTS**: `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` in production/staging environments (disabled in development to prevent local browser lockouts).
+- **MIME Sniffing**: `X-Content-Type-Options: nosniff` enforced on all responses, including RFC 7807 error envelopes.
+- **Clickjacking / Framing**: `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'` prevent embedding API responses.
+- **Server Identity**: `X-Powered-By` header is stripped across all responses.
+
+### B. Strict CORS Architecture
+- **Origin Whitelist**: Validates requests against explicit entries in `CORS_ORIGINS`. Untrusted origins do not receive CORS headers.
+- **No Wildcard**: Wildcard `*` is strictly disallowed when `credentials: true`.
+- **Allowed Methods**: `GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS`.
+- **Preflight Cache**: 86,400 seconds (24 hours).
+
+### C. CSRF & Origin Validation
+- **Custom Header**: State-changing browser requests (`POST`, `PUT`, `PATCH`, `DELETE`) must send  `X-HS-CSRF: 1`.
+- **Origin / Referer Verification**: Evaluates request `Origin` (falling back to strict URL parsing on `Referer` if `Origin` is omitted) against the configured trusted origin. Substring and domain-suffix attacks are rejected.
+- **Exemptions**: Server-to-server endpoints (such as external payment and booking webhooks) are explicitly decorated with `@SkipCsrf()`.
+
+### D. Input Validation & Body Size Caps
+- **Body Limit**: Enforced at 1 MB (1,048,576 bytes) by Fastify adapter. Oversized payloads return RFC 7807 `413 PAYLOAD_TOO_LARGE`.
+- **Strict Zod Schemas**: Incoming JSON payloads are parsed with `ZodValidationPipe`, which rejects unknown/unrecognized properties with `422 VALIDATION_ERROR`.
+- **Malformed JSON**: Parse errors return RFC 7807 `400 BAD_REQUEST`.
+
+### E. Rate Limiting (Throttling)
+- **Global Tier**: 100 requests per minute per IP address.
+- **Authentication Tier**: Strict 5 requests per minute per IP on credentialed auth endpoints (`/auth/login`, `/auth/mfa/verify`). Integrated with account lockout controls (5 failed attempts per user account).
+

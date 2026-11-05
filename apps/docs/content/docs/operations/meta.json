@@ -3,7 +3,9 @@
   "pages": [
     "branching-and-environments",
     "onboarding",
+    "dev-setup",
     "team",
-    "incident-response"
+    "incident-response",
+    "observability"
   ]
 }

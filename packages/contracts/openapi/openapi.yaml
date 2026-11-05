@@ -31,11 +31,13 @@ tags:
     description: Assessment blueprints, rubrics, and timing configurations
   - name: webhooks
     description: External integration webhooks
+  - name: storage
+    description: Submission artifact upload and presigned download URL generation
 paths:
   /auth/login:
     post:
-      tags: [auth]
       summary: Authenticate user with email and password
+      tags: [auth]
       operationId: authLogin
       x-requirement: [CO-001, CA-002]
       security: []
@@ -171,6 +173,147 @@ paths:
                   success: { type: boolean, example: true }
                   message: { type: string, example: 'Logged out successfully' }
 
+  /auth/logout-all:
+    post:
+      tags: [auth]
+      summary: Revoke all active sessions for the authenticated user
+      operationId: authLogoutAll
+      x-requirement: [S0-T16-1]
+      responses:
+        '200':
+          description: All sessions revoked and cookie cleared.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutAllResponse'
+        '401': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+
+  /auth/sessions:
+    get:
+      tags: [auth]
+      summary: List all active sessions for the authenticated user
+      operationId: listSessions
+      x-requirement: [S0-T16-1]
+      responses:
+        '200':
+          description: Active sessions list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionListResponse'
+        '401': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+
+  /auth/sessions/{id}:
+    delete:
+      tags: [auth]
+      summary: Revoke a specific active session owned by the authenticated user
+      operationId: revokeSession
+      x-requirement: [S0-T16-1]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The public session ID to revoke
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session revoked successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeSessionResponse'
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+
+  /auth/invitations/{token}:
+    get:
+      summary: Validate an invitation token and fetch details
+      tags: [auth]
+      operationId: validateInvitation
+      x-requirement: [S0-T08-1, BR-24]
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: Raw 32-byte invitation token
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Valid, unexpired, unused invitation details.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvitationDetails' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+
+  /auth/invitations/accept:
+    post:
+      summary: Accept an invitation and set user password
+      tags: [auth]
+      operationId: acceptInvitation
+      x-requirement: [S0-T08-1, BR-24]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInvitationRequest'
+      responses:
+        '200':
+          description: Invitation accepted, user activated, password set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AcceptInvitationResponse' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+
+  /auth/password/change:
+    post:
+      tags: [auth]
+      summary: Change authenticated user password and revoke other sessions
+      operationId: authChangePassword
+      x-requirement: [CO-001, CA-002, S0-T17-1]
+      security:
+        - session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              additionalProperties: false
+              properties:
+                currentPassword: { type: string, minLength: 1, maxLength: 128 }
+                newPassword: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        '200':
+          description: Password changed successfully; other sessions revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: 'Password changed successfully.' }
+        '400':
+          $ref: '#/components/responses/Problem'
+        '401':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+
   /me:
     get:
       tags: [auth]
@@ -221,6 +364,106 @@ paths:
           $ref: '#/components/responses/Problem'
 
   /admin/organizations:
+    get:
+      tags: [admin]
+      summary: List organizations with pagination, status filtering, and search (Platform Admin only)
+      operationId: listOrganizations
+      x-requirement: [AD-001, S0-T11-1]
+      x-roles: [platform_admin]
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-based)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            example: 1
+        - name: pageSize
+          in: query
+          description: Page size (maximum 100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+        - name: status
+          in: query
+          description: Filter organizations by status
+          required: false
+          schema:
+            $ref: '#/components/schemas/OrgStatus'
+          example: 'trial_active'
+        - name: search
+          in: query
+          description: Search by organization name or slug
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+          example: 'Brindle'
+      responses:
+        '200':
+          description: Paginated list of organizations.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginatedOrgList' }
+              examples:
+                defaultList:
+                  summary: Default list of organizations
+                  value:
+                    items:
+                      - id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+                        name: 'Aster Ridge Inc.'
+                        slug: 'aster-ridge'
+                        status: 'paid_active'
+                        candidateCount: 18
+                        createdAt: '2026-09-15T08:00:00.000Z'
+                        trialEndsAt: null
+                      - id: '00000000-0000-4000-8000-000000000001'
+                        name: 'Brindle & Co'
+                        slug: 'brindle-co'
+                        status: 'trial_active'
+                        candidateCount: 24
+                        createdAt: '2026-10-01T10:00:00.000Z'
+                        trialEndsAt: '2026-11-01T10:00:00.000Z'
+                      - id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+                        name: 'Apex Labs'
+                        slug: 'apex-labs'
+                        status: 'suspended'
+                        candidateCount: 0
+                        createdAt: '2026-08-01T12:00:00.000Z'
+                        trialEndsAt: null
+                    page: 1
+                    pageSize: 20
+                    total: 3
+                filteredTrial:
+                  summary: Filtered by trial_active search for Brindle
+                  value:
+                    items:
+                      - id: '00000000-0000-4000-8000-000000000001'
+                        name: 'Brindle & Co'
+                        slug: 'brindle-co'
+                        status: 'trial_active'
+                        candidateCount: 24
+                        createdAt: '2026-10-01T10:00:00.000Z'
+                        trialEndsAt: '2026-11-01T10:00:00.000Z'
+                    page: 1
+                    pageSize: 20
+                    total: 1
+                emptyList:
+                  summary: Empty page result
+                  value:
+                    items: []
+                    page: 2
+                    pageSize: 20
+                    total: 3
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
     post:
       tags: [admin]
       summary: Provision a new customer tenant organization (Platform Admin only)
@@ -288,18 +531,43 @@ paths:
         '404': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
 
+  /admin/metrics:
+    get:
+      tags: [admin]
+      summary: Get platform admin overview dashboard metrics (Platform Admin only)
+      operationId: getAdminMetrics
+      x-requirement: [AD-001, S0-T11-1]
+      x-roles: [platform_admin]
+      responses:
+        '200':
+          description: Summary platform metrics for total companies, active trials, and total candidates.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminMetrics' }
+              examples:
+                defaultMetrics:
+                  summary: Platform overview metrics
+                  value:
+                    totalCompanies: 3
+                    activeTrials: 1
+                    totalCandidates: 42
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+
   /candidates:
     get:
-      tags: [candidates]
       summary: List candidates in the caller's organization
+      tags: [candidates]
       operationId: listCandidates
       x-requirement: [CO-014]
       x-roles: [company_admin]
       parameters:
         - { name: q, in: query, schema: { type: string, maxLength: 100 } }
-        - { name: status, in: query, schema: { $ref: '#/components/schemas/CandidateStatus' } }
+        - { name: search, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 10 } }
         - { $ref: '#/components/parameters/Cursor' }
-        - { $ref: '#/components/parameters/Limit' }
       responses:
         '200':
           description: Page of candidates in the caller's org.
@@ -310,13 +578,16 @@ paths:
                 required: [items]
                 properties:
                   items: { type: array, items: { $ref: '#/components/schemas/Candidate' } }
+                  total: { type: integer }
+                  page: { type: integer }
+                  limit: { type: integer }
+                  totalPages: { type: integer }
                   nextCursor: { type: [string, 'null'] }
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
-
     post:
-      tags: [candidates]
       summary: Create and invite a candidate to an assessment
+      tags: [candidates]
       operationId: createCandidate
       x-requirement: [CO-011, CO-013]
       x-roles: [company_admin]
@@ -332,20 +603,185 @@ paths:
               properties:
                 name: { type: string, minLength: 1, maxLength: 120 }
                 email: { type: string, format: email, maxLength: 254 }
+                assessment_id: { type: string, format: uuid, description: 'Optional assessment ID to assign candidate to' }
       responses:
         '201':
           description: Created; invite email queued.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Candidate' }
+              schema:
+                oneOf:
+                  - { $ref: '#/components/schemas/Candidate' }
+                  - { $ref: '#/components/schemas/CandidateAssignment' }
         '401': { $ref: '#/components/responses/Problem' }
+        '403':
+          description: Quota cap reached (CANDIDATE_CAP_EXCEEDED, PENDING_INVITE_CAP_EXCEEDED) or tenant forbidden
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
 
+  /candidates/bulk:
+    post:
+      summary: Streaming bulk upload of candidates from CSV
+      tags: [candidates]
+      operationId: uploadCandidatesBulk
+      x-requirement: [CO-012]
+      x-roles: [company_admin]
+      parameters:
+        - name: assessment_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+          description: Optional assessment ID to assign candidates to
+      requestBody:
+        required: true
+        content:
+          text/csv:
+            schema:
+              type: string
+              format: binary
+              description: Streaming CSV data with required 'name' and 'email' headers
+          application/csv:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Bulk upload processing completed with row-level outcomes and aggregate counts
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BulkCandidateUploadResult' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403':
+          description: Quota cap reached (CANDIDATE_CAP_EXCEEDED, PENDING_INVITE_CAP_EXCEEDED) or tenant forbidden
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /candidates/{id}:
+    patch:
+      summary: Update candidate information
+      tags: [candidates]
+      operationId: updateCandidate
+      x-requirement: [CO-015]
+      x-roles: [company_admin]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 1, maxLength: 120 }
+                email: { type: string, format: email, maxLength: 254 }
+      responses:
+        '200':
+          description: Candidate updated successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Candidate' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+    delete:
+      summary: Soft-delete candidate from organization
+      tags: [candidates]
+      operationId: deleteCandidate
+      x-requirement: [CO-016]
+      x-roles: [company_admin]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Candidate soft-deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /candidates/{id}/resend-invite:
+    post:
+      summary: Resend invitation link to candidate
+      tags: [candidates]
+      operationId: resendCandidateInvite
+      x-requirement: [CO-017, BR-24, BR-31]
+      x-roles: [company_admin]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: assignment_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+          description: Optional target assessment assignment ID when candidate has multiple assignments
+      responses:
+        '200':
+          description: Invitation link refreshed and dispatched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  deliveryStatus:
+                    type: string
+                    enum: [sent, failed]
+                    description: Status of email delivery after successful token rotation
+                  processedAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409':
+          description: Assignment connected or multiple assignments exist without specifying assignment_id (AMBIGUOUS_ASSIGNMENT)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /candidates/{id}/assignments/{assignmentId}/resend-invite:
+    post:
+      summary: Resend invitation link for a specific assessment assignment
+      tags: [candidates]
+      operationId: resendCandidateAssignmentInvite
+      x-requirement: [CO-017, BR-24, BR-31]
+      x-roles: [company_admin]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: assignmentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+          description: ID of the assignment to resend
+      responses:
+        '200':
+          description: Invitation link refreshed and dispatched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  deliveryStatus:
+                    type: string
+                    enum: [sent, failed]
+                    description: Status of email delivery after successful token rotation
+                  processedAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
   /candidate/assignments/{id}/connect:
     post:
-      tags: [candidate-portal]
       summary: Connect to candidate workspace session
+      tags: [candidate-portal]
       operationId: connectWorkspace
       x-requirement: [CA-008, CA-012, BR-06, BR-08, BR-12]
       x-roles: [candidate]
@@ -361,14 +797,628 @@ paths:
         '409': { $ref: '#/components/responses/Problem' }
         '423': { $ref: '#/components/responses/Problem' }
 
+  /candidate/assignments:
+    get:
+      summary: List assessments assigned to authenticated candidate
+      tags: [candidate-portal]
+      operationId: getCandidateAssignments
+      x-requirement: [CA-008, BR-01, BR-08]
+      x-roles: [candidate]
+      responses:
+        '200':
+          description: List of assigned assessments for candidate
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CandidateAssignment'
+        '401': { $ref: '#/components/responses/Problem' }
+
+  /candidate/assessments/{id}:
+    get:
+      summary: Get assessment details and brief for candidate
+      tags: [candidate-portal]
+      operationId: getCandidateAssessment
+      x-requirement: [CA-008, BR-01]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Assessment details, instructions, and workspace configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateAssessmentDetail'
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /candidate/assessments/{id}/consent:
+    post:
+      summary: Record legal consent before workspace launch
+      tags: [candidate-portal]
+      operationId: recordAssessmentConsent
+      x-requirement: [CA-008, BR-12]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordConsentPayload'
+      responses:
+        '201':
+          description: Legal consent recorded durably
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentRecord'
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /candidate/assessments/{id}/start:
+    post:
+    
+      summary: Start or reconnect to assessment workspace session
+      tags: [candidate-portal]
+      operationId: startAssessmentSession
+      x-requirement: [CA-008, BR-08, BR-09]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ticket: { type: string }
+      responses:
+        '200':
+          description: Assessment workspace session started or reconnected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceSession'
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /candidate/assessments/{id}/submit:
+    post:
+      summary: Submit candidate deliverables for assessment
+      tags: [candidate-portal]
+      operationId: submitAssessmentDeliverables
+      x-requirement: [CA-008, BR-20]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitDeliverablesPayload'
+      responses:
+        '200':
+          description: Final deliverables submitted and finalized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionReceipt'
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /candidate/assessments/{id}/timing:
+    get:
+      summary: Get authoritative countdown timer state
+      tags: [candidate-portal]
+      operationId: getAssessmentTiming
+      x-requirement: [CA-008, BR-08, BR-09]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Authoritative countdown timer state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentTimingState'
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /candidate/assessments/{id}/draft:
+    get:
+      summary: Retrieve candidate workspace draft
+      tags: [candidate-portal]
+      operationId: getAssessmentDraft
+      x-requirement: [CA-008, BR-11]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Candidate draft state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateDraft'
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    post:
+      summary: Autosave candidate workspace draft (30s cadence)
+      tags: [candidate-portal]
+      operationId: saveAssessmentDraft
+      x-requirement: [CA-008, BR-11]
+      x-roles: [candidate]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CandidateDraftPayload'
+      responses:
+        '200':
+          description: Draft saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CandidateDraft'
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /candidate/artifacts/upload:
+    post:
+      summary: Upload deliverable archive to object storage
+      tags: [candidate-portal]
+      operationId: uploadDeliverableArtifact
+      x-requirement: [CA-008, NF-001]
+      x-roles: [candidate]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Deliverable archive (.zip, .tar, .tar.gz, .tgz up to 50MB)
+                assignmentId:
+                  type: string
+                  format: uuid
+                  description: Optional assignment ID to link artifact with candidate draft
+      responses:
+        '200':
+          description: Artifact uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadedArtifact'
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /candidate/ping:
+    get:
+      summary: Diagnostics endpoint for candidate system preflight check
+      tags: [candidate-portal]
+      operationId: pingCandidate
+      x-requirement: [CA-008]
+      responses:
+        '200':
+          description: Diagnostic health status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, timestamp, service]
+                properties:
+                  ok: { type: boolean, example: true }
+                  timestamp: { type: integer, example: 1730626800000 }
+                  service: { type: string, example: 'hellosmart-candidate-api' }
+
+  /storage/upload:
+    post:
+      summary: Upload candidate submission artifact (max 50MB streaming)
+      tags: [storage]
+      operationId: uploadArtifact
+      x-requirement: [CA-018, BR-18, BR-31]
+      x-roles: [candidate]
+      parameters:
+        - name: assignmentId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Assessment assignment ID
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                assignmentId:
+                  type: string
+                  format: uuid
+                  description: Assessment assignment ID
+                file:
+                  type: string
+                  format: binary
+                  description: Candidate deliverable artifact (.zip, .pdf, .docx, .tar.gz, etc.)
+      responses:
+        '201':
+          description: Artifact uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [objectId, key, filename, size, sha256, uploadedAt]
+                properties:
+                  objectId: { type: string, format: uuid }
+                  key: { type: string }
+                  filename: { type: string }
+                  size: { type: integer }
+                  sha256: { type: string }
+                  uploadedAt: { type: string, format: date-time }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '413': { $ref: '#/components/responses/Problem' }
+
+  /storage/download-url/{assignmentId}/{objectId}:
+    get:
+      summary: Generate presigned download URL for submission artifact
+      tags: [storage]
+      operationId: getArtifactDownloadUrl
+      x-requirement: [CO-042, BR-01, BR-31]
+      x-roles: [company_admin, platform_admin]
+      parameters:
+        - name: assignmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: objectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: orgId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Target organization ID (required for platform_admin cross-tenant download)
+      responses:
+        '200':
+          description: Presigned download URL generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, expiresInSeconds]
+                properties:
+                  url: { type: string, format: uri }
+                  expiresInSeconds: { type: integer, example: 900 }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /storage/download:
+    get:
+      summary: Stream deliverable artifact via local storage download token
+      tags: [storage]
+      operationId: downloadArtifactLocal
+      security: []
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: HMAC-SHA256 signed download token
+      responses:
+        '200':
+          description: Deliverable binary stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400': { $ref: '#/components/responses/Problem' }
+
+  /webhooks/calcom:
+    post:
+      summary: Ingest Cal.com meeting booking and cancellation webhooks
+      tags: [webhooks]
+      operationId: handleCalcomWebhook
+      security: []
+      responses:
+        '200':
+          description: Webhook received and outcome persisted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received: { type: boolean }
+                  outcome: { type: string }
+                  reason: { type: string }
+        '401': { $ref: '#/components/responses/Problem' }
+
+  /admin/quotes:
+    post:
+      summary: Generate commercial quote with 18% GST and secure access token
+      tags: [quotes]
+      operationId: createAdminQuote
+      security: [{ session: [] }]
+      responses:
+        '201':
+          description: Quote generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        '422': { $ref: '#/components/responses/Problem' }
+    get:
+      summary: List commercial quotes
+      tags: [quotes]
+      operationId: listAdminQuotes
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: List of quotations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /admin/quotes/{id}:
+    get:
+      summary: Retrieve commercial quote by ID
+      tags: [quotes]
+      operationId: getAdminQuote
+      security: [{ session: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Id' }
+      responses:
+        '200':
+          description: Quote details
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /quotes/{token}:
+    get:
+      summary: Customer Quote Review Screen
+      description: Retrieve immutable quote details and line item breakdown using the cryptographic public access token.
+      tags: [quotes]
+      operationId: getCustomerQuoteByToken
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: 64-character hex cryptographic public access token
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Immutable commercial quotation details
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+
+  /quotes/{token}/accept:
+    post:
+      summary: Customer One-Click Quote Acceptance
+      description: Atomically and idempotently accepts an issued quote, persists acceptance evidence, and appends an audit event.
+      tags: [quotes]
+      operationId: acceptCustomerQuote
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: 64-character hex cryptographic public access token
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmationAcknowledged]
+              properties:
+                acceptedByName: { type: string }
+                confirmationAcknowledged: { type: boolean }
+      responses:
+        '200':
+          description: Quotation accepted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+
+  /admin/pricing-catalog:
+    get:
+      summary: List products from pricing catalog
+      tags: [pricing]
+      operationId: listPricingCatalog
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Product catalog items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+    post:
+      summary: Create new product in pricing catalog
+      tags: [pricing]
+      operationId: createPricingCatalogItem
+      security: [{ session: [] }]
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                type: object
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /admin/pricing-catalog/{id}:
+    get:
+      summary: Get pricing catalog product by ID
+      tags: [pricing]
+      operationId: getPricingCatalogItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Product catalog item details
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      summary: Update dynamic product and price in pricing catalog
+      tags: [pricing]
+      operationId: updatePricingCatalogItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /admin/pricing-catalog/{id}/activate:
+    post:
+      summary: Activate product in pricing catalog
+      tags: [pricing]
+      operationId: activatePricingCatalogItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Product activated
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /admin/pricing-catalog/{id}/deactivate:
+    post:
+      summary: Deactivate product in pricing catalog
+      tags: [pricing]
+      operationId: deactivatePricingCatalogItem
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Product deactivated
+          content:
+            application/json:
+              schema:
+                type: object
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /admin/promo-codes:
+    get:
+      summary: List promotional discount codes
+      tags: [promos]
+      operationId: listPromoCodes
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Promo codes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+    post:
+      summary: Create new promotional discount code
+      tags: [promos]
+      operationId: createPromoCode
+      security: [{ session: [] }]
+      responses:
+        '201':
+          description: Promo code created
+          content:
+            application/json:
+              schema:
+                type: object
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
 components:
   securitySchemes:
     session: { type: apiKey, in: cookie, name: hs_session }
   parameters:
     Id: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
     Cursor: { name: cursor, in: query, schema: { type: string, maxLength: 200 } }
-    Limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
-    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
+    Limit:
+      { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+    IdempotencyKey:
+      { name: Idempotency-Key, in: header, required: true, schema: { type: string, format: uuid } }
   responses:
     Problem:
       description: RFC 9457 problem details. Never includes stack traces, SQL or secrets.
@@ -412,9 +1462,32 @@ components:
         title: { type: string }
         status: { type: integer }
         detail: { type: string }
-        code: { type: string, description: 'Stable machine code, e.g. TRIAL_CAP_REACHED, WINDOW_NOT_OPEN, CONSENT_REQUIRED' }
+        code:
+          {
+            type: string,
+            description: 'Stable machine code, e.g. TRIAL_CAP_REACHED, WINDOW_NOT_OPEN, CONSENT_REQUIRED',
+          }
         requestId: { type: string }
     Role: { type: string, enum: [platform_admin, company_admin, candidate] }
+    InvitationDetails:
+      type: object
+      required: [email, role, orgName]
+      properties:
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/Role' }
+        orgName: { type: string }
+    AcceptInvitationRequest:
+      type: object
+      required: [token, password]
+      properties:
+        token: { type: string, minLength: 1 }
+        password: { type: string, minLength: 12, maxLength: 128 }
+    AcceptInvitationResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean, enum: [true] }
+        message: { type: string }
     Me:
       type: object
       required: [id, email, name, role, portal]
@@ -438,13 +1511,46 @@ components:
         id: { type: string, format: uuid, example: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }
         name: { type: string, example: 'Aster Ridge Inc.' }
         slug: { type: string, example: 'aster-ridge' }
-        status: { type: string, enum: [provisioned, trial_active, paid_active, suspended], example: 'paid_active' }
+        status: { $ref: '#/components/schemas/OrgStatus', example: 'paid_active' }
         planId: { type: [string, 'null'], example: 'plan_growth' }
         logoUrl: { type: [string, 'null'], example: 'https://cdn.hellosmart.ai/aster.png' }
         whiteLabel: { type: boolean, example: false }
         customDomain: { type: [string, 'null'], example: 'assess.asterridge.com' }
         retentionDays: { type: integer, example: 90 }
         createdAt: { type: string, format: date-time, example: '2026-10-01T00:00:00Z' }
+    OrgStatus:
+      type: string
+      enum: [provisioned, trial, trial_active, trial_expired, active, paid_active, suspended]
+    OrgListItem:
+      type: object
+      required: [id, name, slug, status, candidateCount, createdAt]
+      properties:
+        id: { type: string, format: uuid, example: '00000000-0000-4000-8000-000000000001' }
+        name: { type: string, minLength: 1, maxLength: 120, example: 'Brindle & Co' }
+        slug: { type: string, minLength: 1, maxLength: 64, example: 'brindle-co' }
+        status: { $ref: '#/components/schemas/OrgStatus' }
+        candidateCount: { type: integer, minimum: 0, example: 24 }
+        createdAt: { type: string, format: date-time, example: '2026-10-01T10:00:00.000Z' }
+        trialEndsAt:
+          { type: [string, 'null'], format: date-time, example: '2026-11-01T10:00:00.000Z' }
+    PaginatedOrgList:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrgListItem'
+        page: { type: integer, minimum: 1, example: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 100, example: 20 }
+        total: { type: integer, minimum: 0, example: 3 }
+    AdminMetrics:
+      type: object
+      required: [totalCompanies, activeTrials, totalCandidates]
+      properties:
+        totalCompanies: { type: integer, minimum: 0, example: 3 }
+        activeTrials: { type: integer, minimum: 0, example: 1 }
+        totalCandidates: { type: integer, minimum: 0, example: 42 }
     CandidateStatus: { type: string, enum: [invited, active, deleted] }
     Candidate:
       type: object
@@ -456,6 +1562,20 @@ components:
         status: { $ref: '#/components/schemas/CandidateStatus' }
         countedAgainstCapAt: { type: [string, 'null'], format: date-time }
         createdAt: { type: string, format: date-time }
+    CandidateAssignment:
+      type: object
+      required: [id, candidateId, assessmentId, name, email, status, invitedAt, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        candidateId: { type: string, format: uuid }
+        assessmentId: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [invited, window_not_open, ready, in_progress, disconnected, submitted, expired, revoked] }
+        invitedAt: { type: string, format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        deliveryStatus: { type: string, enum: [sent, failed] }
     WorkspaceConnection:
       type: object
       required: [workspaceId, mode, gatewayUrl, ticket, deadlineAt]
@@ -466,3 +1586,216 @@ components:
         ticket: { type: string, description: 'Single-use, 60 s TTL, bound to workspace + user' }
         deadlineAt: { type: string, format: date-time }
         requireFullscreen: { type: boolean }
+
+    SessionPublic:
+      type: object
+      required: [sessionId, device, ip, createdAt, lastSeenAt, current]
+      properties:
+        sessionId: { type: string, format: uuid }
+        device: { type: string, example: 'Chrome on Windows' }
+        ip: { type: string, example: '127.0.0.xxx' }
+        createdAt: { type: string, format: date-time }
+        lastSeenAt: { type: string, format: date-time }
+        current: { type: boolean }
+    SessionListResponse:
+      type: object
+      required: [sessions]
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionPublic'
+    RevokeSessionResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean, example: true }
+        message: { type: string, example: 'Session revoked successfully' }
+    LogoutAllResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean, example: true }
+        message: { type: string, example: 'All sessions revoked successfully' }
+
+    CandidateAssignment:
+      type: object
+      required: [id, assessmentId, title, companyName, durationMinutes, status]
+      properties:
+        id: { type: string, format: uuid }
+        assessmentId: { type: string, format: uuid }
+        title: { type: string }
+        companyName: { type: string }
+        durationMinutes: { type: integer, minimum: 1 }
+        status: { type: string, enum: [invited, window_not_open, ready, in_progress, disconnected, submitted, expired, revoked] }
+        windowStartUtc: { type: [string, 'null'], format: date-time }
+        windowEndUtc: { type: [string, 'null'], format: date-time }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        workspaceMode: { type: string, enum: [cloud, chat] }
+        workspaceId: { type: [string, 'null'], format: uuid }
+        instructions: { type: [string, 'null'] }
+        description: { type: [string, 'null'] }
+
+    CandidateAssessmentDetail:
+      type: object
+      required: [id, assignmentId, name, companyName, durationMinutes, workspaceMode, status]
+      properties:
+        id: { type: string, format: uuid }
+        assignmentId: { type: string, format: uuid }
+        name: { type: string }
+        companyName: { type: string }
+        durationMinutes: { type: integer, minimum: 1 }
+        workspaceMode: { type: string, enum: [cloud, chat] }
+        status: { type: string, enum: [invited, window_not_open, ready, in_progress, disconnected, submitted, expired, revoked] }
+        instructions: { type: [string, 'null'] }
+        scenario: { type: [string, 'null'] }
+        deliverables:
+          type: array
+          items: { type: string }
+        aiPolicy:
+          type: object
+          properties:
+            enabled: { type: boolean }
+            allowedModels:
+              type: array
+              items: { type: string }
+            capPerCandidate:
+              type: object
+              properties:
+                unit: { type: string, enum: [tokens, cents] }
+                value: { type: integer }
+            rpm: { type: integer }
+        windowStartUtc: { type: [string, 'null'], format: date-time }
+        windowEndUtc: { type: [string, 'null'], format: date-time }
+
+    RecordConsentPayload:
+      type: object
+      required: [textVersion]
+      properties:
+        textVersion: { type: string, example: 'v1.0' }
+
+    ConsentRecord:
+      type: object
+      required: [consentId, assignmentId, textVersion, acceptedAt]
+      properties:
+        consentId: { type: string, format: uuid }
+        assignmentId: { type: string, format: uuid }
+        textVersion: { type: string }
+        acceptedAt: { type: string, format: date-time }
+
+    WorkspaceSession:
+      type: object
+      required: [sessionId, assignmentId, mode, status, gatewayUrl, ticket, serverTimeUtc, deadlineUtc, remainingMs]
+      properties:
+        sessionId: { type: string, format: uuid }
+        assignmentId: { type: string, format: uuid }
+        mode: { type: string, enum: [cloud, chat] }
+        status: { type: string, enum: [queued, provisioning, not_connected, connected, disconnected, ended, destroyed, failed] }
+        gatewayUrl: { type: string, format: uri }
+        ticket: { type: string }
+        serverTimeUtc: { type: string, format: date-time }
+        deadlineUtc: { type: string, format: date-time }
+        remainingMs: { type: integer, minimum: 0 }
+        requireFullscreen: { type: boolean, default: true }
+
+    SubmitDeliverablesPayload:
+      type: object
+      required: [repositoryUrl, branchName, architectureNotes, confirmChecklist]
+      properties:
+        repositoryUrl: { type: string, format: uri }
+        branchName: { type: string, minLength: 1 }
+        uploadedArtifactId: { type: [string, 'null'] }
+        architectureNotes: { type: string, minLength: 10 }
+        confirmChecklist: { type: boolean, enum: [true] }
+
+    SubmissionReceipt:
+      type: object
+      required: [submissionId, assignmentId, receiptId, submittedAt]
+      properties:
+        submissionId: { type: string, format: uuid }
+        assignmentId: { type: string, format: uuid }
+        receiptId: { type: string, example: 'sub_rec_7f8a9b0c' }
+        submittedAt: { type: string, format: date-time }
+
+    AssessmentTimingState:
+      type: object
+      required: [assessmentId, serverTimeUtc, deadlineUtc, durationMinutes, remainingMs, isExpired]
+      properties:
+        assessmentId: { type: string, format: uuid }
+        serverTimeUtc: { type: string, format: date-time }
+        deadlineUtc: { type: string, format: date-time }
+        durationMinutes: { type: integer }
+        remainingMs: { type: integer, minimum: 0 }
+        pauseTimerOnDisconnect: { type: boolean, default: false }
+        isExpired: { type: boolean, default: false }
+
+    UploadedArtifact:
+      type: object
+      required: [id, originalName, mimeType, sizeBytes, downloadUrl, uploadedAt]
+      properties:
+        id: { type: string, format: uuid }
+        originalName: { type: string }
+        mimeType: { type: string }
+        sizeBytes: { type: integer }
+        downloadUrl: { type: string, format: uri }
+        uploadedAt: { type: string, format: date-time }
+
+    CandidateDraft:
+      type: object
+      required: [assignmentId, repositoryUrl, branchName, architectureNotes, version, updatedAt]
+      properties:
+        assignmentId: { type: string, format: uuid }
+        repositoryUrl: { type: string }
+        branchName: { type: string }
+        uploadedArtifact:
+          $ref: '#/components/schemas/UploadedArtifact'
+        architectureNotes: { type: string }
+        version: { type: integer, minimum: 0 }
+        updatedAt: { type: string, format: date-time }
+
+    CandidateDraftPayload:
+      type: object
+      required: [repositoryUrl, branchName, architectureNotes]
+      properties:
+        repositoryUrl: { type: string }
+        branchName: { type: string }
+        uploadedArtifact:
+          $ref: '#/components/schemas/UploadedArtifact'
+        architectureNotes: { type: string }
+        version: { type: integer, minimum: 0 }
+
+    BulkCandidateRowError:
+      type: object
+      required: [rowNumber, code, message]
+      properties:
+        rowNumber: { type: integer, minimum: 1 }
+        field: { type: string }
+        code: { type: string }
+        message: { type: string }
+    BulkCandidateCreatedSample:
+      type: object
+      required: [rowNumber, candidateId, name, email, status, deliveryStatus]
+      properties:
+        rowNumber: { type: integer, minimum: 1 }
+        candidateId: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        assignmentId: { type: string, format: uuid }
+        status: { type: string }
+        deliveryStatus: { type: string, enum: [sent, failed] }
+    BulkCandidateUploadResult:
+      type: object
+      required: [totalRows, processedRows, successfulRows, failedRows, errorsTruncated, errors, createdSample]
+      properties:
+        totalRows: { type: integer, minimum: 0 }
+        processedRows: { type: integer, minimum: 0 }
+        successfulRows: { type: integer, minimum: 0 }
+        failedRows: { type: integer, minimum: 0 }
+        errorsTruncated: { type: boolean }
+        errors:
+          type: array
+          items: { $ref: '#/components/schemas/BulkCandidateRowError' }
+        createdSample:
+          type: array
+          items: { $ref: '#/components/schemas/BulkCandidateCreatedSample' }
+

@@ -1,0 +1,93 @@
+import { expect, test, type Page } from "@playwright/test";
+
+type Role = "platform_admin" | "company_admin" | "candidate";
+
+interface UserFixture {
+  role: Role;
+  name: string;
+  email: string;
+  password: string;
+  landing: string;
+  pageHeading: RegExp;
+}
+
+const defaultPassword = process.env.SEED_DEFAULT_PASSWORD ?? "DevPassword123!";
+
+const users: UserFixture[] = [
+  {
+    role: "platform_admin",
+    name: "Super Admin",
+    email: process.env.E2E_SUPER_ADMIN_EMAIL ?? "admin.super@seed.example.test",
+    password: process.env.E2E_SUPER_ADMIN_PASSWORD ?? defaultPassword,
+    landing: "/admin",
+    pageHeading: /Platform Admin/i,
+  },
+  {
+    role: "company_admin",
+    name: "Company Admin",
+    email: process.env.E2E_COMPANY_ADMIN_EMAIL ?? "owner@aster.seed.example.test",
+    password: process.env.E2E_COMPANY_ADMIN_PASSWORD ?? defaultPassword,
+    landing: "/company",
+    pageHeading: /Company Portal|Hiring Pipeline/i,
+  },
+  {
+    role: "candidate",
+    name: "Candidate",
+    email: process.env.E2E_CANDIDATE_EMAIL ?? "complete@seed.example.test",
+    password: process.env.E2E_CANDIDATE_PASSWORD ?? defaultPassword,
+    landing: "/candidate",
+    pageHeading: /Candidate (?:Assessment )?Workspace/i,
+  },
+];
+
+async function signIn(page: Page, email: string, password: string) {
+  await page.goto("/login");
+  await page.getByLabel(/work email|email/i).fill(email);
+  await page.getByTestId("login-continue-button").click();
+  await page.getByTestId("password-input").fill(password);
+  await page.getByRole("button", { name: /sign in|log in|login/i }).click();
+
+  // If platform_admin, explicitly wait for the MFA dialog (5s) and complete TOTP step
+  const mfaDialog = page.getByTestId("mfa-dialog");
+  if (email.includes("admin.super") || email.includes("superadmin")) {
+    await expect(mfaDialog).toBeVisible({ timeout: 5000 });
+    await page.getByTestId("mfa-totp-input").fill("123456");
+    await page.getByTestId("mfa-submit-button").click();
+  }
+}
+
+test.describe("Master Login and Role-Based Routing (CO-001, CO-004)", () => {
+  for (const user of users) {
+    test(`routes ${user.name} (${user.role}) to ${user.landing} after successful login`, async ({ page }) => {
+      await signIn(page, user.email, user.password);
+
+      // Verify the final URL matches the user's role-authorized portal
+      await expect(page).toHaveURL(new RegExp(`${user.landing.replace("/", "\\/")}(?:[/?#]|$)`), { timeout: 15_000 });
+
+      // Verify reliable page-level indicator that the correct portal loaded
+      await expect(page.getByRole("heading", { name: user.pageHeading })).toBeVisible({ timeout: 15_000 });
+
+      // Ensure login error alerts were not present
+      await expect(page.getByTestId("login-error-alert")).not.toBeVisible();
+    });
+  }
+
+  test("shows a human-readable error for an incorrect password without exposing internals", async ({ page }) => {
+    const validEmail = process.env.E2E_CANDIDATE_EMAIL ?? "complete@seed.example.test";
+    await signIn(page, validEmail, "definitely-wrong-password");
+
+    // Assert user remains unauthenticated on the login page
+    await expect(page).toHaveURL(/\/login(?:[/?#]|$)/);
+
+    // Assert visible, accessible error alert appears in the form
+    const alert = page.locator("main [role='alert']");
+    await expect(alert).toBeVisible();
+
+    // Assert human-readable, user-friendly copy
+    await expect(alert).toContainText(/invalid.*(?:credentials|password|email)|check your email or password|incorrect/i);
+
+    // Verify error does not expose stack traces, internal exceptions, or sensitive data
+    const alertText = await alert.innerText();
+    expect(alertText).not.toMatch(/stack|trace|exception|token|secret|undefined|null/i);
+  });
+});
