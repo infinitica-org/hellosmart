@@ -97,6 +97,17 @@ describe('Next.js Route Protection Middleware', () => {
     expect(location).toBe('http://localhost:3000/company');
   });
 
+  it('accepts __Host-hs_session for BR-25 portal checks', async () => {
+    const req = new NextRequest('http://localhost:3000/candidate', {
+      headers: {
+        cookie: '__Host-hs_session=sess_123_candidate; hs_role=candidate',
+      },
+    });
+
+    const res = await middleware(req);
+    expect(res.status).toBe(200);
+  });
+
   it('allows candidate to access /candidate freely', async () => {
     const req = new NextRequest('http://localhost:3000/candidate', {
       headers: {

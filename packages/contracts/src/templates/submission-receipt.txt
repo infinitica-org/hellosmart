@@ -1,0 +1,6 @@
+Hi {{candidateName}},
+
+{{companyName}} has your submission for {{assessmentName}}.
+Submitted at {{expiresAtFormatted}}.
+
+{{actionUrl}}

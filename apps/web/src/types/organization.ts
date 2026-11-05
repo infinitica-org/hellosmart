@@ -1,4 +1,11 @@
-export type OrganizationStatus = 'trial' | 'active' | 'suspended';
+export type OrganizationStatus =
+  | 'provisioned'
+  | 'trial'
+  | 'trial_active'
+  | 'trial_expired'
+  | 'active'
+  | 'paid_active'
+  | 'suspended';
 
 export interface Organization {
   id: string;

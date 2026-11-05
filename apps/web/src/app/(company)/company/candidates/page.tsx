@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { PageHeader, Alert, Card, StatCard, Users, Mail, Check } from '@hs/ui';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { PageHeader, Alert, Card, StatCard, Users, Mail, Check, Skeleton } from '@hs/ui';
 import {
   CandidateToolbar,
   CandidateTable,
@@ -25,14 +26,24 @@ import {
 } from '@/hooks/company/use-candidates';
 import { UI_LABELS, ALERT_MESSAGES, LIMITS } from '@/constants';
 
-export default function CompanyCandidatesPage() {
+function CompanyCandidatesContent() {
+  const searchParams = useSearchParams();
+  const qParam = searchParams?.get?.('q') || '';
+
   // Query Filters state
   const [filters, setFilters] = useState<CandidateFilters>({
-    search: '',
+    search: qParam,
     status: 'all',
     page: LIMITS.PAGINATION.DEFAULT_PAGE,
     limit: LIMITS.PAGINATION.DEFAULT_LIMIT,
   });
+
+  // Sync search with URL search param if changed
+  useEffect(() => {
+    if (qParam && qParam !== filters.search) {
+      setFilters((prev) => ({ ...prev, search: qParam, page: 1 }));
+    }
+  }, [qParam]);
 
   // Dialog states
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -54,6 +65,10 @@ export default function CompanyCandidatesPage() {
 
   // Compute metrics and existing emails set
   const metrics = useMemo(() => {
+    if (data?.metrics) {
+      return data.metrics;
+    }
+
     let invitedCount = 0;
     let activeCount = 0;
 
@@ -67,7 +82,7 @@ export default function CompanyCandidatesPage() {
       invited: invitedCount,
       active: activeCount,
     };
-  }, [candidates, total]);
+  }, [candidates, data?.metrics, total]);
 
   const existingEmails = useMemo(() => {
     return new Set(candidates.map((c) => c.email.toLowerCase()));
@@ -134,16 +149,30 @@ export default function CompanyCandidatesPage() {
 
   const handleResendInvite = async (candidate: CandidateDto) => {
     try {
-      await resendMutation.mutateAsync(candidate.id);
-      setNotification({
-        type: 'success',
-        message: ALERT_MESSAGES.CANDIDATES.RESEND_SUCCESS,
-      });
+      const result = await resendMutation.mutateAsync(candidate.id);
+      if (result.deliveryStatus === 'failed') {
+        setNotification({
+          type: 'info',
+          message: ALERT_MESSAGES.CANDIDATES.RESEND_DELIVERY_FAILED,
+        });
+      } else {
+        setNotification({
+          type: 'success',
+          message: ALERT_MESSAGES.CANDIDATES.RESEND_SUCCESS,
+        });
+      }
       void refetch();
-    } catch {
+    } catch (err: any) {
+      const isNoAssignment =
+        err?.data?.code === 'ASSIGNMENT_NOT_FOUND' ||
+        err?.message?.includes('No assessment assignment') ||
+        err?.detail?.includes('No assessment assignment');
+
       setNotification({
         type: 'info',
-        message: `Failed to resend invitation to ${candidate.email}.`,
+        message: isNoAssignment
+          ? `Cannot resend invite: ${candidate.name} has no assessment assignment yet. Assign an assessment first.`
+          : `Failed to resend invitation to ${candidate.email}.`,
       });
     }
   };
@@ -213,7 +242,7 @@ export default function CompanyCandidatesPage() {
           onStatusChange={handleStatusChange}
           onOpenInvite={() => setIsInviteOpen(true)}
           onOpenBulkUpload={() => setIsBulkOpen(true)}
-          disabled={isLoading}
+          disabled={false}
         />
 
         <CandidateTable
@@ -227,7 +256,7 @@ export default function CompanyCandidatesPage() {
           onResendInvite={handleResendInvite}
           onResetFilters={handleResetFilters}
           onOpenInvite={() => setIsInviteOpen(true)}
-          isResendingId={resendMutation.isPending ? resendMutation.variables : null}
+          isResendingId={resendMutation.isPending ? (typeof resendMutation.variables === 'string' ? resendMutation.variables : null) : null}
         />
       </Card>
 
@@ -263,5 +292,25 @@ export default function CompanyCandidatesPage() {
         isDeleting={deleteMutation.isPending}
       />
     </div>
+  );
+}
+
+export default function CompanyCandidatesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-6">
+          <Skeleton className="h-10 w-64" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Skeleton className="h-28 rounded-2xl" />
+            <Skeleton className="h-28 rounded-2xl" />
+            <Skeleton className="h-28 rounded-2xl" />
+          </div>
+          <Skeleton className="h-96 w-full rounded-2xl" />
+        </div>
+      }
+    >
+      <CompanyCandidatesContent />
+    </Suspense>
   );
 }

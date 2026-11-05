@@ -87,7 +87,21 @@ function LoginForm() {
     () => searchParams?.get('help') === 'forgot-password'
   );
 
-  const executeRedirect = (role?: string, portal?: string) => {
+  const executeRedirect = async (role?: string, portal?: string) => {
+    if (role === 'platform_admin' || portal === 'admin') {
+      try {
+        const mfaRes = await fetch('/api/auth/mfa/status', { credentials: 'same-origin' });
+        if (mfaRes.ok) {
+          const status = (await mfaRes.json().catch(() => null)) as { enrolled?: boolean } | null;
+          if (status?.enrolled === false) {
+            window.location.href = '/admin/settings/security';
+            return;
+          }
+        }
+      } catch {
+        // Fall through to the normal portal redirect.
+      }
+    }
     const dest = getSafeRedirectUrl(from, role || '', portal);
     window.location.href = dest;
   };

@@ -1,35 +1,7 @@
 import crypto from 'node:crypto';
-import { type DynamicModule, Module } from '@nestjs/common';
+import { type DynamicModule, ExecutionContext, Injectable, Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, Reflector } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { ExecutionContext, Injectable } from '@nestjs/common';
-
-@Injectable()
-export class DevAwareThrottlerGuard extends ThrottlerGuard {
-  protected override async shouldSkip(context: ExecutionContext): Promise<boolean> {
-    if (process.env.NODE_ENV === 'development') {
-      return true;
-    }
-    return super.shouldSkip(context);
-  }
-
-  protected override async getTracker(req: Record<string, any>): Promise<string> {
-    // If request has a quote token in route params, track rate limits by a one-way hash
-    // prefix of the token. This prevents distinct customers accessing different quotes
-    // via the Next.js BFF (all originating from BFF internal IP 127.0.0.1) from starving one another,
-    // while preventing brute-force abuse on any individual quote and never logging/leaking raw tokens.
-    const token = req?.params?.token;
-    if (typeof token === 'string' && token.trim().length > 0) {
-      const tokenHashPrefix = crypto
-        .createHash('sha256')
-        .update(token.trim())
-        .digest('hex')
-        .slice(0, 16);
-      return `quote_${tokenHashPrefix}`;
-    }
-    return super.getTracker(req);
-  }
-}
 import type { Logger } from 'pino';
 import { ProblemDetailsFilter } from './common/filters/problem-details.filter.js';
 import { CsrfOriginGuard } from './common/guards/csrf-origin.guard.js';
@@ -48,6 +20,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { CandidatesModule } from './modules/candidates/candidates.module.js';
 import { TemplatesModule } from './modules/templates/templates.module.js';
 import { AssessmentsModule } from './modules/assessments/assessments.module.js';
+import { AssignmentsModule } from './modules/assignments/assignments.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { StorageModule } from './common/storage/storage.module.js';
 import { JobsModule } from './modules/jobs/jobs.module.js';
@@ -55,9 +28,37 @@ import { CalcomWebhookModule } from './modules/webhooks/calcom/calcom-webhook.mo
 import { QuotesModule } from './modules/quotes/quotes.module.js';
 import { ObservabilityModule } from './modules/observability/observability.module.js';
 import { RedisModule } from './modules/redis/redis.module.js';
+import { REDIS_CLIENT, type HelloRedisClient } from './modules/redis/redis.tokens.js';
+import { RedisThrottlerStorage } from './modules/redis/redis-throttler.storage.js';
 import { SessionModule } from './modules/session/session.module.js';
 
-const devControllers = process.env.NODE_ENV === 'production' ? [] : [DevTestController];
+@Injectable()
+export class DevAwareThrottlerGuard extends ThrottlerGuard {
+  protected override async shouldSkip(context: ExecutionContext): Promise<boolean> {
+    if (process.env.NODE_ENV === 'development') {
+      return true;
+    }
+    return super.shouldSkip(context);
+  }
+
+  protected override async getTracker(req: Record<string, any>): Promise<string> {
+    const token = req?.params?.token;
+    if (typeof token === 'string' && token.trim().length > 0) {
+      const tokenHashPrefix = crypto
+        .createHash('sha256')
+        .update(token.trim())
+        .digest('hex')
+        .slice(0, 16);
+      return `quote_${tokenHashPrefix}`;
+    }
+    return super.getTracker(req);
+  }
+}
+
+const devControllers =
+  process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
+    ? [DevTestController]
+    : [];
 
 @Module({
   imports: [
@@ -65,18 +66,24 @@ const devControllers = process.env.NODE_ENV === 'production' ? [] : [DevTestCont
     DatabaseModule,
     CommonDatabaseModule,
     ObservabilityModule,
-    ThrottlerModule.forRoot(
-      process.env.NODE_ENV === 'production'
-        ? [
-            { name: 'default', ttl: 60_000, limit: 100 },
-            { name: 'login', ttl: 60_000, limit: 5 },
-          ]
-        : [
-            { name: 'default', ttl: 60_000, limit: 1_000_000 },
-            { name: 'login', ttl: 60_000, limit: 1_000_000 },
-          ],
-    ),
     RedisModule,
+    ThrottlerModule.forRootAsync({
+      imports: [RedisModule],
+      inject: [REDIS_CLIENT],
+      useFactory: (redis: HelloRedisClient) => ({
+        throttlers:
+          process.env.NODE_ENV === 'test'
+            ? [
+                { name: 'default', ttl: 60_000, limit: 1_000_000 },
+                { name: 'login', ttl: 60_000, limit: 1_000_000 },
+              ]
+            : [
+                { name: 'default', ttl: 60_000, limit: 100 },
+                { name: 'login', ttl: 60_000, limit: 5 },
+              ],
+        storage: new RedisThrottlerStorage(redis),
+      }),
+    }),
     CommonRedisModule,
     SessionModule,
     AdaptersModule,
@@ -85,6 +92,7 @@ const devControllers = process.env.NODE_ENV === 'production' ? [] : [DevTestCont
     CandidatesModule,
     TemplatesModule,
     AssessmentsModule,
+    AssignmentsModule,
     HealthModule,
     StorageModule,
     JobsModule,

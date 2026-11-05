@@ -5,6 +5,10 @@ export type { CandidateDto, CandidateStatus, CreateCandidateDto };
 export interface CandidateListResponse {
   items: CandidateDto[];
   total: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
+  metrics?: CandidateMetricStats;
 }
 
 export interface CandidateFilters {

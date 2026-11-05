@@ -1,0 +1,8 @@
+Hi {{candidateName}},
+
+{{companyName}} invited you to {{assessmentName}}.
+You have {{durationMinutes}} minutes once you start.
+This link expires {{expiresAtFormatted}}.
+
+Open your assessment:
+{{actionUrl}}

@@ -5,13 +5,16 @@ import type { UserContext } from '../../common/types/user-context.js';
 import { AuditLogService } from '../../common/audit/audit-log.service.js';
 import { SESSION_STORE } from './session.tokens.js';
 import {
+  COOKIE_HOST_SESSION_NAME,
+  COOKIE_SESSION_NAME,
+} from './session-cookie.js';
+import {
   ROLE_SESSION_LIMITS,
   type SessionRecord,
   type SessionStore,
 } from './session.types.js';
 
-export const COOKIE_SESSION_NAME = 'hs_session';
-export const COOKIE_HOST_SESSION_NAME = '__Host-hs_session';
+export { COOKIE_HOST_SESSION_NAME, COOKIE_SESSION_NAME } from './session-cookie.js';
 
 /** Default fallback rolling session TTL (12h). */
 export const SESSION_TTL_SECONDS = 12 * 60 * 60;
@@ -99,7 +102,12 @@ export class SessionService {
       userAgent?: string | null | undefined;
       mfaVerified?: boolean | undefined;
     },
-  ): Promise<{ rawToken: string; sessionId: string; record: SessionRecord }> {
+  ): Promise<{
+    rawToken: string;
+    sessionId: string;
+    record: SessionRecord;
+    cookieMaxAgeSeconds: number;
+  }> {
     const rawToken = crypto.randomBytes(32).toString('hex');
     const sessionId = crypto.randomUUID();
     const tokenHash = hashToken(rawToken);
@@ -186,7 +194,69 @@ export class SessionService {
       userAgent: meta?.userAgent,
     });
 
-    return { rawToken, sessionId, record };
+    return {
+      rawToken,
+      sessionId,
+      record,
+      cookieMaxAgeSeconds: limits.absoluteLifetimeSeconds,
+    };
+  }
+
+  async cacheAccountStatus(
+    rawToken: string,
+    status: {
+      userStatus: string | null;
+      orgStatus: string | null;
+      mustResetPassword?: boolean;
+    },
+  ): Promise<void> {
+    const tokenHash = hashToken(rawToken.trim());
+    const record = await this.store.get(tokenHash);
+    if (!record) {
+      return;
+    }
+    const now = Date.now();
+    const remainingAbsoluteSeconds = Math.max(
+      1,
+      Math.floor((record.absoluteExpiresAt - now) / 1000),
+    );
+    const limits = ROLE_SESSION_LIMITS[record.role] ?? ROLE_SESSION_LIMITS.candidate;
+    const ttlSeconds = Math.min(limits.idleTimeoutSeconds, remainingAbsoluteSeconds);
+    const refreshed: SessionRecord = {
+      ...record,
+      statusCachedAt: now,
+      cachedUserStatus: status.userStatus ?? undefined,
+      cachedOrgStatus: status.orgStatus,
+      mustResetPassword: status.mustResetPassword,
+    };
+    await this.touch(tokenHash, refreshed, ttlSeconds);
+  }
+
+  async markMfaVerified(rawToken: string | undefined): Promise<void> {
+    if (!rawToken?.trim()) {
+      return;
+    }
+    const tokenHash = hashToken(rawToken.trim());
+    const record = await this.store.get(tokenHash);
+    if (!record) {
+      return;
+    }
+    const now = Date.now();
+    const remainingAbsoluteSeconds = Math.max(
+      1,
+      Math.floor((record.absoluteExpiresAt - now) / 1000),
+    );
+    const limits = ROLE_SESSION_LIMITS[record.role] ?? ROLE_SESSION_LIMITS.candidate;
+    const ttlSeconds = Math.min(limits.idleTimeoutSeconds, remainingAbsoluteSeconds);
+    await this.touch(tokenHash, { ...record, mfaVerified: true }, ttlSeconds);
+  }
+
+  private async touch(tokenHash: string, record: SessionRecord, ttlSeconds: number): Promise<void> {
+    if (this.store.touch) {
+      await this.store.touch(tokenHash, record, ttlSeconds);
+      return;
+    }
+    await this.store.set(tokenHash, record, ttlSeconds);
   }
 
   async resolveSession(rawToken: string | undefined): Promise<SessionRecord | null> {
@@ -252,7 +322,7 @@ export class SessionService {
         lastSeenAt: now,
       };
 
-      await this.store.set(tokenHash, refreshed, ttlSeconds);
+      await this.touch(tokenHash, refreshed, ttlSeconds);
       return refreshed;
     }
 

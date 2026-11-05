@@ -22,48 +22,12 @@ import {
   AuthenticatedRequest,
   REQUEST_USER_KEY,
 } from '../../common/guards/session.guard.js';
-import {
-  COOKIE_HOST_SESSION_NAME,
-  COOKIE_SESSION_NAME,
-  SessionService,
-} from '../session/session.service.js';
+import { SessionService } from '../session/session.service.js';
+import { extractRawSessionToken } from '../session/session-cookie.js';
 import { clearSessionCookie } from './auth.cookies.js';
 
-function parseCookieHeader(header: string): Record<string, string> {
-  const map: Record<string, string> = {};
-  for (const part of header.split(';')) {
-    const eqIdx = part.indexOf('=');
-    if (eqIdx !== -1) {
-      const key = part.slice(0, eqIdx).trim();
-      const val = part.slice(eqIdx + 1).trim();
-      map[key] = decodeURIComponent(val);
-    }
-  }
-  return map;
-}
-
 export function extractRawToken(request: FastifyRequest): string | undefined {
-  const cookies = request.cookies || (request.raw as any)?.cookies || {};
-  let hostCookie = cookies[COOKIE_HOST_SESSION_NAME];
-  let regularCookie = cookies[COOKIE_SESSION_NAME];
-
-  if (!hostCookie && !regularCookie && typeof request.headers.cookie === 'string') {
-    const parsed = parseCookieHeader(request.headers.cookie);
-    hostCookie = parsed[COOKIE_HOST_SESSION_NAME];
-    regularCookie = parsed[COOKIE_SESSION_NAME];
-  }
-
-  if (typeof hostCookie === 'string' && hostCookie.trim().length > 0) {
-    return hostCookie.trim();
-  }
-  if (typeof regularCookie === 'string' && regularCookie.trim().length > 0) {
-    return regularCookie.trim();
-  }
-  const authHeader = request.headers.authorization;
-  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-    return authHeader.slice('Bearer '.length).trim();
-  }
-  return undefined;
+  return extractRawSessionToken(request);
 }
 
 @Roles('platform_admin', 'company_admin', 'candidate')

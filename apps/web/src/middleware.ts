@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { resolveServerApiV1Base } from './lib/api-base-url';
 import { DEV_SESSION_STORE } from './lib/session-store';
 import { sanitizeRedirectPath } from './lib/safe-redirect';
+import { apiSessionCookieHeader, readSessionTokenFromCookies } from './lib/session-cookie';
 
 // Portal route prefixes requiring authentication & authorization (BR-25)
 const PROTECTED_PORTALS = ['/admin', '/company', '/candidate'] as const;
@@ -46,7 +47,7 @@ export function buildCspDirectives(nonce: string): string {
     "img-src 'self' data: https:",
     "font-src 'self' data: https:",
     isDev
-      ? `connect-src 'self' ${originsString} ws: wss: https:`
+      ? `connect-src 'self' ${originsString} ws: wss: http: https:`
       : `connect-src 'self' ${originsString}`,
     'frame-src https://cal.com https://api.razorpay.com',
     "frame-ancestors 'none'",
@@ -159,8 +160,7 @@ async function lookupSessionRole(
     try {
       const meRes = await fetch(`${apiV1Base}/me`, {
         headers: {
-          Cookie: `hs_session=${sessionToken}`,
-          Authorization: `Bearer ${sessionToken}`,
+          Cookie: apiSessionCookieHeader(sessionToken),
         },
         cache: 'no-store',
         signal: AbortSignal.timeout(timeoutMs),
@@ -191,14 +191,13 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
   // Signed-in users hitting marketing home go to their portal (session cookie stays valid).
   if (pathname === '/') {
-    const sessionToken = req.cookies.get('hs_session')?.value;
+    const sessionToken = readSessionTokenFromCookies(req);
     if (sessionToken) {
       const apiV1Base = resolveServerApiV1Base();
       try {
         const meRes = await fetch(`${apiV1Base}/me`, {
           headers: {
-            Cookie: `hs_session=${sessionToken}`,
-            Authorization: `Bearer ${sessionToken}`,
+            Cookie: apiSessionCookieHeader(sessionToken),
           },
           cache: 'no-store',
           signal: AbortSignal.timeout(1500),
@@ -234,7 +233,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
   if (matchedPortal) {
     // 2. Read hs_session cookie. If missing, redirect to /login
-    const sessionToken = req.cookies.get('hs_session')?.value;
+    const sessionToken = readSessionTokenFromCookies(req);
 
     if (!sessionToken) {
       if (pathname === '/login') {

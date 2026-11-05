@@ -1,0 +1,6 @@
+Hi {{candidateName}},
+
+{{assessmentName}} for {{companyName}} closes {{expiresAtFormatted}}.
+Allotted time: {{durationMinutes}} minutes. The server clock keeps running if you disconnect.
+
+{{actionUrl}}

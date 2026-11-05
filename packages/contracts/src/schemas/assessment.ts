@@ -1,4 +1,18 @@
 import { z } from 'zod';
+import { TimingConfigSchema } from './timing.js';
+
+export {
+  TimingConfigSchema,
+  TimingStatusSchema,
+  ExtendAssignmentTimeDtoSchema,
+  WorkspaceEventDtoSchema,
+} from './timing.js';
+export type {
+  TimingConfig,
+  TimingStatus,
+  ExtendAssignmentTimeDto,
+  WorkspaceEventDto,
+} from './timing.js';
 
 export const AssessmentStatusSchema = z.enum([
   'draft',
@@ -8,16 +22,6 @@ export const AssessmentStatusSchema = z.enum([
   'archived',
 ]);
 export type AssessmentStatus = z.infer<typeof AssessmentStatusSchema>;
-
-export const TimingConfigSchema = z.object({
-  type: z.enum(['duration', 'window', 'both']).default('duration'),
-  durationMinutes: z.number().int().min(15).max(480).default(90),
-  windowStartUtc: z.string().datetime().optional(),
-  windowEndUtc: z.string().datetime().optional(),
-  tz: z.string().default('UTC'),
-  pauseTimerOnDisconnect: z.boolean().default(false),
-});
-export type TimingConfig = z.infer<typeof TimingConfigSchema>;
 
 export const AiPolicySchema = z.object({
   enabled: z.boolean().default(true),

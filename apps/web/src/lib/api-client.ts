@@ -92,6 +92,9 @@ export async function apiFetch(
   const headers = new Headers(init.headers || {});
   if (STATE_CHANGING_METHODS.has(method)) {
     headers.set(CSRF_HEADER_NAME, CSRF_HEADER_VALUE);
+    if (!headers.has('Idempotency-Key') && !headers.has('idempotency-key')) {
+      headers.set('Idempotency-Key', crypto.randomUUID());
+    }
   }
   return fetchFn(input, {
     ...init,

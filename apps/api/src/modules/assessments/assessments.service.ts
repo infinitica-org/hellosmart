@@ -303,4 +303,178 @@ export class AssessmentsService {
       client.release();
     }
   }
+
+  /**
+   * Get assessment-specific rubric dimensions (BR-01, BR-18).
+   */
+  async getRubric(assessmentId: string, actor: UserContext) {
+    if (!actor.orgId) {
+      throw problem({
+        title: 'Forbidden',
+        status: 403,
+        detail: 'Organization context required.',
+        code: 'FORBIDDEN',
+      });
+    }
+
+    const defaultDimensions = [
+      {
+        id: 'dim_tech_arch',
+        name: 'Architecture & Technical Design',
+        description: 'Evaluates architectural decisions, modularity, data modeling, and separation of concerns.',
+        weight: 40,
+        signals: ['Follows domain-driven boundaries', 'Clean interfaces'],
+        redFlags: ['Spaghetti code', 'Hardcoded credentials'],
+        scoringAnchors: [
+          { score: 1, label: 'Inadequate', description: 'Does not meet expected performance standards; critical gaps.' },
+          { score: 3, label: 'Competent', description: 'Meets production expectations; solid implementation.' },
+          { score: 5, label: 'Exemplary', description: 'Exceeds expectations; highly robust architecture.' },
+        ],
+      },
+      {
+        id: 'dim_code_quality',
+        name: 'Code Quality & Maintainability',
+        description: 'Assesses readability, test coverage, static typing, and adherence to language idioms.',
+        weight: 35,
+        signals: ['Strong typing', 'Meaningful naming', 'Unit test coverage'],
+        redFlags: ['Unhandled errors', 'Ignored lint warnings'],
+        scoringAnchors: [
+          { score: 1, label: 'Inadequate', description: 'Does not meet expected performance standards; critical gaps.' },
+          { score: 3, label: 'Competent', description: 'Meets production expectations; solid implementation.' },
+          { score: 5, label: 'Exemplary', description: 'Exceeds expectations; highly robust architecture.' },
+        ],
+      },
+      {
+        id: 'dim_problem_solving',
+        name: 'Problem Solving & Edge-Case Handling',
+        description: 'Analyzes analytical rigor, handling of unexpected inputs, and algorithmic efficiency.',
+        weight: 25,
+        signals: ['Handles empty states and boundaries', 'Efficient algorithms'],
+        redFlags: ['Infinite loops', 'Race conditions'],
+        scoringAnchors: [
+          { score: 1, label: 'Inadequate', description: 'Does not meet expected performance standards; critical gaps.' },
+          { score: 3, label: 'Competent', description: 'Meets production expectations; solid implementation.' },
+          { score: 5, label: 'Exemplary', description: 'Exceeds expectations; highly robust architecture.' },
+        ],
+      },
+    ];
+
+    if (!this.pool) {
+      return {
+        assessmentId,
+        templateId: 'tpl_default',
+        templateVersionId: '00000000-0000-0000-0000-000000000000',
+        dimensions: defaultDimensions,
+      };
+    }
+
+    const client = await this.pool.connect();
+    try {
+      return await withOrg(client, actor.orgId, async (tx) => {
+        const detail = await this.repo.findById(tx, actor.orgId!, assessmentId);
+        if (!detail) {
+          throw problem({
+            title: 'Not Found',
+            status: 404,
+            detail: `Assessment ${assessmentId} not found.`,
+            code: 'ASSESSMENT_NOT_FOUND',
+          });
+        }
+
+        const briefOverrides = detail.briefOverrides as Record<string, any> | undefined;
+        const dimensions =
+          Array.isArray(briefOverrides?.rubric) && briefOverrides.rubric.length > 0
+            ? briefOverrides.rubric
+            : defaultDimensions;
+
+        return {
+          assessmentId: detail.id,
+          templateId: detail.templateId,
+          templateVersionId: detail.templateVersionId,
+          dimensions,
+        };
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Update assessment rubric dimensions, enforcing 100% total weight (BR-01, BR-18, BR-31).
+   */
+  async updateRubric(assessmentId: string, body: any, actor: UserContext) {
+    if (!actor.orgId) {
+      throw problem({
+        title: 'Forbidden',
+        status: 403,
+        detail: 'Organization context required.',
+        code: 'FORBIDDEN',
+      });
+    }
+
+    const dimensions = Array.isArray(body?.dimensions) ? body.dimensions : (Array.isArray(body) ? body : []);
+    if (dimensions.length === 0) {
+      throw problem({
+        title: 'Unprocessable Entity',
+        status: 422,
+        detail: 'At least one rubric dimension is required.',
+        code: 'VALIDATION_ERROR',
+      });
+    }
+
+    const totalWeight = dimensions.reduce((acc: number, d: any) => acc + (Number(d?.weight) || 0), 0);
+    if (totalWeight !== 100) {
+      throw problem({
+        title: 'Unprocessable Entity',
+        status: 422,
+        detail: `Total rubric weight must equal exactly 100%. Received: ${totalWeight}%.`,
+        code: 'TOTAL_RUBRIC_WEIGHT_MUST_EQUAL_100',
+      });
+    }
+
+    if (!this.pool) {
+      return {
+        assessmentId,
+        templateId: 'tpl_default',
+        templateVersionId: '00000000-0000-0000-0000-000000000000',
+        dimensions,
+      };
+    }
+
+    const client = await this.pool.connect();
+    try {
+      return await withOrg(client, actor.orgId, async (tx) => {
+        const detail = await this.repo.findById(tx, actor.orgId!, assessmentId);
+        if (!detail) {
+          throw problem({
+            title: 'Not Found',
+            status: 404,
+            detail: `Assessment ${assessmentId} not found.`,
+            code: 'ASSESSMENT_NOT_FOUND',
+          });
+        }
+
+        await this.repo.updateRubric(tx, actor.orgId!, assessmentId, dimensions);
+
+        await appendAuditEvent(tx, {
+          actorId: actor.userId,
+          actorRole: actor.role,
+          orgId: actor.orgId,
+          action: 'assessment.rubric_updated',
+          entity: 'assessment',
+          entityId: assessmentId,
+          after: { dimensions },
+        });
+
+        return {
+          assessmentId: detail.id,
+          templateId: detail.templateId,
+          templateVersionId: detail.templateVersionId,
+          dimensions,
+        };
+      });
+    } finally {
+      client.release();
+    }
+  }
 }

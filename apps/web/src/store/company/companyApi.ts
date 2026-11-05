@@ -4,6 +4,7 @@ import type {
   CandidateDto,
   CreateCandidateDto,
   AssessmentSummaryDto,
+  AssessmentDetailDto,
 } from '@hs/contracts';
 import type {
   CandidateFilters,
@@ -135,7 +136,10 @@ export const companyApi = createApi({
       ],
     }),
 
-    resendCandidateInvite: builder.mutation<{ success: boolean; sentAt: string }, string>({
+    resendCandidateInvite: builder.mutation<
+      { success: boolean; sentAt?: string; deliveryStatus?: 'sent' | 'failed'; processedAt?: string },
+      string
+    >({
       query: (candidateId) => ({
         url: `company/candidates/${encodeURIComponent(candidateId)}/resend-invite`,
         method: 'POST',
@@ -169,15 +173,24 @@ export const companyApi = createApi({
     getAssessments: builder.query<AssessmentSummaryDto[], void>({
       query: () => 'company/assessments',
       providesTags: (result) => {
-        const items = Array.isArray(result) ? result : [];
-        return [
-          ...items.map(({ id }) => ({
-            type: 'Assessments' as const,
-            id,
-          })),
-          { type: 'Assessments', id: 'LIST' },
-        ];
+        const items = Array.isArray(result)
+          ? result
+          : (result as { items?: AssessmentSummaryDto[] } | null | undefined)?.items;
+        return Array.isArray(items)
+          ? [
+              ...items.map(({ id }) => ({
+                type: 'Assessments' as const,
+                id,
+              })),
+              { type: 'Assessments', id: 'LIST' },
+            ]
+          : [{ type: 'Assessments', id: 'LIST' }];
       },
+    }),
+
+    getAssessmentById: builder.query<AssessmentDetailDto, string>({
+      query: (id) => `company/assessments/${encodeURIComponent(id)}`,
+      providesTags: (_result, _error, id) => [{ type: 'Assessments', id }],
     }),
 
     createAssessment: builder.mutation<AssessmentDto, CreateAssessmentDto>({
@@ -208,6 +221,8 @@ export const {
   useLazyGetCompanyTemplatesQuery,
   useGetAssessmentsQuery,
   useLazyGetAssessmentsQuery,
+  useGetAssessmentByIdQuery,
+  useLazyGetAssessmentByIdQuery,
   useCreateAssessmentMutation,
   useGetCompanyMetricsQuery,
   useLazyGetCompanyMetricsQuery,

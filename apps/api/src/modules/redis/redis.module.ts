@@ -13,7 +13,15 @@ import { REDIS_CLIENT, type HelloRedisClient } from './redis.tokens.js';
         if (!config.REDIS_URL) {
           return null;
         }
-        const client = createClient({ url: config.REDIS_URL });
+        const client = createClient({
+          url: config.REDIS_URL,
+          name: 'hellosmart-api',
+          socket: {
+            keepAlive: 5_000,
+            connectTimeout: 3_000,
+            reconnectStrategy: (retries: number) => Math.min(retries * 50, 2_000),
+          },
+        });
         client.on('error', () => {
           // Connection errors are surfaced on command failure; avoid logging URLs or secrets.
         });

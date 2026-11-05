@@ -9,6 +9,11 @@ const ConfigSchema = z
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),
+    PG_POOL_MAX: z.coerce.number().int().min(1).max(50).default(5),
+    PG_CONNECTION_TIMEOUT_MS: z.coerce.number().int().min(200).max(30_000).default(5_000),
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
+    OTEL_SERVICE_NAME: z.string().min(1).default('hellosmart-api'),
+    WORKER_HEALTH_PORT: z.coerce.number().int().default(4001),
     DATABASE_URL: z.string().url(),
     DATABASE_MIGRATOR_URL: z.string().url().optional(),
     DATABASE_PLATFORM_URL: z.string().url().optional(),

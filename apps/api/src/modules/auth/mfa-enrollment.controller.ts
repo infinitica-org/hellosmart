@@ -24,6 +24,7 @@ import {
   REQUEST_USER_KEY,
 } from '../../common/guards/session.guard.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { extractRawSessionToken } from '../session/session-cookie.js';
 import { AuthService } from './auth.service.js';
 
 function requestMeta(request: FastifyRequest): {
@@ -76,6 +77,7 @@ export class MfaEnrollmentController {
     const user = request[REQUEST_USER_KEY];
     const meta = requestMeta(request);
     const result = await this.auth.confirmMfaEnrollment(user.userId, body, meta);
+    await this.auth.markCurrentSessionMfaVerified(extractRawSessionToken(request));
     return MfaSetupConfirmResponseSchema.parse(result);
   }
 

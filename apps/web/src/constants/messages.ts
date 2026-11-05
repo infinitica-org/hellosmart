@@ -13,6 +13,7 @@ export const ALERT_MESSAGES = deepFreeze({
   CANDIDATES: {
     INVITE_SUCCESS: 'Candidate invitation sent successfully.',
     RESEND_SUCCESS: 'Candidate invite link refreshed and resent.',
+    RESEND_DELIVERY_FAILED: 'Invite link was refreshed, but the invitation email could not be delivered.',
     UPDATE_SUCCESS: 'Candidate details updated successfully.',
     DELETE_SUCCESS: 'Candidate removed from your organization.',
     DELETE_CONFIRM_TITLE: 'Delete Candidate',

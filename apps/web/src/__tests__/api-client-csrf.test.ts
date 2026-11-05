@@ -50,6 +50,7 @@ describe('API Client CSRF & Contract Tests (S0-T14-2 & S0-T14-1 Integration)', (
 
       const headers = new Headers(init.headers);
       expect(headers.get(CSRF_HEADER_NAME)).toBe(CSRF_HEADER_VALUE);
+      expect(headers.get('Idempotency-Key')).toBeTruthy();
     });
 
     it('does not inject X-HS-CSRF on GET requests', async () => {

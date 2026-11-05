@@ -63,12 +63,12 @@ export class AuthService {
     meta: RequestMeta,
   ): Promise<MeDto | { mfaRequired: true; preAuthToken: string }> {
     const email = dto.email.trim().toLowerCase();
-    await this.lockout.assertNotLocked(email);
+    await this.lockout.assertNotLocked(email, meta.ip);
 
     const user = await this.findUserByEmail(email);
     if (!user) {
       await verifyWithDummyTiming(dto.password);
-      await this.lockout.recordFailure(email);
+      await this.lockout.recordFailure(email, meta.ip);
       await this.auditLogin(null, 'anonymous', null, false, meta);
       throw invalidCredentials();
     }
@@ -78,19 +78,19 @@ export class AuthService {
     const hash = user.password_hash;
     if (!hash) {
       await verifyWithDummyTiming(dto.password);
-      await this.lockout.recordFailure(email);
+      await this.lockout.recordFailure(email, meta.ip);
       await this.auditLogin(user.id, user.role, user.org_id, false, meta);
       throw invalidCredentials();
     }
 
     const ok = await verifyPassword(hash, dto.password);
     if (!ok) {
-      await this.lockout.recordFailure(email);
+      await this.lockout.recordFailure(email, meta.ip);
       await this.auditLogin(user.id, user.role, user.org_id, false, meta);
       throw invalidCredentials();
     }
 
-    await this.lockout.clearFailures(email);
+    await this.lockout.clearFailures(email, meta.ip);
 
     if (user.role === 'platform_admin' && this.platformAdminRequiresMfa(user)) {
       if (dto.mfaCode) {
@@ -98,6 +98,7 @@ export class AuthService {
           const normalizedBackup = this.mfa.formatBackupCode(dto.mfaCode);
           const remaining = await this.mfa.countUnusedBackupCodes(user.id);
           if (remaining === 0) {
+            await this.lockout.recordFailure(email, meta.ip);
             await this.auditLogin(user.id, user.role, user.org_id, false, meta);
             throw problem({
               title: 'Unauthorized',
@@ -109,6 +110,7 @@ export class AuthService {
           }
           const consumed = await this.mfa.consumeBackupCode(user.id, normalizedBackup);
           if (!consumed) {
+            await this.lockout.recordFailure(email, meta.ip);
             await this.auditLogin(user.id, user.role, user.org_id, false, meta);
             throw problem({
               title: 'Unauthorized',
@@ -117,12 +119,13 @@ export class AuthService {
               code: 'MFA_INVALID',
             });
           }
-          return this.completeLogin(user, meta);
+          return this.completeLogin(user, meta, true);
         }
 
         const secret = this.mfa.resolveSecret(user.mfa_secret_ref);
         const { valid, step } = this.mfa.verifyTotpWithStep(secret, dto.mfaCode);
         if (!valid || step === undefined) {
+          await this.lockout.recordFailure(email, meta.ip);
           await this.auditLogin(user.id, user.role, user.org_id, false, meta);
           throw problem({
             title: 'Unauthorized',
@@ -134,6 +137,7 @@ export class AuthService {
         // Atomic TOTP replay protection (S0-T14-3)
         const consumed = await this.mfa.consumeStep(user.id, step);
         if (!consumed) {
+          await this.lockout.recordFailure(email, meta.ip);
           await this.auditLogin(user.id, user.role, user.org_id, false, meta);
           throw problem({
             title: 'Unauthorized',
@@ -145,13 +149,13 @@ export class AuthService {
         if (this.mfa.needsReencryption(user.mfa_secret_ref)) {
           void this.mfa.upgradeSecret(user.id, secret).catch(() => {});
         }
-        return this.completeLogin(user, meta);
+        return this.completeLogin(user, meta, true);
       }
       const preAuthToken = await this.preAuth.issue(user.id);
       return { mfaRequired: true, preAuthToken };
     }
 
-    return this.completeLogin(user, meta);
+    return this.completeLogin(user, meta, false);
   }
 
   async verifyMfa(dto: MfaVerifyDto, meta: RequestMeta): Promise<MeDto> {
@@ -419,6 +423,10 @@ export class AuthService {
     return this.toMeFromRow(user);
   }
 
+  async markCurrentSessionMfaVerified(rawToken: string | undefined): Promise<void> {
+    await this.sessions.markMfaVerified(rawToken);
+  }
+
   async logout(rawToken: string | undefined): Promise<LogoutResponseDto> {
     if (rawToken) {
       await this.sessions.destroySession(rawToken);
@@ -430,7 +438,7 @@ export class AuthService {
     userId: string,
     meta?: RequestMeta,
     options?: { mfaVerified?: boolean },
-  ): Promise<{ rawToken: string; sessionId: string; me: MeDto }> {
+  ): Promise<{ rawToken: string; sessionId: string; cookieMaxAgeSeconds: number; me: MeDto }> {
     const user = await this.findUserById(userId);
     if (!user) {
       throw problem({
@@ -446,18 +454,26 @@ export class AuthService {
       role: user.role,
       orgId: user.org_id,
     };
-    const { rawToken, sessionId } = await this.sessions.createSession(context, {
+    const { rawToken, sessionId, cookieMaxAgeSeconds } = await this.sessions.createSession(context, {
       ip: meta?.ip,
       userAgent: meta?.userAgent,
       mfaVerified: options?.mfaVerified ?? false,
     });
-    return { rawToken, sessionId, me: this.toMeFromRow(user) };
+    return { rawToken, sessionId, cookieMaxAgeSeconds, me: this.toMeFromRow(user) };
   }
 
-  private async completeLogin(user: DbUserRow, meta: RequestMeta): Promise<MeDto> {
+  private async completeLogin(
+    user: DbUserRow,
+    meta: RequestMeta,
+    mfaVerified = false,
+  ): Promise<MeDto & { mfaVerified?: boolean }> {
     await this.pool.query('SELECT app.record_login_success($1)', [user.id]);
     await this.auditLogin(user.id, user.role, user.org_id, true, meta);
-    return this.toMeFromRow(user);
+    const me = this.toMeFromRow(user);
+    if (mfaVerified) {
+      return { ...me, mfaVerified: true };
+    }
+    return me;
   }
 
   private async auditLogin(
@@ -573,36 +589,9 @@ export class AuthService {
     });
   }
 
-  async identifyLoginEmail(email: string): Promise<{
-    recognized: boolean;
-    role?: MeDto['role'];
-    portal?: MeDto['portal'];
-    name?: string;
-    orgName?: string | null;
-    mfaRequired?: boolean;
-    accountStatus?: 'active' | 'suspended';
-  }> {
-    const normalized = email.trim().toLowerCase();
-    const user = await this.findUserByEmail(normalized);
-    if (!user) {
-      return { recognized: false };
-    }
-
-    const me = this.toMeFromRow(user);
-    const suspended =
-      user.status === 'suspended' ||
-      user.status === 'deleted' ||
-      user.org_status === 'suspended';
-
-    return {
-      recognized: true,
-      role: me.role,
-      portal: me.portal,
-      name: me.name,
-      orgName: me.org?.name ?? null,
-      mfaRequired: user.role === 'platform_admin' && this.platformAdminRequiresMfa(user),
-      accountStatus: suspended ? 'suspended' : 'active',
-    };
+  async identifyLoginEmail(_email: string): Promise<{ recognized: true }> {
+    // Constant-shaped anti-enumeration response. MFA UX is driven by /auth/login.
+    return { recognized: true };
   }
 
   private async findUserByEmail(email: string): Promise<DbUserRow | null> {

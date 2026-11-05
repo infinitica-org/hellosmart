@@ -180,6 +180,7 @@ describe.runIf(stackReady).sequential('S0 stack E2E (auth + admin orgs)', () => 
       method: 'POST',
       url: '/api/v1/admin/organizations',
       cookies: { [SessionService.cookieName()]: platformCookie },
+      headers: { 'idempotency-key': crypto.randomUUID() },
       payload: {
         name: `E2E Org ${suffix}`,
         slug,
@@ -203,6 +204,7 @@ describe.runIf(stackReady).sequential('S0 stack E2E (auth + admin orgs)', () => 
       method: 'PATCH',
       url: `/api/v1/admin/organizations/${org.id}/status`,
       cookies: { [SessionService.cookieName()]: platformCookie },
+      headers: { 'idempotency-key': crypto.randomUUID() },
       payload: { status: 'suspended', reason: 'E2E suspend test' },
     });
     expect(suspend.statusCode).toBe(200);
@@ -233,6 +235,7 @@ describe.runIf(stackReady).sequential('S0 stack E2E (auth + admin orgs)', () => 
       method: 'POST',
       url: '/api/v1/admin/organizations',
       cookies: { [SessionService.cookieName()]: platformCookie },
+      headers: { 'idempotency-key': crypto.randomUUID() },
       payload,
     });
     expect(first.statusCode).toBe(201);
@@ -241,6 +244,7 @@ describe.runIf(stackReady).sequential('S0 stack E2E (auth + admin orgs)', () => 
       method: 'POST',
       url: '/api/v1/admin/organizations',
       cookies: { [SessionService.cookieName()]: platformCookie },
+      headers: { 'idempotency-key': crypto.randomUUID() },
       payload: {
         ...payload,
         adminEmail: `dup-b-${slug}@example.test`,

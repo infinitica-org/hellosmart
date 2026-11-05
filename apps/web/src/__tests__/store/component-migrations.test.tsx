@@ -260,13 +260,10 @@ describe('S1-T00-3: Component API Migration & RTK Endpoint Tests', () => {
       vi.stubGlobal('fetch', mockFetch);
 
       const result = await store.dispatch(companyApi.endpoints.getCandidates.initiate());
-      expect(result.data).toBeDefined();
-
-      const candidates = Array.isArray(result.data) ? result.data : result.data?.items;
-      expect(candidates).toHaveLength(1);
-      expect(candidates?.[0]?.email).toBe('jane@example.com');
-      expect(result.data).toHaveLength(1);
-      const candidatesList = Array.isArray(result.data) ? result.data : (result.data as any)?.items;
+      const candidatesList = Array.isArray(result.data) ? result.data : result.data?.items;
+      expect(candidatesList).toBeDefined();
+      expect(candidatesList).toHaveLength(1);
+      expect(candidatesList?.[0]?.email).toBe('jane@example.com');
       expect(candidatesList?.[0]?.email).toBe('jane@example.com');
 
     });

@@ -6,7 +6,8 @@ import {
   PaginatedOrgListDtoSchema,
 } from '@hs/contracts';
 import { AppModule } from '../src/app.module.js';
-import { PG_POOL } from '../src/modules/database/database.tokens.js';
+import { PG_PLATFORM_POOL, PG_POOL } from '../src/modules/database/database.tokens.js';
+import { DatabaseService } from '../src/common/database/database.service.js';
 import { SessionService } from '../src/modules/session/session.service.js';
 import { APP_CONFIG } from '../src/config/config.tokens.js';
 import type { Config } from '../src/config/config.js';
@@ -263,6 +264,8 @@ describe('S0-T11-2 Admin Organizations List & Metrics API', () => {
     })
       .overrideProvider(PG_POOL)
       .useValue(mockPool)
+      .overrideProvider(PG_PLATFORM_POOL)
+      .useValue(mockPool)
       .overrideProvider(APP_CONFIG)
       .useValue(testConfig)
       .compile();
@@ -273,33 +276,37 @@ describe('S0-T11-2 Admin Organizations List & Metrics API', () => {
     await app.getHttpAdapter().getInstance().ready();
 
     sessionService = app.get(SessionService);
+    app.get(DatabaseService).setStatusChecker(async () => ({
+      userStatus: 'active',
+      orgStatus: 'paid_active',
+    }));
 
-    // Platform Admin Session
-    const platformSession = await sessionService.createSession({
-      userId: '11111111-1111-4111-8111-111111111111',
-      email: 'superadmin@hellosmart.ai',
-      role: 'platform_admin',
-      orgId: null,
-    });
-    platformAdminAuth = `Bearer ${platformSession.sessionId}`;
+    const platformSession = await sessionService.createSession(
+      {
+        userId: '11111111-1111-4111-8111-111111111111',
+        email: 'superadmin@hellosmart.ai',
+        role: 'platform_admin',
+        orgId: null,
+      },
+      { mfaVerified: true },
+    );
+    platformAdminAuth = `hs_session=${platformSession.rawToken}`;
 
-    // Company Admin Session
     const companySession = await sessionService.createSession({
       userId: '22222222-2222-4222-8222-222222222222',
       email: 'admin@asterridge.com',
       role: 'company_admin',
       orgId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     });
-    companyAdminAuth = `Bearer ${companySession.sessionId}`;
+    companyAdminAuth = `hs_session=${companySession.rawToken}`;
 
-    // Candidate Session
     const candidateSession = await sessionService.createSession({
       userId: '33333333-3333-4333-8333-333333333333',
       email: 'candidate@example.com',
       role: 'candidate',
       orgId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     });
-    candidateAuth = `Bearer ${candidateSession.sessionId}`;
+    candidateAuth = `hs_session=${candidateSession.rawToken}`;
   });
 
   afterEach(async () => {
@@ -313,7 +320,7 @@ describe('S0-T11-2 Admin Organizations List & Metrics API', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/admin/organizations?page=1&pageSize=20',
-        headers: { authorization: platformAdminAuth },
+        headers: { cookie: platformAdminAuth },
       });
 
       expect(res.statusCode).toBe(200);
@@ -343,7 +350,7 @@ describe('S0-T11-2 Admin Organizations List & Metrics API', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/admin/organizations?status=trial_active&search=Brindle',
-        headers: { authorization: platformAdminAuth },
+        headers: { cookie: platformAdminAuth },
       });
 
       expect(res.statusCode).toBe(200);
@@ -359,7 +366,7 @@ describe('S0-T11-2 Admin Organizations List & Metrics API', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/admin/organizations?search=NonExistentCompany',
-        headers: { authorization: platformAdminAuth },
+        headers: { cookie: platformAdminAuth },
       });
 
       expect(res.statusCode).toBe(200);
@@ -373,7 +380,7 @@ describe('S0-T11-2 Admin Organizations List & Metrics API', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/admin/organizations?pageSize=101',
-        headers: { authorization: platformAdminAuth },
+        headers: { cookie: platformAdminAuth },
       });
 
       expect(res.statusCode).toBe(422);
@@ -386,7 +393,7 @@ describe('S0-T11-2 Admin Organizations List & Metrics API', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/admin/organizations?status=invalid_status',
-        headers: { authorization: platformAdminAuth },
+        headers: { cookie: platformAdminAuth },
       });
 
       expect(res.statusCode).toBe(422);
@@ -407,7 +414,7 @@ describe('S0-T11-2 Admin Organizations List & Metrics API', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/admin/organizations',
-        headers: { authorization: companyAdminAuth },
+        headers: { cookie: companyAdminAuth },
       });
 
       expect(res.statusCode).toBe(403);
@@ -418,7 +425,7 @@ describe('S0-T11-2 Admin Organizations List & Metrics API', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/admin/organizations',
-        headers: { authorization: candidateAuth },
+        headers: { cookie: candidateAuth },
       });
 
       expect(res.statusCode).toBe(403);
@@ -431,7 +438,7 @@ describe('S0-T11-2 Admin Organizations List & Metrics API', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/admin/metrics',
-        headers: { authorization: platformAdminAuth },
+        headers: { cookie: platformAdminAuth },
       });
 
       expect(res.statusCode).toBe(200);
@@ -459,7 +466,7 @@ describe('S0-T11-2 Admin Organizations List & Metrics API', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/admin/metrics',
-        headers: { authorization: companyAdminAuth },
+        headers: { cookie: companyAdminAuth },
       });
 
       expect(res.statusCode).toBe(403);
@@ -470,7 +477,7 @@ describe('S0-T11-2 Admin Organizations List & Metrics API', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/api/v1/admin/metrics',
-        headers: { authorization: candidateAuth },
+        headers: { cookie: candidateAuth },
       });
 
       expect(res.statusCode).toBe(403);
@@ -482,12 +489,12 @@ describe('S0-T11-2 Admin Organizations List & Metrics API', () => {
         app.inject({
           method: 'GET',
           url: '/api/v1/admin/organizations',
-          headers: { authorization: platformAdminAuth },
+          headers: { cookie: platformAdminAuth },
         }),
         app.inject({
           method: 'GET',
           url: '/api/v1/admin/metrics',
-          headers: { authorization: platformAdminAuth },
+          headers: { cookie: platformAdminAuth },
         }),
       ]);
 

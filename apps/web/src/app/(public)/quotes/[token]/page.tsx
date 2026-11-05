@@ -357,7 +357,7 @@ export default function CustomerQuoteReviewPage({ params }: QuoteReviewPageProps
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {quote.lines.map((line) => (
+                    {quote.lines.map((line: any) => (
                       <TableRow key={line.id} className="hover:bg-neutral-50/50">
                         <TableCell>
                           <div className="font-semibold text-neutral-900">{line.productName}</div>

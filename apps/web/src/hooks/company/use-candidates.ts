@@ -138,7 +138,7 @@ export function useResendCandidateInvite() {
     variables: null as string | null,
     mutateAsync: async (
       candidateId: string,
-    ): Promise<{ success: boolean; sentAt: string }> => {
+    ): Promise<{ success: boolean; sentAt?: string; deliveryStatus?: 'sent' | 'failed'; processedAt?: string }> => {
       return await resendMutation(candidateId).unwrap();
     },
   };

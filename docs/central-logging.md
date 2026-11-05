@@ -24,6 +24,8 @@ Every completed HTTP request emits a JSON log record to `stdout` conforming to t
   "hostname": "api-task-worker-1",
   "name": "hellosmart-api",
   "reqId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "span_id": "00f067aa0ba902b7",
   "method": "POST",
   "url": "/api/v1/auth/login",
   "statusCode": 200,
@@ -39,6 +41,8 @@ Every completed HTTP request emits a JSON log record to `stdout` conforming to t
 | `level` | `number` | Numeric log level (10 = trace, 20 = debug, 30 = info, 40 = warn, 50 = error, 60 = fatal). |
 | `name` | `string` | Service identifier: always `hellosmart-api`. |
 | `reqId` | `string` | Correlated request ID (UUIDv4 or validated client correlation ID). |
+| `trace_id` | `string` | OpenTelemetry trace id when a span is active. |
+| `span_id` | `string` | OpenTelemetry span id when a span is active. |
 | `method` | `string` | HTTP verb (`GET`, `POST`, `PUT`, `DELETE`, etc.). |
 | `url` | `string` | Normalized route or URL path without query parameters. |
 | `statusCode` | `number` | HTTP status code returned to the client. |
@@ -167,24 +171,6 @@ pnpm --filter @hs/api build
 
 ---
 
-## 8. Log Collection, Retention, and Archival Infrastructure
+## 8. Log collection and retention
 
-All logs are written to standard output (`process.stdout`), following the Twelve-Factor App specification for logs.
-
-> [!NOTE]
-> **Current Environment Status:** The current QA deployment runs on a KVM VPS using Docker Compose with local Docker log rotation (`json-file`, 50 MB, 5 files). The CloudWatch retention and S3 archival pipeline described below is provisioned as target-state Infrastructure-as-Code for the upcoming AWS ECS deployment.
-
-### Production Log Ingestion & Lifecycle Pipeline (Target State)
-
-In deployed environments (Staging and Production):
-1. **Container Log Driver:** Containers run on AWS ECS using the `awslogs` driver, streaming `stdout`/`stderr` JSON records into service-specific CloudWatch Log Groups (`/aws/ecs/hellosmart-<service>-<env>`).
-2. **Active 7-Day Retention:** CloudWatch Log Groups enforce an explicit **7-day retention period** (`retention_in_days = 7`). Logs older than 7 days expire automatically from active query storage to optimize performance and control operational costs.
-3. **Continuous Cold Archival Pipeline:** CloudWatch Subscription Filters forward all log records in real time to Amazon Data Firehose delivery streams (`hs-logs-<service>-<env>`).
-4. **Partitioned S3 Cold Archive:** Firehose passes the subscription filter's native GZIP batches uncompressed to prevent double-compression, writing batches into a dedicated, encrypted S3 bucket (`hs-logs-archive-<account_id>-<env>`) partitioned by service, year, month, day, and hour:
-   ```
-   s3://hs-logs-archive-<account_id>-<env>/services/<service>/year=YYYY/month=MM/day=DD/hour=HH/
-   ```
-5. **Separation of Concerns:** The log archive bucket is completely distinct from candidate work artifact buckets (`hs-candidate-<env>`) and database-backed business audit event tables (`app.audit_log`).
-6. **Configurable Archive Lifecycle:** Logs transition to S3 Glacier Instant Retrieval (`GLACIER_IR`) after 90 days. Expiration of cold archived logs is explicitly left unset in Terraform pending formal legal and regulatory compliance approval.
-
-For complete infrastructure specifications, Athena query examples, and operational runbooks, see [Log Retention and Archival Policy](log-retention-and-archival.md).
+All logs are written to standard output (`process.stdout`). Grafana Alloy ships them to Loki (7-day filesystem retention). Dozzle is the only live tail UI. See [Log retention](log-retention-and-archival.md).

@@ -56,6 +56,10 @@ export class MemorySessionStore implements SessionStore {
       ip: row.ip,
       userAgent: row.userAgent,
       mfaVerified: row.mfaVerified,
+      statusCachedAt: row.statusCachedAt,
+      cachedUserStatus: row.cachedUserStatus,
+      cachedOrgStatus: row.cachedOrgStatus,
+      mustResetPassword: row.mustResetPassword,
     };
   }
 
@@ -209,7 +213,23 @@ export class MemoryIdempotencyStore implements IdempotencyStore {
     return row;
   }
 
-  async set(key: string, record: IdempotencyRecord, _ttlSeconds: number): Promise<void> {
-    this.records.set(key, record);
+  async set(key: string, record: IdempotencyRecord, ttlSeconds: number): Promise<void> {
+    this.records.set(key, {
+      ...record,
+      expiresAt: Date.now() + ttlSeconds * 1000,
+    });
+  }
+
+  async setNx(key: string, record: IdempotencyRecord, ttlSeconds: number): Promise<boolean> {
+    purgeExpired(this.records);
+    if (this.records.has(key)) {
+      return false;
+    }
+    await this.set(key, record, ttlSeconds);
+    return true;
+  }
+
+  async delete(key: string): Promise<void> {
+    this.records.delete(key);
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   SearchInput,
   TextureButton,
@@ -40,6 +40,22 @@ export function CandidateToolbar({
   onOpenBulkUpload,
   disabled = false,
 }: CandidateToolbarProps) {
+  const [localSearch, setLocalSearch] = React.useState(search);
+
+  // Sync external search prop if reset externally
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+
+  // Debounce search update to parent
+  useEffect(() => {
+    if (localSearch === search) return;
+    const timer = setTimeout(() => {
+      onSearchChange(localSearch);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [localSearch, onSearchChange, search]);
+
   const currentLabel =
     statusOptions.find((opt) => opt.value === status)?.label || UI_LABELS.STATUS.ALL_CANDIDATES;
 
@@ -49,9 +65,12 @@ export function CandidateToolbar({
       <div className="w-full sm:w-72">
         <SearchInput
           placeholder={PLACEHOLDERS.SEARCH.CANDIDATES}
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          onClear={() => onSearchChange('')}
+          value={localSearch}
+          onChange={(e) => setLocalSearch(e.target.value)}
+          onClear={() => {
+            setLocalSearch('');
+            onSearchChange('');
+          }}
           disabled={disabled}
           size="md"
           rounded="md"

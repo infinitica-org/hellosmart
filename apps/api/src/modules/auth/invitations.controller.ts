@@ -63,8 +63,7 @@ export class InvitationsController {
   ): Promise<AcceptInvitationResponse> {
     const requestId =
       (req.headers['x-request-id'] as string | undefined) || (req.id as string | undefined);
-    const clientIp =
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
+    const clientIp = req.ip;
     const userAgent = req.headers['user-agent'] as string | undefined;
 
     return this.invitationsService.acceptInvitation(body, {

@@ -4,7 +4,7 @@ import path from 'path';
 export default defineConfig({
   test: {
     globals: true,
-    exclude: ['**/node_modules/**', '**/dist/**', '**/tests/e2e/**', '**/.next/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/tests/e2e/**', '**/e2e/**', '**/.next/**'],
     env: {
       // Enable dev account fixture for unit tests only.
       // This flag is intentionally absent from staging and production env.

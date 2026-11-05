@@ -1,7 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
-import pg from 'pg';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { APP_CONFIG } from '../../config/config.tokens.js';
 import type { Config } from '../../config/config.js';
+import { PG_POOL, type PgPool } from '../database/database.tokens.js';
 import { REDIS_CLIENT, type HelloRedisClient } from '../redis/redis.tokens.js';
 
 export interface HealthReadyResponse {
@@ -18,6 +18,7 @@ export class HealthService {
   constructor(
     @Inject(APP_CONFIG) private readonly config: Config,
     @Inject(REDIS_CLIENT) private readonly redis: HelloRedisClient,
+    @Optional() @Inject(PG_POOL) private readonly pool: PgPool | null,
   ) {}
 
   liveness(): { status: 'ok' } {
@@ -27,16 +28,14 @@ export class HealthService {
   async readiness(): Promise<HealthReadyResponse> {
     const checks: HealthReadyResponse['checks'] = { api: 'ok', postgres: 'skipped', redis: 'skipped' };
 
-    try {
-      const pool = new pg.Pool({
-        connectionString: this.config.DATABASE_URL,
-        max: 1,
-        connectionTimeoutMillis: 2_000,
-      });
-      await pool.query('SELECT 1');
-      checks.postgres = 'ok';
-      await pool.end();
-    } catch {
+    if (this.pool) {
+      try {
+        await this.pool.query('SELECT 1');
+        checks.postgres = 'ok';
+      } catch {
+        checks.postgres = 'fail';
+      }
+    } else if (this.config.DATABASE_URL) {
       checks.postgres = 'fail';
     }
 

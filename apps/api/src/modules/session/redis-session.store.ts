@@ -6,14 +6,18 @@ import type {
   SessionStore,
 } from './session.types.js';
 
-const SESSION_PREFIX = 'hs:session:';
-const USER_SESSIONS_PREFIX = 'hs:user-sessions:';
+/** Token-hash tagged so a single-key GET stays cluster-local. */
+function sessionKey(tokenHash: string): string {
+  return `hs:session:{${tokenHash}}`;
+}
+
+/** User-tagged index. Cap Lua stays standalone-safe; cluster needs a later split. */
+function userIndexKey(userId: string): string {
+  return `hs:user-sessions:{${userId}}`;
+}
+
 const IDEM_PREFIX = 'hs:idem:';
 
-/**
- * Demonstrably atomic Redis Lua script for concurrency cap enforcement.
- * Performs pruning of expired sessions, oldest-session eviction, and index updates atomically.
- */
 const REGISTER_AND_ENFORCE_CAP_LUA = `
 pcall(cjson.encode_empty_table_as_object, false)
 local userKey = KEYS[1]
@@ -22,19 +26,19 @@ local maxSessions = tonumber(ARGV[2])
 local newTokenHash = ARGV[3]
 local newRecordJson = ARGV[4]
 local newTtlSeconds = tonumber(ARGV[5])
-local sessionPrefix = ARGV[6]
 
 local hashes = redis.call('SMEMBERS', userKey)
 local valid = {}
 
 for _, hash in ipairs(hashes) do
-  local raw = redis.call('GET', sessionPrefix .. hash)
+  local key = 'hs:session:{' .. hash .. '}'
+  local raw = redis.call('GET', key)
   if not raw then
     redis.call('SREM', userKey, hash)
   else
     local ok, rec = pcall(cjson.decode, raw)
     if not ok or not rec then
-      redis.call('DEL', sessionPrefix .. hash)
+      redis.call('DEL', key)
       redis.call('SREM', userKey, hash)
     else
       local idleTimeoutMs = rec.idleTimeoutMs
@@ -48,7 +52,7 @@ for _, hash in ipairs(hashes) do
       local absExpired = (rec.absoluteExpiresAt and now >= rec.absoluteExpiresAt)
       local idleExpired = (rec.lastSeenAt and (now - rec.lastSeenAt) >= idleTimeoutMs)
       if absExpired or idleExpired or not rec.absoluteExpiresAt or not rec.lastSeenAt then
-        redis.call('DEL', sessionPrefix .. hash)
+        redis.call('DEL', key)
         redis.call('SREM', userKey, hash)
       else
         table.insert(valid, { hash = hash, createdAt = rec.createdAt or 0, raw = raw })
@@ -64,13 +68,13 @@ if #valid >= maxSessions then
   local toEvictCount = #valid - maxSessions + 1
   for i = 1, toEvictCount do
     local item = valid[i]
-    redis.call('DEL', sessionPrefix .. item.hash)
+    redis.call('DEL', 'hs:session:{' .. item.hash .. '}')
     redis.call('SREM', userKey, item.hash)
     table.insert(evicted, item.raw)
   end
 end
 
-redis.call('SET', sessionPrefix .. newTokenHash, newRecordJson, 'EX', newTtlSeconds)
+redis.call('SET', 'hs:session:{' .. newTokenHash .. '}', newRecordJson, 'EX', newTtlSeconds)
 redis.call('SADD', userKey, newTokenHash)
 local setTtl = math.max(newTtlSeconds, 86400)
 redis.call('EXPIRE', userKey, setTtl)
@@ -78,11 +82,33 @@ redis.call('EXPIRE', userKey, setTtl)
 return cjson.encode(evicted)
 `;
 
+const DELETE_SESSION_LUA = `
+local sessionKey = KEYS[1]
+local userKey = KEYS[2]
+local hash = ARGV[1]
+local raw = redis.call('GET', sessionKey)
+if raw then
+  redis.call('SREM', userKey, hash)
+end
+redis.call('DEL', sessionKey)
+return raw or ''
+`;
+
+const TOUCH_SESSION_LUA = `
+local sessionKey = KEYS[1]
+local userKey = KEYS[2]
+local payload = ARGV[1]
+local ttl = tonumber(ARGV[2])
+redis.call('SET', sessionKey, payload, 'EX', ttl)
+redis.call('EXPIRE', userKey, math.max(ttl, 86400))
+return 1
+`;
+
 export class RedisSessionStore implements SessionStore {
   constructor(private readonly redis: RedisLike) {}
 
   async get(tokenHash: string): Promise<SessionRecord | null> {
-    const raw = await this.redis.get(SESSION_PREFIX + tokenHash);
+    const raw = await this.redis.get(sessionKey(tokenHash));
     if (!raw) {
       return null;
     }
@@ -94,24 +120,28 @@ export class RedisSessionStore implements SessionStore {
   }
 
   async set(tokenHash: string, record: SessionRecord, ttlSeconds: number): Promise<void> {
-    await this.redis.set(SESSION_PREFIX + tokenHash, JSON.stringify(record), {
+    await this.redis.set(sessionKey(tokenHash), JSON.stringify(record), {
       EX: ttlSeconds,
     });
   }
 
+  async touch(tokenHash: string, record: SessionRecord, ttlSeconds: number): Promise<void> {
+    await this.redis.eval(TOUCH_SESSION_LUA, {
+      keys: [sessionKey(tokenHash), userIndexKey(record.userId)],
+      arguments: [JSON.stringify(record), String(ttlSeconds)],
+    });
+  }
+
   async delete(tokenHash: string): Promise<void> {
-    const raw = await this.redis.get(SESSION_PREFIX + tokenHash);
-    if (raw) {
-      try {
-        const record = JSON.parse(raw) as SessionRecord;
-        if (record.userId) {
-          await this.redis.sRem(USER_SESSIONS_PREFIX + record.userId, tokenHash);
-        }
-      } catch {
-        // Ignore parse error on deletion
-      }
+    const record = await this.get(tokenHash);
+    if (!record?.userId) {
+      await this.redis.del(sessionKey(tokenHash));
+      return;
     }
-    await this.redis.del(SESSION_PREFIX + tokenHash);
+    await this.redis.eval(DELETE_SESSION_LUA, {
+      keys: [sessionKey(tokenHash), userIndexKey(record.userId)],
+      arguments: [tokenHash],
+    });
   }
 
   async registerAndEnforceCap(
@@ -121,19 +151,14 @@ export class RedisSessionStore implements SessionStore {
     maxSessions: number,
     ttlSeconds: number,
   ): Promise<{ evictedRecords: SessionRecord[] }> {
-    const userKey = USER_SESSIONS_PREFIX + userId;
-    const now = Date.now();
-
-    // Execute atomic Lua script
     const resultJson = await this.redis.eval(REGISTER_AND_ENFORCE_CAP_LUA, {
-      keys: [userKey],
+      keys: [userIndexKey(userId)],
       arguments: [
-        String(now),
+        String(Date.now()),
         String(maxSessions),
         tokenHash,
         JSON.stringify(record),
         String(ttlSeconds),
-        SESSION_PREFIX,
       ],
     });
     let evictedRawList: unknown[] = [];
@@ -162,15 +187,25 @@ export class RedisSessionStore implements SessionStore {
   async getUserSessions(
     userId: string,
   ): Promise<Array<{ tokenHash: string; record: SessionRecord }>> {
-    const userKey = USER_SESSIONS_PREFIX + userId;
+    const userKey = userIndexKey(userId);
     const tokenHashes = await this.redis.sMembers(userKey);
+    if (tokenHashes.length === 0) {
+      return [];
+    }
     const now = Date.now();
-    const result: Array<{ tokenHash: string; record: SessionRecord }> = [];
+    const keys = tokenHashes.map((hash) => sessionKey(hash));
+    const raws = this.redis.mGet
+      ? await this.redis.mGet(keys)
+      : await Promise.all(keys.map((key) => this.redis.get(key)));
 
-    for (const hash of tokenHashes) {
-      const raw = await this.redis.get(SESSION_PREFIX + hash);
-      if (!raw) {
-        await this.redis.sRem(userKey, hash);
+    const result: Array<{ tokenHash: string; record: SessionRecord }> = [];
+    const stale: string[] = [];
+
+    for (let i = 0; i < tokenHashes.length; i += 1) {
+      const hash = tokenHashes[i];
+      const raw = raws[i];
+      if (!hash || !raw) {
+        if (hash) stale.push(hash);
         continue;
       }
       try {
@@ -180,17 +215,20 @@ export class RedisSessionStore implements SessionStore {
           (record.role === 'platform_admin' ? 15 * 60 * 1000 : 30 * 60 * 1000);
         const absExpired = now >= record.absoluteExpiresAt;
         const idleExpired = now - record.lastSeenAt >= idleTimeoutMs;
-
         if (absExpired || idleExpired) {
-          await this.redis.del(SESSION_PREFIX + hash);
-          await this.redis.sRem(userKey, hash);
+          stale.push(hash);
+          await this.redis.del(sessionKey(hash));
         } else {
           result.push({ tokenHash: hash, record });
         }
       } catch {
-        await this.redis.del(SESSION_PREFIX + hash);
-        await this.redis.sRem(userKey, hash);
+        stale.push(hash);
+        await this.redis.del(sessionKey(hash));
       }
+    }
+
+    if (stale.length > 0) {
+      await this.redis.sRem(userKey, stale);
     }
 
     result.sort((a, b) => b.record.createdAt - a.record.createdAt);
@@ -208,28 +246,34 @@ export class RedisSessionStore implements SessionStore {
     if (!target) {
       return null;
     }
-    await this.redis.del(SESSION_PREFIX + target.tokenHash);
-    await this.redis.sRem(USER_SESSIONS_PREFIX + userId, target.tokenHash);
+    await this.delete(target.tokenHash);
     return target.record;
   }
 
   async revokeAllForUser(userId: string): Promise<SessionRecord[]> {
-    const userKey = USER_SESSIONS_PREFIX + userId;
+    const userKey = userIndexKey(userId);
     const tokenHashes = await this.redis.sMembers(userKey);
     const revoked: SessionRecord[] = [];
+    const keys = tokenHashes.map((hash) => sessionKey(hash));
+    const raws = this.redis.mGet
+      ? await this.redis.mGet(keys)
+      : await Promise.all(keys.map((key) => this.redis.get(key)));
 
-    for (const hash of tokenHashes) {
-      const raw = await this.redis.get(SESSION_PREFIX + hash);
+    for (let i = 0; i < tokenHashes.length; i += 1) {
+      const raw = raws[i];
       if (raw) {
         try {
           revoked.push(JSON.parse(raw) as SessionRecord);
         } catch {
-          // Ignore parse errors
+          // ignore
         }
-        await this.redis.del(SESSION_PREFIX + hash);
       }
     }
-    await this.redis.del(userKey);
+    if (keys.length > 0) {
+      await this.redis.del([...keys, userKey]);
+    } else {
+      await this.redis.del(userKey);
+    }
     return revoked;
   }
 
@@ -237,7 +281,7 @@ export class RedisSessionStore implements SessionStore {
     userId: string,
     exceptTokenHash: string,
   ): Promise<SessionRecord[]> {
-    const userKey = USER_SESSIONS_PREFIX + userId;
+    const userKey = userIndexKey(userId);
     const tokenHashes = await this.redis.sMembers(userKey);
     const revoked: SessionRecord[] = [];
 
@@ -245,15 +289,15 @@ export class RedisSessionStore implements SessionStore {
       if (hash === exceptTokenHash) {
         continue;
       }
-      const raw = await this.redis.get(SESSION_PREFIX + hash);
+      const raw = await this.redis.get(sessionKey(hash));
       if (raw) {
         try {
           revoked.push(JSON.parse(raw) as SessionRecord);
         } catch {
-          // Ignore
+          // ignore
         }
-        await this.redis.del(SESSION_PREFIX + hash);
       }
+      await this.redis.del(sessionKey(hash));
       await this.redis.sRem(userKey, hash);
     }
     return revoked;
@@ -273,5 +317,17 @@ export class RedisIdempotencyStore implements IdempotencyStore {
 
   async set(key: string, record: IdempotencyRecord, ttlSeconds: number): Promise<void> {
     await this.redis.set(IDEM_PREFIX + key, JSON.stringify(record), { EX: ttlSeconds });
+  }
+
+  async setNx(key: string, record: IdempotencyRecord, ttlSeconds: number): Promise<boolean> {
+    const result = await this.redis.set(IDEM_PREFIX + key, JSON.stringify(record), {
+      EX: ttlSeconds,
+      NX: true,
+    });
+    return result === 'OK' || result === true;
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.redis.del(IDEM_PREFIX + key);
   }
 }

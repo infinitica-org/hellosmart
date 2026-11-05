@@ -48,7 +48,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         if (devFallbackEnabled) {
           return NextResponse.json(devIdentifyLogin(email), { status: 200 });
         }
-        return NextResponse.json({ recognized: false }, { status: 200 });
+        return NextResponse.json({ recognized: true }, { status: 200 });
       }
 
       if (apiRes.status >= 500) {
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         if (devFallbackEnabled) {
           return NextResponse.json(devIdentifyLogin(email), { status: 200 });
         }
-        return NextResponse.json({ recognized: false }, { status: 200 });
+        return NextResponse.json({ recognized: true }, { status: 200 });
       }
 
       if (apiRes.status === 429) {
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json(devIdentifyLogin(email), { status: 200 });
     }
 
-    return NextResponse.json({ recognized: false }, { status: 200 });
+    return NextResponse.json({ recognized: true }, { status: 200 });
   } catch (error) {
     logDevError('auth/identify', error);
     return NextResponse.json(
