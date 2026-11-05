@@ -13,6 +13,7 @@ import {
   CandidateStoreProvider,
 } from '@/providers/store-provider';
 import AdminDashboardPage from '@/app/(admin)/admin/page';
+import AdminSecuritySettingsPage from '@/app/(admin)/admin/settings/security/page';
 import CompanyCandidatesPage from '@/app/(company)/company/candidates/page';
 import CompanyDashboardPage from '@/app/(company)/company/page';
 import CandidateDashboardPage from '@/app/(candidate)/candidate/page';
@@ -227,6 +228,68 @@ describe('S1-T00-3: Component API Migration & RTK Endpoint Tests', () => {
         </ToastProvider>,
       );
       expect(html).toBeDefined();
+    });
+
+    it('executes getMfaStatus, startMfaSetup, and confirmMfaSetup via adminApi', async () => {
+      const store = makeAdminStore();
+      const mockFetch = vi.fn().mockImplementation((req: Request) => {
+        const url = req.url || '';
+        if (url.includes('/auth/mfa/status')) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                enrolled: false,
+                backupCodesRemaining: 0,
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } },
+            ),
+          );
+        }
+        if (url.includes('/auth/mfa/setup/start')) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                secret: 'JBSWY3DPEHPK3PXP',
+                otpauthUri: 'otpauth://totp/HelloSmart:admin@hellosmart.ai?secret=JBSWY3DPEHPK3PXP',
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } },
+            ),
+          );
+        }
+        if (url.includes('/auth/mfa/setup/confirm')) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                backupCodes: ['ABCD-1234', 'EFGH-5678'],
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } },
+            ),
+          );
+        }
+        return Promise.resolve(new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const statusResult = await store.dispatch(adminApi.endpoints.getMfaStatus.initiate());
+      expect((statusResult as any).data?.enrolled).toBe(false);
+
+      const startResult = await store.dispatch(adminApi.endpoints.startMfaSetup.initiate());
+      expect((startResult as any).data?.secret).toBe('JBSWY3DPEHPK3PXP');
+
+      const confirmResult = await store.dispatch(
+        adminApi.endpoints.confirmMfaSetup.initiate({ totpCode: '123456' }),
+      );
+      expect((confirmResult as any).data?.backupCodes).toHaveLength(2);
+    });
+
+    it('renders AdminSecuritySettingsPage within AdminStoreProvider', () => {
+      const html = renderToString(
+        <AdminStoreProvider>
+          <AdminSecuritySettingsPage />
+        </AdminStoreProvider>,
+      );
+      expect(html).toContain('Security');
+      expect(html).toContain('Multi-factor authentication');
     });
   });
 

@@ -695,5 +695,28 @@ describe('S1-T00-2: RTK Query Base API Slices & Store Integration', () => {
       });
       expect(rubricMutation).toBeDefined();
     });
+
+    it('21. verifies newly integrated admin MFA endpoints (getMfaStatus, startMfaSetup, confirmMfaSetup, regenerateBackupCodes) are defined on adminApi', () => {
+      expect(adminApi.endpoints).toHaveProperty('getMfaStatus');
+      expect(adminApi.endpoints).toHaveProperty('startMfaSetup');
+      expect(adminApi.endpoints).toHaveProperty('confirmMfaSetup');
+      expect(adminApi.endpoints).toHaveProperty('regenerateBackupCodes');
+
+      const mfaStatusQuery = (adminApi.endpoints.getMfaStatus as any).initiate();
+      expect(mfaStatusQuery).toBeDefined();
+
+      const startSetupMutation = (adminApi.endpoints.startMfaSetup as any).initiate();
+      expect(startSetupMutation).toBeDefined();
+
+      const confirmMutation = (adminApi.endpoints.confirmMfaSetup as any).initiate({
+        totpCode: '123456',
+      });
+      expect(confirmMutation).toBeDefined();
+
+      const regenMutation = (adminApi.endpoints.regenerateBackupCodes as any).initiate({
+        totpCode: '123456',
+      });
+      expect(regenMutation).toBeDefined();
+    });
   });
 });
