@@ -30,7 +30,9 @@ flowchart TD
 
 ### 10.3 Disconnects and the clock
 
-The timer **keeps running** while a candidate is disconnected. Each assessment has a "Pause timer on disconnect" setting that is **off by default**, and the consent screen warns candidates before they connect. The countdown shown in the browser is for display only; the server enforces access.
+The timer **keeps running** while a candidate is disconnected. Each assessment has a "Pause timer on disconnect" setting that is **off by default**, and the consent screen warns candidates before they connect. The countdown shown in the browser is for display only; the server enforces access. Deadlines are computed in UTC. The company's IANA timezone is stored separately and is not used for the arithmetic, so daylight-saving changes do not add or remove minutes. When pause is turned on, the deadline moves forward by the disconnect duration, capped at 24 hours, and still cannot pass the window ceiling.
+
+A worker runs every 30 seconds. When `now >= deadline_at` it snapshots the current answers, sets `auto_submitted = true`, and revokes the workspace write token. A manual submit in the same moment produces one submission.
 
 ### 10.4 Extensions
 

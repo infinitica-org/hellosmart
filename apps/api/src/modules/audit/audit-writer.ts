@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
+import { redactSensitiveData } from '../../common/audit/audit-log.service.js';
 import type { AuditRecordInput } from './audit.types.js';
 
 function asInet(ip: string | null | undefined): string | null {
@@ -41,7 +42,12 @@ export async function appendAuditEvent(
     'SELECT audit.latest_event_hash() AS hash',
   );
   const prevHash: Buffer = prev.rows[0]?.hash ?? Buffer.alloc(0);
-  const payload = canonicalPayload(input);
+  const sanitized: AuditRecordInput = {
+    ...input,
+    before: input.before === undefined ? undefined : redactSensitiveData(input.before),
+    after: input.after === undefined ? undefined : redactSensitiveData(input.after),
+  };
+  const payload = canonicalPayload(sanitized);
   const hash = crypto.createHash('sha256').update(prevHash).update(payload).digest();
 
   await client.query(
@@ -50,17 +56,17 @@ export async function appendAuditEvent(
       before, after, ip, user_agent, request_id, prev_hash, hash
     ) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9::inet,$10,$11,$12,$13)`,
     [
-      input.actorId,
-      input.actorRole,
-      input.orgId,
-      input.action,
-      input.entity,
-      input.entityId ?? null,
-      input.before === undefined ? null : JSON.stringify(input.before),
-      input.after === undefined ? null : JSON.stringify(input.after),
-      asInet(input.ip),
-      input.userAgent ?? null,
-      input.requestId ?? null,
+      sanitized.actorId,
+      sanitized.actorRole,
+      sanitized.orgId,
+      sanitized.action,
+      sanitized.entity,
+      sanitized.entityId ?? null,
+      sanitized.before === undefined ? null : JSON.stringify(sanitized.before),
+      sanitized.after === undefined ? null : JSON.stringify(sanitized.after),
+      asInet(sanitized.ip),
+      sanitized.userAgent ?? null,
+      sanitized.requestId ?? null,
       prevHash.length > 0 ? prevHash : null,
       hash,
     ],
