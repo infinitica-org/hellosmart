@@ -16,7 +16,6 @@ describe('AdminAgentsPage (BR-18, BR-19 Reviewer Agent Telemetry & Library)', ()
     expect(html).toContain('Standby');
     expect(html).toContain('Aggregator idle until reviewer agents are deployed');
     expect(html).toContain('No Reviewer Agents Registered');
-    expect(html).toContain('BR-18 and BR-19 Invariant: Independent Reviewer Agent Service');
   });
 
   it('renders dynamic telemetry and agent cards when agents are populated', () => {

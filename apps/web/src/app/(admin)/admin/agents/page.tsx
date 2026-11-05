@@ -197,22 +197,7 @@ export default function AdminAgentsPage({ initialAgents }: AdminAgentsPageProps 
       </Card>
 
       {/* Invariant Alert */}
-      <Alert variant="info" className="text-xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
-          <div className="space-y-1">
-            <div className="font-semibold text-neutral-900">
-              BR-18 and BR-19 Invariant: Independent Reviewer Agent Service
-            </div>
-            <p className="text-neutral-600">
-              Each rubric dimension is scored independently by an isolated reviewer agent citing mandatory evidence.
-              The consensus aggregator checks inter-agent agreement and flags anomalies for human decision.
-            </p>
-          </div>
-          <div className="font-mono text-primary bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/25 shrink-0 font-medium">
-            Evidence-Cited Scoring
-          </div>
-        </div>
-      </Alert>
+      
     </div>
   );
 }
