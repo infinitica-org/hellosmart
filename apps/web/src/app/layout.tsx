@@ -3,7 +3,6 @@ import { headers } from 'next/headers';
 import '@hs/ui/styles/fonts.css';
 import '@hs/ui/styles/tokens.css';
 import './globals.css';
-import { QueryProvider } from '@/components/providers';
 import { AppToastProvider } from '@/providers/toast-provider';
 
 export const dynamic = 'force-dynamic';
@@ -36,9 +35,7 @@ export default async function RootLayout({
         suppressHydrationWarning
         className="min-h-screen bg-canvas text-neutral-900 font-sans font-normal antialiased selection:bg-primary/20 selection:text-primary m-0 p-0"
       >
-        <QueryProvider>
-          <AppToastProvider>{children}</AppToastProvider>
-        </QueryProvider>
+        <AppToastProvider>{children}</AppToastProvider>
       </body>
     </html>
   );

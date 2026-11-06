@@ -1,9 +1,9 @@
 'use client';
 
-import { useGetCompanyTemplatesQuery } from '@/store/company/companyApi';
-import { fetchTemplateById } from '@/lib/company-api';
-import { useQuery } from '@tanstack/react-query';
-import { usePortalAuth } from '@/hooks/use-portal-auth';
+import {
+  useGetCompanyTemplatesQuery,
+  useGetTemplateByIdQuery,
+} from '@/store/company/companyApi';
 import type { RoleTemplateSummary, RoleTemplateDetail } from '@/components/company/templates/types';
 
 /**
@@ -35,19 +35,28 @@ export function useAssignedTemplates() {
 /**
  * Hook to retrieve full specification for a single template on-demand.
  * Query only executes when templateId is provided and valid.
+ * Centralized via RTK Query companyApi slice.
  */
 export function useTemplateDetail(templateId: string | null | undefined) {
-  const { user } = usePortalAuth();
-  const orgId = user?.org?.id ?? 'current';
+  const { data, isLoading, isError, error, refetch } = useGetTemplateByIdQuery(
+    templateId ?? '',
+    { skip: !templateId },
+  );
 
-  return useQuery<RoleTemplateDetail, Error>({
-    queryKey: ['company', orgId, 'template', templateId],
-    queryFn: () => {
-      if (!templateId) {
-        throw new Error('Template ID is required');
-      }
-      return fetchTemplateById(templateId);
-    },
-    enabled: Boolean(templateId),
-  });
+  const normalizedError = error
+    ? new Error(
+        (error as any)?.data?.message ||
+          (error as any)?.data?.detail ||
+          (error as any)?.message ||
+          'Failed to load template.',
+      )
+    : null;
+
+  return {
+    data: data as RoleTemplateDetail | undefined,
+    isLoading,
+    isError,
+    error: normalizedError,
+    refetch: () => void refetch(),
+  };
 }

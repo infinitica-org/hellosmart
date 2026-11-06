@@ -255,3 +255,73 @@ export function extractOrgIdFromKey(key: string): string | null {
   const meta = extractMetadataFromKey(key);
   return meta?.orgId ?? null;
 }
+
+/**
+ * Constructs a tenant-isolated workspace snapshot key:
+ * snapshots/{orgId}/{assignmentId}/snap_{timestamp}[_{seq}].tar.gz
+ */
+export function buildSnapshotStorageKey(
+  orgId: string,
+  assignmentId: string,
+  timestamp: string,
+  seq?: number,
+): string {
+  if (!orgId || !UUID_REGEX.test(orgId)) {
+    throw new Error('Invalid organization ID for snapshot storage key');
+  }
+  if (!assignmentId || !UUID_REGEX.test(assignmentId)) {
+    throw new Error('Invalid assignment ID for snapshot storage key');
+  }
+
+  // Sanitize timestamp; only alphanumeric, T, Z, hyphen, underscore
+  const sanitizedTs = (timestamp || '').replace(/[^a-zA-Z0-9TZ_-]/g, '');
+  if (!sanitizedTs) {
+    throw new Error('Invalid timestamp for snapshot storage key');
+  }
+
+  const suffix = seq !== undefined ? `_${seq}` : '';
+  return `snapshots/${orgId}/${assignmentId}/snap_${sanitizedTs}${suffix}.tar.gz`;
+}
+
+/**
+ * BR-01: Verifies that a snapshot storage key strictly belongs to the caller's organization.
+ */
+export function isSnapshotKeyInOrg(key: string, orgId: string): boolean {
+  if (!key || !orgId) {
+    return false;
+  }
+  if (key.includes('..') || key.includes('\0') || key.includes('\\')) {
+    return false;
+  }
+  const prefix = `snapshots/${orgId}/`;
+  return key.startsWith(prefix);
+}
+
+/**
+ * Constructs a tenant-isolated submission bundle key:
+ * submissions/{orgId}/{assignmentId}/final_bundle.tar.gz
+ */
+export function buildSubmissionBundleKey(orgId: string, assignmentId: string): string {
+  if (!orgId || !UUID_REGEX.test(orgId)) {
+    throw new Error('Invalid organization ID for submission bundle key');
+  }
+  if (!assignmentId || !UUID_REGEX.test(assignmentId)) {
+    throw new Error('Invalid assignment ID for submission bundle key');
+  }
+
+  return `submissions/${orgId}/${assignmentId}/final_bundle.tar.gz`;
+}
+
+/**
+ * BR-01: Verifies that a submission bundle key strictly belongs to the caller's organization.
+ */
+export function isSubmissionBundleKeyInOrg(key: string, orgId: string): boolean {
+  if (!key || !orgId) {
+    return false;
+  }
+  if (key.includes('..') || key.includes('\0') || key.includes('\\')) {
+    return false;
+  }
+  const prefix = `submissions/${orgId}/`;
+  return key.startsWith(prefix);
+}

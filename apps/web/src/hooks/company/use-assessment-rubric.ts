@@ -1,58 +1,77 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchAssessmentRubric, updateAssessmentRubric } from '@/lib/company-api';
-import { ApiError } from '@/lib/api-client';
-import { usePortalAuth } from '@/hooks/use-portal-auth';
+import {
+  useGetAssessmentRubricQuery,
+  useUpdateAssessmentRubricMutation,
+} from '@/store/company/companyApi';
 import type { AssessmentRubric } from '@/components/company/rubric/types';
 
 /**
  * Hook to retrieve the assessment-specific rubric.
- * Scoped by orgId to prevent cross-tenant data leakage (BR-01).
+ * Centralized via RTK Query companyApi slice.
  */
 export function useAssessmentRubric(assessmentId: string | null | undefined) {
-  const { user } = usePortalAuth();
-  const orgId = user?.org?.id ?? 'current';
+  const { data, isLoading, isError, error, refetch } = useGetAssessmentRubricQuery(
+    assessmentId ?? '',
+    { skip: !assessmentId },
+  );
 
-  return useQuery<AssessmentRubric, Error>({
-    queryKey: ['company', orgId, 'assessment', assessmentId, 'rubric'],
-    queryFn: () => {
-      if (!assessmentId) {
-        throw new Error('Assessment ID is required');
-      }
-      return fetchAssessmentRubric(assessmentId);
-    },
-    enabled: Boolean(assessmentId),
-    staleTime: 5 * 60 * 1000,
-    retry: (failureCount, error) => {
-      if (
-        error instanceof ApiError &&
-        (error.status === 401 || error.status === 403 || error.status === 404)
-      ) {
-        return false;
-      }
-      return failureCount < 2;
-    },
-  });
+  const normalizedError = error
+    ? new Error(
+        (error as any)?.data?.message ||
+          (error as any)?.data?.detail ||
+          (error as any)?.message ||
+          'Failed to load assessment rubric.',
+      )
+    : null;
+
+  return {
+    data: data as AssessmentRubric | undefined,
+    isLoading,
+    isError,
+    error: normalizedError,
+    refetch: () => void refetch(),
+  };
 }
 
 /**
  * Mutation hook to persist customized rubric dimensions.
- * Enforces 100% total weight and updates React Query cache.
+ * Enforces 100% total weight and updates RTK Query cache.
+ * Centralized via RTK Query companyApi slice.
  */
 export function useUpdateAssessmentRubric(assessmentId: string) {
-  const queryClient = useQueryClient();
-  const { user } = usePortalAuth();
-  const orgId = user?.org?.id ?? 'current';
+  const [updateMutation, { isLoading: isPending }] = useUpdateAssessmentRubricMutation();
 
-  return useMutation<AssessmentRubric, Error, AssessmentRubric>({
-    mutationFn: (rubric) => updateAssessmentRubric(assessmentId, rubric),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['company', orgId, 'assessment', assessmentId, 'rubric'], updated);
-      queryClient.invalidateQueries({
-        queryKey: ['company', orgId, 'assessment', assessmentId],
-      });
+  const mutate = (
+    rubric: AssessmentRubric,
+    options?: {
+      onSuccess?: (data: AssessmentRubric) => void;
+      onError?: (err: Error) => void;
     },
-  });
+  ) => {
+    updateMutation({ assessmentId, rubric })
+      .unwrap()
+      .then((data) => options?.onSuccess?.(data))
+      .catch((err) => {
+        const error =
+          err instanceof Error
+            ? err
+            : new Error(
+                err?.data?.message ||
+                  err?.data?.detail ||
+                  err?.message ||
+                  'Failed to save rubric configuration to server.',
+              );
+        options?.onError?.(error);
+      });
+  };
+
+  return {
+    isPending,
+    mutate,
+    mutateAsync: async (rubric: AssessmentRubric): Promise<AssessmentRubric> => {
+      return await updateMutation({ assessmentId, rubric }).unwrap();
+    },
+  };
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
@@ -12,6 +12,7 @@ import {
   Button,
   Badge,
   Alert,
+  EmptyState,
   HumanReviewPanel,
   RubricScoreCard,
   ReviewDisagreementAlert,
@@ -29,8 +30,9 @@ import {
   Bot,
   AlertTriangle,
 } from 'lucide-react';
+import { useGetCandidatesQuery } from '@/store/company/companyApi';
 
-interface SubmissionDetail {
+export interface SubmissionDetail {
   id: string;
   candidateName: string;
   candidateEmail: string;
@@ -56,76 +58,67 @@ interface SubmissionDetail {
   }>;
 }
 
-export default function CandidateSubmissionReviewPage() {
+export interface CandidateSubmissionReviewPageProps {
+  initialSubmission?: SubmissionDetail;
+}
+
+export default function CandidateSubmissionReviewPage({
+  initialSubmission,
+}: CandidateSubmissionReviewPageProps = {}) {
   const params = useParams();
   const submissionId = String(params?.id || 'sub-001');
+  const { data: candidatesData } = useGetCandidatesQuery({ limit: 100 });
 
-  const [submission, setSubmission] = useState<SubmissionDetail>({
-    id: submissionId,
-    candidateName: 'Priya Sharma',
-    candidateEmail: 'priya.sharma@example.com',
-    assessmentName: 'Full-Stack Distributed Systems Engineer',
-    workspaceMode: 'cloud',
-    durationMinutes: 82,
-    submittedAt: 'Today at 2:15 PM UTC',
-    autoSubmitted: false,
-    isFinalized: false,
-    currentVersion: 1,
-    overallScore: 82,
-    humanScore: 85,
-    notes: 'Candidate showed strong modular architectural patterns and clean domain isolation. Overriding score to 85 reflecting exceptional edge case handling in checkout transaction rollback.',
-    releaseResults: false,
-    rubricScores: [
-      {
-        name: 'Code Quality & Clean Architecture',
-        weight: 30,
-        score: 86,
-        confidence: 94,
-        rationale:
-          'Extracted modular domain services cleanly. Strong TypeScript type definitions, consistent error boundaries, and zero any type escapes.',
-        evidence: [
-          'src/modules/orders/orders.service.ts#L42-L89',
-          'src/modules/orders/dto/order.dto.ts#L10-L35',
-        ],
-      },
-      {
-        name: 'System Design & Scalability',
-        weight: 25,
-        score: 82,
-        confidence: 90,
-        rationale:
-          'Applied an asynchronous event-driven worker model for order processing. Handled transaction rollbacks gracefully on simulate failures.',
-        evidence: [
-          'src/workers/order-processor.ts#L15-L68',
-          'src/database/transactions.ts#L22-L50',
-        ],
-      },
-      {
-        name: 'AI Tooling & Prompt Strategy',
-        weight: 25,
-        score: 80,
-        confidence: 92,
-        rationale:
-          'Effective conversational prompt refinement. Rejected hallucinated packages and instructed AI assistant to follow project strict typing guidelines.',
-        evidence: [
-          'workspace/transcripts/ai-chat.jsonl#L45-L68',
-        ],
-      },
-      {
-        name: 'Production Readiness & Edge Cases',
-        weight: 20,
-        score: 75,
-        confidence: 86,
-        rationale:
-          'Implemented graceful shutdown handlers and rate limiting middleware. Missing automated unit test for out-of-stock boundary condition.',
-        evidence: [
-          'src/main.ts#L30-L55',
-          'tests/orders.spec.ts#L12-L40',
-        ],
-        flags: ['Missing boundary condition test for zero inventory checkout'],
-      },
-    ],
+  const matchedCandidate = useMemo(() => {
+    if (!candidatesData) return null;
+    const items = Array.isArray(candidatesData)
+      ? candidatesData
+      : (candidatesData as { items?: any[] })?.items || [];
+    return items.find(
+      (c: any) =>
+        c.id === submissionId ||
+        c.assignmentId === submissionId ||
+        c.email === submissionId,
+    );
+  }, [candidatesData, submissionId]);
+
+  const [submission, setSubmission] = useState<SubmissionDetail>(() => {
+    if (initialSubmission) return initialSubmission;
+    return {
+      id: submissionId,
+      candidateName: matchedCandidate?.name || 'Candidate',
+      candidateEmail: matchedCandidate?.email || 'candidate@company.com',
+      assessmentName: (matchedCandidate as any)?.assessmentName || 'Technical Assessment',
+      workspaceMode: ((matchedCandidate as any)?.workspaceMode as 'cloud' | 'chat') || 'cloud',
+      durationMinutes: (matchedCandidate as any)?.durationMinutes || 90,
+      submittedAt: (matchedCandidate as any)?.submittedAt
+        ? new Date((matchedCandidate as any).submittedAt).toLocaleString()
+        : 'Recently',
+      autoSubmitted: false,
+      isFinalized: matchedCandidate?.status === 'completed',
+      currentVersion: 1,
+      overallScore: (matchedCandidate as any)?.score ?? 80,
+      humanScore: (matchedCandidate as any)?.humanScore,
+      notes: '',
+      releaseResults: false,
+      rubricScores: [],
+    };
   });
+
+  useEffect(() => {
+    if (initialSubmission) {
+      setSubmission(initialSubmission);
+    } else if (matchedCandidate) {
+      setSubmission((prev) => ({
+        ...prev,
+        id: matchedCandidate.id || submissionId,
+        candidateName: matchedCandidate.name || matchedCandidate.email.split('@')[0],
+        candidateEmail: matchedCandidate.email,
+        assessmentName: (matchedCandidate as any)?.assessmentName || prev.assessmentName,
+        isFinalized: matchedCandidate.status === 'completed',
+      }));
+    }
+  }, [initialSubmission, matchedCandidate, submissionId]);
 
   const [notification, setNotification] = useState<string | null>(null);
 
@@ -272,18 +265,24 @@ export default function CandidateSubmissionReviewPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4">
-          {submission.rubricScores.map((item, idx) => (
-            <RubricScoreCard
-              key={idx}
-              name={item.name}
-              weight={item.weight}
-              score={item.score}
-              confidence={item.confidence}
-              rationale={item.rationale}
-              evidence={item.evidence}
-              flags={item.flags}
-            />
-          ))}
+          {submission.rubricScores.length > 0 ? (
+            submission.rubricScores.map((item, idx) => (
+              <RubricScoreCard
+                key={idx}
+                name={item.name}
+                weight={item.weight}
+                score={item.score}
+                confidence={item.confidence}
+                rationale={item.rationale}
+                evidence={item.evidence}
+                flags={item.flags}
+              />
+            ))
+          ) : (
+            <Card className="p-8 text-center text-xs text-neutral-500">
+              No independent AI reviewer evaluations recorded for this submission yet. Agent reports will appear here once scoring runs complete.
+            </Card>
+          )}
         </div>
       </div>
 
