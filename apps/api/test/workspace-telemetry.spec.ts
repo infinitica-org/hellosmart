@@ -15,6 +15,25 @@ import { PgWorkspaceTelemetryRegistryAdapter } from '../src/modules/workspaces/a
 import { withOrg, withUserSession } from '../src/modules/tenancy/with-org.js';
 import pg from 'pg';
 
+async function checkDbConnection(): Promise<boolean> {
+  try {
+    const probe = new pg.Pool({
+      connectionString: 'postgres://hs_owner:hs_owner_local@localhost:5432/hellosmart_test',
+      connectionTimeoutMillis: 1000,
+      max: 1,
+    });
+    const client = await probe.connect();
+    await client.query('SELECT 1');
+    client.release();
+    await probe.end();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const isDbAvailable = await checkDbConnection();
+
 describe('Workspace Compute & AI Token Spend Telemetry (BR-23, CO-035, CO-037, AD-018, NF-014)', () => {
   // ---------------------------------------------------------------------------
   // 1. Pure Unit Tests: Time & Duration Math
@@ -312,7 +331,7 @@ describe('Workspace Compute & AI Token Spend Telemetry (BR-23, CO-035, CO-037, A
   // ---------------------------------------------------------------------------
   // 4. Database Integration Tests on hellosmart_test
   // ---------------------------------------------------------------------------
-  describe('Database Integration Tests (hellosmart_test)', () => {
+  describe.runIf(isDbAvailable)('Database Integration Tests (hellosmart_test)', () => {
     const adminUrl = 'postgres://hs_owner:hs_owner_local@localhost:5432/hellosmart_test';
     const appUrl = 'postgres://hs_app:hs_app_local@localhost:5432/hellosmart_test';
     const platformUrl = 'postgres://hs_platform:hs_platform_local@localhost:5432/hellosmart_test';
