@@ -9,6 +9,9 @@ export * from './schemas/assessment.js';
 
 export * from './schemas/consent.js';
 export * from './schemas/workspace-submission.js';
+export * from './schemas/task-spec.js';
+export * from './schemas/reviewer-dispatch.js';
+export * from './interfaces/workspace-provider.js';
 
 export * from './schemas/lead.js';
 export * from './schemas/quote.js';

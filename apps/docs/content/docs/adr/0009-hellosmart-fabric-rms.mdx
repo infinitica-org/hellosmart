@@ -1,0 +1,52 @@
+---
+title: "0009: HelloSmart Fabric: Unified Resource Management System (RMS) for Task Virtualization"
+description: "Architecture Decision Record: 0009: HelloSmart Fabric unified provisioning engine for candidate assessment workspaces and virtual assistant machines."
+---
+
+<RoleBadge roles={["sde", "ai", "mgmt"]} />
+
+# 0009: HelloSmart Fabric (Unified RMS Virtualization Engine)
+
+**Status:** Accepted · 2026-11-06 (Supersedes monolithic workspace provisioning)
+
+## Context
+HelloSmart requires a repeatable mechanism to convert any arbitrary unit of work into an isolated, reproducible, secure virtual environment pre-stocked with all dependencies, tools, and controlled AI access, and clean it up automatically upon completion.
+
+This requirement emerges in two distinct operational flows:
+1. **Candidate Assessment Workspaces**: A human candidate completes a real-world coding assessment (e.g. Saffron / Outship.ai style) inside a browser-based developer environment (OpenVSCode Server, built-in terminal, Postman, AI copilot drawer, and live app preview).
+2. **Virtual Assistant Machines**: An autonomous AI agent takes a delegated engineering task (e.g. bug fix, test generation, migration) with tool packs, step limits, budget caps, and human-in-the-loop approval gates.
+
+Operating two distinct infrastructure stacks would duplicate container lifecycle management, telemetry, secret injection, and AI egress firewalls.
+
+## Decision
+Adopt **HelloSmart Fabric** as the single unified Resource Management System (RMS) across both candidate workspaces and autonomous agent machines, structured into four strictly decoupled layers atop a provider interface:
+
+1. **Layer 1: Task Layer (Task Spec v1)**:
+   - Every unit of work is defined by an immutable, versioned manifest (`TaskSpec`).
+   - Standardizes domain, task type (Bug Fix, Feature Build, API Integration, Code Review), category (Micro, Short, Standard, Long, Multi-Session), tool packs, limits, seed data, and rubric agents.
+   - Renders three synchronized views from one source: in-VM `TASK.md`, candidate portal brief, and agent system context.
+
+2. **Layer 2: Resource Layer (Layered Golden Images & Tool Packs)**:
+   - **Base OS Image**: Hardened Ubuntu 24.04 LTS with monitoring, recorder, and egress firewall rules.
+   - **Domain Image**: Software engineering stack (OpenVSCode Server, Git, Node 20, Python 3.12, Docker-in-Docker via Sysbox, Postman CLI, `services/ws-agent`).
+   - **Task Image**: Pinned commit clone, pre-installed dependencies (`node_modules`), seeded database, and pre-warmed tests (launch target $< 3\text{ s}$ from warm pool, $< 60\text{ s}$ cold p95).
+   - **Tool Packs**: Named bundles (`core-dev`, `api-tools`, `container`, `db-tools`, `ai-assistant`, `recorder`).
+
+3. **Layer 3: AI Layer (Single Secure Gateway Door)**:
+   - Standalone **AI Proxy Gateway** on port 4000.
+   - Workspaces hold only short-lived, session-scoped JWT tokens (never real LLM keys).
+   - Enforces AI ON/OFF policies, model allowlists, and sliding-window RPM + token/cost budgets.
+   - Emits prompt/response telemetry to the session evidence store for post-session reviewer evaluation (`services/reviewer`).
+
+4. **Layer 4: Virtualization Layer (Provider Interface & Isolation)**:
+   - Core control plane interacts exclusively with the `IWorkspaceProvider` driver interface (`createSlot`, `attachResources`, `injectSecrets`, `startServices`, `createSnapshot`, `destroySlot`).
+   - **Pilot Backend**: AWS EC2 `m7i.2xlarge` hosts running Ubuntu with Docker + Sysbox system containers (`sysbox-runc`), packing up to 4 `S` class slots per host.
+   - **Network Profile**: Default-deny outbound egress; strictly allows package mirrors and the internal AI proxy; drops AWS IMDS (`169.254.169.254`).
+
+## Consequences
++ **Single Provisioning Engine**: Candidate assessments and delegated AI assistants share identical images, tools, proxies, and observability.
++ **Sub-3s Warm Pool Handover**: Pre-warmed container slots eliminate candidate wait times during assessments.
++ **Swappable Compute**: The control plane is decoupled from AWS/Sysbox via `IWorkspaceProvider`, enabling microVM (Firecracker) or alternate cloud backends without touching task definitions.
++ **Strict Security & Tenancy**: Zero provider key leakage to candidate containers; tamper-proof server-side countdown timers; append-only audit trail.
+− **Warm Pool Compute Cost**: Maintaining idle pre-warmed container slots incurs baseline infrastructure spend, mitigated by spend guards, idle reaping (5 min threshold), and auto-destroy.
+
