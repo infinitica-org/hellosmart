@@ -296,3 +296,32 @@ export function isSnapshotKeyInOrg(key: string, orgId: string): boolean {
   const prefix = `snapshots/${orgId}/`;
   return key.startsWith(prefix);
 }
+
+/**
+ * Constructs a tenant-isolated submission bundle key:
+ * submissions/{orgId}/{assignmentId}/final_bundle.tar.gz
+ */
+export function buildSubmissionBundleKey(orgId: string, assignmentId: string): string {
+  if (!orgId || !UUID_REGEX.test(orgId)) {
+    throw new Error('Invalid organization ID for submission bundle key');
+  }
+  if (!assignmentId || !UUID_REGEX.test(assignmentId)) {
+    throw new Error('Invalid assignment ID for submission bundle key');
+  }
+
+  return `submissions/${orgId}/${assignmentId}/final_bundle.tar.gz`;
+}
+
+/**
+ * BR-01: Verifies that a submission bundle key strictly belongs to the caller's organization.
+ */
+export function isSubmissionBundleKeyInOrg(key: string, orgId: string): boolean {
+  if (!key || !orgId) {
+    return false;
+  }
+  if (key.includes('..') || key.includes('\0') || key.includes('\\')) {
+    return false;
+  }
+  const prefix = `submissions/${orgId}/`;
+  return key.startsWith(prefix);
+}

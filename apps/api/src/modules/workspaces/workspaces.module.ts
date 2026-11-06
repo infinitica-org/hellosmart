@@ -1,9 +1,14 @@
 import { Module } from '@nestjs/common';
+import { AuditModule } from '../../common/audit/audit.module.js';
 import { StorageModule } from '../../common/storage/storage.module.js';
 import { DatabaseModule } from '../database/database.module.js';
+import { PgSubmissionRegistryAdapter } from './adapters/pg-submission-registry.adapter.js';
 import { PgWorkspaceRegistryAdapter } from './adapters/pg-workspace-registry.adapter.js';
 import { AutosavePackager } from './autosave.packager.js';
 import { AutosaveQueueProcessor } from './autosave-queue.processor.js';
+import { GitDiffHelper } from './git-diff.helper.js';
+import { PATCH_GENERATOR_PORT } from './ports/patch-generator.port.js';
+import { SUBMISSION_REGISTRY_PORT } from './ports/submission-registry.port.js';
 import {
   EmptyTerminalLogSource,
   TERMINAL_LOG_SOURCE_PORT,
@@ -12,20 +17,32 @@ import {
   EmptyWorkspaceConfigSource,
   WORKSPACE_CONFIG_SOURCE_PORT,
 } from './ports/workspace-config-source.port.js';
+import {
+  EmptyWorkspaceLifecycleAdapter,
+  WORKSPACE_LIFECYCLE_PORT,
+} from './ports/workspace-lifecycle.port.js';
 import { WORKSPACE_REGISTRY_PORT } from './ports/workspace-registry.port.js';
+import {
+  EmptyWorkspaceSourceAdapter,
+  WORKSPACE_SOURCE_PORT,
+} from './ports/workspace-source.port.js';
 import {
   FailClosedWorkspaceVolumeReader,
   WORKSPACE_VOLUME_READER_PORT,
 } from './ports/workspace-volume-reader.port.js';
 import { SessionActivityService } from './session-activity.service.js';
+import { SubmissionBundlerService } from './submission-bundler.service.js';
 
 @Module({
-  imports: [DatabaseModule, StorageModule],
+  imports: [DatabaseModule, StorageModule, AuditModule],
   providers: [
     AutosavePackager,
     AutosaveQueueProcessor,
     SessionActivityService,
     PgWorkspaceRegistryAdapter,
+    PgSubmissionRegistryAdapter,
+    GitDiffHelper,
+    SubmissionBundlerService,
     {
       provide: WORKSPACE_REGISTRY_PORT,
       useClass: PgWorkspaceRegistryAdapter,
@@ -42,15 +59,37 @@ import { SessionActivityService } from './session-activity.service.js';
       provide: WORKSPACE_CONFIG_SOURCE_PORT,
       useClass: EmptyWorkspaceConfigSource,
     },
+    {
+      provide: PATCH_GENERATOR_PORT,
+      useClass: GitDiffHelper,
+    },
+    {
+      provide: SUBMISSION_REGISTRY_PORT,
+      useClass: PgSubmissionRegistryAdapter,
+    },
+    {
+      provide: WORKSPACE_SOURCE_PORT,
+      useClass: EmptyWorkspaceSourceAdapter,
+    },
+    {
+      provide: WORKSPACE_LIFECYCLE_PORT,
+      useClass: EmptyWorkspaceLifecycleAdapter,
+    },
   ],
   exports: [
     AutosavePackager,
     AutosaveQueueProcessor,
     SessionActivityService,
+    SubmissionBundlerService,
+    GitDiffHelper,
     WORKSPACE_REGISTRY_PORT,
     WORKSPACE_VOLUME_READER_PORT,
     TERMINAL_LOG_SOURCE_PORT,
     WORKSPACE_CONFIG_SOURCE_PORT,
+    PATCH_GENERATOR_PORT,
+    SUBMISSION_REGISTRY_PORT,
+    WORKSPACE_SOURCE_PORT,
+    WORKSPACE_LIFECYCLE_PORT,
   ],
 })
 export class WorkspacesModule {}

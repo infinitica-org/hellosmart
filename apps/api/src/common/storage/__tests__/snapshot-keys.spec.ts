@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildSnapshotStorageKey, isSnapshotKeyInOrg, isKeyInOrg } from '../storage-keys.js';
+import {
+  buildSnapshotStorageKey,
+  isSnapshotKeyInOrg,
+  buildSubmissionBundleKey,
+  isSubmissionBundleKeyInOrg,
+  isKeyInOrg,
+} from '../storage-keys.js';
 
 describe('snapshot-keys helpers (BR-01, BR-11)', () => {
   const validOrgId = 'a0000000-0000-4000-8000-000000000001';
@@ -79,6 +85,72 @@ describe('snapshot-keys helpers (BR-01, BR-11)', () => {
     it('returns false for empty or falsy inputs', () => {
       expect(isSnapshotKeyInOrg('', validOrgId)).toBe(false);
       expect(isSnapshotKeyInOrg(`snapshots/${validOrgId}/test.tar.gz`, '')).toBe(false);
+    });
+  });
+
+  describe('buildSubmissionBundleKey', () => {
+    it('constructs correct submission bundle key format', () => {
+      const key = buildSubmissionBundleKey(validOrgId, validAssignmentId);
+      expect(key).toBe(`submissions/${validOrgId}/${validAssignmentId}/final_bundle.tar.gz`);
+    });
+
+    it('rejects invalid or malformed orgId', () => {
+      expect(() => buildSubmissionBundleKey('invalid-uuid', validAssignmentId)).toThrow(
+        'Invalid organization ID for submission bundle key',
+      );
+      expect(() => buildSubmissionBundleKey('../escape', validAssignmentId)).toThrow(
+        'Invalid organization ID for submission bundle key',
+      );
+    });
+
+    it('rejects invalid or malformed assignmentId', () => {
+      expect(() => buildSubmissionBundleKey(validOrgId, 'not-a-uuid')).toThrow(
+        'Invalid assignment ID for submission bundle key',
+      );
+      expect(() => buildSubmissionBundleKey(validOrgId, '../../traversal')).toThrow(
+        'Invalid assignment ID for submission bundle key',
+      );
+    });
+  });
+
+  describe('isSubmissionBundleKeyInOrg', () => {
+    it('accepts submission bundle key belonging to the organization', () => {
+      const key = `submissions/${validOrgId}/${validAssignmentId}/final_bundle.tar.gz`;
+      expect(isSubmissionBundleKeyInOrg(key, validOrgId)).toBe(true);
+    });
+
+    it('rejects submission bundle key belonging to a different organization', () => {
+      const key = `submissions/${validOrgId}/${validAssignmentId}/final_bundle.tar.gz`;
+      expect(isSubmissionBundleKeyInOrg(key, otherOrgId)).toBe(false);
+    });
+
+    it('rejects keys from snapshots/ or storage/ roots', () => {
+      const snapshotKey = `snapshots/${validOrgId}/${validAssignmentId}/snap_123.tar.gz`;
+      const storageKey = `storage/${validOrgId}/submissions/${validAssignmentId}/file.pdf`;
+      expect(isSubmissionBundleKeyInOrg(snapshotKey, validOrgId)).toBe(false);
+      expect(isSubmissionBundleKeyInOrg(storageKey, validOrgId)).toBe(false);
+    });
+
+    it('rejects keys containing path traversal or dangerous characters', () => {
+      expect(
+        isSubmissionBundleKeyInOrg(
+          `submissions/${validOrgId}/../other/final_bundle.tar.gz`,
+          validOrgId,
+        ),
+      ).toBe(false);
+      expect(
+        isSubmissionBundleKeyInOrg(`submissions/${validOrgId}/\0final_bundle.tar.gz`, validOrgId),
+      ).toBe(false);
+      expect(
+        isSubmissionBundleKeyInOrg(`submissions/${validOrgId}\\final_bundle.tar.gz`, validOrgId),
+      ).toBe(false);
+    });
+
+    it('returns false for empty or falsy inputs', () => {
+      expect(isSubmissionBundleKeyInOrg('', validOrgId)).toBe(false);
+      expect(isSubmissionBundleKeyInOrg(`submissions/${validOrgId}/final_bundle.tar.gz`, '')).toBe(
+        false,
+      );
     });
   });
 });
