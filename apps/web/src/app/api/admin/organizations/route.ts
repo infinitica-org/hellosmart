@@ -91,6 +91,33 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
   } catch {
     // Backend offline / unreachable; fall through to test store below
+    const isTestOrDev =
+      process.env.NODE_ENV === 'test' ||
+      process.env.ENABLE_DEV_ACCOUNTS === 'true';
+    if (!isTestOrDev) {
+      return NextResponse.json(
+        {
+          title: 'Service Unavailable',
+          detail: 'Backend service unreachable',
+          status: 503,
+        },
+        { status: 503 }
+      );
+    }
+  }
+
+  const isTestOrDev =
+    process.env.NODE_ENV === 'test' ||
+    process.env.ENABLE_DEV_ACCOUNTS === 'true';
+  if (!isTestOrDev) {
+    return NextResponse.json(
+      {
+        title: 'Service Unavailable',
+        detail: 'Backend service unreachable',
+        status: 503,
+      },
+      { status: 503 }
+    );
   }
 
   // 2. In-memory store fallback (used for isolated unit tests)
@@ -273,6 +300,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
     } catch {
       // Backend offline; fallback to unit test store
+      const isTestOrDev =
+        process.env.NODE_ENV === 'test' ||
+        process.env.ENABLE_DEV_ACCOUNTS === 'true';
+      if (!isTestOrDev) {
+        return NextResponse.json(
+          {
+            title: 'Service Unavailable',
+            detail: 'Backend service unreachable',
+            status: 503,
+          },
+          { status: 503 }
+        );
+      }
+    }
+
+    const isTestOrDev =
+      process.env.NODE_ENV === 'test' ||
+      process.env.ENABLE_DEV_ACCOUNTS === 'true';
+    if (!isTestOrDev) {
+      return NextResponse.json(
+        {
+          title: 'Service Unavailable',
+          detail: 'Backend service unreachable',
+          status: 503,
+        },
+        { status: 503 }
+      );
     }
 
     const newOrg = createOrganization(input);
@@ -427,6 +481,33 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
       }
     } catch {
       // Backend offline; fallback to unit test store
+      const isTestOrDev =
+        process.env.NODE_ENV === 'test' ||
+        process.env.ENABLE_DEV_ACCOUNTS === 'true';
+      if (!isTestOrDev) {
+        return NextResponse.json(
+          {
+            title: 'Service Unavailable',
+            detail: 'Backend service unreachable',
+            status: 503,
+          },
+          { status: 503 }
+        );
+      }
+    }
+
+    const isTestOrDev =
+      process.env.NODE_ENV === 'test' ||
+      process.env.ENABLE_DEV_ACCOUNTS === 'true';
+    if (!isTestOrDev) {
+      return NextResponse.json(
+        {
+          title: 'Service Unavailable',
+          detail: 'Backend service unreachable',
+          status: 503,
+        },
+        { status: 503 }
+      );
     }
 
     const updated = updateOrganizationStatus(id, status);

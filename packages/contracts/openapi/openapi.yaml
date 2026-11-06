@@ -531,6 +531,49 @@ paths:
         '404': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
 
+  /admin/organizations/{id}:
+    get:
+      tags: [admin]
+      summary: Retrieve organization details, primary admin, active stats, and entitlements (Platform Admin only)
+      operationId: getOrganizationById
+      x-requirement: [AD-001, S1B-T05-1]
+      x-roles: [platform_admin]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Organization details retrieved successfully.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrgDetail' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /admin/organizations/{id}/entitlements:
+    patch:
+      tags: [admin]
+      summary: Update organization entitlements, resource limits, and feature flags (Platform Admin only)
+      operationId: updateOrganizationEntitlements
+      x-requirement: [AD-001, BR-05, S1B-T05-1]
+      x-roles: [platform_admin]
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateOrgEntitlements' }
+      responses:
+        '200':
+          description: Organization entitlements updated successfully.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrgDetail' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
   /admin/metrics:
     get:
       tags: [admin]
@@ -1618,6 +1661,62 @@ components:
         page: { type: integer, minimum: 1, example: 1 }
         pageSize: { type: integer, minimum: 1, maximum: 100, example: 20 }
         total: { type: integer, minimum: 0, example: 3 }
+    EntitlementFlags:
+      type: object
+      properties:
+        cloud: { type: boolean, default: true }
+        chat: { type: boolean, default: true }
+        local: { type: boolean, default: false }
+        browser: { type: boolean, default: false }
+        white_label: { type: boolean, default: false }
+        custom_domain: { type: boolean, default: false }
+        managed_ai_credits: { type: boolean, default: false }
+        extra_agents: { type: boolean, default: false }
+    OrgEntitlements:
+      type: object
+      required: [maxTemplates, maxCandidates, pendingInviteMultiplier, flags]
+      properties:
+        maxTemplates: { type: integer, minimum: 1, maximum: 100, example: 5 }
+        maxCandidates: { type: integer, minimum: 1, maximum: 10000, example: 25 }
+        trialEndsAt: { type: [string, 'null'], format: date-time }
+        pendingInviteMultiplier: { type: number, minimum: 1.0, maximum: 5.0, example: 2.0 }
+        flags: { $ref: '#/components/schemas/EntitlementFlags' }
+    UpdateOrgEntitlements:
+      type: object
+      properties:
+        maxTemplates: { type: integer, minimum: 1, maximum: 100, example: 5 }
+        maxCandidates: { type: integer, minimum: 1, maximum: 10000, example: 25 }
+        trialEndsAt: { type: [string, 'null'], format: date-time }
+        pendingInviteMultiplier: { type: number, minimum: 1.0, maximum: 5.0, example: 2.0 }
+        flags: { $ref: '#/components/schemas/EntitlementFlags' }
+    OrgDetail:
+      type: object
+      required: [id, name, slug, status, whiteLabel, retentionDays, createdAt, entitlements, primaryAdmin, stats]
+      properties:
+        id: { type: string, format: uuid, example: '00000000-0000-4000-8000-000000000001' }
+        name: { type: string, example: 'Brindle & Co' }
+        slug: { type: string, example: 'brindle-co' }
+        status: { $ref: '#/components/schemas/OrgStatus' }
+        planId: { type: [string, 'null'], example: 'plan_trial' }
+        logoUrl: { type: [string, 'null'] }
+        whiteLabel: { type: boolean, example: false }
+        customDomain: { type: [string, 'null'] }
+        retentionDays: { type: integer, example: 90 }
+        createdAt: { type: string, format: date-time }
+        entitlements: { $ref: '#/components/schemas/OrgEntitlements' }
+        primaryAdmin:
+          type: [object, 'null']
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            email: { type: string, format: email }
+        stats:
+          type: object
+          required: [candidateCount, assessmentCount, activeWorkspacesCount]
+          properties:
+            candidateCount: { type: integer, minimum: 0 }
+            assessmentCount: { type: integer, minimum: 0 }
+            activeWorkspacesCount: { type: integer, minimum: 0 }
     AdminMetrics:
       type: object
       required: [totalCompanies, activeTrials, totalCandidates]

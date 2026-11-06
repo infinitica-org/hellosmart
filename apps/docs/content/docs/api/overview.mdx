@@ -122,6 +122,29 @@ Content-Type: application/json
 }
 ```
 
+```http
+GET /api/v1/admin/organizations/:id
+```
+
+```http
+PATCH /api/v1/admin/organizations/:id/entitlements
+Content-Type: application/json
+
+{
+  "maxTemplates": 10,
+  "maxCandidates": 50,
+  "pendingInviteMultiplier": 2.5,
+  "trialEndsAt": "2026-12-31T23:59:59.000Z",
+  "flags": {
+    "cloud": true,
+    "chat": true,
+    "white_label": false,
+    "custom_domain": false,
+    "managed_ai_credits": true
+  }
+}
+```
+
 ### Candidates Management
 ```http
 POST /api/v1/candidates

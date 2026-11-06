@@ -10,6 +10,8 @@ import type {
   AuditLogQueryDto,
   PaginatedAuditLogDto,
   AuditVerifyResponseDto,
+  OrgDetailDto,
+  UpdateOrgEntitlementsDto,
 } from '@hs/contracts';
 
 /**
@@ -118,6 +120,27 @@ export const adminApi = createApi({
         url: 'admin/organizations',
         method: 'PATCH',
         body,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: 'Organizations', id },
+        { type: 'Organizations', id: 'LIST' },
+        { type: 'Metrics', id: 'PLATFORM' },
+      ],
+    }),
+
+    getOrganizationById: builder.query<OrgDetailDto, string>({
+      query: (id) => `admin/organizations/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'Organizations', id }],
+    }),
+
+    updateOrganizationEntitlements: builder.mutation<
+      OrgDetailDto,
+      { id: string; entitlements: UpdateOrgEntitlementsDto }
+    >({
+      query: ({ id, entitlements }) => ({
+        url: `admin/organizations/${id}/entitlements`,
+        method: 'PATCH',
+        body: entitlements,
       }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Organizations', id },
@@ -366,8 +389,11 @@ export const adminApi = createApi({
 export const {
   useGetOrganizationsQuery,
   useLazyGetOrganizationsQuery,
+  useGetOrganizationByIdQuery,
+  useLazyGetOrganizationByIdQuery,
   useCreateOrganizationMutation,
   useUpdateOrganizationStatusMutation,
+  useUpdateOrganizationEntitlementsMutation,
   useGetQuotesQuery,
   useLazyGetQuotesQuery,
   useGetQuoteByIdQuery,
