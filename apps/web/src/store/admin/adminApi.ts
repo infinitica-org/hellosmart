@@ -6,6 +6,11 @@ import type {
   OrganizationStatus,
   AdminMetrics,
 } from '@/types/organization';
+import type {
+  AuditLogQueryDto,
+  PaginatedAuditLogDto,
+  AuditVerifyResponseDto,
+} from '@hs/contracts';
 
 /**
  * Cache tags owned and managed by the Platform Admin portal.
@@ -334,6 +339,27 @@ export const adminApi = createApi({
       }),
       invalidatesTags: [{ type: 'Session', id: 'MFA' }],
     }),
+
+    getAdminAuditLogs: builder.query<PaginatedAuditLogDto, AuditLogQueryDto | void>({
+      query: (params) => ({
+        url: 'admin/audit',
+        params: (params as Record<string, any>) || {},
+      }),
+      providesTags: (result) =>
+        result?.items
+          ? [
+              ...result.items.map((item) => ({ type: 'AuditLogs' as const, id: item.id })),
+              { type: 'AuditLogs', id: 'LIST' },
+            ]
+          : [{ type: 'AuditLogs', id: 'LIST' }],
+    }),
+
+    verifyAdminAuditChain: builder.mutation<AuditVerifyResponseDto, void>({
+      query: () => ({
+        url: 'admin/audit/verify-chain',
+        method: 'POST',
+      }),
+    }),
   }),
 });
 
@@ -367,4 +393,7 @@ export const {
   useStartMfaSetupMutation,
   useConfirmMfaSetupMutation,
   useRegenerateBackupCodesMutation,
+  useGetAdminAuditLogsQuery,
+  useLazyGetAdminAuditLogsQuery,
+  useVerifyAdminAuditChainMutation,
 } = adminApi;

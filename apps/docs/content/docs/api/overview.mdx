@@ -184,6 +184,10 @@ HelloSmart processes incoming asynchronous webhooks idempotently:
 - `GET /api/v1/quotes/{token}`: Customer review screen endpoint. Retrieves immutable quote snapshot, line items, and GST breakdown using the secure public access token (PHS-I128 / SP-010).
 - `POST /api/v1/quotes/{token}/accept`: One-click customer quote acceptance. Atomically and idempotently accepts an issued quote, persists customer acceptance evidence and an append-only audit event in `audit.events` (PHS-I128 / SP-010).
 
+### Audit & Tamper-Evident Ledger (AD-027, BR-31, BR-32)
+- `GET /api/v1/admin/audit`: List global audit events with pagination, search, actor, entity, and date filters (Platform Admin only).
+- `POST /api/v1/admin/audit/verify-chain`: Verify internal SHA-256 hash-chain continuity of the audit ledger from genesis to head (Platform Admin only).
+
 ### Timing, disconnect, and accommodations (BR-08, BR-09, CO-031)
 - `GET /api/v1/candidate/assessment/timing?assignmentId=`: Server clock snapshot `{ deadlineAtUtc, remainingSeconds, isExpired }` plus the IANA timezone stored beside the UTC deadline.
 - `POST /api/v1/candidate/assignments/{id}/connect`: Starts or resumes a session. Outside the window the response is HTTP 403 `WINDOW_NOT_OPEN` (with `secondsUntilWindowStart`) or `WINDOW_EXPIRED`.
