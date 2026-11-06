@@ -37,6 +37,8 @@ const ConfigSchema = z
     RETENTION_PURGE_HOUR_UTC: z.coerce.number().int().min(0).max(23).default(3),
     RETENTION_PURGE_BATCH_SIZE: z.coerce.number().int().min(1).max(1000).default(100),
     RETENTION_PURGE_DRY_RUN: z.coerce.boolean().default(false),
+    WORKSPACE_AUTOSAVE_ENABLED: z.coerce.boolean().default(false),
+    AUTOSAVE_INTERVAL_SECONDS: z.coerce.number().int().min(5).max(3600).default(30),
     APP_BASE_URL: z.string().url().default('http://localhost:3000'),
     /** Base32 TOTP secret for platform admin MFA (dev/test). Production uses vault via mfa_secret_ref. */
     PLATFORM_ADMIN_MFA_SECRET: z.string().min(16).optional(),
@@ -140,6 +142,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error(`Invalid configuration: ${keys}`);
   }
   const nodeEnv = parsed.data.NODE_ENV;
+  if (parsed.data.WORKSPACE_AUTOSAVE_ENABLED) {
+    if (!parsed.data.REDIS_URL) {
+      throw new Error('REDIS_URL is required when WORKSPACE_AUTOSAVE_ENABLED=true');
+    }
+    if (parsed.data.STORAGE_DRIVER === 's3' && !parsed.data.STORAGE_S3_BUCKET) {
+      throw new Error('STORAGE_S3_BUCKET is required when WORKSPACE_AUTOSAVE_ENABLED=true and STORAGE_DRIVER=s3');
+    }
+  }
   if ((nodeEnv === 'production' || nodeEnv === 'staging') && !parsed.data.REDIS_URL) {
     throw new Error('REDIS_URL is required in staging and production');
   }

@@ -69,7 +69,9 @@ export class SessionActivityService {
     }
 
     if (eventType === 'resume' || eventType === 'connect') {
-      const disconnectedAt = assignment.disconnected_at ? new Date(assignment.disconnected_at) : null;
+      const disconnectedAt = assignment.disconnected_at
+        ? new Date(assignment.disconnected_at)
+        : null;
       if (pause && deadlineAt && disconnectedAt && status === 'disconnected') {
         const next = calculateResumeDeadline({
           currentDeadline: deadlineAt,
