@@ -1,0 +1,39 @@
+---
+title: "0010: Multi-Runtime Sandbox Strategy: Sysbox for Workspaces & gVisor for Evaluators"
+description: "Architecture Decision Record: 0010: Dual-runtime sandbox blueprint deploying Sysbox for interactive candidate IDEs and gVisor for untrusted submission test execution."
+---
+
+<RoleBadge roles={["sde", "ai"]} />
+
+# 0010: Multi-Runtime Sandbox Strategy (Sysbox + gVisor)
+
+**Status:** Accepted · 2026-11-06 (complements ADR-0003 and ADR-0009)
+
+## Context
+Candidates and automated reviewer agents execute untrusted third-party code. We must isolate host infrastructure from arbitrary code execution, kernel privilege escalation, and lateral network traversal.
+
+Two distinct sandbox profiles exist in HelloSmart:
+1. **Interactive Workspaces**: The candidate uses an IDE (OpenVSCode Server), terminal, compiles code, runs test watchers (`inotify`), installs deep package dependency trees (`pnpm install`), and occasionally builds containers (Docker-in-Docker).
+2. **Evaluator / Grader Runners**: Autonomous reviewer agents execute untrusted candidate submissions and adversarial unit test suites in short-lived, ephemeral tasks.
+
+A single virtualization engine cannot optimally serve both:
+- **gVisor (`runsc`)**: Emulates system calls in userspace via Sentry, offering virtually impregnable kernel isolation. However, its Gofer filesystem broker introduces a 3x–4x I/O latency penalty on package installs and file watching, and cannot reliably run unprivileged nested Docker.
+- **Sysbox (`sysbox-runc`)**: Virtualizes system containers using user namespaces and virtual proc/sys filesystems. It provides near-native filesystem throughput and native unprivileged Docker-in-Docker, but shares the host kernel (namespaced).
+
+## Decision
+Adopt a **Dual-Runtime Sandbox Strategy**:
+
+1. **Interactive Candidate Workspaces**: Route to **Sysbox system containers (`sysbox-runc`)**.
+   - Host: Dedicated EC2 `m7i.2xlarge` instances running Docker with Sysbox runtime.
+   - Provides full developer ergonomics: sub-second file watching, full package install speeds, and unprivileged Docker-in-Docker.
+   - Guarded by user namespace UID/GID shifting, cgroup v2 resource limits, and strict network egress firewalls.
+
+2. **Automated Submission Graders & Code Runners**: Route to **Kubernetes + gVisor (`runsc`) pods**.
+   - Reviewer agent jobs (`services/reviewer`) that run untrusted candidate scripts or adversarial tests execute in Kubernetes pods scheduled with the `RuntimeClass: gvisor`.
+   - Any malicious kernel exploit payload submitted by a candidate is trapped inside the userspace Sentry sandbox with zero risk to the Kubernetes node kernel.
+
+## Consequences
++ **Optimal Developer Experience**: Candidates never experience lag during `git status`, `npm install`, or terminal operations.
++ **Bulletproof Submission Grading**: Malicious code executed during grading cannot compromise host worker nodes.
++ **Deterministic Scheduling**: The HelloSmart Fabric control plane routes sessions dynamically based on the execution profile (`interactive` vs `evaluator`).
+− **Dual Runtime Maintenance**: Infrastructure team maintains both Sysbox host AMIs and Kubernetes gVisor node pools.

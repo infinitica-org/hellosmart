@@ -44,6 +44,18 @@ export const DEFAULT_MAIL_CONFIG: Config = {
   RETENTION_PURGE_HOUR_UTC: 3,
   RETENTION_PURGE_BATCH_SIZE: 100,
   RETENTION_PURGE_DRY_RUN: false,
+  WORKSPACE_AUTOSAVE_ENABLED: false,
+  AUTOSAVE_INTERVAL_SECONDS: 30,
+  WORKSPACE_REAPER_ENABLED: false,
+  REAPER_DRY_RUN: true,
+  REAPER_INTERVAL_SECONDS: 300,
+  REAPER_DISCONNECTED_TIMEOUT_MINUTES: 60,
+  REAPER_IDLE_TIMEOUT_MINUTES: 15,
+  REAPER_IDLE_ENABLED: false,
+  REAPER_HEARTBEAT_GUARD_SECONDS: 300,
+  REAPER_BATCH_LIMIT: 50,
+  REAPER_CIRCUIT_BREAKER_MAX_RATIO: 0.5,
+  REAPER_ALLOW_DESTRUCTION_IN_NON_PROD: false,
   INTERNATIONAL_TAX_TREATMENT: 'reject',
   PG_POOL_MAX: 5,
   PG_CONNECTION_TIMEOUT_MS: 5_000,
@@ -378,7 +390,9 @@ export class MailService implements EmailSender {
       this.lastInviteLink = inviteUrl;
 
       if (this.config.NODE_ENV === 'development') {
-        this.logger.log(`[DEV ASSESSMENT INVITE] Dispatched invitation to ${input.to} for assessment ${input.assessmentId}`);
+        this.logger.log(
+          `[DEV ASSESSMENT INVITE] Dispatched invitation to ${input.to} for assessment ${input.assessmentId}`,
+        );
 
         const mailpitUrl = this.config.MAILPIT_URL ?? 'http://127.0.0.1:8025';
         try {
@@ -415,10 +429,14 @@ export class MailService implements EmailSender {
             signal: AbortSignal.timeout(3_000),
           });
           if (!response.ok) {
-            this.logger.warn(`[Mailpit] Assessment invitation email was not captured (HTTP ${response.status})`);
+            this.logger.warn(
+              `[Mailpit] Assessment invitation email was not captured (HTTP ${response.status})`,
+            );
           }
         } catch (err) {
-          this.logger.warn(`[Mailpit] Could not capture assessment invitation email (${(err as Error).message})`);
+          this.logger.warn(
+            `[Mailpit] Could not capture assessment invitation email (${(err as Error).message})`,
+          );
         }
       }
 

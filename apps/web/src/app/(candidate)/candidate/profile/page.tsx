@@ -46,9 +46,9 @@ export function CandidateProfileView({
   }
 
   const name = user?.name || (user?.email ? user.email.split('@')[0] : 'Candidate');
-  const email = user?.email || 'candidate@hellosmart.ai';
+  const email = user?.email || '—';
   const initial = (name || 'C').charAt(0).toUpperCase();
-  const companyName = user?.org?.name || 'HelloSmart Simulation';
+  const companyName = user?.org?.name || '—';
   const candidateId = user?.id || '—';
   const isResetRequired = Boolean(user?.mustResetPassword);
 

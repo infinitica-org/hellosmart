@@ -5,8 +5,9 @@ import type {
   StoragePort,
   StoragePutMeta,
   StoragePutResult,
+  SnapshotPutMeta,
 } from './storage.types.js';
-import { isKeyInOrg } from './storage-keys.js';
+import { isKeyInOrg, isSnapshotKeyInOrg } from './storage-keys.js';
 
 export class FakeStorageAdapter implements StoragePort {
   private readonly objects = new Map<
@@ -36,6 +37,51 @@ export class FakeStorageAdapter implements StoragePort {
     this.objects.set(key, {
       buffer: fullBuffer,
       meta,
+      sha256,
+      size,
+    });
+
+    return { size, sha256, key };
+  }
+
+  async putVerifiedSnapshot(
+    key: string,
+    stream: Readable,
+    meta: SnapshotPutMeta,
+  ): Promise<StoragePutResult> {
+    if (!isSnapshotKeyInOrg(key, meta.orgId)) {
+      throw new Error(
+        `Tenant isolation violation: snapshot key ${key} does not belong to organization ${meta.orgId}`,
+      );
+    }
+    const chunks: Buffer[] = [];
+    const hasher = crypto.createHash('sha256');
+
+    for await (const chunk of stream) {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      chunks.push(buf);
+      hasher.update(buf);
+    }
+
+    const fullBuffer = Buffer.concat(chunks);
+    const sha256 = hasher.digest('hex');
+    const size = fullBuffer.length;
+
+    if (meta.expectedSha256 && meta.expectedSha256 !== sha256) {
+      throw new Error(
+        `Integrity check failed: computed ${sha256} does not match expected ${meta.expectedSha256}`,
+      );
+    }
+
+    this.objects.set(key, {
+      buffer: fullBuffer,
+      meta: {
+        contentType: meta.contentType ?? 'application/gzip',
+        filename: `snap_${meta.timestamp}.tar.gz`,
+        orgId: meta.orgId,
+        assignmentId: meta.assignmentId,
+        objectId: `snap_${meta.timestamp}`,
+      },
       sha256,
       size,
     });

@@ -47,6 +47,24 @@ export interface CreateAdminQuoteInput {
   notes?: string;
 }
 
+export interface MfaStatus {
+  enrolled: boolean;
+  backupCodesRemaining: number;
+}
+
+export interface MfaSetupStartResponse {
+  secret?: string;
+  otpauthUri?: string;
+}
+
+export interface MfaSetupConfirmResponse {
+  backupCodes?: string[];
+}
+
+export interface MfaRegenerateBackupCodesResponse {
+  backupCodes?: string[];
+}
+
 /**
  * Platform Admin RTK Query API slice.
  * Operates exclusively within the AdminStore with its own dedicated cache and reducerPath.
@@ -285,6 +303,37 @@ export const adminApi = createApi({
         body,
       }),
     }),
+
+    // --- MFA & Security ---
+    getMfaStatus: builder.query<MfaStatus, void>({
+      query: () => 'auth/mfa/status',
+      providesTags: [{ type: 'Session', id: 'MFA' }],
+    }),
+
+    startMfaSetup: builder.mutation<MfaSetupStartResponse, void>({
+      query: () => ({
+        url: 'auth/mfa/setup/start',
+        method: 'POST',
+      }),
+    }),
+
+    confirmMfaSetup: builder.mutation<MfaSetupConfirmResponse, { totpCode: string }>({
+      query: (body) => ({
+        url: 'auth/mfa/setup/confirm',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [{ type: 'Session', id: 'MFA' }],
+    }),
+
+    regenerateBackupCodes: builder.mutation<MfaRegenerateBackupCodesResponse, { totpCode: string }>({
+      query: (body) => ({
+        url: 'auth/mfa/backup-codes/regenerate',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [{ type: 'Session', id: 'MFA' }],
+    }),
   }),
 });
 
@@ -313,4 +362,9 @@ export const {
   useGetLeadByIdQuery,
   useLazyGetLeadByIdQuery,
   useCalculateGstMutation,
+  useGetMfaStatusQuery,
+  useLazyGetMfaStatusQuery,
+  useStartMfaSetupMutation,
+  useConfirmMfaSetupMutation,
+  useRegenerateBackupCodesMutation,
 } = adminApi;

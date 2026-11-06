@@ -1,9 +1,9 @@
 ---
-title: "Database Visualization & ER Diagram"
-description: "Interactive Entity-Relationship diagrams, PostgreSQL schema architectures, foreign keys, indexes, and Row-Level Security."
+title: 'Database Visualization & ER Diagram'
+description: 'Interactive Entity-Relationship diagrams, PostgreSQL schema architectures, foreign keys, indexes, and Row-Level Security.'
 ---
 
-<RoleBadge roles={["sde", "qa"]} />
+<RoleBadge roles={['sde', 'qa']} />
 
 # Database Visualization & ER Schema
 
@@ -24,27 +24,28 @@ erDiagram
     ORGANIZATIONS ||--o{ ASSESSMENTS : "creates"
     ORGANIZATIONS ||--o{ CANDIDATES : "owns"
     ORGANIZATIONS ||--o{ QUOTES : "billed_for"
-    
+
     TEMPLATES ||--o{ TEMPLATE_VERSIONS : "versions"
     TEMPLATES ||--o{ TEMPLATE_ASSIGNMENTS : "grants_access"
     TEMPLATE_VERSIONS ||--o{ ASSESSMENTS : "pins_version"
-    
+
     ASSESSMENTS ||--o{ RUBRIC_ITEMS : "configures"
     ASSESSMENTS ||--o{ ASSIGNMENTS : "assigns"
-    
+
     CANDIDATES ||--o{ ASSIGNMENTS : "takes"
-    
+
     ASSIGNMENTS ||--o{ WORKSPACES : "executes"
     ASSIGNMENTS ||--o{ CONSENTS : "records"
     ASSIGNMENTS ||--o{ SUBMISSIONS : "yields"
-    
+
     WORKSPACES ||--o{ ACTIVITY_EVENTS : "logs"
     WORKSPACES ||--o{ AI_MESSAGES : "transcribes"
-    
+    WORKSPACES ||--o| WORKSPACE_USAGE : "meters"
+
     SUBMISSIONS ||--o{ AGENT_RUNS : "evaluates"
     AGENT_RUNS ||--o{ AGENT_SCORES : "emits"
     SUBMISSIONS ||--o{ REVIEWS : "finalized_into"
-    
+
     QUOTES ||--o{ PAYMENTS : "reconciles"
 
     ORGANIZATIONS {
@@ -151,6 +152,28 @@ erDiagram
         timestamptz last_activity_at
     }
 
+    WORKSPACE_USAGE {
+        uuid id PK
+        uuid workspace_id FK
+        uuid org_id FK
+        uuid assignment_id FK
+        uuid assessment_id FK
+        uuid candidate_id FK
+        bigint compute_seconds
+        int compute_minutes
+        int storage_mb
+        bigint prompt_tokens
+        bigint completion_tokens
+        numeric total_cost_usd
+        jsonb breakdown
+        string pricing_version
+        string status "complete | partial"
+        string[] flags
+        timestamptz started_at
+        timestamptz ended_at
+        timestamptz created_at
+    }
+
     DRAFTS {
         uuid assignment_id PK,FK
         uuid org_id FK
@@ -209,6 +232,7 @@ CREATE POLICY tenant_isolation ON app.assessments
 `app.is_platform()` enforces dual-factor authorization (migration `0005_platform_role`): it requires both `current_setting('app.is_platform', true) = 'true'` AND authenticated database session role `SESSION_USER IN ('hs_platform', 'hs_migrator')`. Connections authenticated as `hs_app` evaluate to `false` even if an attacker attempts to set `app.is_platform = true`, neutralizing forged-context escalation attacks at the database kernel level.
 
 ### Context Injection on Every Transaction
+
 Before running any application query, the NestJS Fastify API sets the current organization context in the PostgreSQL transaction:
 
 ```sql
@@ -233,15 +257,15 @@ CREATE POLICY tenant_isolation ON audit.events
   WITH CHECK (org_id = app.current_org_id() OR app.is_platform());
 ```
 
-| Column | Type | Description |
-|---|---|---|
-| `id` | `bigint GENERATED ALWAYS AS IDENTITY` | Sequential monotonic ID |
-| `at` | `timestamptz` | Immutable UTC timestamp |
-| `actor_id` | `uuid` | User ID or System Actor |
-| `actor_role` | `text` | `platform_admin`, `company_admin`, etc. |
-| `action` | `text` | E.g. `workspace.destroy`, `candidate.create` |
-| `prev_hash` | `bytea` | SHA-256 digest of previous audit row |
-| `hash` | `bytea` | `SHA256(prev_hash || row_payload)` |
+| Column       | Type                                  | Description                                  |
+| ------------ | ------------------------------------- | -------------------------------------------- | --- | ------------- |
+| `id`         | `bigint GENERATED ALWAYS AS IDENTITY` | Sequential monotonic ID                      |
+| `at`         | `timestamptz`                         | Immutable UTC timestamp                      |
+| `actor_id`   | `uuid`                                | User ID or System Actor                      |
+| `actor_role` | `text`                                | `platform_admin`, `company_admin`, etc.      |
+| `action`     | `text`                                | E.g. `workspace.destroy`, `candidate.create` |
+| `prev_hash`  | `bytea`                               | SHA-256 digest of previous audit row         |
+| `hash`       | `bytea`                               | `SHA256(prev_hash                            |     | row_payload)` |
 
 Because each row's hash includes the previous row's hash, **no row can be modified, deleted, or back-dated without invalidating the entire subsequent audit chain**. `hs_app` only has `INSERT` and `SELECT` privileges; `UPDATE` and `DELETE` are blocked both by permission grants and by the `audit.trg_events_immutable` trigger.
 
@@ -270,9 +294,10 @@ Pre-login operations (login lookup and invitation acceptance) cannot supply a ve
 9. **`app.mfa_backup_codes` table** (migration `0008_mfa_enrollment`):
    Stores SHA-256 hashes of one-time backup codes; `app.consume_mfa_backup_code` marks a code used at login when the authenticator app is unavailable.
 10. **`app.get_mfa_enrollment_pending(p_user_id)`** (migration `0009_mfa_enrollment_pending_read`):
-   Reads pending MFA setup material under `SECURITY DEFINER` so platform-admin rows remain visible when RLS would otherwise hide `org_id IS NULL` users.
+    Reads pending MFA setup material under `SECURITY DEFINER` so platform-admin rows remain visible when RLS would otherwise hide `org_id IS NULL` users.
 
 ### Principle of Least Privilege
+
 All `SECURITY DEFINER` routines revoke `EXECUTE` privileges from `PUBLIC` and grant execute permissions exclusively to the non-owner application role `hs_app`:
 
 ```sql
@@ -290,11 +315,13 @@ Under **BR-06**, candidate quotas and pending invite limits are enforced via two
    `timestamptz NULL` recording when a candidate user first launches a workspace session. Uncounted candidates consume a candidate quota slot only upon first workspace launch (`recordCandidateFirstLaunch`). Once counted, subsequent assignment launches within the same organization do not consume additional quota slots.
 
 2. **Candidate Cap Tracking Index (`users_candidate_cap_idx`)**:
+
    ```sql
    CREATE INDEX IF NOT EXISTS users_candidate_cap_idx
      ON app.users (org_id, counted_against_cap_at)
      WHERE role = 'candidate' AND deleted_at IS NULL;
    ```
+
    Provides efficient tenant-scoped index scans to count active, launched candidates against `app.entitlements.max_candidates`.
 
 3. **Pending Assignment Counting Index (`assignments_pending_counting_idx`)**:
@@ -304,6 +331,7 @@ Under **BR-06**, candidate quotas and pending invite limits are enforced via two
      WHERE status IN ('invited', 'window_not_open', 'ready') AND first_connect_at IS NULL;
    ```
    Accelerates Model A pending assignment evaluation: `FLOOR(max_candidates * pending_invite_multiplier)`. Excludes launched, expired, or completed assignments at the query planner level.
+
 ---
 
 ## 6. Sales Lead Pipeline & Cal.com Webhooks (Stream 9)
@@ -397,6 +425,7 @@ erDiagram
 ```
 
 ### Table Specifications:
+
 - `app.webhook_deliveries`: Monthly range-partitioned ledger capturing exact raw wire bytes and allowlisted headers. Append-only.
 - `app.webhook_delivery_outcomes`: Co-partitioned with `webhook_deliveries` on `delivered_at`, enforcing composite foreign key and immutable outcome logging.
 - `app.webhook_inbox`: Canonical state engine enforcing event key uniqueness (`gateway, event_key`) and immutability triggers.
@@ -514,6 +543,7 @@ erDiagram
 ```
 
 ### Table Specifications:
+
 - `app.pricing_catalog`: Centralized product catalog for subscription plans, custom templates, and one-time add-ons.
 - `app.promo_codes`: Promotional discount codes with concurrency caps, expiration windows, currency validation, and category restrictions.
 - `app.quotes`: Commercial quotations linked to leads or organizations with full 18% Indian GST calculations (CGST/SGST/IGST), 14-day default expiry, and SHA-256 token hashing.

@@ -12,7 +12,8 @@ import type {
   BulkCandidateUploadResponse,
   UpdateCandidateInput,
 } from '@/components/company/candidates/types';
-import type { RoleTemplateSummary } from '@/components/company/templates/types';
+import type { RoleTemplateSummary, RoleTemplateDetail } from '@/components/company/templates/types';
+import type { AssessmentRubric } from '@/components/company/rubric/types';
 import type {
   CreateAssessmentDto,
   AssessmentDto,
@@ -170,6 +171,31 @@ export const companyApi = createApi({
       },
     }),
 
+    getTemplateById: builder.query<RoleTemplateDetail, string>({
+      query: (id) => `company/templates/${encodeURIComponent(id)}`,
+      providesTags: (_result, _error, id) => [{ type: 'Templates', id }],
+    }),
+
+    getAssessmentRubric: builder.query<AssessmentRubric, string>({
+      query: (assessmentId) => `company/assessments/${encodeURIComponent(assessmentId)}/rubric`,
+      providesTags: (_result, _error, id) => [{ type: 'Rubrics', id }],
+    }),
+
+    updateAssessmentRubric: builder.mutation<
+      AssessmentRubric,
+      { assessmentId: string; rubric: AssessmentRubric }
+    >({
+      query: ({ assessmentId, rubric }) => ({
+        url: `company/assessments/${encodeURIComponent(assessmentId)}/rubric`,
+        method: 'PUT',
+        body: rubric,
+      }),
+      invalidatesTags: (_result, _error, { assessmentId }) => [
+        { type: 'Rubrics', id: assessmentId },
+        { type: 'Assessments', id: assessmentId },
+      ],
+    }),
+
     getAssessments: builder.query<AssessmentSummaryDto[], void>({
       query: () => 'company/assessments',
       providesTags: (result) => {
@@ -219,6 +245,11 @@ export const {
   useResendCandidateInviteMutation,
   useGetCompanyTemplatesQuery,
   useLazyGetCompanyTemplatesQuery,
+  useGetTemplateByIdQuery,
+  useLazyGetTemplateByIdQuery,
+  useGetAssessmentRubricQuery,
+  useLazyGetAssessmentRubricQuery,
+  useUpdateAssessmentRubricMutation,
   useGetAssessmentsQuery,
   useLazyGetAssessmentsQuery,
   useGetAssessmentByIdQuery,

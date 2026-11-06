@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { PageHeader, Alert, Skeleton, Card, Button } from '@hs/ui';
 import { useAssessmentRubric } from '@/hooks/company/use-assessment-rubric';
 import { useTemplateDetail } from '@/hooks/company/use-assigned-templates';
+import { useGetAssessmentByIdQuery } from '@/store/company/companyApi';
 import { RubricEditor, DEFAULT_SCORING_ANCHORS, type RubricDimension } from '@/components/company/rubric';
 
 interface RubricPageProps {
@@ -14,8 +15,13 @@ interface RubricPageProps {
 
 function RubricCustomizerContent({ id }: { id: string }): React.JSX.Element {
   const searchParams = useSearchParams();
-  const templateId = searchParams.get('templateId') || 'tpl_default';
-  const versionId = searchParams.get('versionId') || '1.0.0';
+  const routeTemplateId = searchParams.get('templateId');
+  const routeVersionId = searchParams.get('versionId');
+
+  // Query assessment to resolve pinned template and version if not present in search params
+  const { data: assessment } = useGetAssessmentByIdQuery(id);
+  const templateId = routeTemplateId || assessment?.templateId || null;
+  const versionId = routeVersionId || assessment?.templateVersionId || null;
 
   // 1. Fetch assessment-specific rubric
   const {
@@ -28,7 +34,7 @@ function RubricCustomizerContent({ id }: { id: string }): React.JSX.Element {
   const {
     data: templateDetail,
     isLoading: isTemplateLoading,
-  } = useTemplateDetail(assessmentRubric ? null : templateId);
+  } = useTemplateDetail(assessmentRubric?.dimensions?.length ? null : templateId);
 
   // Convert template rubric dimensions to RubricDimension format if fallback needed
   const initialDimensions: RubricDimension[] = useMemo(() => {
@@ -48,36 +54,8 @@ function RubricCustomizerContent({ id }: { id: string }): React.JSX.Element {
       }));
     }
 
-    // Standard fallback default dimensions totaling 100%
-    return [
-      {
-        id: 'dim_tech_arch',
-        name: 'Architecture & Technical Design',
-        description: 'Evaluates architectural decisions, modularity, data modeling, and separation of concerns.',
-        weight: 40,
-        signals: ['Follows domain-driven boundaries', 'Avoids tight coupling', 'Clean interfaces'],
-        redFlags: ['Spaghetti code', 'Hardcoded credentials', 'Lack of structure'],
-        scoringAnchors: [...DEFAULT_SCORING_ANCHORS],
-      },
-      {
-        id: 'dim_code_quality',
-        name: 'Code Quality & Maintainability',
-        description: 'Assesses readability, test coverage, static typing, and adherence to language idioms.',
-        weight: 35,
-        signals: ['Strong typing', 'Meaningful naming', 'Unit test coverage'],
-        redFlags: ['Unhandled errors', 'Ignored lint warnings', 'Missing error boundaries'],
-        scoringAnchors: [...DEFAULT_SCORING_ANCHORS],
-      },
-      {
-        id: 'dim_problem_solving',
-        name: 'Problem Solving & Edge-Case Handling',
-        description: 'Analyzes analytical rigor, handling of unexpected inputs, and algorithmic efficiency.',
-        weight: 25,
-        signals: ['Handles empty states and boundaries', 'Efficient algorithms', 'Documented trade-offs'],
-        redFlags: ['Infinite loops', 'Race conditions', 'Fragile logic'],
-        scoringAnchors: [...DEFAULT_SCORING_ANCHORS],
-      },
-    ];
+    // Default to empty array if no rubric defined yet (no hardcoded mock dimensions)
+    return [];
   }, [assessmentRubric, templateDetail]);
 
   const isLoading = isRubricLoading || (!assessmentRubric && isTemplateLoading);
@@ -121,8 +99,8 @@ function RubricCustomizerContent({ id }: { id: string }): React.JSX.Element {
       {/* Main Rubric Editor Component */}
       <RubricEditor
         assessmentId={id}
-        templateId={templateId}
-        templateVersionId={versionId}
+        templateId={templateId || ''}
+        templateVersionId={versionId || ''}
         initialDimensions={initialDimensions}
       />
     </div>

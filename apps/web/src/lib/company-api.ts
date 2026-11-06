@@ -1,3 +1,8 @@
+/**
+ * @deprecated Prefer using centralized RTK Query companyApi slice (@/store/company/companyApi)
+ * for all company portal data fetching. All component and hook consumers have been migrated to RTK Query.
+ * Retained for backwards compatibility with legacy contract test fixtures.
+ */
 import { apiFetch, getApiBaseUrl, resolveBrowserAuthUrl, ApiError } from './api-client';
 import type { RoleTemplateSummary, RoleTemplateDetail } from '@/components/company/templates/types';
 import type { CreateAssessmentDto, AssessmentDto } from '@/components/company/assessments/types';

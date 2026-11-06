@@ -1,0 +1,72 @@
+---
+title: "Task Spec v1 Specification & Reference Manifest"
+description: "Comprehensive specification of Task Spec v1, tool pack schemas, VM resource classes, and canonical reference task HS-1042."
+---
+
+<RoleBadge roles={["sde", "ai", "mgmt"]} />
+
+# Task Spec v1 Specification
+
+The **Task Spec** is an immutable, versioned manifest that defines every dimension required by the HelloSmart Fabric control plane to provision a task, inject its resources, supervise its execution, and evaluate its output (ADR-0009).
+
+---
+
+## 1. Schema Structure
+
+A Task Spec defines:
+- **`domain`**: Functional engineering discipline (`software_engineering`, `data_science`, `devops_cloud`).
+- **`type`**: Specific task archetype (`bug_fix`, `feature_build`, `code_review`, `api_integration`).
+- **`category`**: Time and compute allowance (`micro`: 5-15m, `short`: 15-60m, `standard`: 1-4h, `long`: 4-24h, `multi_session`: days).
+- **`vm_class`**: Resource allocation:
+  - `XS`: 1 vCPU, 2 GB RAM (Micro tasks, chat)
+  - `S`: 2 vCPU, 4 GB RAM (Short tasks like HS-1042)
+  - `M`: 4 vCPU, 8 GB RAM (Standard tasks, Docker)
+  - `L`: 8 vCPU, 16 GB RAM (Heavy builds)
+- **`image`**: Base/Domain image family and named **Tool Packs** (`core-dev`, `api-tools`, `container`, `db-tools`, `ai-assistant`, `recorder`).
+- **`repo` & `seed_data`**: Pinned commit SHA and database archive.
+- **`ai`**: Policy (ON/OFF), model allowlist, and dollar/token budget caps.
+
+---
+
+## 2. Canonical Reference Task: `HS-1042`
+
+```yaml
+task_id: "HS-1042"
+version: 1
+domain: "software_engineering"
+type: "bug_fix"
+category: "short"
+title: "Checkout fails with lowercase coupon codes"
+repo:
+  name: "shop-api"
+  commit: "c8f2a1b94d8e7f1234567890abcdef1234567890"
+  seed_data: "s3://hellosmart-seeds/shop-api-seed.sql"
+image:
+  family: "dev-linux"
+  version: "2026.11"
+  tool_packs: ["core-dev", "node20", "postman", "ai-assistant", "recorder"]
+vm_class: "S"
+limits:
+  duration_min: 30
+  budget_usd: 2.00
+  max_idle_min: 5
+ai:
+  enabled: true
+  models: ["claude-3-5-sonnet", "gpt-4o"]
+  cap:
+    tokens: 50000
+    usd: 1.50
+  on_cap: "warn_then_block"
+secrets:
+  - slot: "STRIPE_TEST_KEY"
+    source: "injected_at_launch"
+network:
+  profile: "restricted"
+  allow: ["package_mirror", "ai_proxy"]
+  deny: ["open_internet"]
+deliverables: ["patch_file", "short_note"]
+review:
+  mode: "post_session"
+  agents: ["correctness", "testing_discipline", "ai_authorship_maturity"]
+retention_days: 90
+```

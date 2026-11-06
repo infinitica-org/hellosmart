@@ -82,12 +82,13 @@ flowchart TB
 ### Core Monolith (`apps/api`)
 Handles authentication, multi-tenant RBAC, assessment configuration, rubric management, candidate invites, and commercial payment webhooks. Sets PostgreSQL context per transaction (`set_config('app.org_id')`) to enforce database RLS.
 
-### Sysbox Workspace Orchestrator
-Maintains pre-warmed Linux containers running `sysbox-runc`. When a candidate clicks "Connect":
-1. Clones a pre-warmed snapshot in under 5 seconds.
-2. Injects the assessment template repository commit and seed files.
-3. Injects a short-lived workspace session token (never real API keys).
-4. Connects the container's virtual TTY to `@hs/ws-gateway` for web terminal streaming.
+### Sysbox Workspace Orchestrator & HelloSmart Fabric (RMS)
+HelloSmart Fabric serves as the unified Resource Management System across both candidate assessment workspaces and virtual assistant machines (ADR-0009). Maintains pre-warmed Linux containers running `sysbox-runc` behind the `IWorkspaceProvider` driver interface. When a session starts:
+1. Reserves a pre-warmed slot from the warm pool in under 3 seconds (or clones a task snapshot).
+2. Attaches the pinned template repository commit, seed files, and pre-baked tool packs (`core-dev`, `api-tools`, `container`, `db-tools`).
+3. Injects environment secrets from Vault and a short-lived workspace session token (never real provider keys).
+4. Launches OpenVSCode Server (web IDE) and starts the in-VM flight recorder daemon (`services/ws-agent`) capturing file edits, git snapshots, and semantic terminal commands.
+5. Applies egress firewall rules dropping all outbound traffic except the internal AI proxy gateway and package mirrors.
 
 ### AI Proxy (`services/ai-proxy`)
 Acts as the single gatekeeper between candidate workspaces and external AI providers (BR-13):
