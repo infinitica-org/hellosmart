@@ -29,7 +29,7 @@ Adopt **HelloSmart Fabric** as the single unified Resource Management System (RM
 2. **Layer 2: Resource Layer (Layered Golden Images & Tool Packs)**:
    - **Base OS Image**: Hardened Ubuntu 24.04 LTS with monitoring, recorder, and egress firewall rules.
    - **Domain Image**: Software engineering stack (OpenVSCode Server, Git, Node 20, Python 3.12, Docker-in-Docker via Sysbox, Postman CLI, `services/ws-agent`).
-   - **Task Image**: Pinned commit clone, pre-installed dependencies (`node_modules`), seeded database, and pre-warmed tests (launch target $< 3\text{ s}$ from warm pool, $< 60\text{ s}$ cold p95).
+   - **Task Image**: Pinned commit clone, pre-installed dependencies (`node_modules`), seeded database, and pre-warmed tests (launch target under 3s from warm pool, under 60s cold p95).
    - **Tool Packs**: Named bundles (`core-dev`, `api-tools`, `container`, `db-tools`, `ai-assistant`, `recorder`).
 
 3. **Layer 3: AI Layer (Single Secure Gateway Door)**:
