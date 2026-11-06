@@ -5,6 +5,7 @@ import { DatabaseModule } from '../database/database.module.js';
 import { PgSubmissionRegistryAdapter } from './adapters/pg-submission-registry.adapter.js';
 import { PgWorkspaceReaperRegistryAdapter } from './adapters/pg-workspace-reaper-registry.adapter.js';
 import { PgWorkspaceRegistryAdapter } from './adapters/pg-workspace-registry.adapter.js';
+import { PgWorkspaceTelemetryRegistryAdapter } from './adapters/pg-workspace-telemetry-registry.adapter.js';
 import { AutosavePackager } from './autosave.packager.js';
 import { AutosaveQueueProcessor } from './autosave-queue.processor.js';
 import { GitDiffHelper } from './git-diff.helper.js';
@@ -14,6 +15,7 @@ import {
   EmptyTerminalLogSource,
   TERMINAL_LOG_SOURCE_PORT,
 } from './ports/terminal-log-source.port.js';
+import { PgTokenUsageAdapter, TOKEN_USAGE_PORT } from './ports/token-usage.port.js';
 import {
   EmptyWorkspaceConfigSource,
   WORKSPACE_CONFIG_SOURCE_PORT,
@@ -30,6 +32,10 @@ import {
   EmptyWorkspaceLifecycleAdapter,
   WORKSPACE_LIFECYCLE_PORT,
 } from './ports/workspace-lifecycle.port.js';
+import {
+  NoOpWorkspaceMeteringAdapter,
+  WORKSPACE_METERING_PORT,
+} from './ports/workspace-metering.port.js';
 import { NoOpWorkspaceNotifier, WORKSPACE_NOTIFIER_PORT } from './ports/workspace-notifier.port.js';
 import { WORKSPACE_REAPER_REGISTRY_PORT } from './ports/workspace-reaper-registry.port.js';
 import { WORKSPACE_REGISTRY_PORT } from './ports/workspace-registry.port.js';
@@ -41,6 +47,7 @@ import {
   EmptyWorkspaceSourceAdapter,
   WORKSPACE_SOURCE_PORT,
 } from './ports/workspace-source.port.js';
+import { WORKSPACE_TELEMETRY_REGISTRY_PORT } from './ports/workspace-telemetry-registry.port.js';
 import {
   FailClosedWorkspaceVolumeReader,
   WORKSPACE_VOLUME_READER_PORT,
@@ -49,6 +56,7 @@ import { SessionActivityService } from './session-activity.service.js';
 import { SubmissionBundlerService } from './submission-bundler.service.js';
 import { WorkspaceReaperScheduler } from './workspace-reaper.scheduler.js';
 import { WorkspaceReaperService } from './workspace-reaper.service.js';
+import { WorkspaceTelemetryService } from './workspace-telemetry.service.js';
 
 @Module({
   imports: [DatabaseModule, StorageModule, AuditModule],
@@ -59,10 +67,12 @@ import { WorkspaceReaperService } from './workspace-reaper.service.js';
     PgWorkspaceRegistryAdapter,
     PgSubmissionRegistryAdapter,
     PgWorkspaceReaperRegistryAdapter,
+    PgWorkspaceTelemetryRegistryAdapter,
     GitDiffHelper,
     SubmissionBundlerService,
     WorkspaceReaperService,
     WorkspaceReaperScheduler,
+    WorkspaceTelemetryService,
     {
       provide: WORKSPACE_REGISTRY_PORT,
       useClass: PgWorkspaceRegistryAdapter,
@@ -115,6 +125,18 @@ import { WorkspaceReaperService } from './workspace-reaper.service.js';
       provide: WORKSPACE_NOTIFIER_PORT,
       useClass: NoOpWorkspaceNotifier,
     },
+    {
+      provide: WORKSPACE_TELEMETRY_REGISTRY_PORT,
+      useClass: PgWorkspaceTelemetryRegistryAdapter,
+    },
+    {
+      provide: TOKEN_USAGE_PORT,
+      useClass: PgTokenUsageAdapter,
+    },
+    {
+      provide: WORKSPACE_METERING_PORT,
+      useClass: NoOpWorkspaceMeteringAdapter,
+    },
   ],
   exports: [
     AutosavePackager,
@@ -123,6 +145,7 @@ import { WorkspaceReaperService } from './workspace-reaper.service.js';
     SubmissionBundlerService,
     WorkspaceReaperService,
     WorkspaceReaperScheduler,
+    WorkspaceTelemetryService,
     GitDiffHelper,
     WORKSPACE_REGISTRY_PORT,
     WORKSPACE_VOLUME_READER_PORT,
@@ -137,6 +160,9 @@ import { WorkspaceReaperService } from './workspace-reaper.service.js';
     WORKSPACE_SNAPSHOT_PORT,
     WORKSPACE_DESTROYER_PORT,
     WORKSPACE_NOTIFIER_PORT,
+    WORKSPACE_TELEMETRY_REGISTRY_PORT,
+    TOKEN_USAGE_PORT,
+    WORKSPACE_METERING_PORT,
   ],
 })
 export class WorkspacesModule {}
