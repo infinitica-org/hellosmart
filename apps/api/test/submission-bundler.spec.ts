@@ -870,7 +870,7 @@ describe('[9.2] Submission Bundler Pipeline (BR-11, BR-18, Migration 0014 trg_im
           expect(actualBuf.equals(expectedBuf)).toBe(true);
 
           const expectedMode = candidateModes.get(relPath);
-          if (expectedMode) {
+          if (expectedMode && process.platform !== 'win32') {
             const actualMode = fs.statSync(fullPath).mode & 0o777;
             expect(actualMode).toBe(expectedMode & 0o777);
           }
