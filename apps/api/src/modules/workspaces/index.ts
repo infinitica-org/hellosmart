@@ -14,3 +14,19 @@ export * from './fakes/fake-workspace-registry.js';
 export * from './fakes/fake-terminal-log-source.js';
 export * from './fakes/fake-workspace-config-source.js';
 export * from './adapters/pg-workspace-registry.adapter.js';
+
+// 9.2 Submission bundler exports
+export * from './submission-bundler.types.js';
+export * from './submission-bundler.service.js';
+export * from './git-diff.helper.js';
+export * from './submission-storage.helper.js';
+export * from './submission-retry.helper.js';
+
+export * from './ports/workspace-source.port.js';
+export * from './ports/patch-generator.port.js';
+export * from './ports/submission-registry.port.js';
+export * from './ports/workspace-lifecycle.port.js';
+
+export * from './adapters/pg-submission-registry.adapter.js';
+export * from './fakes/fake-workspace-source.js';
+export * from './fakes/fake-submission-registry.js';
