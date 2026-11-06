@@ -27,6 +27,9 @@ export class FakeSubmissionRegistryAdapter implements SubmissionRegistryPort {
     this.updateCount++;
     for (const ctx of this.workspaces.values()) {
       if (ctx.orgId === orgId && ctx.assignmentId === assignmentId) {
+        if (ctx.artifactsRef && ctx.artifactsRef !== artifactsRef) {
+          throw new Error(`Cannot overwrite existing artifacts_ref '${ctx.artifactsRef}'`);
+        }
         ctx.artifactsRef = artifactsRef;
       }
     }

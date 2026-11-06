@@ -13,6 +13,8 @@ export interface PatchResult {
 export interface GeneratePatchParams {
   templateFiles: Map<string, Buffer> | null;
   candidateFiles: Map<string, Buffer>;
+  templateModes?: Map<string, number>;
+  candidateModes?: Map<string, number>;
   maxPatchSizeBytes?: number;
   maxFileSizeBytes?: number;
   timeoutMs?: number;

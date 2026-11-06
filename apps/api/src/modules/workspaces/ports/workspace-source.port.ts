@@ -1,11 +1,28 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+export interface CandidateFileEntry {
+  buffer: Buffer;
+  mode?: number;
+  isSymlink?: boolean;
+  symlinkTarget?: string;
+  isSpecial?: boolean;
+  specialType?: 'fifo' | 'socket' | 'character_device' | 'block_device';
+}
+
 export interface WorkspaceSourcePort {
   /**
    * Reads the candidate's final working tree from the workspace container volume or agent.
    * Returns a map of relative POSIX path -> file buffer.
    */
   readCandidateTree(orgId: string, workspaceId: string): Promise<Map<string, Buffer>>;
+
+  /**
+   * Reads detailed candidate file entries including symlinks and special files if supported.
+   */
+  readCandidateTreeDetailed?(
+    orgId: string,
+    workspaceId: string,
+  ): Promise<Map<string, CandidateFileEntry>>;
 
   /**
    * Reads the template base file tree for diff generation.

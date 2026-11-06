@@ -18,8 +18,9 @@ import { GitDiffHelper } from '../src/modules/workspaces/git-diff.helper.js';
 import { FakeWorkspaceLifecycleAdapter } from '../src/modules/workspaces/ports/workspace-lifecycle.port.js';
 import { SubmissionBundlerService } from '../src/modules/workspaces/submission-bundler.service.js';
 import { retryUnbundledSubmissions } from '../src/modules/workspaces/submission-retry.helper.js';
+import { withUserSession } from '../src/modules/tenancy/with-org.js';
 
-describe('[9.2] Submission Bundler Pipeline (BR-11, BR-18, BR-20, BR-22, CA-018, CO-041, CO-042, T-020)', () => {
+describe('[9.2] Submission Bundler Pipeline (BR-11, BR-18, Migration 0014 trg_immutable_submission, BR-22, CA-018, CO-041, CO-042, T-020)', () => {
   const orgId = '11111111-1111-4111-8111-111111111111';
   const otherOrgId = '99999999-9999-4999-8999-999999999999';
   const assignmentId = '22222222-2222-4222-8222-222222222222';
@@ -304,7 +305,9 @@ describe('[9.2] Submission Bundler Pipeline (BR-11, BR-18, BR-20, BR-22, CA-018,
         term: 'terminal/history.log',
         diff: 'patch/changes.patch',
         file: 'source/',
-        ai: 'workspace-config.json#ai',
+        ai: 'unavailable: no source yet (CO-042 expects AI transcript, not captured in current bundle)',
+        event: 'unavailable: no source yet',
+        test: 'unavailable: no source yet',
       });
 
       // Verify file SHA-256 match in manifest
@@ -355,6 +358,119 @@ describe('[9.2] Submission Bundler Pipeline (BR-11, BR-18, BR-20, BR-22, CA-018,
       const manifest: any = JSON.parse(entries.get('manifest.json')!.buffer.toString('utf8'));
       expect(manifest.skippedEntries.some((s: any) => s.path === '../escaped.ts')).toBe(true);
       expect(manifest.skippedEntries.some((s: any) => s.path === '/etc/passwd')).toBe(true);
+    });
+
+    it('records symlinks as manifest entries with isSymlink: true and target logged, without following content', async () => {
+      workspaceSource.setCandidateFiles({
+        'src/real.ts': 'export const x = 42;\n',
+      });
+      workspaceSource.setCandidateDetailedEntry('src/link.ts', {
+        buffer: Buffer.from('should not be in archive'),
+        isSymlink: true,
+        symlinkTarget: 'src/real.ts',
+      });
+
+      const res = await bundler.bundle(workspaceId);
+      const rawObject = storage.getRawObject(res.artifactsRef)!;
+      const entries = await unpackTarball(rawObject);
+
+      // Verify the symlink file content is not packed into the source tree
+      expect(entries.has('source/src/link.ts')).toBe(false);
+      expect(entries.has('source/src/real.ts')).toBe(true);
+
+      // Verify manifest records symlink metadata
+      const manifest: any = JSON.parse(entries.get('manifest.json')!.buffer.toString('utf8'));
+      const symlinkEntry = manifest.files.find((f: any) => f.path === 'src/link.ts');
+      expect(symlinkEntry).toBeDefined();
+      expect(symlinkEntry.isSymlink).toBe(true);
+      expect(symlinkEntry.symlinkTarget).toBe('src/real.ts');
+    });
+
+    it('skips FIFOs, domain sockets, and character/block devices and notes them in skippedEntries', async () => {
+      workspaceSource.setCandidateFiles({
+        'src/real.ts': 'export const x = 42;\n',
+      });
+      workspaceSource.setCandidateDetailedEntry('fifo_pipe', {
+        buffer: Buffer.alloc(0),
+        isSpecial: true,
+        specialType: 'fifo',
+      });
+      workspaceSource.setCandidateDetailedEntry('socket.sock', {
+        buffer: Buffer.alloc(0),
+        isSpecial: true,
+        specialType: 'socket',
+      });
+
+      const res = await bundler.bundle(workspaceId);
+      const rawObject = storage.getRawObject(res.artifactsRef)!;
+      const entries = await unpackTarball(rawObject);
+
+      expect(entries.has('source/fifo_pipe')).toBe(false);
+      expect(entries.has('source/socket.sock')).toBe(false);
+
+      const manifest: any = JSON.parse(entries.get('manifest.json')!.buffer.toString('utf8'));
+      expect(manifest.skippedEntries.some((s: any) => s.path === 'fifo_pipe')).toBe(true);
+      expect(manifest.skippedEntries.some((s: any) => s.path === 'socket.sock')).toBe(true);
+    });
+
+    it('rejects or sanitizes filenames with NUL bytes, newlines, control characters, and names exceeding 1024 chars', async () => {
+      const veryLongName = 'a'.repeat(1050) + '.ts';
+      workspaceSource.setCandidateFiles({
+        'safe.ts': 'console.log(1);',
+        'nul\0byte.ts': 'bad',
+        'newline\nin\nname.ts': 'bad',
+        'control\x01\x1f.ts': 'bad',
+        [veryLongName]: 'bad',
+      });
+
+      const res = await bundler.bundle(workspaceId);
+      const rawObject = storage.getRawObject(res.artifactsRef)!;
+      const entries = await unpackTarball(rawObject);
+
+      expect(entries.has('source/safe.ts')).toBe(true);
+      expect(entries.has('source/nul\0byte.ts')).toBe(false);
+      expect(entries.has('source/newline\nin\nname.ts')).toBe(false);
+      expect(entries.has(`source/${veryLongName}`)).toBe(false);
+
+      const manifest: any = JSON.parse(entries.get('manifest.json')!.buffer.toString('utf8'));
+      expect(manifest.skippedEntries.some((s: any) => s.path.includes('nul'))).toBe(true);
+      expect(manifest.skippedEntries.some((s: any) => s.path.includes('newline'))).toBe(true);
+      expect(manifest.skippedEntries.some((s: any) => s.path === veryLongName)).toBe(true);
+    });
+
+    it('enforces total source size cap, file count cap, and terminal history cap, setting isPartial=true with reasons', async () => {
+      const files: Record<string, Buffer> = {};
+      // Add 60 files each 900 KB -> each under 1 MB per-file cap, but total 54 MB > 50 MB total source cap
+      for (let i = 0; i < 60; i++) {
+        files[`chunk_${i}.bin`] = Buffer.alloc(900 * 1024, 0x41);
+      }
+      workspaceSource.setCandidateFiles(files);
+      workspaceSource.setTerminalHistory('x'.repeat(6 * 1024 * 1024)); // 6 MB exceeds 5 MB cap
+
+      const res = await bundler.bundle(workspaceId);
+      expect(res.manifest.isPartial).toBe(true);
+      expect(
+        res.manifest.partialReasons.some((r) => r.includes('terminal_history_truncated')),
+      ).toBe(true);
+      expect(
+        res.manifest.partialReasons.some((r) => r.includes('max_total_source_bytes_exceeded')),
+      ).toBe(true);
+    });
+
+    it('maintains bounded memory when assembling and streaming a multi-megabyte bundle', async () => {
+      const files: Record<string, Buffer> = {};
+      for (let i = 0; i < 10; i++) {
+        files[`file_${i}.ts`] = Buffer.alloc(1024 * 1024, 0x61); // 1 MB each = 10 MB total
+      }
+      workspaceSource.setCandidateFiles(files);
+
+      const memBefore = process.memoryUsage().heapUsed;
+      const res = await bundler.bundle(workspaceId);
+      const memAfter = process.memoryUsage().heapUsed;
+
+      expect(res.totalBytes).toBeGreaterThan(0);
+      const memDelta = memAfter - memBefore;
+      expect(memDelta).toBeLessThan(150 * 1024 * 1024);
     });
   });
 
@@ -509,6 +625,115 @@ describe('[9.2] Submission Bundler Pipeline (BR-11, BR-18, BR-20, BR-22, CA-018,
       const ctx = await registry.getWorkspaceSubmissionContext(workspaceId);
       expect(ctx?.artifactsRef).toBe(`submissions/${orgId}/${assignmentId}/final_bundle.tar.gz`);
     });
+
+    it('concurrent bundle() calls for one assignment give one upload and one audit event; both callers get the same key and sha256', async () => {
+      workspaceSource.setCandidateFiles({ 'index.ts': 'export const concurrent = true;' });
+
+      let uploadCount = 0;
+      const originalPut = storage.put.bind(storage);
+      storage.put = vi.fn(async (key: string, stream: any, meta: any) => {
+        uploadCount++;
+        // Simulate asynchronous I/O delay
+        await new Promise((r) => setTimeout(r, 20));
+        return originalPut(key, stream, meta);
+      });
+
+      // Launch two concurrent bundle operations for the same workspace
+      const [res1, res2] = await Promise.all([
+        bundler.bundle(workspaceId),
+        bundler.bundle(workspaceId),
+      ]);
+
+      // Exactly one upload occurred
+      expect(uploadCount).toBe(1);
+
+      // Exactly one audit event was logged
+      expect(auditLogs.length).toBe(1);
+
+      // Both callers received identical keys and checksums
+      expect(res1.artifactsRef).toBe(res2.artifactsRef);
+      expect(res1.sha256).toBe(res2.sha256);
+      expect(res1.totalBytes).toBe(res2.totalBytes);
+    });
+
+    it('recovers from crash after upload: object in storage with matching sha256 completes DB link without second upload', async () => {
+      workspaceSource.setCandidateFiles({ 'index.ts': 'export const crashRecovery = true;' });
+
+      // Run bundle once to generate the valid archive in storage
+      const res1 = await bundler.bundle(workspaceId);
+      expect(res1.artifactsRef).toBe(`submissions/${orgId}/${assignmentId}/final_bundle.tar.gz`);
+
+      // Simulate a crash where S3 has the object, but DB artifacts_ref was reset to null
+      registry.setWorkspaceContext({
+        workspaceId,
+        orgId,
+        assignmentId,
+        candidateId,
+        templateVersionId: '55555555-5555-4555-8555-555555555555',
+        templateRef: 'commit_base_v1',
+        assignmentStatus: 'submitted',
+        artifactsRef: null,
+      });
+
+      let uploadAttempts = 0;
+      const originalPut = storage.put.bind(storage);
+      storage.put = vi.fn(async (key: string, stream: any, meta: any) => {
+        uploadAttempts++;
+        return originalPut(key, stream, meta);
+      });
+
+      // Re-run bundling: should detect matching object in storage and complete DB link without uploading
+      const res2 = await bundler.bundle(workspaceId);
+
+      expect(uploadAttempts).toBe(0); // Zero re-uploads
+      const ctx = await registry.getWorkspaceSubmissionContext(workspaceId);
+      expect(ctx?.artifactsRef).toBe(res1.artifactsRef);
+      expect(res2.sha256).toBe(res1.sha256);
+    });
+
+    it('overwrite protection: an existing different object at the storage key fails with error and is not overwritten', async () => {
+      workspaceSource.setCandidateFiles({ 'index.ts': 'export const newContent = 1;' });
+
+      const storageKey = buildSubmissionBundleKey(orgId, assignmentId);
+      // Pre-seed storage with a different payload
+      await storage.put(storageKey, Readable.from(Buffer.from('different-foreign-content')), {
+        contentType: 'application/gzip',
+        filename: 'final_bundle.tar.gz',
+        orgId,
+        assignmentId,
+        objectId: 'final_bundle',
+      });
+
+      // Bundling should refuse to overwrite conflicting object
+      await expect(bundler.bundle(workspaceId)).rejects.toThrow('Refusing to overwrite');
+
+      // Database artifacts_ref was never set
+      const ctx = await registry.getWorkspaceSubmissionContext(workspaceId);
+      expect(ctx?.artifactsRef).toBeNull();
+    });
+
+    it('lifecycle timing: lifecycle port is never called before artifacts_ref is set and never writes workspace status', async () => {
+      workspaceSource.setCandidateFiles({ 'index.ts': 'console.log(1);' });
+
+      let artifactsRefSetAtLifecycleCall: string | null = null;
+      const originalSignal = lifecycle.signalReadyForTermination.bind(lifecycle);
+      lifecycle.signalReadyForTermination = vi.fn(async (oId: string, wsId: string) => {
+        const ctx = await registry.getWorkspaceSubmissionContext(wsId);
+        artifactsRefSetAtLifecycleCall = ctx?.artifactsRef ?? null;
+        return originalSignal(oId, wsId);
+      });
+
+      await bundler.bundle(workspaceId);
+
+      // Verify artifacts_ref was already set before lifecycle signal
+      expect(artifactsRefSetAtLifecycleCall).toBe(
+        `submissions/${orgId}/${assignmentId}/final_bundle.tar.gz`,
+      );
+
+      // Verify lifecycle signals do not write workspace status = 'destroyed' or set ended_at
+      const ctx = await registry.getWorkspaceSubmissionContext(workspaceId);
+      expect(ctx?.assignmentStatus).toBe('submitted'); // Workspace status untouched by bundler
+    });
   });
 
   // =========================================================================
@@ -532,6 +757,138 @@ describe('[9.2] Submission Bundler Pipeline (BR-11, BR-18, BR-20, BR-22, CA-018,
       expect(isSubmissionBundleKeyInOrg(`submissions/${orgId}/../escaped.tar.gz`, orgId)).toBe(
         false,
       );
+    });
+
+    it('strictly rejects storage keys belonging to another organization (BR-01)', () => {
+      const orgAKey = buildSubmissionBundleKey(orgId, assignmentId);
+      const isAllowedForOrgB = isSubmissionBundleKeyInOrg(orgAKey, otherOrgId);
+      expect(isAllowedForOrgB).toBe(false);
+
+      const isAllowedForOrgA = isSubmissionBundleKeyInOrg(orgAKey, orgId);
+      expect(isAllowedForOrgA).toBe(true);
+    });
+  });
+
+  // =========================================================================
+  // Patch Application & Verification via Clean Git Repository (Step 3)
+  // =========================================================================
+  describe('Patch Application & Verification via Clean Git Repository', () => {
+    it('applies generated patch cleanly with git apply --check and git apply across all required cases', async () => {
+      const fs = await import('node:fs');
+      const os = await import('node:os');
+      const path = await import('node:path');
+
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hs-git-patch-test-'));
+      const env: NodeJS.ProcessEnv = {
+        PATH: process.env.PATH,
+        GIT_CONFIG_NOSYSTEM: '1',
+        GIT_CONFIG_GLOBAL: '/dev/null',
+        core_hooksPath: '/dev/null',
+        HOME: tmpDir,
+      };
+
+      function git(...args: string[]): string {
+        return child_process.execFileSync('git', args, { cwd: tmpDir, env, encoding: 'utf8' });
+      }
+
+      git('init');
+      git('config', 'user.name', 'HelloSmart Test');
+      git('config', 'user.email', 'test@hellosmart.ai');
+
+      const templateFiles = new Map<string, Buffer>();
+      const templateModes = new Map<string, number>();
+      const candidateFiles = new Map<string, Buffer>();
+      const candidateModes = new Map<string, number>();
+
+      // 1. Modified
+      templateFiles.set('src/modified.ts', Buffer.from('const a = 1;\nconst b = 2;\n'));
+      candidateFiles.set('src/modified.ts', Buffer.from('const a = 1;\nconst b = 999;\n'));
+
+      // 2. Added
+      candidateFiles.set('src/added.ts', Buffer.from('export const added = true;\n'));
+
+      // 3. Deleted
+      templateFiles.set('src/deleted.ts', Buffer.from('export const deleted = true;\n'));
+
+      // 4. Mode-changed
+      templateFiles.set('scripts/run.sh', Buffer.from('#!/bin/sh\necho hi\n'));
+      templateModes.set('scripts/run.sh', 0o100644);
+      candidateFiles.set('scripts/run.sh', Buffer.from('#!/bin/sh\necho hi\n'));
+      candidateModes.set('scripts/run.sh', 0o100755);
+
+      // 5. No-newline-at-end
+      templateFiles.set('docs/nonl.txt', Buffer.from('line1\nline2'));
+      candidateFiles.set('docs/nonl.txt', Buffer.from('line1\nline2_modified'));
+
+      // 6. CRLF
+      templateFiles.set('config/windows.ini', Buffer.from('[main]\r\nenabled=true\r\n'));
+      candidateFiles.set('config/windows.ini', Buffer.from('[main]\r\nenabled=false\r\n'));
+
+      // 7. Unicode
+      templateFiles.set('locales/ja.json', Buffer.from('{"hello": "こんにちは"}\n', 'utf8'));
+      candidateFiles.set(
+        'locales/ja.json',
+        Buffer.from('{"hello": "こんにちは", "emoji": "🚀✨"}\n', 'utf8'),
+      );
+
+      try {
+        // Write template tree to git repo and commit
+        for (const [relPath, buf] of templateFiles) {
+          const fullPath = path.join(tmpDir, relPath);
+          fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+          fs.writeFileSync(fullPath, buf);
+          const mode = templateModes.get(relPath);
+          if (mode) fs.chmodSync(fullPath, mode);
+        }
+        git('add', '-A');
+        git('commit', '-m', 'template base');
+
+        // Generate unified patch with GitDiffHelper
+        const helper = new GitDiffHelper();
+        const patchResult = await helper.generatePatch({
+          templateFiles,
+          candidateFiles,
+          templateModes,
+          candidateModes,
+        });
+
+        expect(patchResult.filesChanged).toBe(7);
+        expect(patchResult.patchStatus).toBe('complete');
+
+        const patchFile = path.join(tmpDir, 'changes.patch');
+        fs.writeFileSync(patchFile, patchResult.patchText, 'utf8');
+
+        // Run git apply --check and git apply
+        git('apply', '--check', patchFile);
+        git('apply', patchFile);
+
+        // Verify candidate files match exactly
+        for (const [relPath, expectedBuf] of candidateFiles) {
+          const fullPath = path.join(tmpDir, relPath);
+          expect(fs.existsSync(fullPath)).toBe(true);
+          const actualBuf = fs.readFileSync(fullPath);
+          expect(actualBuf.equals(expectedBuf)).toBe(true);
+
+          const expectedMode = candidateModes.get(relPath);
+          if (expectedMode) {
+            const actualMode = fs.statSync(fullPath).mode & 0o777;
+            expect(actualMode).toBe(expectedMode & 0o777);
+          }
+        }
+
+        // Verify deleted file is gone
+        expect(fs.existsSync(path.join(tmpDir, 'src/deleted.ts'))).toBe(false);
+
+        // 8. Empty diff case
+        const emptyResult = await helper.generatePatch({
+          templateFiles: candidateFiles,
+          candidateFiles: candidateFiles,
+        });
+        expect(emptyResult.filesChanged).toBe(0);
+        expect(emptyResult.patchText).toBe('');
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
     });
   });
 
@@ -669,12 +1026,293 @@ describe('[9.2] Submission Bundler Pipeline (BR-11, BR-18, BR-20, BR-22, CA-018,
         await adminClient.end();
       }
     });
+
+    it('KNOWN GAP: candidate DB session can currently update artifacts_ref (invert after the trigger or grant fix)', async () => {
+      // NOTE: This test documents a known database gap (no trigger guard on artifacts_ref in migration 0014).
+      // Once Vishal V adds trg_immutable_artifacts_ref or revokes column-level update privileges,
+      // this test must be inverted (expect 0 rows updated / exception raised) and the skipped contract test
+      // 'contract: candidate role cannot update artifacts_ref (blocked on migration/grant fix for Vishal V)' below must be enabled.
+      if (!dbConnected || !platformPool || !pgPool) {
+        return; // Cleanly skip if test db is unavailable
+      }
+
+      const adminClient = new pg.Client({
+        connectionString: 'postgres://hs_owner:hs_owner_local@127.0.0.1:5432/hellosmart_test',
+      });
+      await adminClient.connect();
+
+      const probeAdminId = '99999999-0000-0000-0000-000000000091';
+      const probeOrgId = '99999999-0000-0000-0000-000000000092';
+      const probeCandId = '99999999-0000-0000-0000-000000000093';
+      const probeTplId = '99999999-0000-0000-0000-000000000094';
+      const probeTplVerId = '99999999-0000-0000-0000-000000000095';
+      const probeAsmntId = '99999999-0000-0000-0000-000000000096';
+      const probeAsgnId = '99999999-0000-0000-0000-000000000097';
+
+      try {
+        await adminClient.query(
+          "INSERT INTO app.users (id, org_id, email, name, role) VALUES ($1, null, 'probe_admin@test.com', 'Probe Admin', 'platform_admin') ON CONFLICT DO NOTHING",
+          [probeAdminId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.organizations (id, name, slug, created_by) VALUES ($1, 'Probe Org Sec', 'probe-org-sec', $2) ON CONFLICT DO NOTHING",
+          [probeOrgId, probeAdminId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.users (id, org_id, email, name, role) VALUES ($1, $2, 'probe_cand@test.com', 'Probe Cand', 'candidate') ON CONFLICT DO NOTHING",
+          [probeCandId, probeOrgId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.templates (id, slug, name, category, difficulty, workspace_mode, description) VALUES ($1, 'probe-tpl-sec', 'Probe Tpl Sec', 'engineering', 'Beginner', 'cloud', 'desc') ON CONFLICT DO NOTHING",
+          [probeTplId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.template_versions (id, template_id, version, status, manifest) VALUES ($1, $2, '1.0.0', 'draft', '{\"repo_ref\":\"probe_sec_hash\"}') ON CONFLICT DO NOTHING",
+          [probeTplVerId, probeTplId],
+        );
+        await adminClient.query(
+          'INSERT INTO app.template_assignments (template_id, org_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [probeTplId, probeOrgId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.assessments (id, org_id, template_version_id, name, workspace_mode, brief_overrides) VALUES ($1, $2, $3, 'Probe Asmnt Sec', 'cloud', '{}') ON CONFLICT DO NOTHING",
+          [probeAsmntId, probeOrgId, probeTplVerId],
+        );
+        await adminClient.query(
+          `INSERT INTO app.assignments (id, org_id, assessment_id, candidate_id, status, submitted_at, artifacts_ref)
+           VALUES ($1, $2, $3, $4, 'submitted', now(), 'submissions/orig/bundle.tar.gz') ON CONFLICT DO NOTHING`,
+          [probeAsgnId, probeOrgId, probeAsmntId, probeCandId],
+        );
+
+        // Execute update as candidate session via withUserSession on appPool
+        const client = await pgPool.connect();
+        try {
+          const updateResult = await withUserSession(
+            client,
+            probeOrgId,
+            probeCandId,
+            'candidate',
+            async (tx) => {
+              return await tx.query(
+                "UPDATE app.assignments SET artifacts_ref = 'tampered-key' WHERE id = $1 RETURNING artifacts_ref",
+                [probeAsgnId],
+              );
+            },
+          );
+
+          // Documents security finding: RLS allows candidate to update artifacts_ref on their assignment
+          expect(updateResult.rowCount).toBe(1);
+          expect(updateResult.rows[0]?.artifacts_ref).toBe('tampered-key');
+        } finally {
+          client.release();
+        }
+      } finally {
+        await adminClient.query('DELETE FROM app.assignments WHERE id = $1', [probeAsgnId]);
+        await adminClient.query('DELETE FROM app.assessments WHERE id = $1', [probeAsmntId]);
+        await adminClient.query('DELETE FROM app.template_assignments WHERE template_id = $1', [
+          probeTplId,
+        ]);
+        await adminClient.query('DELETE FROM app.template_versions WHERE id = $1', [probeTplVerId]);
+        await adminClient.query('DELETE FROM app.templates WHERE id = $1', [probeTplId]);
+        await adminClient.query('DELETE FROM app.users WHERE id = $1', [probeCandId]);
+        await adminClient.query('DELETE FROM app.organizations WHERE id = $1', [probeOrgId]);
+        await adminClient.query('DELETE FROM app.users WHERE id = $1', [probeAdminId]);
+        await adminClient.end();
+      }
+    });
+
+    it('scoped write: recordArtifactsRef sets artifacts_ref where status=submitted and is null, handling rowCount=0 idempotently', async () => {
+      if (!dbConnected || !platformPool || !pgPool) {
+        return;
+      }
+      const adminClient = new pg.Client({
+        connectionString: 'postgres://hs_owner:hs_owner_local@127.0.0.1:5432/hellosmart_test',
+      });
+      await adminClient.connect();
+
+      const scopedAdminId = '99999999-0000-0000-0000-000000000071';
+      const scopedOrgId = '99999999-0000-0000-0000-000000000072';
+      const scopedCandId = '99999999-0000-0000-0000-000000000073';
+      const scopedTplId = '99999999-0000-0000-0000-000000000074';
+      const scopedTplVerId = '99999999-0000-0000-0000-000000000075';
+      const scopedAsmntId = '99999999-0000-0000-0000-000000000076';
+      const scopedAsgnId = '99999999-0000-0000-0000-000000000077';
+
+      try {
+        await adminClient.query(
+          "INSERT INTO app.users (id, org_id, email, name, role) VALUES ($1, null, 'scoped_admin@test.com', 'Scoped Admin', 'platform_admin') ON CONFLICT DO NOTHING",
+          [scopedAdminId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.organizations (id, name, slug, created_by) VALUES ($1, 'Scoped Org', 'scoped-org', $2) ON CONFLICT DO NOTHING",
+          [scopedOrgId, scopedAdminId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.users (id, org_id, email, name, role) VALUES ($1, $2, 'scoped_cand@test.com', 'Scoped Cand', 'candidate') ON CONFLICT DO NOTHING",
+          [scopedCandId, scopedOrgId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.templates (id, slug, name, category, difficulty, workspace_mode, description) VALUES ($1, 'scoped-tpl', 'Scoped Tpl', 'engineering', 'Beginner', 'cloud', 'desc') ON CONFLICT DO NOTHING",
+          [scopedTplId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.template_versions (id, template_id, version, status, manifest) VALUES ($1, $2, '1.0.0', 'draft', '{\"repo_ref\":\"scoped_hash\"}') ON CONFLICT DO NOTHING",
+          [scopedTplVerId, scopedTplId],
+        );
+        await adminClient.query(
+          'INSERT INTO app.template_assignments (template_id, org_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [scopedTplId, scopedOrgId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.assessments (id, org_id, template_version_id, name, workspace_mode, brief_overrides) VALUES ($1, $2, $3, 'Scoped Asmnt', 'cloud', '{}') ON CONFLICT DO NOTHING",
+          [scopedAsmntId, scopedOrgId, scopedTplVerId],
+        );
+        await adminClient.query(
+          `INSERT INTO app.assignments (id, org_id, assessment_id, candidate_id, status, submitted_at, artifacts_ref)
+           VALUES ($1, $2, $3, $4, 'submitted', now(), null) ON CONFLICT DO NOTHING`,
+          [scopedAsgnId, scopedOrgId, scopedAsmntId, scopedCandId],
+        );
+
+        const pgAdapter = new PgSubmissionRegistryAdapter(pgPool, platformPool);
+        const targetKey = `submissions/${scopedOrgId}/${scopedAsgnId}/final_bundle.tar.gz`;
+
+        // 1. Initial write sets artifacts_ref
+        await pgAdapter.recordArtifactsRef(scopedOrgId, scopedAsgnId, targetKey);
+
+        const checkRes = await adminClient.query(
+          'SELECT artifacts_ref FROM app.assignments WHERE id = $1',
+          [scopedAsgnId],
+        );
+        expect(checkRes.rows[0]?.artifacts_ref).toBe(targetKey);
+
+        // 2. Idempotent re-run with same key succeeds without error
+        await expect(
+          pgAdapter.recordArtifactsRef(scopedOrgId, scopedAsgnId, targetKey),
+        ).resolves.not.toThrow();
+
+        // 3. Attempting to overwrite with a different key throws an error
+        await expect(
+          pgAdapter.recordArtifactsRef(scopedOrgId, scopedAsgnId, 'different/key.tar.gz'),
+        ).rejects.toThrow('Cannot overwrite existing artifacts_ref');
+      } finally {
+        await adminClient.query('DELETE FROM app.assignments WHERE id = $1', [scopedAsgnId]);
+        await adminClient.query('DELETE FROM app.assessments WHERE id = $1', [scopedAsmntId]);
+        await adminClient.query('DELETE FROM app.template_assignments WHERE template_id = $1', [
+          scopedTplId,
+        ]);
+        await adminClient.query('DELETE FROM app.template_versions WHERE id = $1', [
+          scopedTplVerId,
+        ]);
+        await adminClient.query('DELETE FROM app.templates WHERE id = $1', [scopedTplId]);
+        await adminClient.query('DELETE FROM app.users WHERE id = $1', [scopedCandId]);
+        await adminClient.query('DELETE FROM app.organizations WHERE id = $1', [scopedOrgId]);
+        await adminClient.query('DELETE FROM app.users WHERE id = $1', [scopedAdminId]);
+        await adminClient.end();
+      }
+    });
+
+    it('cross-tenant isolation: org B cannot update org A artifacts_ref (BR-01)', async () => {
+      if (!dbConnected || !platformPool || !pgPool) {
+        return;
+      }
+      const adminClient = new pg.Client({
+        connectionString: 'postgres://hs_owner:hs_owner_local@127.0.0.1:5432/hellosmart_test',
+      });
+      await adminClient.connect();
+
+      const xtAdminId = '99999999-0000-0000-0000-000000000081';
+      const xtOrgAId = '99999999-0000-0000-0000-000000000082';
+      const xtOrgBId = '99999999-0000-0000-0000-000000000083';
+      const xtCandId = '99999999-0000-0000-0000-000000000084';
+      const xtTplId = '99999999-0000-0000-0000-000000000085';
+      const xtTplVerId = '99999999-0000-0000-0000-000000000086';
+      const xtAsmntId = '99999999-0000-0000-0000-000000000087';
+      const xtAsgnId = '99999999-0000-0000-0000-000000000088';
+
+      try {
+        await adminClient.query(
+          "INSERT INTO app.users (id, org_id, email, name, role) VALUES ($1, null, 'xt_admin@test.com', 'XT Admin', 'platform_admin') ON CONFLICT DO NOTHING",
+          [xtAdminId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.organizations (id, name, slug, created_by) VALUES ($1, 'XT Org A', 'xt-org-a', $2) ON CONFLICT DO NOTHING",
+          [xtOrgAId, xtAdminId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.organizations (id, name, slug, created_by) VALUES ($1, 'XT Org B', 'xt-org-b', $2) ON CONFLICT DO NOTHING",
+          [xtOrgBId, xtAdminId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.users (id, org_id, email, name, role) VALUES ($1, $2, 'xt_cand@test.com', 'XT Cand', 'candidate') ON CONFLICT DO NOTHING",
+          [xtCandId, xtOrgAId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.templates (id, slug, name, category, difficulty, workspace_mode, description) VALUES ($1, 'xt-tpl', 'XT Tpl', 'engineering', 'Beginner', 'cloud', 'desc') ON CONFLICT DO NOTHING",
+          [xtTplId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.template_versions (id, template_id, version, status, manifest) VALUES ($1, $2, '1.0.0', 'draft', '{\"repo_ref\":\"xt_hash\"}') ON CONFLICT DO NOTHING",
+          [xtTplVerId, xtTplId],
+        );
+        await adminClient.query(
+          'INSERT INTO app.template_assignments (template_id, org_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [xtTplId, xtOrgAId],
+        );
+        await adminClient.query(
+          "INSERT INTO app.assessments (id, org_id, template_version_id, name, workspace_mode, brief_overrides) VALUES ($1, $2, $3, 'XT Asmnt', 'cloud', '{}') ON CONFLICT DO NOTHING",
+          [xtAsmntId, xtOrgAId, xtTplVerId],
+        );
+        await adminClient.query(
+          `INSERT INTO app.assignments (id, org_id, assessment_id, candidate_id, status, submitted_at, artifacts_ref)
+           VALUES ($1, $2, $3, $4, 'submitted', now(), null) ON CONFLICT DO NOTHING`,
+          [xtAsgnId, xtOrgAId, xtAsmntId, xtCandId],
+        );
+
+        const pgAdapter = new PgSubmissionRegistryAdapter(pgPool, platformPool);
+        const attemptedKey = `submissions/${xtOrgBId}/${xtAsgnId}/final_bundle.tar.gz`;
+
+        // Org B attempts to record artifacts_ref for Org A's assignment -> must throw error
+        await expect(
+          pgAdapter.recordArtifactsRef(xtOrgBId, xtAsgnId, attemptedKey),
+        ).rejects.toThrow('Assignment not found');
+
+        // Verify Org A assignment remains unmodified
+        const checkRes = await adminClient.query(
+          'SELECT artifacts_ref FROM app.assignments WHERE id = $1',
+          [xtAsgnId],
+        );
+        expect(checkRes.rows[0]?.artifacts_ref).toBeNull();
+      } finally {
+        await adminClient.query('DELETE FROM app.assignments WHERE id = $1', [xtAsgnId]);
+        await adminClient.query('DELETE FROM app.assessments WHERE id = $1', [xtAsmntId]);
+        await adminClient.query('DELETE FROM app.template_assignments WHERE template_id = $1', [
+          xtTplId,
+        ]);
+        await adminClient.query('DELETE FROM app.template_versions WHERE id = $1', [xtTplVerId]);
+        await adminClient.query('DELETE FROM app.templates WHERE id = $1', [xtTplId]);
+        await adminClient.query('DELETE FROM app.users WHERE id = $1', [xtCandId]);
+        await adminClient.query('DELETE FROM app.organizations WHERE id IN ($1, $2)', [
+          xtOrgAId,
+          xtOrgBId,
+        ]);
+        await adminClient.query('DELETE FROM app.users WHERE id = $1', [xtAdminId]);
+        await adminClient.end();
+      }
+    });
   });
 
   // =========================================================================
   // 7. Contract Tests for Unbuilt Capabilities (Clearly marked SKIPPED)
   // =========================================================================
   describe('7. Contract Tests for Unbuilt Capabilities', () => {
+    it.skip('contract: candidate role cannot update artifacts_ref (blocked on migration/grant fix for Vishal V)', () => {
+      // Contract test awaiting schema trigger (trg_immutable_artifacts_ref) or REVOKE UPDATE (artifacts_ref) ON app.assignments FROM hs_app
+    });
+
+    it.skip('contract: CA-018 company reopens submission and rebundling handles versioned artifacts (pending product decision on CA-018 vs set-once artifacts_ref)', () => {
+      // Contract test awaiting product specification for reopening submissions:
+      // When company admin reopens an assignment (CA-018), does rebundling overwrite or archive to revisions/
+    });
     it.skip('contract: real ws-agent generates patch inside container (blocked on ws-agent T-023)', () => {
       // Pending implementation of container ws-agent daemon
     });

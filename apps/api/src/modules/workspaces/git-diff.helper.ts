@@ -28,6 +28,8 @@ export class GitDiffHelper implements PatchGeneratorPort {
     const {
       templateFiles,
       candidateFiles,
+      templateModes,
+      candidateModes,
       maxPatchSizeBytes = DEFAULT_MAX_PATCH_SIZE_BYTES,
       maxFileSizeBytes = DEFAULT_MAX_FILE_SIZE_BYTES,
       timeoutMs = DEFAULT_DIFF_TIMEOUT_MS,
@@ -77,9 +79,19 @@ export class GitDiffHelper implements PatchGeneratorPort {
 
       const templateBuf = templateFiles.get(relPath);
       const candidateBuf = candidateFiles.get(relPath);
+      const oldMode = templateModes?.get(relPath) ?? 0o100644;
+      const newMode = candidateModes?.get(relPath) ?? 0o100644;
+      const oldModeStr = (oldMode & 0o777) === 0o755 ? '100755' : '100644';
+      const newModeStr = (newMode & 0o777) === 0o755 ? '100755' : '100644';
 
       // 1. Unchanged file
       if (templateBuf && candidateBuf && templateBuf.equals(candidateBuf)) {
+        if (oldModeStr !== newModeStr) {
+          filesChanged++;
+          const modeHeader = `diff --git a/${relPath} b/${relPath}\nold mode ${oldModeStr}\nnew mode ${newModeStr}\n`;
+          patchParts.push(modeHeader);
+          currentPatchBytes += Buffer.byteLength(modeHeader, 'utf8');
+        }
         continue;
       }
 
@@ -106,9 +118,11 @@ export class GitDiffHelper implements PatchGeneratorPort {
       if (isTemplateBinary || isCandidateBinary) {
         let binaryHeader = `diff --git a/${relPath} b/${relPath}\n`;
         if (!templateBuf) {
-          binaryHeader += `new file mode 100644\n`;
+          binaryHeader += `new file mode ${newModeStr}\n`;
         } else if (!candidateBuf) {
-          binaryHeader += `deleted file mode 100644\n`;
+          binaryHeader += `deleted file mode ${oldModeStr}\n`;
+        } else if (oldModeStr !== newModeStr) {
+          binaryHeader += `old mode ${oldModeStr}\nnew mode ${newModeStr}\n`;
         }
         binaryHeader += `Binary files differ\n`;
         patchParts.push(binaryHeader);
@@ -132,20 +146,26 @@ export class GitDiffHelper implements PatchGeneratorPort {
 
       let filePatch = `diff --git a/${relPath} b/${relPath}\n`;
       if (!templateBuf) {
-        filePatch += `new file mode 100644\n`;
+        filePatch += `new file mode ${newModeStr}\n`;
         filePatch += `--- /dev/null\n`;
         filePatch += `+++ b/${relPath}\n`;
       } else if (!candidateBuf) {
-        filePatch += `deleted file mode 100644\n`;
+        filePatch += `deleted file mode ${oldModeStr}\n`;
         filePatch += `--- a/${relPath}\n`;
         filePatch += `+++ /dev/null\n`;
       } else {
+        if (oldModeStr !== newModeStr) {
+          filePatch += `old mode ${oldModeStr}\n`;
+          filePatch += `new mode ${newModeStr}\n`;
+        }
         filePatch += `--- a/${relPath}\n`;
         filePatch += `+++ b/${relPath}\n`;
       }
 
       for (const hunk of patchObj.hunks) {
-        filePatch += `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@\n`;
+        const oldHunk = hunk.oldLines === 0 ? '0,0' : `${hunk.oldStart},${hunk.oldLines}`;
+        const newHunk = hunk.newLines === 0 ? '0,0' : `${hunk.newStart},${hunk.newLines}`;
+        filePatch += `@@ -${oldHunk} +${newHunk} @@\n`;
         for (const line of hunk.lines) {
           filePatch += `${line}\n`;
           if (line.startsWith('+')) additions++;

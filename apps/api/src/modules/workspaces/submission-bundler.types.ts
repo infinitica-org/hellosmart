@@ -1,6 +1,6 @@
 /**
  * Type definitions for the 9.2 Submission Artifact Bundler & Deliverable Tarball Archive Pipeline.
- * Requirement IDs: BR-11, BR-18, BR-20, BR-22, CA-018, CO-041, CO-042, T-020, T-023.
+ * Requirement IDs: BR-11, BR-18, Migration 0014 (trg_immutable_submission), BR-22, CA-018, CO-041, CO-042, T-020, T-023.
  */
 
 export type PatchStatus = 'complete' | 'truncated' | 'unavailable';
@@ -41,6 +41,8 @@ export interface SubmissionBundleManifest {
     diff: string;
     file: string;
     ai: string;
+    event?: string;
+    test?: string;
   };
 }
 

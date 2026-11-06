@@ -1,16 +1,25 @@
-import type { WorkspaceSourcePort } from '../ports/workspace-source.port.js';
+import type { CandidateFileEntry, WorkspaceSourcePort } from '../ports/workspace-source.port.js';
 
 export class FakeWorkspaceSourceAdapter implements WorkspaceSourcePort {
   private candidateFiles = new Map<string, Buffer>();
+  private candidateDetailed = new Map<string, CandidateFileEntry>();
   private templateFiles: Map<string, Buffer> | null = null;
   private terminalHistory: string | null = null;
   private workspaceConfig: Record<string, unknown> | null = null;
 
   setCandidateFiles(files: Record<string, string | Buffer>): void {
     this.candidateFiles.clear();
+    this.candidateDetailed.clear();
     for (const [p, content] of Object.entries(files)) {
-      this.candidateFiles.set(p, Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8'));
+      const buf = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8');
+      this.candidateFiles.set(p, buf);
+      this.candidateDetailed.set(p, { buffer: buf, mode: 0o644 });
     }
+  }
+
+  setCandidateDetailedEntry(path: string, entry: CandidateFileEntry): void {
+    this.candidateDetailed.set(path, entry);
+    this.candidateFiles.set(path, entry.buffer);
   }
 
   setTemplateFiles(files: Record<string, string | Buffer> | null): void {
@@ -34,6 +43,13 @@ export class FakeWorkspaceSourceAdapter implements WorkspaceSourcePort {
 
   async readCandidateTree(_orgId: string, _workspaceId: string): Promise<Map<string, Buffer>> {
     return new Map(this.candidateFiles);
+  }
+
+  async readCandidateTreeDetailed(
+    _orgId: string,
+    _workspaceId: string,
+  ): Promise<Map<string, CandidateFileEntry>> {
+    return new Map(this.candidateDetailed);
   }
 
   async readTemplateTree(_templateRef: string): Promise<Map<string, Buffer> | null> {
