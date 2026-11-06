@@ -30,3 +30,15 @@ export * from './ports/workspace-lifecycle.port.js';
 export * from './adapters/pg-submission-registry.adapter.js';
 export * from './fakes/fake-workspace-source.js';
 export * from './fakes/fake-submission-registry.js';
+
+// 9.3 Workspace reaper exports
+export * from './workspace-reaper.types.js';
+export * from './workspace-reaper.service.js';
+export * from './workspace-reaper.scheduler.js';
+export * from './ports/workspace-reaper-registry.port.js';
+export * from './ports/workspace-heartbeat.port.js';
+export * from './ports/workspace-snapshot.port.js';
+export * from './ports/workspace-destroyer.port.js';
+export * from './ports/workspace-notifier.port.js';
+export * from './fakes/fake-workspace-reaper-registry.js';
+export * from './adapters/pg-workspace-reaper-registry.adapter.js';
