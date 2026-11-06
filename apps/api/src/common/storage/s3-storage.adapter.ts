@@ -17,9 +17,10 @@ import {
   type StoragePort,
   type StoragePutMeta,
   type StoragePutResult,
+  type SnapshotPutMeta,
 } from './storage.types.js';
 import { FileTooLargeException } from './storage-validation.js';
-import { isKeyInOrg } from './storage-keys.js';
+import { isKeyInOrg, isSnapshotKeyInOrg } from './storage-keys.js';
 
 export class S3StorageAdapter implements StoragePort {
   private readonly s3Client: S3Client;
@@ -92,6 +93,92 @@ export class S3StorageAdapter implements StoragePort {
     });
 
     await this.s3Client.send(command);
+
+    return {
+      key,
+      size: payloadBuffer.length,
+      sha256,
+    };
+  }
+
+  async putVerifiedSnapshot(
+    key: string,
+    stream: Readable,
+    meta: SnapshotPutMeta,
+  ): Promise<StoragePutResult> {
+    if (!isSnapshotKeyInOrg(key, meta.orgId)) {
+      throw new Error(
+        `Tenant isolation violation: snapshot key '${key}' does not belong to organization '${meta.orgId}'`,
+      );
+    }
+
+    const chunks: Buffer[] = [];
+    let totalBytes = 0;
+    const hasher = crypto.createHash('sha256');
+
+    for await (const chunk of stream) {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      totalBytes += buf.length;
+
+      if (totalBytes > MAX_FILE_SIZE_BYTES) {
+        throw new FileTooLargeException(
+          `Snapshot size exceeds 50MB limit; stream aborted at ${totalBytes} bytes`,
+        );
+      }
+
+      hasher.update(buf);
+      chunks.push(buf);
+    }
+
+    const payloadBuffer = Buffer.concat(chunks);
+    const sha256 = hasher.digest('hex');
+
+    if (meta.expectedSha256 && meta.expectedSha256 !== sha256) {
+      throw new Error(
+        `Pre-upload checksum mismatch: computed ${sha256} does not match expected ${meta.expectedSha256}`,
+      );
+    }
+
+    const base64Sha256 = Buffer.from(sha256, 'hex').toString('base64');
+
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      Body: payloadBuffer,
+      ContentType: meta.contentType ?? 'application/gzip',
+      ContentLength: payloadBuffer.length,
+      ChecksumAlgorithm: 'SHA256',
+      ChecksumSHA256: base64Sha256,
+      Metadata: {
+        org_id: meta.orgId,
+        assignment_id: meta.assignmentId,
+        sha256,
+        timestamp: meta.timestamp,
+        seq: String(meta.seq ?? 0),
+      },
+    });
+
+    await this.s3Client.send(command);
+
+    const headCommand = new HeadObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ChecksumMode: 'ENABLED',
+    });
+
+    const headRes = await this.s3Client.send(headCommand);
+
+    if (headRes.ContentLength !== undefined && headRes.ContentLength !== payloadBuffer.length) {
+      throw new Error(
+        `Post-upload verification failed: S3 size ${headRes.ContentLength} !== local ${payloadBuffer.length}`,
+      );
+    }
+
+    if (headRes.ChecksumSHA256 && headRes.ChecksumSHA256 !== base64Sha256) {
+      throw new Error(
+        `Post-upload checksum verification failed: S3 ChecksumSHA256 ${headRes.ChecksumSHA256} !== local ${base64Sha256}`,
+      );
+    }
 
     return {
       key,

@@ -26,6 +26,7 @@ import { StorageModule } from './common/storage/storage.module.js';
 import { JobsModule } from './modules/jobs/jobs.module.js';
 import { CalcomWebhookModule } from './modules/webhooks/calcom/calcom-webhook.module.js';
 import { QuotesModule } from './modules/quotes/quotes.module.js';
+import { WorkspacesModule } from './modules/workspaces/workspaces.module.js';
 import { ObservabilityModule } from './modules/observability/observability.module.js';
 import { RedisModule } from './modules/redis/redis.module.js';
 import { REDIS_CLIENT, type HelloRedisClient } from './modules/redis/redis.tokens.js';
@@ -98,6 +99,7 @@ const devControllers =
     JobsModule,
     CalcomWebhookModule,
     QuotesModule,
+    WorkspacesModule,
   ],
   controllers: [...devControllers],
   providers: [

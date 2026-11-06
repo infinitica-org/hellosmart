@@ -24,8 +24,22 @@ export interface StorageGetResult {
   filename?: string | undefined;
 }
 
+export interface SnapshotPutMeta {
+  orgId: string;
+  assignmentId: string;
+  timestamp: string;
+  seq?: number;
+  expectedSha256?: string;
+  contentType?: string;
+}
+
 export interface StoragePort {
   put(key: string, stream: Readable, meta: StoragePutMeta): Promise<StoragePutResult>;
+  putVerifiedSnapshot?(
+    key: string,
+    stream: Readable,
+    meta: SnapshotPutMeta,
+  ): Promise<StoragePutResult>;
   createDownloadUrl(
     key: string,
     filename: string,

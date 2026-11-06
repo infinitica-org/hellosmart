@@ -9,9 +9,10 @@ import type {
   StoragePort,
   StoragePutMeta,
   StoragePutResult,
+  SnapshotPutMeta,
 } from './storage.types.js';
 import { StreamValidationTransform } from './storage-validation.js';
-import { extractMetadataFromKey, isKeyInOrg } from './storage-keys.js';
+import { extractMetadataFromKey, isKeyInOrg, isSnapshotKeyInOrg } from './storage-keys.js';
 
 export interface LocalDownloadTokenPayload {
   key: string;
@@ -127,6 +128,58 @@ export class LocalFsStorageAdapter implements StoragePort {
 
     const size = validator.getBytesRead();
     const sha256 = validator.getDigest();
+
+    return {
+      key,
+      size,
+      sha256,
+    };
+  }
+
+  async putVerifiedSnapshot(
+    key: string,
+    stream: Readable,
+    meta: SnapshotPutMeta,
+  ): Promise<StoragePutResult> {
+    if (!isSnapshotKeyInOrg(key, meta.orgId)) {
+      throw new Error(
+        `Tenant isolation violation: snapshot key '${key}' does not belong to organization '${meta.orgId}'`,
+      );
+    }
+    const targetPath = this.resolveSafePath(key);
+    await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
+
+    const validator = new StreamValidationTransform();
+    const writeStream = fs.createWriteStream(targetPath);
+
+    try {
+      await pipeline(stream, validator, writeStream);
+    } catch (err) {
+      if (fs.existsSync(targetPath)) {
+        try {
+          await fs.promises.unlink(targetPath);
+        } catch {
+          // ignore
+        }
+      }
+      throw err;
+    }
+
+    const size = validator.getBytesRead();
+    const sha256 = validator.getDigest();
+
+    if (meta.expectedSha256 && meta.expectedSha256 !== sha256) {
+      if (fs.existsSync(targetPath)) {
+        try {
+          await fs.promises.unlink(targetPath);
+        } catch {
+          // ignore
+        }
+      }
+      throw new Error(
+        `Integrity check failed: computed ${sha256} does not match expected ${meta.expectedSha256}`,
+      );
+    }
 
     return {
       key,
