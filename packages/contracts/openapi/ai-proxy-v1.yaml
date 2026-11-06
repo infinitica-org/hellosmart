@@ -1,0 +1,142 @@
+openapi: 3.0.3
+info:
+  title: HelloSmart Controlled AI Proxy Gateway API
+  description: Secured egress gateway for workspace AI chat completions with budget caps and session token authentication.
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000/v1
+    description: In-VM Local Proxy Relay
+  - url: https://ai-proxy.internal.hellosmart.ai/v1
+    description: Mesh Gateway Endpoint
+paths:
+  /chat/completions:
+    post:
+      summary: Relays chat completion request to external provider
+      operationId: createChatCompletion
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+      responses:
+        '200':
+          description: Completion stream or payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCompletionResponse'
+            text/event-stream:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/BudgetExceeded'
+  /budget:
+    get:
+      summary: Retrieve remaining session AI budget
+      operationId: getSessionBudget
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Remaining token budget status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionBudgetResponse'
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ChatCompletionRequest:
+      type: object
+      required:
+        - model
+        - messages
+      properties:
+        model:
+          type: string
+          example: claude-3-5-sonnet
+        messages:
+          type: array
+          items:
+            type: object
+            required:
+              - role
+              - content
+            properties:
+              role:
+                type: string
+                enum: [system, user, assistant]
+              content:
+                type: string
+        stream:
+          type: boolean
+          default: false
+        temperature:
+          type: number
+          default: 0.7
+    ChatCompletionResponse:
+      type: object
+      required:
+        - id
+        - choices
+        - usage
+      properties:
+        id:
+          type: string
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              message:
+                type: object
+                properties:
+                  role:
+                    type: string
+                  content:
+                    type: string
+        usage:
+          type: object
+          properties:
+            prompt_tokens:
+              type: integer
+            completion_tokens:
+              type: integer
+            total_tokens:
+              type: integer
+    SessionBudgetResponse:
+      type: object
+      required:
+        - budget_usd
+        - spend_usd
+        - remaining_usd
+        - tokens_consumed
+      properties:
+        budget_usd:
+          type: number
+        spend_usd:
+          type: number
+        remaining_usd:
+          type: number
+        tokens_consumed:
+          type: integer
+        is_exhausted:
+          type: boolean
+  responses:
+    Unauthorized:
+      description: Missing or expired session token
+    Forbidden:
+      description: AI disabled by policy or model disallowed
+    BudgetExceeded:
+      description: Candidate or assessment AI token budget exhausted
