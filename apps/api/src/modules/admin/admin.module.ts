@@ -5,10 +5,23 @@ import { AdminOrganizationsController } from './admin-organizations.controller.j
 import { AdminOrganizationsService } from './admin-organizations.service.js';
 import { AdminAuditController } from './admin-audit.controller.js';
 import { AdminAuditService } from './admin-audit.service.js';
+import { AdminAiKeysController } from './admin-ai-keys.controller.js';
+import { AdminAiKeysService } from './admin-ai-keys.service.js';
+import { CryptoService } from '../../common/services/crypto.service.js';
 
 @Module({
   imports: [AuthModule],
-  controllers: [AdminOrganizationsController, AdminMetricsController, AdminAuditController],
-  providers: [AdminOrganizationsService, AdminAuditService],
+  controllers: [
+    AdminOrganizationsController,
+    AdminMetricsController,
+    AdminAuditController,
+    AdminAiKeysController,
+  ],
+  providers: [
+    AdminOrganizationsService,
+    AdminAuditService,
+    AdminAiKeysService,
+    CryptoService,
+  ],
 })
 export class AdminModule {}

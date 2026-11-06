@@ -671,6 +671,324 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
 
+  /admin/ai-keys:
+    get:
+      tags: [admin]
+      summary: List all platform-managed AI provider keys (Platform Admin only)
+      description: Returns masked provider keys with usage status and allocated credits. Never returns raw secret keys.
+      operationId: listPlatformAiKeys
+      x-requirement: [AD-023, BR-16, BR-17]
+      x-roles: [platform_admin]
+      responses:
+        '200':
+          description: List of platform AI keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    provider: { type: string, enum: [openai, anthropic, google, deepseek, mistral] }
+                    name: { type: string }
+                    description: { type: string, nullable: true }
+                    keyLast4: { type: string }
+                    maskedKey: { type: string }
+                    status: { type: string, enum: [active, inactive, revoked] }
+                    createdAt: { type: string, format: date-time }
+                    updatedAt: { type: string, format: date-time }
+                    lastTestedAt: { type: string, format: date-time, nullable: true }
+                    totalAllocations: { type: integer }
+                    activeAllocations: { type: integer }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [admin]
+      summary: Vault and register a new platform-managed AI key (Platform Admin only)
+      description: Encrypts the raw secret key using AES-256-GCM envelope encryption and stores only the ciphertext envelope and last 4 characters.
+      operationId: createPlatformAiKey
+      x-requirement: [AD-023, BR-16, BR-17]
+      x-roles: [platform_admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, name, apiKey]
+              properties:
+                provider: { type: string, enum: [openai, anthropic, google, deepseek, mistral] }
+                name: { type: string, minLength: 2, maxLength: 80 }
+                apiKey: { type: string, minLength: 12, maxLength: 256 }
+                description: { type: string, maxLength: 500 }
+      responses:
+        '201':
+          description: Key registered and encrypted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+
+  /admin/ai-keys/{id}:
+    get:
+      tags: [admin]
+      summary: Retrieve platform AI key metadata (Platform Admin only)
+      operationId: getPlatformAiKey
+      x-requirement: [AD-023, BR-16]
+      x-roles: [platform_admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Platform AI key metadata
+          content:
+            application/json:
+              schema:
+                type: object
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      tags: [admin]
+      summary: Update platform AI key metadata or rotate secret key (Platform Admin only)
+      operationId: updatePlatformAiKey
+      x-requirement: [AD-023, BR-16]
+      x-roles: [platform_admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 2, maxLength: 80 }
+                description: { type: string, maxLength: 500 }
+                status: { type: string, enum: [active, inactive, revoked] }
+                apiKey: { type: string, minLength: 12, maxLength: 256 }
+      responses:
+        '200':
+          description: Key metadata updated or rotated
+          content:
+            application/json:
+              schema:
+                type: object
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [admin]
+      summary: Revoke platform AI key (Platform Admin only)
+      operationId: revokePlatformAiKey
+      x-requirement: [AD-023, BR-16]
+      x-roles: [platform_admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Key revoked
+          content:
+            application/json:
+              schema:
+                type: object
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /admin/ai-keys/{id}/test:
+    post:
+      tags: [admin]
+      summary: Verify platform AI key envelope decryption and integrity (Platform Admin only)
+      description: Performs local AES-256-GCM envelope decryption and authentication tag verification. Does not make external provider API calls.
+      operationId: testPlatformAiKey
+      x-requirement: [AD-023, BR-16]
+      x-roles: [platform_admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Key test result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  testedAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /admin/ai-allocations:
+    get:
+      tags: [admin]
+      summary: List tenant credit allocations (Platform Admin only)
+      operationId: listCreditAllocations
+      x-requirement: [AD-024, BR-17]
+      x-roles: [platform_admin]
+      parameters:
+        - { name: orgId, in: query, schema: { type: string, format: uuid } }
+        - { name: platformKeyId, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string, enum: [active, exhausted, revoked] } }
+      responses:
+        '200':
+          description: List of credit allocations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [admin]
+      summary: Create new credit allocation for a tenant organization (Platform Admin only)
+      operationId: createCreditAllocation
+      x-requirement: [AD-024, BR-17]
+      x-roles: [platform_admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orgId, platformKeyId, allocatedAmountCents]
+              properties:
+                orgId: { type: string, format: uuid }
+                platformKeyId: { type: string, format: uuid }
+                allocatedAmountCents: { type: integer, minimum: 100 }
+                currency: { type: string, default: USD }
+                markupPercent: { type: number, minimum: 0, maximum: 500, default: 0 }
+                rpmLimit: { type: integer, minimum: 1, maximum: 10000, nullable: true }
+                rpdLimit: { type: integer, minimum: 1, maximum: 100000, nullable: true }
+                notes: { type: string, maxLength: 500 }
+      responses:
+        '201':
+          description: Credit allocation created
+          content:
+            application/json:
+              schema:
+                type: object
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+
+  /admin/ai-allocations/{id}:
+    get:
+      tags: [admin]
+      summary: Retrieve credit allocation details (Platform Admin only)
+      operationId: getCreditAllocation
+      x-requirement: [AD-024, BR-17]
+      x-roles: [platform_admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Credit allocation detail
+          content:
+            application/json:
+              schema:
+                type: object
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      tags: [admin]
+      summary: Adjust credit allocation balance or caps (Platform Admin only)
+      operationId: adjustCreditAllocation
+      x-requirement: [AD-024, BR-17]
+      x-roles: [platform_admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                adjustmentAmountCents: { type: integer }
+                newTotalAllocatedCents: { type: integer, minimum: 0 }
+                markupPercent: { type: number, minimum: 0, maximum: 500 }
+                rpmLimit: { type: integer, minimum: 1, maximum: 10000, nullable: true }
+                rpdLimit: { type: integer, minimum: 1, maximum: 100000, nullable: true }
+                reason: { type: string, minLength: 3, maxLength: 250 }
+                notes: { type: string, maxLength: 500 }
+      responses:
+        '200':
+          description: Allocation adjusted
+          content:
+            application/json:
+              schema:
+                type: object
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /admin/ai-allocations/{id}/revoke:
+    post:
+      tags: [admin]
+      summary: Revoke credit allocation for an organization (Platform Admin only)
+      operationId: revokeCreditAllocation
+      x-requirement: [AD-024, BR-17]
+      x-roles: [platform_admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 3, maxLength: 250 }
+      responses:
+        '200':
+          description: Allocation revoked
+          content:
+            application/json:
+              schema:
+                type: object
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /admin/ai-vault/stats:
+    get:
+      tags: [admin]
+      summary: Retrieve platform AI keys and credit allocations statistics (Platform Admin only)
+      operationId: getPlatformAiVaultStats
+      x-requirement: [AD-023, AD-024, BR-16, BR-17]
+      x-roles: [platform_admin]
+      responses:
+        '200':
+          description: Vault metrics and balances
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalKeys: { type: integer }
+                  activeKeys: { type: integer }
+                  totalAllocations: { type: integer }
+                  activeAllocations: { type: integer }
+                  totalAllocatedCents: { type: integer }
+                  totalUsedCents: { type: integer }
+                  totalRemainingCents: { type: integer }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+
   /candidates:
     get:
       summary: List candidates in the caller's organization

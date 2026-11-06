@@ -46,6 +46,41 @@ erDiagram
     SUBMISSIONS ||--o{ REVIEWS : "finalized_into"
     
     QUOTES ||--o{ PAYMENTS : "reconciles"
+    ORGANIZATIONS ||--o{ PLATFORM_CREDIT_ALLOCATIONS : "allocates_credits"
+    PLATFORM_AI_KEYS ||--o{ PLATFORM_CREDIT_ALLOCATIONS : "backs_credits"
+
+    PLATFORM_AI_KEYS {
+        uuid id PK
+        string provider "openai | anthropic | gemini | deepseek"
+        string name
+        string encrypted_key "AES-256-GCM envelope"
+        string key_last4
+        string status "active | inactive | revoked"
+        boolean is_active
+        string description
+        uuid created_by FK
+        timestamptz created_at
+        timestamptz updated_at
+        timestamptz last_tested_at
+    }
+
+    PLATFORM_CREDIT_ALLOCATIONS {
+        uuid id PK
+        uuid org_id FK
+        uuid platform_key_id FK
+        int allocated_amount_cents
+        int used_amount_cents
+        int balance_cents
+        numeric markup_percentage
+        int token_cap
+        int spend_cap_cents
+        string status "active | exhausted | revoked | expired"
+        string notes
+        timestamptz expires_at
+        uuid created_by FK
+        timestamptz created_at
+        timestamptz updated_at
+    }
 
     ORGANIZATIONS {
         uuid id PK
@@ -524,3 +559,5 @@ erDiagram
 - `app.submissions`: Final artifact snapshot. `auto_submitted` is true when the deadline worker closed the assignment.
 - `app.jobs`: Database queue for transactional email and other background work, with `run_after` for exponential backoff.
 - `app.email_logs`: Delivery ledger (`sent`, `failed`, `bounced`) with provider message id. Passwords and raw tokens are not stored.
+- `app.platform_ai_keys`: Platform-managed AI provider credentials stored under AES-256-GCM authenticated envelope encryption (`enc:v1`) with zero plaintext secret leakage (AD-023, BR-16).
+- `app.platform_credit_allocations`: Tenant credit allocations linking tenant organizations to platform AI provider keys, with integer-cent balance tracking, non-negative balance constraints, markup percentage, and spend/token caps (AD-024, BR-17).

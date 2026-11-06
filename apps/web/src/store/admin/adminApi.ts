@@ -12,11 +12,18 @@ import type {
   AuditVerifyResponseDto,
   OrgDetailDto,
   UpdateOrgEntitlementsDto,
+  PlatformAiKeyDto,
+  CreatePlatformAiKeyDto,
+  UpdatePlatformAiKeyDto,
+  CreditAllocationDto,
+  CreateCreditAllocationDto,
+  AdjustCreditAllocationDto,
+  PlatformAiVaultStatsDto,
 } from '@hs/contracts';
 
 /**
  * Cache tags owned and managed by the Platform Admin portal.
- * Admin manages master templates, organizations, platform metrics, audit logs, agents, and quotes.
+ * Admin manages master templates, organizations, platform metrics, audit logs, agents, quotes, and AI keys.
  */
 export const ADMIN_TAG_TYPES = [
   'Session',
@@ -29,6 +36,8 @@ export const ADMIN_TAG_TYPES = [
   'Leads',
   'PricingCatalog',
   'PromoCodes',
+  'AiKeys',
+  'AiAllocations',
 ] as const;
 
 export type AdminTagType = (typeof ADMIN_TAG_TYPES)[number];
@@ -383,6 +392,125 @@ export const adminApi = createApi({
         method: 'POST',
       }),
     }),
+
+    // ==========================================
+    // Platform AI Keys Vault & Allocations (AD-023 / AD-024)
+    // ==========================================
+
+    getPlatformAiKeys: builder.query<PlatformAiKeyDto[], void>({
+      query: () => 'admin/ai-keys',
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map((item) => ({ type: 'AiKeys' as const, id: item.id })),
+              { type: 'AiKeys', id: 'LIST' },
+            ]
+          : [{ type: 'AiKeys', id: 'LIST' }],
+    }),
+
+    createPlatformAiKey: builder.mutation<PlatformAiKeyDto, CreatePlatformAiKeyDto>({
+      query: (body) => ({
+        url: 'admin/ai-keys',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [{ type: 'AiKeys', id: 'LIST' }],
+    }),
+
+    updatePlatformAiKey: builder.mutation<PlatformAiKeyDto, { id: string; data: UpdatePlatformAiKeyDto }>({
+      query: ({ id, data }) => ({
+        url: `admin/ai-keys/${id}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: (_res, _err, { id }) => [
+        { type: 'AiKeys', id },
+        { type: 'AiKeys', id: 'LIST' },
+      ],
+    }),
+
+    revokePlatformAiKey: builder.mutation<PlatformAiKeyDto, string>({
+      query: (id) => ({
+        url: `admin/ai-keys/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_res, _err, id) => [
+        { type: 'AiKeys', id },
+        { type: 'AiKeys', id: 'LIST' },
+      ],
+    }),
+
+    testPlatformAiKey: builder.mutation<{ success: boolean; message: string; testedAt: string }, string>({
+      query: (id) => ({
+        url: `admin/ai-keys/${id}/test`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_res, _err, id) => [{ type: 'AiKeys', id }],
+    }),
+
+    getCreditAllocations: builder.query<
+      CreditAllocationDto[],
+      { orgId?: string; platformKeyId?: string; status?: string } | void
+    >({
+      query: (params) => {
+        if (!params) {
+          return 'admin/ai-allocations';
+        }
+        return {
+          url: 'admin/ai-allocations',
+          params,
+        };
+      },
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map((item) => ({ type: 'AiAllocations' as const, id: item.id })),
+              { type: 'AiAllocations', id: 'LIST' },
+            ]
+          : [{ type: 'AiAllocations', id: 'LIST' }],
+    }),
+
+    createCreditAllocation: builder.mutation<CreditAllocationDto, CreateCreditAllocationDto>({
+      query: (body) => ({
+        url: 'admin/ai-allocations',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [
+        { type: 'AiAllocations', id: 'LIST' },
+        { type: 'AiKeys', id: 'LIST' },
+      ],
+    }),
+
+    adjustCreditAllocation: builder.mutation<CreditAllocationDto, { id: string; data: AdjustCreditAllocationDto }>({
+      query: ({ id, data }) => ({
+        url: `admin/ai-allocations/${id}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: (_res, _err, { id }) => [
+        { type: 'AiAllocations', id },
+        { type: 'AiAllocations', id: 'LIST' },
+      ],
+    }),
+
+    revokeCreditAllocation: builder.mutation<CreditAllocationDto, { id: string; reason: string }>({
+      query: ({ id, reason }) => ({
+        url: `admin/ai-allocations/${id}/revoke`,
+        method: 'POST',
+        body: { reason },
+      }),
+      invalidatesTags: (_res, _err, { id }) => [
+        { type: 'AiAllocations', id },
+        { type: 'AiAllocations', id: 'LIST' },
+        { type: 'AiKeys', id: 'LIST' },
+      ],
+    }),
+
+    getAiVaultStats: builder.query<PlatformAiVaultStatsDto, void>({
+      query: () => 'admin/ai-vault/stats',
+      providesTags: [{ type: 'AiKeys', id: 'LIST' }, { type: 'AiAllocations', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -422,4 +550,17 @@ export const {
   useGetAdminAuditLogsQuery,
   useLazyGetAdminAuditLogsQuery,
   useVerifyAdminAuditChainMutation,
+  useGetPlatformAiKeysQuery,
+  useLazyGetPlatformAiKeysQuery,
+  useCreatePlatformAiKeyMutation,
+  useUpdatePlatformAiKeyMutation,
+  useRevokePlatformAiKeyMutation,
+  useTestPlatformAiKeyMutation,
+  useGetCreditAllocationsQuery,
+  useLazyGetCreditAllocationsQuery,
+  useCreateCreditAllocationMutation,
+  useAdjustCreditAllocationMutation,
+  useRevokeCreditAllocationMutation,
+  useGetAiVaultStatsQuery,
+  useLazyGetAiVaultStatsQuery,
 } = adminApi;
