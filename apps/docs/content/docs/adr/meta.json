@@ -8,6 +8,8 @@
     "0005-auth-in-house",
     "0006-aws-multi-account",
     "0007-supply-chain",
-    "0008-ai-sdlc"
+    "0008-ai-sdlc",
+    "0009-hellosmart-fabric-rms",
+    "0010-multi-runtime-sandbox-gvisor-sysbox"
   ]
 }

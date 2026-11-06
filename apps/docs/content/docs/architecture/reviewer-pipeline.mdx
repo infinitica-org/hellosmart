@@ -1,0 +1,30 @@
+---
+title: "Autonomous Reviewer Agent Pipeline Architecture"
+description: "Independent rubric evaluation agents, evidence citation protocols, and human-in-the-loop scorecards."
+---
+
+<RoleBadge roles={["sde", "ai", "qa"]} />
+
+# Autonomous Reviewer Agent Pipeline
+
+HelloSmart departs from traditional, monolithic AI assessment grading by orchestrating **independent specialized reviewer agents** (`services/reviewer`). Each agent observes the candidate's work across a distinct rubric dimension and cites deterministic evidence before scoring.
+
+---
+
+## 1. Rubric Dimension Agents
+
+The reviewer engine currently supports specialized scoring agents:
+- **`correctness`**: Did the candidate resolve the bug or implement the feature without regressions?
+- **`code-quality`**: Evaluates modularity, coupling, cognitive complexity, and adherence to language idioms.
+- **`testing-discipline`**: Analyzes test cadence, edge case coverage, and assertion quality.
+- **`ai-authorship-maturity`**: Evaluates how effectively the candidate steered AI tools—prompt refinement, error correction, and avoiding blind copy-paste.
+- **`integrity-observer`**: Monitors fullscreen exit frequency, clipboard paste events, and anomalies.
+
+---
+
+## 2. Inviolable Review Rules
+
+1. **Mandatory Citations (BR-18)**: Every score must cite concrete evidence: file paths with exact line numbers (`src/checkout.ts#L42-L48`), terminal execution timestamps, or AI prompt snippets. Unsubstantiated scores are rejected.
+2. **Aggregator & Disagreement Flagging**: An Aggregator arbiter evaluates variance across individual agent scores. High variance triggers a `flagged_disagreement` status for mandatory human review.
+3. **Human-in-the-Loop Override (BR-20)**: Agent scores never auto-reject candidates. Hiring managers can override any score, providing a required justification stored in an immutable audit version (`ReviewVersion`).
+4. **Controlled Candidate Release (BR-21)**: Scorecards remain strictly private to the hiring company unless the company explicitly toggles the release switch.
