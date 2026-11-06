@@ -42,3 +42,13 @@ export * from './ports/workspace-destroyer.port.js';
 export * from './ports/workspace-notifier.port.js';
 export * from './fakes/fake-workspace-reaper-registry.js';
 export * from './adapters/pg-workspace-reaper-registry.adapter.js';
+
+// 9.4 Workspace telemetry & spend aggregation exports
+export * from './workspace-telemetry.types.js';
+export * from './workspace-telemetry.service.js';
+export * from './pricing/model-pricing.config.js';
+export * from './ports/token-usage.port.js';
+export * from './ports/workspace-metering.port.js';
+export * from './ports/workspace-telemetry-registry.port.js';
+export * from './fakes/fake-workspace-telemetry-registry.js';
+export * from './adapters/pg-workspace-telemetry-registry.adapter.js';
