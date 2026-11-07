@@ -53,7 +53,7 @@ export function EditorTabs({
     const emptyBg =
       theme === 'light'
         ? 'bg-neutral-50 border-b border-neutral-200 text-neutral-400'
-        : 'bg-[#1f1f1f] border-b border-neutral-800 text-neutral-500';
+        : 'bg-neutral-900 border-b border-neutral-800 text-neutral-500';
 
     return (
       <div className={`h-9 flex items-center px-3 text-xs select-none ${emptyBg}`}>
@@ -65,7 +65,7 @@ export function EditorTabs({
   const stripBg =
     theme === 'light'
       ? 'bg-neutral-50 border-b border-neutral-200'
-      : 'bg-[#181818] border-b border-neutral-800';
+      : 'bg-neutral-950 border-b border-neutral-800';
 
   return (
     <div className={`flex items-center h-9 overflow-x-auto no-scrollbar select-none ${stripBg}`}>
@@ -78,8 +78,8 @@ export function EditorTabs({
               ? 'bg-white text-neutral-900 font-semibold border-t-2 border-t-primary border-r border-neutral-200 shadow-2xs'
               : 'bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:bg-white border-r border-neutral-200'
             : isActive
-              ? 'bg-[#1e1e1e] text-white font-medium border-t-2 border-t-primary border-r border-neutral-800'
-              : 'bg-[#181818] text-neutral-400 hover:text-neutral-200 hover:bg-[#1f1f1f] border-r border-neutral-800';
+              ? 'bg-neutral-900 text-white font-medium border-t-2 border-t-primary border-r border-neutral-800'
+              : 'bg-neutral-950 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900 border-r border-neutral-800';
 
         return (
           <div

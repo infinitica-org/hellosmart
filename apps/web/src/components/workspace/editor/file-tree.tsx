@@ -419,7 +419,7 @@ export function FileTree({
                 ? 'bg-orange-100/70 text-neutral-900 font-medium border border-orange-200/80 shadow-2xs'
                 : 'text-neutral-700 hover:text-neutral-900 hover:bg-orange-50/50'
               : isActive
-                ? 'bg-[#252526] text-white font-medium border border-neutral-700/60 shadow-xs'
+                ? 'bg-neutral-800 text-white font-medium border border-neutral-700/60 shadow-xs'
                 : 'text-neutral-300 hover:text-white hover:bg-neutral-800/60';
 
           return (
@@ -463,17 +463,17 @@ export function FileTree({
   const containerStyle =
     theme === 'light'
       ? 'bg-white border-r border-neutral-200 text-neutral-800'
-      : 'bg-[#181818] border-r border-neutral-800 text-neutral-300';
+      : 'bg-neutral-950 border-r border-neutral-800 text-neutral-300';
 
   const headerStyle =
     theme === 'light'
       ? 'border-b border-neutral-200 bg-white text-neutral-900'
-      : 'border-b border-neutral-800/80 bg-[#1f1f1f] text-neutral-400';
+      : 'border-b border-neutral-800/80 bg-neutral-900 text-neutral-400';
 
   const contextMenuStyle =
     theme === 'light'
       ? 'bg-white border-neutral-200 text-neutral-800 shadow-xl'
-      : 'bg-[#1e1e1e] border-neutral-700 text-neutral-200 shadow-2xl';
+      : 'bg-neutral-900 border-neutral-700 text-neutral-200 shadow-2xl';
 
   return (
     <div

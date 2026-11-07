@@ -39,7 +39,7 @@ export function TokenBudgetGauge({
       className={`p-3 rounded-xl border text-xs transition-colors ${
         isLight
           ? 'bg-white border-neutral-200/90 text-neutral-800 shadow-2xs'
-          : 'bg-[#181818] border-neutral-800 text-neutral-200'
+          : 'bg-neutral-900 border-neutral-800 text-neutral-200'
       } ${className}`}
       data-testid="token-budget-gauge"
     >
@@ -70,7 +70,7 @@ export function TokenBudgetGauge({
 
       {/* Progress Bar */}
       <div className={`w-full h-2 rounded-full overflow-hidden mb-1.5 ${
-        isLight ? 'bg-neutral-200/90' : 'bg-[#262626]'
+        isLight ? 'bg-neutral-200/90' : 'bg-neutral-800'
       }`}>
         <div
           className={`h-full rounded-full transition-all duration-300 ease-out ${barColor}`}

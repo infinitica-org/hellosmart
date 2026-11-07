@@ -94,7 +94,7 @@ export function AiCopilotDrawer({
       className={`h-full flex flex-col border-l shrink-0 relative overflow-hidden select-none transition-colors ${
         isLight
           ? 'bg-white border-neutral-200 text-neutral-800'
-          : 'bg-[#121212] border-neutral-800/80 text-neutral-100'
+          : 'bg-neutral-950 border-neutral-800/80 text-neutral-100'
       }`}
       data-testid="ai-copilot-drawer"
     >
@@ -103,7 +103,7 @@ export function AiCopilotDrawer({
         className={`shrink-0 flex items-center justify-between px-4 py-3 border-b select-none transition-colors ${
           isLight
             ? 'bg-white border-neutral-200/90 text-neutral-900'
-            : 'bg-[#121212] border-neutral-800/80 text-white'
+            : 'bg-neutral-950 border-neutral-800/80 text-white'
         }`}
       >
         <div>
@@ -215,7 +215,7 @@ export function AiCopilotDrawer({
       )}
 
       {/* Floating Bottom Input Box (Cursor / Agent Style matching screenshot) */}
-      <div className={`p-3.5 shrink-0 ${isLight ? 'bg-white' : 'bg-[#121212]'}`}>
+      <div className={`p-3.5 shrink-0 ${isLight ? 'bg-white' : 'bg-neutral-950'}`}>
         <div
           data-gramm="false"
           data-gramm_editor="false"
@@ -224,7 +224,7 @@ export function AiCopilotDrawer({
           className={`rounded-2xl border p-3 flex flex-col gap-2.5 shadow-md transition-all ${
             isLight
               ? 'bg-neutral-100/80 border-neutral-200/90 focus-within:border-neutral-300 focus-within:bg-white'
-              : 'bg-[#1c1c1c] border-neutral-800 focus-within:border-neutral-700'
+              : 'bg-neutral-900 border-neutral-800 focus-within:border-neutral-700'
           }`}
         >
           {/* Textarea without any inner border or outline */}
@@ -275,7 +275,7 @@ export function AiCopilotDrawer({
                 className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer border ${
                   isLight
                     ? 'bg-white border-neutral-300/80 text-neutral-700 hover:text-neutral-900 hover:border-neutral-400 shadow-2xs'
-                    : 'bg-[#2a2a2a] border-neutral-700/60 text-neutral-400 hover:text-white hover:border-neutral-600'
+                    : 'bg-neutral-800 border-neutral-700/60 text-neutral-400 hover:text-white hover:border-neutral-600'
                 }`}
                 title="Add file context (@solution.ts)"
               >
@@ -296,7 +296,7 @@ export function AiCopilotDrawer({
                   className={`h-7 px-3 rounded-full text-xs font-medium flex items-center gap-1.5 border transition-colors cursor-pointer ${
                     isLight
                       ? 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-100 shadow-2xs'
-                      : 'bg-[#282828] border-neutral-700/60 text-neutral-200 hover:bg-[#323232]'
+                      : 'bg-neutral-800 border-neutral-700/60 text-neutral-200 hover:bg-neutral-700'
                   }`}
                   data-testid="copilot-model-selector"
                 >
@@ -307,7 +307,7 @@ export function AiCopilotDrawer({
                 {isModelMenuOpen && (
                   <div
                     className={`absolute bottom-full mb-1 right-0 w-36 rounded-xl border p-1 shadow-xl z-50 text-xs ${
-                      isLight ? 'bg-white border-neutral-200 text-neutral-800' : 'bg-[#222] border-neutral-700 text-neutral-200'
+                      isLight ? 'bg-white border-neutral-200 text-neutral-800' : 'bg-neutral-800 border-neutral-700 text-neutral-200'
                     }`}
                   >
                     {availableModels.map((m) => (
@@ -344,7 +344,7 @@ export function AiCopilotDrawer({
                   className={`h-7 px-3 rounded-full text-xs font-medium flex items-center gap-1 border transition-colors cursor-pointer ${
                     isLight
                       ? 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-100 shadow-2xs'
-                      : 'bg-[#282828] border-neutral-700/60 text-neutral-200 hover:bg-[#323232]'
+                      : 'bg-neutral-800 border-neutral-700/60 text-neutral-200 hover:bg-neutral-700'
                   }`}
                   data-testid="copilot-effort-selector"
                 >
@@ -356,7 +356,7 @@ export function AiCopilotDrawer({
                 {isEffortMenuOpen && (
                   <div
                     className={`absolute bottom-full mb-1 right-0 w-32 rounded-xl border p-1 shadow-xl z-50 text-xs ${
-                      isLight ? 'bg-white border-neutral-200 text-neutral-800' : 'bg-[#222] border-neutral-700 text-neutral-200'
+                      isLight ? 'bg-white border-neutral-200 text-neutral-800' : 'bg-neutral-800 border-neutral-700 text-neutral-200'
                     }`}
                   >
                     {(['Low', 'Medium', 'High'] as const).map((lvl) => (
@@ -403,7 +403,7 @@ export function AiCopilotDrawer({
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : isLight
                         ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
-                        : 'bg-[#303030] text-neutral-500 cursor-not-allowed'
+                        : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
                   }`}
                   title="Send prompt (Enter)"
                   data-testid="copilot-send-btn"

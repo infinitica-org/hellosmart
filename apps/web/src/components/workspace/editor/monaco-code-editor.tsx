@@ -115,7 +115,7 @@ export function MonacoCodeEditor({
     const bgClass =
       theme === 'light'
         ? 'bg-white text-neutral-400'
-        : 'bg-[#1e1e1e] text-neutral-500';
+        : 'bg-neutral-900 text-neutral-500';
 
     return (
       <div className={`flex-1 flex flex-col items-center justify-center p-8 text-xs space-y-2 select-none ${bgClass}`}>
@@ -128,7 +128,7 @@ export function MonacoCodeEditor({
   // Guard against oversized files crashing the browser tab
   if (file.content && file.content.length > MAX_FILE_SIZE_BYTES) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#1e1e1e] text-warning text-xs space-y-2 select-none">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-neutral-900 text-warning text-xs space-y-2 select-none">
         <AlertTriangle className="w-8 h-8 text-warning" />
         <p className="font-semibold">File exceeds 2 MB safety threshold</p>
         <p className="text-neutral-400 max-w-sm text-center">
@@ -210,7 +210,7 @@ export function MonacoCodeEditor({
   };
 
   const monacoTheme = theme === 'light' ? 'light' : 'vs-dark';
-  const containerBg = theme === 'light' ? 'bg-white' : 'bg-[#1e1e1e]';
+  const containerBg = theme === 'light' ? 'bg-white' : 'bg-neutral-900';
 
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;

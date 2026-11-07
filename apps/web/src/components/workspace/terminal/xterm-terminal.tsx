@@ -226,7 +226,7 @@ export function XtermTerminal({
       className={`flex flex-col h-full w-full overflow-hidden border-t transition-colors ${
         theme === 'light'
           ? 'bg-white border-neutral-200'
-          : 'bg-[#121212] border-neutral-800'
+          : 'bg-neutral-950 border-neutral-800'
       } ${className}`}
       data-testid="xterm-terminal-container"
     >

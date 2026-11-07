@@ -77,9 +77,9 @@ function CodeBlockRenderer({
   };
 
   return (
-    <div className="my-2.5 rounded-lg border border-neutral-700/80 bg-[#161616] text-neutral-100 font-mono text-xs overflow-hidden shadow-xs">
+    <div className="my-2.5 rounded-lg border border-neutral-700/80 bg-neutral-950 text-neutral-100 font-mono text-xs overflow-hidden shadow-xs">
       {/* Code Header Bar */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#202020] border-b border-neutral-700/60 text-[11px] text-neutral-400 select-none">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-neutral-900 border-b border-neutral-700/60 text-[11px] text-neutral-400 select-none">
         <span className="font-semibold uppercase tracking-wider text-primary text-[10px]">
           {language || 'code'}
         </span>
@@ -188,7 +188,7 @@ export function ChatMessageList({
           className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 shadow-xs transition-colors border ${
             isLight
               ? 'bg-orange-50 border-orange-200/80 text-primary'
-              : 'bg-[#1e1e1e] border-neutral-700/60 text-neutral-300'
+              : 'bg-neutral-900 border-neutral-700/60 text-neutral-300'
           }`}
         >
           <svg
@@ -232,7 +232,7 @@ export function ChatMessageList({
               className={`p-3.5 rounded-xl text-left text-xs border transition-all cursor-pointer shadow-2xs ${
                 isLight
                   ? 'bg-neutral-50 hover:bg-neutral-100 border-neutral-200/90 text-neutral-800'
-                  : 'bg-[#181818] hover:bg-[#202020] border-neutral-800 text-neutral-200 hover:border-neutral-700'
+                  : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-200 hover:border-neutral-700'
               }`}
             >
               <span className={`font-medium block ${isLight ? 'text-neutral-900' : 'text-neutral-200'}`}>
@@ -246,7 +246,7 @@ export function ChatMessageList({
               className={`p-3.5 rounded-xl text-left text-xs border transition-all cursor-pointer shadow-2xs ${
                 isLight
                   ? 'bg-neutral-50 hover:bg-neutral-100 border-neutral-200/90 text-neutral-800'
-                  : 'bg-[#181818] hover:bg-[#202020] border-neutral-800 text-neutral-200 hover:border-neutral-700'
+                  : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-200 hover:border-neutral-700'
               }`}
             >
               <span className={`font-medium block ${isLight ? 'text-neutral-900' : 'text-neutral-200'}`}>
@@ -297,7 +297,7 @@ export function ChatMessageList({
                     : 'bg-primary text-white rounded-tr-none'
                   : isLight
                     ? 'bg-white border border-neutral-200 text-neutral-800 rounded-tl-none'
-                    : 'bg-[#1e1e1e] border border-neutral-800 text-neutral-200 rounded-tl-none'
+                    : 'bg-neutral-900 border border-neutral-800 text-neutral-200 rounded-tl-none'
               }`}
             >
               {isUser ? (

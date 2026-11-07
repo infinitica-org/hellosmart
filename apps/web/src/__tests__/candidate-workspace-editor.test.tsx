@@ -125,7 +125,7 @@ describe('Stream 7.1 – Workspace Editor & File Explorer (S1B-T07-1 / CA-008)',
         />
       );
       expect(darkHtml).toContain('main.py');
-      expect(darkHtml).toContain('bg-[#1e1e1e]');
+      expect(darkHtml).toContain('bg-neutral-900');
     });
   });
 
@@ -158,7 +158,7 @@ describe('Stream 7.1 – Workspace Editor & File Explorer (S1B-T07-1 / CA-008)',
           theme="dark"
         />
       );
-      expect(darkTree).toContain('bg-[#181818]');
+      expect(darkTree).toContain('bg-neutral-950');
     });
   });
 

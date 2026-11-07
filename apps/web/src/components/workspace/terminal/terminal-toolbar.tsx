@@ -30,7 +30,7 @@ export function TerminalToolbar({
       className={`h-9 shrink-0 flex items-center justify-between px-3 text-xs select-none border-b transition-colors ${
         isLight
           ? 'bg-neutral-50/90 border-neutral-200 text-neutral-700'
-          : 'bg-[#181818] border-neutral-800 text-neutral-300'
+          : 'bg-neutral-900 border-neutral-800 text-neutral-300'
       }`}
     >
       {/* Left: Terminal Tab & Connection Status */}
@@ -39,7 +39,7 @@ export function TerminalToolbar({
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-medium text-xs border ${
             isLight
               ? 'bg-white border-neutral-200/90 text-neutral-800 shadow-2xs'
-              : 'bg-[#222] border-neutral-700/80 text-neutral-200'
+              : 'bg-neutral-800 border-neutral-700/80 text-neutral-200'
           }`}
         >
           <Terminal className="w-3.5 h-3.5 text-primary" />
