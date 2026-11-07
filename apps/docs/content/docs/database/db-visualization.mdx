@@ -554,7 +554,7 @@ erDiagram
 - `app.quotes`: Commercial quotations linked to leads or organizations with full 18% Indian GST calculations (CGST/SGST/IGST), 14-day default expiry, and SHA-256 token hashing.
 - `app.quote_lines`: Immutable line item snapshots capturing unit prices, line discounts, and reconciled tax breakdowns at quote issuance.
 - `app.promo_redemptions`: Audit ledger tracking promotional code redemptions per quote.
-- `app.workspaces`: Candidate runtime sessions for an assignment. Disconnect time is stored here so BR-09 pause math uses the server clock.
+- `app.workspaces`: Candidate runtime sessions for an assignment with lifecycle states (`queued`, `provisioning`, `not_connected`, `connected`, `disconnected`, `ended`, `destroyed`, `failed`). Disconnect time and last activity heartbeat are stored here for idle tracking and server timing. Emergency kill-switch marks status as `destroyed` and clears `write_token_hash` (AD-018, AD-019, BR-22).
 - `app.activity_events`: Append-style connect, disconnect, resume, and fullscreen-exit events with client IP.
 - `app.submissions`: Final artifact snapshot. `auto_submitted` is true when the deadline worker closed the assignment.
 - `app.jobs`: Database queue for transactional email and other background work, with `run_after` for exponential backoff.

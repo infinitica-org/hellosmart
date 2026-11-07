@@ -7,6 +7,8 @@ import { AdminAuditController } from './admin-audit.controller.js';
 import { AdminAuditService } from './admin-audit.service.js';
 import { AdminAiKeysController } from './admin-ai-keys.controller.js';
 import { AdminAiKeysService } from './admin-ai-keys.service.js';
+import { AdminWorkspacesController } from './admin-workspaces.controller.js';
+import { AdminWorkspacesService } from './admin-workspaces.service.js';
 import { CryptoService } from '../../common/services/crypto.service.js';
 
 @Module({
@@ -16,11 +18,13 @@ import { CryptoService } from '../../common/services/crypto.service.js';
     AdminMetricsController,
     AdminAuditController,
     AdminAiKeysController,
+    AdminWorkspacesController,
   ],
   providers: [
     AdminOrganizationsService,
     AdminAuditService,
     AdminAiKeysService,
+    AdminWorkspacesService,
     CryptoService,
   ],
 })

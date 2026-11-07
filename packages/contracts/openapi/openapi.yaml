@@ -989,6 +989,170 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
 
+  /admin/workspaces:
+    get:
+      tags: [admin]
+      summary: List candidate workspaces across all tenant organizations (Platform Admin only)
+      description: Returns paginated workspaces with org/candidate metadata, lifecycle states, activity timestamps, and tenant credit allocation context.
+      operationId: listAdminWorkspaces
+      x-requirement: [AD-018, NF-014]
+      x-roles: [platform_admin]
+      parameters:
+        - { name: org_id, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string, enum: [all, active, queued, provisioning, not_connected, connected, disconnected, ended, destroyed, failed] } }
+        - { name: mode, in: query, schema: { type: string, enum: [all, cloud, chat] } }
+        - { name: search, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+      responses:
+        '200':
+          description: Paginated workspaces list with aggregate platform metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, page, pageSize, totalPages, metrics]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, orgId, orgName, orgSlug, candidateId, candidateName, candidateEmail, assignmentId, assessmentId, assessmentName, mode, status, startedAt, lastActivityAt, idleMinutes, isOnline, spendInfo]
+                      properties:
+                        id: { type: string, format: uuid }
+                        orgId: { type: string, format: uuid }
+                        orgName: { type: string }
+                        orgSlug: { type: string }
+                        candidateId: { type: string, format: uuid }
+                        candidateName: { type: string }
+                        candidateEmail: { type: string, format: email }
+                        assignmentId: { type: string, format: uuid }
+                        assessmentId: { type: string, format: uuid }
+                        assessmentName: { type: string }
+                        mode: { type: string, enum: [cloud, chat] }
+                        status: { type: string, enum: [queued, provisioning, not_connected, connected, disconnected, ended, destroyed, failed] }
+                        runtimeRef: { type: string, nullable: true }
+                        snapshotRef: { type: string, nullable: true }
+                        startedAt: { type: string, format: date-time }
+                        lastActivityAt: { type: string, format: date-time }
+                        disconnectedAt: { type: string, format: date-time, nullable: true }
+                        endedAt: { type: string, format: date-time, nullable: true }
+                        deadlineAt: { type: string, format: date-time, nullable: true }
+                        idleMinutes: { type: integer, minimum: 0 }
+                        isOnline: { type: boolean }
+                        spendInfo:
+                          type: object
+                          required: [meteringStatus, meteringNotice]
+                          properties:
+                            meteringStatus: { type: string, enum: [connected, unconnected] }
+                            meteringNotice: { type: string }
+                            allocatedAmountCents: { type: integer, nullable: true }
+                            usedAmountCents: { type: integer, nullable: true }
+                            balanceCents: { type: integer, nullable: true }
+                            markupPercentage: { type: number, nullable: true }
+                            spendCapCents: { type: integer, nullable: true }
+                  total: { type: integer, minimum: 0 }
+                  page: { type: integer, minimum: 1 }
+                  pageSize: { type: integer, minimum: 1 }
+                  totalPages: { type: integer, minimum: 0 }
+                  metrics:
+                    type: object
+                    required: [totalWorkspaces, activeWorkspaces, connectedCount, disconnectedCount, destroyedCount, endedCount, trackedTenantsCount]
+                    properties:
+                      totalWorkspaces: { type: integer }
+                      activeWorkspaces: { type: integer }
+                      connectedCount: { type: integer }
+                      disconnectedCount: { type: integer }
+                      destroyedCount: { type: integer }
+                      endedCount: { type: integer }
+                      trackedTenantsCount: { type: integer }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+
+  /admin/workspaces/{id}:
+    get:
+      tags: [admin]
+      summary: Retrieve workspace detail, activity timeline, and tenant allocation (Platform Admin only)
+      operationId: getAdminWorkspaceDetail
+      x-requirement: [AD-018, BR-22]
+      x-roles: [platform_admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Workspace details with recent activity timeline and tenant credit allocation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, orgId, orgName, candidateName, candidateEmail, mode, status, recentEvents, spendInfo]
+                properties:
+                  id: { type: string, format: uuid }
+                  orgId: { type: string, format: uuid }
+                  recentEvents:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, type, payload, at]
+                      properties:
+                        id: { type: string, format: uuid }
+                        type: { type: string, enum: [connect, disconnect, resume, fullscreen_exit, submit] }
+                        payload: { type: object }
+                        ip: { type: string, nullable: true }
+                        at: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /admin/workspaces/{id}/destroy:
+    post:
+      tags: [admin]
+      summary: Emergency destroy and terminate a workspace (Platform Admin only)
+      description: Atomically destroys a candidate workspace, invalidates write capabilities, revokes assignment, and writes an immutable audit record.
+      operationId: emergencyDestroyWorkspace
+      x-requirement: [AD-019, BR-22, BR-23]
+      x-roles: [platform_admin]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 5, maxLength: 500 }
+      responses:
+        '200':
+          description: Workspace emergency destroyed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, workspaceId, status, destroyedAt, assignmentRevoked, reason, limitations]
+                properties:
+                  success: { type: boolean }
+                  workspaceId: { type: string, format: uuid }
+                  status: { type: string, enum: [destroyed] }
+                  destroyedAt: { type: string, format: date-time }
+                  assignmentRevoked: { type: boolean }
+                  reason: { type: string }
+                  limitations:
+                    type: object
+                    required: [runtimeTerminated, snapshotSaved, candidateNotified, notice]
+                    properties:
+                      runtimeTerminated: { type: boolean }
+                      snapshotSaved: { type: boolean }
+                      candidateNotified: { type: boolean }
+                      notice: { type: string }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
   /candidates:
     get:
       summary: List candidates in the caller's organization

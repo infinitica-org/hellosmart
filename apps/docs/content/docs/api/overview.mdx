@@ -225,6 +225,11 @@ HelloSmart processes incoming asynchronous webhooks idempotently:
 - `POST /api/v1/admin/ai-allocations/{id}/revoke`: Revoke tenant credit allocation.
 - `GET /api/v1/admin/ai-vault/stats`: Retrieve aggregate key and credit balance metrics across the platform.
 
+### Workspaces Live Monitoring & Emergency Kill-Switch (AD-018, AD-019, BR-22, BR-23)
+- `GET /api/v1/admin/workspaces`: List candidate workspaces across all tenant organizations with status/mode/org filters, search, idle duration, and tenant credit allocation context (Platform Admin only).
+- `GET /api/v1/admin/workspaces/{id}`: Retrieve detailed workspace session state, recent activity event signals, and tenant credit line context (Platform Admin only).
+- `POST /api/v1/admin/workspaces/{id}/destroy`: Super Admin emergency kill-switch mutation. Atomically transitions workspace to `destroyed`, revokes candidate assignment write tokens, records disconnect activity, and writes an immutable SHA-256 hash-chained audit record in `audit.events`. Explicitly indicates MMP limitations (hypervisor container teardown and candidate notifications are unconnected in MMP; candidate session disconnects on next ping).
+
 ### Timing, disconnect, and accommodations (BR-08, BR-09, CO-031)
 - `GET /api/v1/candidate/assessment/timing?assignmentId=`: Server clock snapshot `{ deadlineAtUtc, remainingSeconds, isExpired }` plus the IANA timezone stored beside the UTC deadline.
 - `POST /api/v1/candidate/assignments/{id}/connect`: Starts or resumes a session. Outside the window the response is HTTP 403 `WINDOW_NOT_OPEN` (with `secondsUntilWindowStart`) or `WINDOW_EXPIRED`.

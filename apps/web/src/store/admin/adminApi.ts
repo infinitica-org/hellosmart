@@ -19,6 +19,10 @@ import type {
   CreateCreditAllocationDto,
   AdjustCreditAllocationDto,
   PlatformAiVaultStatsDto,
+  AdminWorkspaceQueryDto,
+  AdminWorkspacesListResponseDto,
+  AdminWorkspaceDetailDto,
+  EmergencyDestroyResponseDto,
 } from '@hs/contracts';
 
 /**
@@ -38,6 +42,7 @@ export const ADMIN_TAG_TYPES = [
   'PromoCodes',
   'AiKeys',
   'AiAllocations',
+  'Workspaces',
 ] as const;
 
 export type AdminTagType = (typeof ADMIN_TAG_TYPES)[number];
@@ -511,6 +516,55 @@ export const adminApi = createApi({
       query: () => 'admin/ai-vault/stats',
       providesTags: [{ type: 'AiKeys', id: 'LIST' }, { type: 'AiAllocations', id: 'LIST' }],
     }),
+
+    // --- Workspaces Monitoring & Emergency Kill-Switch (S1B-T05-3) ---
+    getAdminWorkspaces: builder.query<
+      AdminWorkspacesListResponseDto,
+      AdminWorkspaceQueryDto | void
+    >({
+      query: (params) => {
+        const urlParams = new URLSearchParams();
+        if (params) {
+          if (params.org_id) urlParams.set('org_id', params.org_id);
+          if (params.status && params.status !== 'all') urlParams.set('status', params.status);
+          if (params.mode && params.mode !== 'all') urlParams.set('mode', params.mode);
+          if (params.search) urlParams.set('search', params.search);
+          if (params.page) urlParams.set('page', String(params.page));
+          if (params.page_size) urlParams.set('page_size', String(params.page_size));
+        }
+        const q = urlParams.toString();
+        return `admin/workspaces${q ? `?${q}` : ''}`;
+      },
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.items.map((item) => ({ type: 'Workspaces' as const, id: item.id })),
+              { type: 'Workspaces', id: 'LIST' },
+            ]
+          : [{ type: 'Workspaces', id: 'LIST' }],
+    }),
+
+    getAdminWorkspaceById: builder.query<AdminWorkspaceDetailDto, string>({
+      query: (id) => `admin/workspaces/${id}`,
+      providesTags: (_res, _err, id) => [{ type: 'Workspaces', id }],
+    }),
+
+    emergencyDestroyWorkspace: builder.mutation<
+      EmergencyDestroyResponseDto,
+      { id: string; reason: string }
+    >({
+      query: ({ id, reason }) => ({
+        url: `admin/workspaces/${id}/destroy`,
+        method: 'POST',
+        body: { reason },
+      }),
+      invalidatesTags: (_res, _err, { id }) => [
+        { type: 'Workspaces', id },
+        { type: 'Workspaces', id: 'LIST' },
+        { type: 'Metrics', id: 'PLATFORM' },
+        { type: 'Organizations', id: 'LIST' },
+      ],
+    }),
   }),
 });
 
@@ -563,4 +617,9 @@ export const {
   useRevokeCreditAllocationMutation,
   useGetAiVaultStatsQuery,
   useLazyGetAiVaultStatsQuery,
+  useGetAdminWorkspacesQuery,
+  useLazyGetAdminWorkspacesQuery,
+  useGetAdminWorkspaceByIdQuery,
+  useLazyGetAdminWorkspaceByIdQuery,
+  useEmergencyDestroyWorkspaceMutation,
 } = adminApi;

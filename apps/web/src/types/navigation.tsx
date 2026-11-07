@@ -50,6 +50,11 @@ export const adminNavigation: PortalNavigation = [
     icon: <Building2 className="w-4 h-4" strokeWidth={2} />,
   },
   {
+    label: 'Workspaces',
+    href: ROUTES.ADMIN.WORKSPACES,
+    icon: <Terminal className="w-4 h-4" strokeWidth={2} />,
+  },
+  {
     label: 'Audit Logs',
     href: ROUTES.ADMIN.AUDIT,
     icon: <ShieldCheck className="w-4 h-4" strokeWidth={2} />,
@@ -84,6 +89,11 @@ export const adminGroups: NavigationGroup[] = [
         label: 'Companies',
         href: ROUTES.ADMIN.COMPANIES,
         icon: <Building2 className="w-4 h-4" strokeWidth={2} />,
+      },
+      {
+        label: 'Workspaces',
+        href: ROUTES.ADMIN.WORKSPACES,
+        icon: <Terminal className="w-4 h-4" strokeWidth={2} />,
       },
       {
         label: 'Agents',

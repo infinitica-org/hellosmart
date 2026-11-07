@@ -14,6 +14,7 @@ export * from './schemas/lead.js';
 export * from './schemas/quote.js';
 export * from './schemas/audit.js';
 export * from './schemas/ai-vault.js';
+export * from './schemas/admin-workspaces.js';
 
 export * from './password-policy.js';
 export * from './data/common-passwords.data.js';

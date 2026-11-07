@@ -93,6 +93,7 @@ export class CandidateAssessmentsService {
          asg.extended_minutes,
          asg.submitted_at,
          asg.auto_submitted,
+         asg.write_revoked_at,
          asm.name as assessment_name,
          asm.workspace_mode,
          asm.timing,
@@ -315,6 +316,37 @@ export class CandidateAssessmentsService {
         async (tx) => {
           const row = await this.resolveAssignment(tx, actor.orgId!, actor.userId, idOrAssessmentId);
 
+          // Authoritative check on assignment revocation state before recording consent (BR-22)
+          const lockRes = await tx.query(
+            `SELECT status, write_revoked_at FROM app.assignments WHERE id = $1 AND org_id = $2 AND candidate_id = $3 FOR UPDATE`,
+            [row.assignment_id, actor.orgId, actor.userId],
+          );
+
+          if (lockRes.rowCount === 0) {
+            throw problem({
+              title: 'Not Found',
+              status: 404,
+              detail: 'Assessment assignment not found or access denied',
+              code: 'ASSIGNMENT_NOT_FOUND',
+            });
+          }
+
+          const lockedAssignment = lockRes.rows[0];
+
+          if (
+            lockedAssignment.status === 'revoked' ||
+            lockedAssignment.write_revoked_at != null ||
+            row.assignment_status === 'revoked' ||
+            row.write_revoked_at != null
+          ) {
+            throw problem({
+              title: 'Forbidden',
+              status: 403,
+              detail: 'Assessment access and write privileges have been revoked (BR-22)',
+              code: 'ASSIGNMENT_REVOKED',
+            });
+          }
+
           if (row.consent_id) {
             // Already recorded (Idempotent response)
             return {
@@ -426,8 +458,47 @@ export class CandidateAssessmentsService {
             });
           }
 
-          // 3. Status Gate
-          if (row.assignment_status === 'submitted') {
+          // 3. Status Gate & Authoritative Assignment Row Lock (BR-22)
+          const lockRes = await tx.query(
+            `SELECT status, write_revoked_at, first_connect_at, deadline_at
+             FROM app.assignments
+             WHERE id = $1
+               AND org_id = $2
+               AND candidate_id = $3
+             FOR UPDATE`,
+            [row.assignment_id, actor.orgId, actor.userId],
+          );
+
+          if (lockRes.rowCount === 0) {
+            throw problem({
+              title: 'Not Found',
+              status: 404,
+              detail: 'Assessment assignment not found or access denied',
+              code: 'ASSIGNMENT_NOT_FOUND',
+            });
+          }
+
+          const lockedAssignment = lockRes.rows[0];
+
+          // Reject revoked assignments immediately before issuing ticket or updating workspace (BR-22)
+          if (
+            lockedAssignment.status === 'revoked' ||
+            lockedAssignment.write_revoked_at != null ||
+            row.assignment_status === 'revoked' ||
+            row.write_revoked_at != null
+          ) {
+            throw problem({
+              title: 'Forbidden',
+              status: 403,
+              detail: 'Assessment access and write privileges have been revoked (BR-22)',
+              code: 'ASSIGNMENT_REVOKED',
+            });
+          }
+
+          if (
+            lockedAssignment.status === 'submitted' ||
+            row.assignment_status === 'submitted'
+          ) {
             throw problem({
               title: 'Conflict',
               status: 409,
@@ -438,8 +509,16 @@ export class CandidateAssessmentsService {
 
           // 4. Authoritative Timer Initialization (BR-08, BR-09)
           const durationMinutes = timing.durationMinutes || row.manifest?.workspace?.timeoutMinutes || 90;
-          let firstConnectAt = row.first_connect_at ? new Date(row.first_connect_at) : null;
-          let deadlineAt = row.deadline_at ? new Date(row.deadline_at) : null;
+          let firstConnectAt = lockedAssignment.first_connect_at
+            ? new Date(lockedAssignment.first_connect_at)
+            : row.first_connect_at
+              ? new Date(row.first_connect_at)
+              : null;
+          let deadlineAt = lockedAssignment.deadline_at
+            ? new Date(lockedAssignment.deadline_at)
+            : row.deadline_at
+              ? new Date(row.deadline_at)
+              : null;
 
           if (!firstConnectAt) {
             // Initial connect: Anchor timer
@@ -449,7 +528,7 @@ export class CandidateAssessmentsService {
             await tx.query(
               `UPDATE app.assignments
                SET first_connect_at = $1, deadline_at = $2, status = 'in_progress', updated_at = now()
-               WHERE id = $3`,
+               WHERE id = $3 AND status != 'revoked' AND write_revoked_at IS NULL`,
               [firstConnectAt.toISOString(), deadlineAt.toISOString(), row.assignment_id],
             );
 
@@ -459,14 +538,16 @@ export class CandidateAssessmentsService {
               actorRole: 'candidate',
               action: 'workspace.connect',
               entity: `assignment:${row.assignment_id}`,
-              before: { status: row.assignment_status },
+              before: { status: lockedAssignment.status },
               after: { status: 'in_progress', firstConnectAt, deadlineAt },
               ip: meta.ip || '127.0.0.1',
             });
-          } else if (row.assignment_status === 'disconnected') {
+          } else if (lockedAssignment.status === 'disconnected') {
             // Reconnect: Keep existing first_connect_at & deadline_at
             await tx.query(
-              `UPDATE app.assignments SET status = 'in_progress', updated_at = now() WHERE id = $1`,
+              `UPDATE app.assignments
+               SET status = 'in_progress', updated_at = now()
+               WHERE id = $1 AND status != 'revoked' AND write_revoked_at IS NULL`,
               [row.assignment_id],
             );
           }
@@ -482,10 +563,23 @@ export class CandidateAssessmentsService {
               [workspaceId, actor.orgId, row.assignment_id, actor.userId, row.workspace_mode, `sysbox-${workspaceId.slice(0, 8)}`],
             );
           } else {
-            await tx.query(
-              `UPDATE app.workspaces SET status = 'connected', last_activity_at = now() WHERE id = $1`,
+            const wsUpdateRes = await tx.query(
+              `UPDATE app.workspaces
+                  SET status = 'connected',
+                      last_activity_at = now()
+                WHERE id = $1
+                  AND status != 'destroyed'`,
               [workspaceId],
             );
+
+            if (wsUpdateRes.rowCount === 0) {
+              throw problem({
+                title: 'Conflict',
+                status: 409,
+                detail: 'Cannot reconnect workspace: workspace is in terminal state (destroyed) (BR-22)',
+                code: 'WORKSPACE_ALREADY_TERMINATED',
+              });
+            }
           }
 
           const remainingMs = Math.max(0, deadlineAt!.getTime() - Date.now());
@@ -533,16 +627,41 @@ export class CandidateAssessmentsService {
         async (tx) => {
           const row = await this.resolveAssignment(tx, actor.orgId!, actor.userId, idOrAssessmentId);
 
-          // Atomic row-level lock on assignment to avoid race with draft saves
+          // Atomic row-level lock on assignment to avoid race with draft saves and emergency destroy
           const lockRes = await tx.query(
-            `SELECT status, submitted_at FROM app.assignments WHERE id = $1 AND org_id = $2 AND candidate_id = $3 FOR UPDATE`,
+            `SELECT status, submitted_at, write_revoked_at FROM app.assignments WHERE id = $1 AND org_id = $2 AND candidate_id = $3 FOR UPDATE`,
             [row.assignment_id, actor.orgId, actor.userId],
           );
 
+          if (lockRes.rowCount === 0) {
+            throw problem({
+              title: 'Not Found',
+              status: 404,
+              detail: 'Assessment assignment not found or access denied',
+              code: 'ASSIGNMENT_NOT_FOUND',
+            });
+          }
+
+          const lockedAssignment = lockRes.rows[0];
+
+          // Reject revoked assignments (BR-22 emergency destroy kill-switch)
           if (
-            lockRes.rowCount === 0 ||
-            lockRes.rows[0].status === 'submitted' ||
-            lockRes.rows[0].submitted_at ||
+            lockedAssignment.status === 'revoked' ||
+            lockedAssignment.write_revoked_at != null ||
+            row.assignment_status === 'revoked' ||
+            row.write_revoked_at != null
+          ) {
+            throw problem({
+              title: 'Forbidden',
+              status: 403,
+              detail: 'Assessment access and write privileges have been revoked (BR-22)',
+              code: 'ASSIGNMENT_REVOKED',
+            });
+          }
+
+          if (
+            lockedAssignment.status === 'submitted' ||
+            lockedAssignment.submitted_at ||
             row.assignment_status === 'submitted' ||
             row.submitted_at
           ) {
@@ -598,10 +717,10 @@ export class CandidateAssessmentsService {
             [Boolean(isExpired), row.assignment_id],
           );
 
-          // 3. End workspace session
+          // 3. End workspace session (preserve destroyed status if emergency kill-switch ran)
           if (row.workspace_id) {
             await tx.query(
-              `UPDATE app.workspaces SET status = 'ended', ended_at = now() WHERE id = $1`,
+              `UPDATE app.workspaces SET status = 'ended', ended_at = now() WHERE id = $1 AND status != 'destroyed'`,
               [row.workspace_id],
             );
           }
@@ -763,16 +882,41 @@ export class CandidateAssessmentsService {
         async (tx) => {
           const row = await this.resolveAssignment(tx, actor.orgId!, actor.userId, idOrAssessmentId);
 
-          // Atomic check on assignment status with row lock to prevent race with final submission
+          // Atomic check on assignment status with row lock to prevent race with final submission and emergency destroy
           const lockRes = await tx.query(
-            `SELECT status, submitted_at FROM app.assignments WHERE id = $1 AND org_id = $2 AND candidate_id = $3 FOR UPDATE`,
+            `SELECT status, submitted_at, write_revoked_at FROM app.assignments WHERE id = $1 AND org_id = $2 AND candidate_id = $3 FOR UPDATE`,
             [row.assignment_id, actor.orgId, actor.userId],
           );
 
+          if (lockRes.rowCount === 0) {
+            throw problem({
+              title: 'Not Found',
+              status: 404,
+              detail: 'Assessment assignment not found or access denied',
+              code: 'ASSIGNMENT_NOT_FOUND',
+            });
+          }
+
+          const lockedAssignment = lockRes.rows[0];
+
+          // Reject revoked assignments (BR-22 emergency destroy kill-switch)
           if (
-            lockRes.rowCount === 0 ||
-            lockRes.rows[0].status === 'submitted' ||
-            lockRes.rows[0].submitted_at ||
+            lockedAssignment.status === 'revoked' ||
+            lockedAssignment.write_revoked_at != null ||
+            row.assignment_status === 'revoked' ||
+            row.write_revoked_at != null
+          ) {
+            throw problem({
+              title: 'Forbidden',
+              status: 403,
+              detail: 'Assessment access and write privileges have been revoked (BR-22)',
+              code: 'ASSIGNMENT_REVOKED',
+            });
+          }
+
+          if (
+            lockedAssignment.status === 'submitted' ||
+            lockedAssignment.submitted_at ||
             row.assignment_status === 'submitted' ||
             row.submitted_at
           ) {
@@ -888,6 +1032,52 @@ export class CandidateAssessmentsService {
     const client = await this.pool.connect();
     let uploaded = false;
     try {
+      if (assignmentIdOrAssessmentId) {
+        // Pre-validate assignment status and revocation with atomic lock before performing storage upload (BR-22)
+        await withUserSession(client, actor.orgId, actor.userId, actor.role || 'candidate', async (tx) => {
+          const row = await this.resolveAssignment(tx, actor.orgId!, actor.userId, assignmentIdOrAssessmentId);
+          const lockRes = await tx.query(
+            `SELECT status, submitted_at, write_revoked_at FROM app.assignments WHERE id = $1 AND org_id = $2 AND candidate_id = $3 FOR UPDATE`,
+            [row.assignment_id, actor.orgId, actor.userId],
+          );
+          if (lockRes.rowCount === 0) {
+            throw problem({
+              title: 'Not Found',
+              status: 404,
+              detail: 'Assessment assignment not found or access denied',
+              code: 'ASSIGNMENT_NOT_FOUND',
+            });
+          }
+          const lockedAssignment = lockRes.rows[0];
+          if (
+            lockedAssignment.status === 'revoked' ||
+            lockedAssignment.write_revoked_at != null ||
+            row.assignment_status === 'revoked' ||
+            row.write_revoked_at != null
+          ) {
+            throw problem({
+              title: 'Forbidden',
+              status: 403,
+              detail: 'Assessment access and write privileges have been revoked (BR-22)',
+              code: 'ASSIGNMENT_REVOKED',
+            });
+          }
+          if (
+            lockedAssignment.status === 'submitted' ||
+            lockedAssignment.submitted_at ||
+            row.assignment_status === 'submitted' ||
+            row.submitted_at
+          ) {
+            throw problem({
+              title: 'Conflict',
+              status: 409,
+              detail: 'Assessment deliverables have already been submitted. Draft is locked against modifications (BR-20).',
+              code: 'DRAFT_LOCKED',
+            });
+          }
+        });
+      }
+
       const putResult = await this.storageAdapter.putObject({
         key: storageKey,
         buffer,
@@ -914,7 +1104,40 @@ export class CandidateAssessmentsService {
       if (assignmentIdOrAssessmentId) {
         await withUserSession(client, actor.orgId, actor.userId, actor.role || 'candidate', async (tx) => {
           const row = await this.resolveAssignment(tx, actor.orgId!, actor.userId, assignmentIdOrAssessmentId);
-          if (row.assignment_status === 'submitted' || row.submitted_at) {
+
+          // Re-verify atomic lock before persisting draft record (defense against concurrent revocation during upload)
+          const lockRes = await tx.query(
+            `SELECT status, submitted_at, write_revoked_at FROM app.assignments WHERE id = $1 AND org_id = $2 AND candidate_id = $3 FOR UPDATE`,
+            [row.assignment_id, actor.orgId, actor.userId],
+          );
+          if (lockRes.rowCount === 0) {
+            throw problem({
+              title: 'Not Found',
+              status: 404,
+              detail: 'Assessment assignment not found or access denied',
+              code: 'ASSIGNMENT_NOT_FOUND',
+            });
+          }
+          const lockedAssignment = lockRes.rows[0];
+          if (
+            lockedAssignment.status === 'revoked' ||
+            lockedAssignment.write_revoked_at != null ||
+            row.assignment_status === 'revoked' ||
+            row.write_revoked_at != null
+          ) {
+            throw problem({
+              title: 'Forbidden',
+              status: 403,
+              detail: 'Assessment access and write privileges have been revoked (BR-22)',
+              code: 'ASSIGNMENT_REVOKED',
+            });
+          }
+          if (
+            lockedAssignment.status === 'submitted' ||
+            lockedAssignment.submitted_at ||
+            row.assignment_status === 'submitted' ||
+            row.submitted_at
+          ) {
             throw problem({
               title: 'Conflict',
               status: 409,

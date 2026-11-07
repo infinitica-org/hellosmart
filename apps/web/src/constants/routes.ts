@@ -36,6 +36,7 @@ export const ROUTES = deepFreeze({
   ADMIN: {
     DASHBOARD: '/admin',
     COMPANIES: '/admin/companies',
+    WORKSPACES: '/admin/workspaces',
     AGENTS: '/admin/agents',
     AUDIT: '/admin/audit',
     AI_KEYS: '/admin/ai-keys',
