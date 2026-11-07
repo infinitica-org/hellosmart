@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CandidatePortalController } from '../src/modules/candidates/candidate-portal.controller.js';
 import { CandidatesService } from '../src/modules/candidates/candidates.service.js';
 import { createMockDbPool } from './helpers/candidate-mock-db.js';
-import type { AuthenticatedUser } from '../src/common/types/user-context.js';
+import type { UserContext } from '../src/common/types/user-context.js';
 import { REQUEST_USER_KEY } from '../src/common/guards/session.guard.js';
 
 describe('Candidate Portal API & Service (BUG-CAN-03, BUG-CAN-04, BR-01, BR-06, BR-12, BR-20)', () => {
@@ -16,14 +16,14 @@ describe('Candidate Portal API & Service (BUG-CAN-03, BUG-CAN-04, BR-01, BR-06, 
   const assessmentId = '44444444-4444-4444-8444-444444444444';
   const assignmentId = '55555555-5555-4555-8555-555555555555';
 
-  const candidateActor: AuthenticatedUser = {
+  const candidateActor: UserContext = {
     userId: candidateId,
     email: 'candidate@example.com',
     role: 'candidate',
     orgId,
   };
 
-  const companyAdminActor: AuthenticatedUser = {
+  const companyAdminActor: UserContext = {
     userId: 'admin-1',
     email: 'admin@example.com',
     role: 'company_admin',
@@ -174,6 +174,53 @@ describe('Candidate Portal API & Service (BUG-CAN-03, BUG-CAN-04, BR-01, BR-06, 
         Array.isArray(e) ? e[3] === 'assignment.submitted' : e.action === 'assignment.submitted',
       );
       expect(audit).toBeDefined();
+    });
+  });
+
+  describe('6. POST /candidate/workspace/:id/heartbeat (Activity Tracking BR-08, BR-11, I174)', () => {
+    it('records activity heartbeat for authenticated candidate and returns timing details', async () => {
+      const req: any = {
+        [REQUEST_USER_KEY]: candidateActor,
+        ip: '127.0.0.1',
+        headers: { 'user-agent': 'Vitest Browser' },
+      };
+
+      const result = await controller.recordHeartbeat(assignmentId, req);
+
+      expect(result.success).toBe(true);
+      expect(result.serverTimeUtc).toBeDefined();
+      expect(result.workspaceStatus).toBe('connected');
+      expect(result.assignmentStatus).toBeDefined();
+    });
+
+    it('rejects company_admin from heartbeating candidate workspace with 403 Forbidden', async () => {
+      const req: any = { [REQUEST_USER_KEY]: companyAdminActor };
+      await expect(controller.recordHeartbeat(assignmentId, req)).rejects.toThrow();
+    });
+
+    it('returns 404 for unknown or foreign organization assignment (BR-01)', async () => {
+      const req: any = { [REQUEST_USER_KEY]: candidateActor };
+      await expect(controller.recordHeartbeat('non-existent-id', req)).rejects.toThrow();
+    });
+
+    it('returns 409 Conflict when workspace is already submitted', async () => {
+      mockPool.assignments.set(assignmentId, {
+        ...mockPool.assignments.get(assignmentId),
+        status: 'submitted',
+      });
+
+      const req: any = { [REQUEST_USER_KEY]: candidateActor };
+      await expect(controller.recordHeartbeat(assignmentId, req)).rejects.toThrow();
+    });
+
+    it('returns 410 Gone when assignment is marked expired', async () => {
+      mockPool.assignments.set(assignmentId, {
+        ...mockPool.assignments.get(assignmentId),
+        status: 'expired',
+      });
+
+      const req: any = { [REQUEST_USER_KEY]: candidateActor };
+      await expect(controller.recordHeartbeat(assignmentId, req)).rejects.toThrow();
     });
   });
 });

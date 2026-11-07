@@ -32,14 +32,18 @@ export function NetworkCheck({ result, isRunning = false, onRetry }: NetworkChec
             <Wifi className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Network Latency</h4>
+            <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Network &amp; Internet Speed</h4>
             <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 flex-wrap mt-0.5">
               <span>
-                Endpoint: <span className="text-neutral-700 dark:text-neutral-300 font-medium">{result.endpoint}</span>
+                Speed: <strong className="font-semibold text-neutral-800 dark:text-neutral-200">{result.downloadSpeedMbps !== null ? `${result.downloadSpeedMbps} Mbps` : 'Testing...'}</strong>
               </span>
               <span>&bull;</span>
               <span>
-                Latency: <strong className="font-semibold text-neutral-800 dark:text-neutral-200">{result.latencyMs !== null ? `${result.latencyMs} ms` : 'Testing...'}</strong>
+                Ping: <strong className="font-semibold text-neutral-800 dark:text-neutral-200">{result.latencyMs !== null ? `${result.latencyMs} ms` : 'Testing...'}</strong>
+              </span>
+              <span>&bull;</span>
+              <span>
+                Stability: <strong className={`font-semibold ${isPass ? 'text-success' : isWarning ? 'text-warning' : 'text-danger'}`}>{result.stability || 'Testing...'}</strong>
               </span>
             </div>
           </div>
@@ -49,36 +53,41 @@ export function NetworkCheck({ result, isRunning = false, onRetry }: NetworkChec
           {isRunning ? (
             <Badge variant="default" dot className="text-xs">
               <Loader2 className="w-3 h-3 animate-spin mr-1" />
-              Testing
+              Testing Speed
             </Badge>
           ) : isPass ? (
             <Badge variant="success" size="sm" className="gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              Optimal
+              Stable
             </Badge>
           ) : isWarning ? (
             <Badge variant="warning" size="sm" className="gap-1.5">
               <AlertTriangle className="w-3.5 h-3.5" />
-              High Latency
+              Moderate
             </Badge>
           ) : (
             <Badge variant="danger" size="sm" className="gap-1.5">
               <AlertCircle className="w-3.5 h-3.5" />
-              Failed
+              Unstable
             </Badge>
           )}
 
-          {isError && onRetry && (
+          {!isRunning && onRetry && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onRetry}
               disabled={isRunning}
-              className="text-xs h-7 px-2 border-danger-border text-danger-foreground hover:bg-danger-muted"
+              className={`text-xs h-7 px-2.5 transition-colors ${
+                isError
+                  ? 'border-danger-border text-danger-foreground hover:bg-danger-muted'
+                  : 'text-neutral-600 hover:text-neutral-900 border-neutral-200 dark:border-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800'
+              }`}
+              title="Re-run internet speed and ping test"
             >
               <RotateCcw className="w-3 h-3 mr-1" />
-              Retry
+              {isError ? 'Retry Test' : 'Retest'}
             </Button>
           )}
         </div>

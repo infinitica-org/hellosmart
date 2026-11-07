@@ -43,15 +43,15 @@ export default function CandidateLayout({
         <div
           className={`${
             isWorkspace
-              ? 'h-screen max-h-screen overflow-hidden'
-              : 'min-h-screen'
-          } bg-neutral-50/70 dark:bg-neutral-950 flex flex-col antialiased`}
+              ? 'h-screen max-h-screen overflow-hidden bg-[#141414]'
+              : 'min-h-screen bg-neutral-50/70 dark:bg-neutral-950'
+          } flex flex-col antialiased`}
         >
-          <AssessmentNavbar userName={user?.name} />
+          {isWorkspace ? null : <AssessmentNavbar userName={user?.name} />}
           <main
             className={`flex-1 w-full mx-auto ${
               isWorkspace
-                ? 'min-h-0 overflow-hidden flex flex-col max-w-[1680px] px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3.5'
+                ? 'min-h-0 overflow-hidden flex flex-col w-full h-full p-0 max-w-none'
                 : 'max-w-4xl px-4 sm:px-6 lg:px-8 py-8'
             }`}
           >

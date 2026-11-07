@@ -125,4 +125,44 @@ export class SessionActivityService {
 
     return { deadlineAt, status, pauseAppliedMs };
   }
+
+  /**
+   * BR-08, BR-11: Workspace activity heartbeat recording (I174).
+   * If the workspace was disconnected, it seamlessly records a 'resume' event and re-computes deadline.
+   * If already connected, it updates last_activity_at without creating redundant event rows.
+   */
+  async recordHeartbeat(params: {
+    tx: PoolClient;
+    assignment: ActivityAssignmentRow;
+    ip?: string | null | undefined;
+    now: Date;
+  }): Promise<{ deadlineAt: Date | null; status: string; pauseAppliedMs: number }> {
+    const { tx, assignment, ip, now } = params;
+
+    if (assignment.status === 'disconnected') {
+      return this.record({
+        tx,
+        assignment,
+        eventType: 'resume',
+        ip,
+        now,
+      });
+    }
+
+    // Refresh last_activity_at on the connected workspace
+    await tx.query(
+      `UPDATE app.workspaces
+          SET last_activity_at = $3,
+              status = 'connected'
+        WHERE org_id = $1 AND assignment_id = $2`,
+      [assignment.org_id, assignment.id, now.toISOString()],
+    );
+
+    const deadlineAt = assignment.deadline_at ? new Date(assignment.deadline_at) : null;
+    return {
+      deadlineAt,
+      status: assignment.status,
+      pauseAppliedMs: 0,
+    };
+  }
 }

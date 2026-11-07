@@ -44,12 +44,25 @@ export interface WorkspaceSession {
 }
 
 /**
+ * Resolves candidate API endpoints.
+ * In the browser, routes through same-origin Next.js BFF (/api) to avoid CORS and connection refused errors.
+ * On server-side, routes to the direct API base URL.
+ */
+export function resolveCandidateApiUrl(endpoint: string): string {
+  const normalized = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  if (typeof window !== 'undefined') {
+    return `/api${normalized}`;
+  }
+  return `${getApiBaseUrl()}${normalized}`;
+}
+
+/**
  * GET /api/v1/candidate/assignments
  */
 export async function fetchCandidateAssignments(
   fetchFn: typeof fetch = fetch
 ): Promise<CandidateAssessment[]> {
-  const url = `${getApiBaseUrl()}/candidate/assignments`;
+  const url = resolveCandidateApiUrl('/candidate/assignments');
   const res = await apiFetch(
     url,
     {
@@ -80,7 +93,7 @@ export async function fetchCandidateAssessmentDetails(
   id: string,
   fetchFn: typeof fetch = fetch
 ): Promise<CandidateAssessmentDetail> {
-  const url = `${getApiBaseUrl()}/candidate/assessments/${encodeURIComponent(id)}`;
+  const url = resolveCandidateApiUrl(`/candidate/assessments/${encodeURIComponent(id)}`);
   const res = await apiFetch(
     url,
     {
@@ -111,7 +124,7 @@ export async function recordCandidateConsent(
   textVersion: string,
   fetchFn: typeof fetch = fetch
 ): Promise<AssessmentConsentResponse> {
-  const url = `${getApiBaseUrl()}/candidate/assessments/${encodeURIComponent(id)}/consent`;
+  const url = resolveCandidateApiUrl(`/candidate/assessments/${encodeURIComponent(id)}/consent`);
   const res = await apiFetch(
     url,
     {
@@ -146,7 +159,7 @@ export async function startCandidateAssessment(
   diagnosticsPassed = true,
   fetchFn: typeof fetch = fetch
 ): Promise<WorkspaceSession> {
-  const url = `${getApiBaseUrl()}/candidate/assessments/${encodeURIComponent(id)}/start`;
+  const url = resolveCandidateApiUrl(`/candidate/assessments/${encodeURIComponent(id)}/start`);
   const res = await apiFetch(
     url,
     {
@@ -181,7 +194,7 @@ export async function submitCandidateDeliverables(
   payload: SubmitAssessmentDto,
   fetchFn: typeof fetch = fetch
 ): Promise<SubmitAssessmentResponse> {
-  const url = `${getApiBaseUrl()}/candidate/assessments/${encodeURIComponent(id)}/submit`;
+  const url = resolveCandidateApiUrl(`/candidate/assessments/${encodeURIComponent(id)}/submit`);
   const res = await apiFetch(
     url,
     {
@@ -215,7 +228,7 @@ export async function fetchCandidateTiming(
   id: string,
   fetchFn: typeof fetch = fetch
 ): Promise<AssessmentTimingResponse> {
-  const url = `${getApiBaseUrl()}/candidate/assessments/${encodeURIComponent(id)}/timing`;
+  const url = resolveCandidateApiUrl(`/candidate/assessments/${encodeURIComponent(id)}/timing`);
   const res = await apiFetch(
     url,
     {
@@ -245,7 +258,7 @@ export async function fetchCandidateDraft(
   id: string,
   fetchFn: typeof fetch = fetch
 ): Promise<CandidateDraft> {
-  const url = `${getApiBaseUrl()}/candidate/assessments/${encodeURIComponent(id)}/draft`;
+  const url = resolveCandidateApiUrl(`/candidate/assessments/${encodeURIComponent(id)}/draft`);
   const res = await apiFetch(
     url,
     {
@@ -276,7 +289,7 @@ export async function saveCandidateDraft(
   payload: Partial<CandidateDraft>,
   fetchFn: typeof fetch = fetch
 ): Promise<CandidateDraft> {
-  const url = `${getApiBaseUrl()}/candidate/assessments/${encodeURIComponent(id)}/draft`;
+  const url = resolveCandidateApiUrl(`/candidate/assessments/${encodeURIComponent(id)}/draft`);
   const res = await apiFetch(
     url,
     {
@@ -310,7 +323,7 @@ export async function uploadDeliverableArtifact(
   formData: FormData,
   fetchFn: typeof fetch = fetch
 ): Promise<UploadedArtifactMetadata> {
-  const url = `${getApiBaseUrl()}/candidate/artifacts/upload`;
+  const url = resolveCandidateApiUrl('/candidate/artifacts/upload');
   const res = await apiFetch(
     url,
     {
@@ -339,7 +352,7 @@ export async function uploadDeliverableArtifact(
 export async function pingCandidateApi(
   fetchFn: typeof fetch = fetch
 ): Promise<{ ok: boolean; timestamp: number }> {
-  const url = `${getApiBaseUrl()}/candidate/ping`;
+  const url = resolveCandidateApiUrl('/candidate/ping');
   const res = await apiFetch(
     url,
     {

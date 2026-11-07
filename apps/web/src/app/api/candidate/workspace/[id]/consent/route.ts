@@ -10,5 +10,22 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   const { id } = await params;
-  return proxyAuthedApiRequest(req, `/candidate/workspace/${encodeURIComponent(id)}/consent`);
+  const upstreamRes = await proxyAuthedApiRequest(
+    req,
+    `/candidate/workspace/${encodeURIComponent(id)}/consent`,
+  );
+
+  // Provide graceful fallback during local development when backend is offline
+  if (upstreamRes.status === 503 && process.env.NODE_ENV !== 'production') {
+    return NextResponse.json({
+      success: true,
+      status: 'in_progress',
+      firstConnectAt: new Date().toISOString(),
+      consentId: `csnt-dev-${id}`,
+      textVersion: 'v1.0',
+      acceptedAt: new Date().toISOString(),
+    });
+  }
+
+  return upstreamRes;
 }
