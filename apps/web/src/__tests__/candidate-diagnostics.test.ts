@@ -4,6 +4,7 @@ import {
   evaluateBrowser,
   detectBrowserInfo,
   evaluateNetworkStability,
+  measureClientInternet,
   MIN_SCREEN_WIDTH,
   MIN_SCREEN_HEIGHT,
   LATENCY_EXCELLENT_MS,
@@ -156,6 +157,34 @@ describe('Candidate System Diagnostics & Pre-Test Checks (Stream 7.2 - Ticket #1
       expect(classifyLatency(140)).toBe('pass');
       expect(classifyLatency(250)).toBe('pass');
       expect(classifyLatency(350)).toBe('warning');
+    });
+
+    it('measures real download speed accurately based on actual bytes transferred', async () => {
+      // Mock fetch: HEAD returns instantly for ping; GET returns a stream of bytes
+      const mockBytes = new Uint8Array(2_500_000); // 2.5 MB (20 Mb)
+      let mockTime = 1000;
+      vi.spyOn(performance, 'now').mockImplementation(() => {
+        mockTime += 667; // 20 Mb / 0.667s = ~30.0 Mbps
+        return mockTime;
+      });
+
+      const mockResponse = new Response(mockBytes, {
+        status: 200,
+        headers: { 'Content-Length': '2500000' },
+      });
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+        if (init?.method === 'HEAD') {
+          return new Response(null, { status: 200 });
+        }
+        return mockResponse.clone();
+      });
+
+      const result = await measureClientInternet();
+      expect(result.speedMbps).toBeGreaterThan(0);
+      // Confirms speed is genuinely calculated rather than defaulting to 50
+      expect(result.speedMbps).toBeCloseTo(30, 0);
+      expect(result.latencyMs).toBeGreaterThan(0);
     });
   });
 

@@ -72,17 +72,22 @@ export function NetworkCheck({ result, isRunning = false, onRetry }: NetworkChec
             </Badge>
           )}
 
-          {isError && onRetry && (
+          {!isRunning && onRetry && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onRetry}
               disabled={isRunning}
-              className="text-xs h-7 px-2 border-danger-border text-danger-foreground hover:bg-danger-muted"
+              className={`text-xs h-7 px-2.5 transition-colors ${
+                isError
+                  ? 'border-danger-border text-danger-foreground hover:bg-danger-muted'
+                  : 'text-neutral-600 hover:text-neutral-900 border-neutral-200 dark:border-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800'
+              }`}
+              title="Re-run internet speed and ping test"
             >
               <RotateCcw className="w-3 h-3 mr-1" />
-              Retry Test
+              {isError ? 'Retry Test' : 'Retest'}
             </Button>
           )}
         </div>
