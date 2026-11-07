@@ -52,7 +52,12 @@ export async function fetchAuthenticatedSession(force = false): Promise<UserMe |
       sessionClient.setCurrentUser(me);
       return me;
     } catch (err: any) {
-      if (err?.status === 401 || err?.statusCode === 401) {
+      if (
+        err?.status === 401 ||
+        err?.statusCode === 401 ||
+        err?.status === 503 ||
+        err?.statusCode === 503
+      ) {
         sessionClient.setCurrentUser(null);
         return null;
       }

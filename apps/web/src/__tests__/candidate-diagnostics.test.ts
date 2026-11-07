@@ -3,10 +3,13 @@ import {
   evaluateResolution,
   evaluateBrowser,
   detectBrowserInfo,
+  evaluateNetworkStability,
   MIN_SCREEN_WIDTH,
   MIN_SCREEN_HEIGHT,
   LATENCY_EXCELLENT_MS,
   LATENCY_MAX_ACCEPTABLE_MS,
+  MIN_DOWNLOAD_SPEED_MBPS,
+  OPTIMAL_DOWNLOAD_SPEED_MBPS,
 } from '../hooks/candidate/use-system-diagnostics';
 import { ROUTES } from '../constants/routes';
 
@@ -106,13 +109,44 @@ describe('Candidate System Diagnostics & Pre-Test Checks (Stream 7.2 - Ticket #1
     });
   });
 
-  describe('Network Latency Check Thresholds (7.2 Section 4.C)', () => {
-    it('defines clear latency bounds for optimal and acceptable connectivity', () => {
+  describe('Network Latency & User Download Speed Check (7.2 Section 4.C)', () => {
+    it('defines clear latency and minimum bandwidth bounds', () => {
       expect(LATENCY_EXCELLENT_MS).toBe(150);
       expect(LATENCY_MAX_ACCEPTABLE_MS).toBe(300);
+      expect(MIN_DOWNLOAD_SPEED_MBPS).toBe(2.0);
+      expect(OPTIMAL_DOWNLOAD_SPEED_MBPS).toBe(5.0);
     });
 
-    it('evaluates latency classifications correctly', () => {
+    it('evaluates network stability and bandwidth correctly', () => {
+      // 1. High-speed stable connection (passes, lets candidate proceed)
+      const optimal = evaluateNetworkStability(15.5, 45, 10);
+      expect(optimal.status).toBe('pass');
+      expect(optimal.stability).toBe('Stable');
+      expect(optimal.message).toContain('Fast and stable internet connection');
+
+      // 2. Moderate connection (passes with advisory warning)
+      const moderate = evaluateNetworkStability(3.5, 180, 20);
+      expect(moderate.status).toBe('warning');
+      expect(moderate.stability).toBe('Moderate');
+
+      // 3. Unstable / Low bandwidth below 2 Mbps (blocks candidate proceed)
+      const lowSpeed = evaluateNetworkStability(0.9, 80, 15);
+      expect(lowSpeed.status).toBe('error');
+      expect(lowSpeed.stability).toBe('Unstable');
+      expect(lowSpeed.message).toContain('Unstable connection detected');
+
+      // 4. Excessive latency > 500ms (blocks candidate proceed)
+      const highLag = evaluateNetworkStability(10.0, 550, 20);
+      expect(highLag.status).toBe('error');
+      expect(highLag.stability).toBe('Unstable');
+
+      // 5. High jitter > 250ms (blocks candidate proceed)
+      const jittery = evaluateNetworkStability(8.0, 100, 300);
+      expect(jittery.status).toBe('error');
+      expect(jittery.stability).toBe('Unstable');
+    });
+
+    it('evaluates legacy latency classifications correctly', () => {
       const classifyLatency = (latency: number): 'pass' | 'warning' => {
         if (latency <= LATENCY_MAX_ACCEPTABLE_MS) return 'pass';
         return 'warning';

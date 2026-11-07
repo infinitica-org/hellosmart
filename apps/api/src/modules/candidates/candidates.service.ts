@@ -10,8 +10,10 @@ import type {
   BulkCandidateRowError,
   BulkCandidateCreatedSample,
   CompanyMetricsDto,
+  WorkspaceHeartbeatResponse,
 } from '@hs/contracts';
 import { MailService } from '../../common/services/mail.service.js';
+import { SessionActivityService } from '../workspaces/session-activity.service.js';
 import { problem } from '../../common/errors/app-http.exception.js';
 import type { UserContext } from '../../common/types/user-context.js';
 import type { RequestMeta } from '../auth/auth.service.js';
@@ -27,7 +29,12 @@ export class CandidatesService {
   constructor(
     @Inject(PG_POOL) private readonly pool: Pool,
     @Inject(MailService) private readonly mailService: MailService,
-  ) {}
+    @Inject(SessionActivityService) private readonly sessionActivityService?: SessionActivityService,
+  ) {
+    this.sessionActivity = sessionActivityService || new SessionActivityService();
+  }
+
+  private readonly sessionActivity: SessionActivityService;
 
   async create(
     dto: CreateCandidateDto,
@@ -1681,6 +1688,157 @@ export class CandidatesService {
           submissionId: `sub-${assignmentId}`,
           status: 'submitted',
           submittedAt: updateRes.rows[0]?.submitted_at || new Date().toISOString(),
+        };
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Candidate Portal: Records continuous workspace activity heartbeat (I174, BR-08, BR-11, BR-31).
+   * Validates workspace/assignment ownership and session active state.
+   */
+  async recordCandidateHeartbeat(
+    workspaceOrAssignmentId: string,
+    actor: UserContext,
+    meta?: RequestMeta,
+  ): Promise<WorkspaceHeartbeatResponse> {
+    if (actor.role !== 'candidate' || !actor.orgId) {
+      throw problem({
+        title: 'Forbidden',
+        status: 403,
+        detail: 'Heartbeat recording requires candidate session',
+        code: 'FORBIDDEN',
+      });
+    }
+
+    const now = new Date();
+    const client = await this.pool.connect();
+    try {
+      return await withOrg(client, actor.orgId, async (tx) => {
+        // Query assignment and linked workspace with strict tenant and candidate ownership
+        const query = `
+          SELECT
+            a.id,
+            a.org_id,
+            a.status,
+            a.deadline_at,
+            a.extended_minutes,
+            asm.timing,
+            w.id AS workspace_id,
+            w.status AS workspace_status,
+            w.disconnected_at
+          FROM app.assignments a
+          JOIN app.assessments asm ON asm.id = a.assessment_id AND asm.org_id = a.org_id
+          LEFT JOIN app.workspaces w ON w.assignment_id = a.id AND w.org_id = a.org_id
+          WHERE (a.id = $1 OR w.id = $1)
+            AND a.candidate_id = $2
+            AND a.org_id = $3
+        `;
+        const res = await tx.query(query, [
+          workspaceOrAssignmentId,
+          actor.userId,
+          actor.orgId,
+        ]);
+
+        if (!res.rowCount || res.rowCount === 0) {
+          throw problem({
+            title: 'Not Found',
+            status: 404,
+            detail: 'Workspace assignment not found',
+            code: 'ASSIGNMENT_NOT_FOUND',
+          });
+        }
+
+        const row = res.rows[0];
+
+        // Reject invalid / terminal session states
+        if (row.status === 'submitted') {
+          throw problem({
+            title: 'Conflict',
+            status: 409,
+            detail: 'Assessment has already been submitted',
+            code: 'ALREADY_SUBMITTED',
+          });
+        }
+
+        if (row.status === 'revoked') {
+          throw problem({
+            title: 'Forbidden',
+            status: 403,
+            detail: 'Assessment invitation has been revoked',
+            code: 'ASSIGNMENT_REVOKED',
+          });
+        }
+
+        if (row.status === 'expired') {
+          throw problem({
+            title: 'Gone',
+            status: 410,
+            detail: 'Assessment session has expired',
+            code: 'SESSION_EXPIRED',
+          });
+        }
+
+        // Check if deadline has passed
+        const currentDeadline = row.deadline_at ? new Date(row.deadline_at) : null;
+        if (currentDeadline && now.getTime() > currentDeadline.getTime()) {
+          await tx.query(
+            `UPDATE app.assignments SET status = 'expired' WHERE id = $1 AND org_id = $2`,
+            [row.id, row.org_id],
+          );
+          throw problem({
+            title: 'Gone',
+            status: 410,
+            detail: 'Assessment deadline has passed',
+            code: 'SESSION_EXPIRED',
+          });
+        }
+
+        // Ensure workspace row exists in app.workspaces
+        if (!row.workspace_id) {
+          const insertWs = await tx.query(
+            `INSERT INTO app.workspaces (org_id, assignment_id, mode, status, started_at, last_activity_at)
+             VALUES ($1, $2, 'cloud', 'connected', $3, $3)
+             ON CONFLICT (org_id, assignment_id)
+             DO UPDATE SET last_activity_at = $3, status = 'connected'
+             RETURNING id, status`,
+            [row.org_id, row.id, now.toISOString()],
+          );
+          row.workspace_id = insertWs.rows[0]?.id;
+          row.workspace_status = insertWs.rows[0]?.status;
+        }
+
+        // Record heartbeat via SessionActivityService
+        const activityRes = await this.sessionActivity.recordHeartbeat({
+          tx,
+          assignment: {
+            id: row.id,
+            org_id: row.org_id,
+            status: row.status,
+            deadline_at: row.deadline_at,
+            extended_minutes: row.extended_minutes ?? 0,
+            timing: row.timing,
+            workspace_id: row.workspace_id,
+            disconnected_at: row.disconnected_at,
+          },
+          ip: meta?.ip,
+          now,
+        });
+
+        const effectiveDeadline = activityRes.deadlineAt || currentDeadline;
+        const remainingMs = effectiveDeadline
+          ? Math.max(0, effectiveDeadline.getTime() - now.getTime())
+          : null;
+
+        return {
+          success: true,
+          serverTimeUtc: now.toISOString(),
+          workspaceStatus: 'connected',
+          assignmentStatus: activityRes.status,
+          deadlineUtc: effectiveDeadline?.toISOString() || null,
+          remainingMs,
         };
       });
     } finally {

@@ -41,14 +41,15 @@ export function buildCspDirectives(nonce: string): string {
   return [
     "default-src 'self'",
     isDev
-      ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
-      : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
-    "style-src 'self' 'unsafe-inline'",
+      ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net"
+      : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://cdn.jsdelivr.net`,
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
     "img-src 'self' data: https:",
-    "font-src 'self' data: https:",
+    "font-src 'self' data: https: https://cdn.jsdelivr.net",
     isDev
       ? `connect-src 'self' ${originsString} ws: wss: http: https:`
       : `connect-src 'self' ${originsString}`,
+    "worker-src 'self' blob:",
     'frame-src https://cal.com https://api.razorpay.com',
     "frame-ancestors 'none'",
     "object-src 'none'",

@@ -6,3 +6,6 @@ export interface UserContext {
   role: UserRole;
   orgId: string | null;
 }
+
+export type AuthenticatedUser = UserContext;
+

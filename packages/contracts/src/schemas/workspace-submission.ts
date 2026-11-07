@@ -68,3 +68,17 @@ export const SubmitAssessmentResponseSchema = z.object({
 });
 export type SubmitAssessmentResponse = z.infer<typeof SubmitAssessmentResponseSchema>;
 
+/**
+ * Workspace activity heartbeat response (I174, BR-08, BR-11)
+ */
+export const WorkspaceHeartbeatResponseSchema = z.object({
+  success: z.boolean(),
+  serverTimeUtc: z.string().datetime(),
+  workspaceStatus: z.string(),
+  assignmentStatus: z.string(),
+  deadlineUtc: z.string().datetime().nullable().optional(),
+  remainingMs: z.number().int().nonnegative().nullable().optional(),
+});
+export type WorkspaceHeartbeatResponse = z.infer<typeof WorkspaceHeartbeatResponseSchema>;
+
+

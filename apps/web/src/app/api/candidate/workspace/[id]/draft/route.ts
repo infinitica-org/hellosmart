@@ -10,5 +10,18 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   const { id } = await params;
-  return proxyAuthedApiRequest(req, `/candidate/workspace/${encodeURIComponent(id)}/draft`);
+  const upstreamRes = await proxyAuthedApiRequest(
+    req,
+    `/candidate/workspace/${encodeURIComponent(id)}/draft`,
+  );
+
+  // Provide graceful fallback during local development when backend is offline
+  if (upstreamRes.status === 503 && process.env.NODE_ENV !== 'production') {
+    return NextResponse.json({
+      success: true,
+      savedAt: new Date().toISOString(),
+    });
+  }
+
+  return upstreamRes;
 }

@@ -57,6 +57,17 @@ export class CandidatePortalController {
   }
 
   @HttpCode(200)
+  @Post('workspace/:id/heartbeat')
+  async recordHeartbeat(
+    @Param('id') workspaceOrAssignmentId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const actor = request[REQUEST_USER_KEY];
+    const meta = extractMeta(request);
+    return this.candidatesService.recordCandidateHeartbeat(workspaceOrAssignmentId, actor, meta);
+  }
+
+  @HttpCode(200)
   @Post('workspace/:id/draft')
   async saveDraft(
     @Param('id') assignmentId: string,

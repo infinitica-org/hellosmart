@@ -479,6 +479,33 @@ export function createMockDbPool(options: MockDbPoolOptions = {}) {
       }
 
       // 8d2. Query single candidate assessment assignment for detail taking view
+      if (q.includes('FROM app.assignments a') && q.includes('w.id AS workspace_id')) {
+        const assignmentId = params?.[0] as string;
+        const candidateId = params?.[1] as string;
+        const orgId = params?.[2] as string;
+        const a = assignments.get(assignmentId);
+        if (a && a.candidate_id === candidateId && a.org_id === orgId) {
+          return {
+            rows: [
+              {
+                id: a.id,
+                org_id: a.org_id,
+                status: a.status,
+                deadline_at: new Date(Date.now() + 3600000),
+                extended_minutes: 0,
+                timing: { durationMinutes: 90, type: 'duration' },
+                workspace_id: 'ws-1',
+                workspace_status: 'connected',
+                disconnected_at: null,
+              },
+            ],
+            rowCount: 1,
+          };
+        }
+        return { rows: [], rowCount: 0 };
+      }
+
+      // 8d2. Query single candidate assessment assignment for detail taking view
       if (q.includes('FROM app.assignments a') && q.includes('WHERE a.id = $1 AND a.candidate_id = $2 AND a.org_id = $3')) {
         const assignmentId = params?.[0] as string;
         const candidateId = params?.[1] as string;

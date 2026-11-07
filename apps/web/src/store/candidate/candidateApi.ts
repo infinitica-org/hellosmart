@@ -1,6 +1,5 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { createCustomBaseQuery } from '../api/baseApi';
-import { getApiBaseUrl } from '@/lib/api-client';
 import type {
   WorkspaceSession,
 } from '@/lib/candidate-api';
@@ -115,7 +114,6 @@ export interface AssessmentSubmissionResponse {
 export const candidateApi = createApi({
   reducerPath: 'candidateApi',
   baseQuery: createCustomBaseQuery({
-    baseUrl: getApiBaseUrl(),
     reducerPath: 'candidateApi',
   }),
   tagTypes: CANDIDATE_TAG_TYPES,
@@ -156,7 +154,7 @@ export const candidateApi = createApi({
       { id: string; textVersion: string }
     >({
       query: ({ id, textVersion }) => ({
-        url: `/candidate/assessments/${encodeURIComponent(id)}/consent`,
+        url: `/candidate/workspace/${encodeURIComponent(id)}/consent`,
         method: 'POST',
         body: { textVersion },
       }),
@@ -217,7 +215,7 @@ export const candidateApi = createApi({
     }),
     saveDraft: builder.mutation<{ success: boolean; savedAt: string }, WorkspaceDraftPayload>({
       query: (body) => ({
-        url: `/candidate/assessments/${encodeURIComponent(body.workspaceId)}/draft`,
+        url: `/candidate/workspace/${encodeURIComponent(body.workspaceId)}/draft`,
         method: 'POST',
         body,
       }),
@@ -240,7 +238,7 @@ export const candidateApi = createApi({
       { id: string; payload: SubmitAssessmentDto }
     >({
       query: ({ id, payload }) => ({
-        url: `/candidate/assessments/${encodeURIComponent(id)}/submit`,
+        url: `/candidate/workspace/${encodeURIComponent(id)}/submit`,
         method: 'POST',
         body: payload,
       }),
@@ -258,7 +256,7 @@ export const candidateApi = createApi({
       AssessmentSubmissionPayload
     >({
       query: (body) => ({
-        url: `/candidate/assessments/${encodeURIComponent(body.workspaceId)}/submit`,
+        url: `/candidate/workspace/${encodeURIComponent(body.workspaceId)}/submit`,
         method: 'POST',
         body,
       }),
