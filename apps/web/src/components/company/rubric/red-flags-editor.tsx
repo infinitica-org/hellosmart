@@ -51,7 +51,7 @@ export function RedFlagsEditor({
           disabled={disabled}
           placeholder="e.g. Hardcoded secrets, unhandled fatal exceptions"
           data-testid="new-red-flag-input"
-          className="h-9 text-xs rounded-lg border-neutral-200 focus:border-rose-400"
+          className="h-9 text-xs rounded-lg border-neutral-200 focus:border-danger"
         />
         <Button
           type="button"
@@ -60,7 +60,7 @@ export function RedFlagsEditor({
           onClick={handleAdd}
           disabled={disabled || !newFlag.trim()}
           data-testid="add-red-flag-btn"
-          className="shrink-0 h-9 px-3 text-xs rounded-lg border-neutral-200 hover:border-rose-300 hover:text-rose-600"
+          className="shrink-0 h-9 px-3 text-xs rounded-lg border-neutral-200 hover:border-danger-border hover:text-danger"
         >
           + Add
         </Button>
@@ -70,14 +70,14 @@ export function RedFlagsEditor({
         {redFlags.map((flag, idx) => (
           <span
             key={idx}
-            className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-lg bg-rose-50 text-rose-800 border border-rose-200"
+            className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-lg bg-danger-muted text-danger-foreground border border-danger-border"
           >
             <span>🚩 {flag}</span>
             {!disabled && (
               <button
                 type="button"
                 onClick={() => handleRemove(idx)}
-                className="text-rose-600 hover:text-rose-950 p-0.5"
+                className="text-danger hover:text-danger-foreground p-0.5"
                 aria-label={`Remove red flag ${flag}`}
               >
                 ✕
@@ -91,7 +91,7 @@ export function RedFlagsEditor({
       </div>
 
       <FormDescription>
-        Negative indicators flagged for human evaluators. Candidates are never auto-rejected (BR-20).
+        Negative indicators flagged for human evaluators. Candidates are never auto-rejected.
       </FormDescription>
     </FormField>
   );

@@ -460,7 +460,7 @@ export default function CandidateAssessmentTakePage(props?: PageProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-amber-800 text-sm font-medium">
               <AlertTriangle className="w-5 h-5 text-amber-600" />
-              <span>Full Screen Exited — Session Disconnected (BR-10)</span>
+              <span>Full Screen Exited — Session Disconnected</span>
             </div>
             <Button
               type="button"
@@ -474,7 +474,7 @@ export default function CandidateAssessmentTakePage(props?: PageProps) {
           </div>
           <p className="text-xs text-amber-700 leading-relaxed font-normal">
             Exiting full screen pauses active evaluation interactions. Continuous autosave has
-            secured all your edits (RPO &le; 30s). Re-enter full screen to resume.
+            secured all your edits . Re-enter full screen to resume.
           </p>
         </div>
       )}
@@ -521,7 +521,7 @@ export default function CandidateAssessmentTakePage(props?: PageProps) {
 
           <Card className="p-5 space-y-3">
             <h3 className="text-sm font-medium text-neutral-900 border-b border-neutral-100 pb-2">
-              AI Assistance Policy (BR-14)
+              AI Assistance Policy
             </h3>
             <p className="text-xs text-neutral-600 leading-relaxed">
               {assessment.aiPolicy?.enabled
@@ -568,7 +568,7 @@ export default function CandidateAssessmentTakePage(props?: PageProps) {
                 data-testid="workspace-editor"
               />
               <div className="flex items-center justify-between text-[11px] text-neutral-500 px-1">
-                <span>Auto-saved continuously to secure cloud storage (BR-11)</span>
+                <span>Auto-saved continuously to secure cloud storage</span>
                 <span>
                   {lastSavedAt ? `Saved at ${lastSavedAt.toLocaleTimeString()}` : 'Unsaved changes'}
                 </span>

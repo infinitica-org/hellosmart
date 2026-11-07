@@ -173,7 +173,7 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-neutral-200 text-xs font-medium text-neutral-500">
-                Zero secret key leaks (BR-13 isolation)
+                Zero secret key leaks (proxy isolation)
               </div>
             </Card>
 
@@ -191,7 +191,7 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-neutral-200 text-xs font-medium text-neutral-500">
-                Human admins make final decisions (BR-20)
+                Human admins make final decisions
               </div>
             </Card>
           </div>
@@ -280,7 +280,7 @@ export default function HomePage() {
               { label: 'Privacy Policy', href: ROUTES.PUBLIC.PRIVACY },
               { label: 'Terms of Service', href: ROUTES.PUBLIC.TERMS },
               { label: 'Security & Tenancy', href: '/security' },
-              { label: 'Compliance (BR-01)', href: '/security#compliance' },
+              { label: 'Compliance', href: '/security#compliance' },
             ],
           },
         ]}

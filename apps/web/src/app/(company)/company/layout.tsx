@@ -25,6 +25,7 @@ export default function CompanyLayout({
         {...(user?.email ? { userEmail: user.email } : {})}
         companyName={user?.org?.name ?? 'Company Portal'}
         groups={companyGroups}
+        showHelp={false}
         onLogout={auth.signOut}
       >
         {loading || !isAuthorized ? (

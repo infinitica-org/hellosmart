@@ -112,7 +112,7 @@ describe('Candidate Profile View & Component (BUG-12)', () => {
     expect(resetWarning).toBeDefined();
 
     const statusNode = findByTestId(element, 'profile-status');
-    expect(statusNode.props.children).toBe('Password Reset Required (BR-24)');
+    expect(statusNode.props.children).toBe('Password Reset Required');
   });
 
   it('wires up sign out callback button', () => {

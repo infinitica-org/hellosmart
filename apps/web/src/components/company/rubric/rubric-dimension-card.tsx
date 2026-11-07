@@ -79,7 +79,7 @@ export function RubricDimensionCard({
             disabled={isOnlyDimension}
             title={isOnlyDimension ? 'At least one dimension is required' : 'Delete dimension'}
             data-testid={`delete-dimension-btn-${dimension.id}`}
-            className="h-8 px-2.5 text-xs rounded-lg border-neutral-200 text-neutral-500 hover:text-rose-600 hover:border-rose-300 disabled:opacity-40"
+            className="h-8 px-2.5 text-xs rounded-lg border-neutral-200 text-neutral-500 hover:text-danger hover:border-danger-border disabled:opacity-40"
           >
             Delete
           </Button>
@@ -109,14 +109,16 @@ export function RubricDimensionCard({
           </Badge>
         </div>
 
-        <button
+        <Button
           type="button"
+          variant="link"
+          size="sm"
           onClick={() => setIsExpanded(!isExpanded)}
           data-testid={`toggle-expand-btn-${dimension.id}`}
-          className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
+          className="p-0 h-auto text-xs font-semibold"
         >
           {isExpanded ? 'Hide Criteria & Anchors ↑' : 'View Criteria & Anchors ↓'}
-        </button>
+        </Button>
       </div>
 
       {/* ─── Expandable Details Section ─── */}
@@ -130,7 +132,7 @@ export function RubricDimensionCard({
                 {dimension.signals.map((s, idx) => (
                   <span
                     key={idx}
-                    className="py-0.5 px-2 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200"
+                    className="py-0.5 px-2 rounded-md bg-success-muted text-success-foreground border border-success-border"
                   >
                     ✓ {s}
                   </span>
@@ -147,7 +149,7 @@ export function RubricDimensionCard({
                 {dimension.redFlags.map((rf, idx) => (
                   <span
                     key={idx}
-                    className="py-0.5 px-2 rounded-md bg-rose-50 text-rose-800 border border-rose-200"
+                    className="py-0.5 px-2 rounded-md bg-danger-muted text-danger-foreground border border-danger-border"
                   >
                     🚩 {rf}
                   </span>

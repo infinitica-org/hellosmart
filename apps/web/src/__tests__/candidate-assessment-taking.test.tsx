@@ -43,10 +43,10 @@ describe('CandidateAssessmentTakePage (BUG-CAN-05, BUG-CAN-07, BUG-CAN-08, BUG-C
 
     expect(html).toContain('Backend API Migration');
     expect(html).toContain('Assessment Environment Agreement');
-    expect(html).toContain('Session Recording (BR-12)');
-    expect(html).toContain('AI Assistant Policy (BR-14)');
-    expect(html).toContain('Timer &amp; Disconnection (BR-09)');
-    expect(html).toContain('Full Screen Requirement (BR-10)');
+    expect(html).toContain('Session Recording:');
+    expect(html).toContain('AI Assistant Policy:');
+    expect(html).toContain('Timer &amp; Disconnection:');
+    expect(html).toContain('Full Screen Requirement:');
     expect(html).toContain('Connect to Workspace');
   });
 
@@ -84,7 +84,7 @@ describe('CandidateAssessmentTakePage (BUG-CAN-05, BUG-CAN-07, BUG-CAN-08, BUG-C
 
     expect(html).toContain('Backend API Migration');
     expect(html).toContain('Submit Assessment');
-    expect(html).toContain('Continuous Autosave Active (BR-11)');
+    expect(html).toContain('Continuous Autosave Active');
     expect(html).toContain('RPO');
     expect(html).toContain('30s');
     expect(html).toContain('Task Brief &amp; Scenario');

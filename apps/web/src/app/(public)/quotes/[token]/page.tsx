@@ -223,7 +223,7 @@ export default function CustomerQuoteReviewPage({ params }: QuoteReviewPageProps
 
         {isRejected && (
           <Alert variant="error" title="Quotation Declined" className="shadow-sm print:hidden">
-            <p className="text-rose-700 text-sm mt-0.5">
+            <p className="text-danger-foreground text-sm mt-0.5">
               This commercial quotation was marked as declined.
             </p>
           </Alert>

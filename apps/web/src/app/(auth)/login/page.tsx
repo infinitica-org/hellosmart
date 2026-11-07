@@ -207,12 +207,13 @@ function LoginForm() {
 
         if (response.status === 401) {
           setPasswordError('Incorrect password. Please try again.');
-          setErrorMessage('Invalid email or password, or account not found.');
+          setErrorMessage(null);
         } else if (response.status === 403) {
           setErrorMessage('Your account or company is suspended. Please contact support.');
+          setPasswordError(null);
         } else if (response.status === 429) {
           setPasswordError('Too many failed attempts. Please wait 15 minutes.');
-          setErrorMessage('Too many failed attempts. Please wait 15 minutes.');
+          setErrorMessage(null);
         } else {
           if (response.status >= 500) {
             console.error('[login] BFF error', response.status, data);
@@ -368,9 +369,9 @@ function LoginForm() {
   const purposeCopy = describeSignInStep(identify);
 
   const portalAccent: Record<LoginPortal, string> = {
-    admin: 'border-violet-200 bg-violet-50/80 text-violet-900',
+    admin: 'border-primary/20 bg-primary/5 text-primary',
     company: 'border-primary/25 bg-primary/5 text-neutral-900',
-    candidate: 'border-sky-200 bg-sky-50/80 text-sky-950',
+    candidate: 'border-info-border bg-info-muted text-info-foreground',
   };
 
   return (
@@ -417,8 +418,7 @@ function LoginForm() {
           {/* Title & Subtitle */}
           <div className="mb-8">
             <h1 className="text-4xl sm:text-5xl font-normal tracking-tight text-neutral-900 leading-[1.08]">
-             Let us Connect*
-<br />
+              Let us Connect
             </h1>
             <p className="text-sm text-neutral-500 font-normal mt-3 leading-relaxed">
               {step === 'email'
@@ -525,7 +525,7 @@ function LoginForm() {
                           {identify?.recognized ? (identify.portal ? identify.portal.toUpperCase() : 'ACCOUNT') : 'SIGNING IN'}
                         </span>
                         {identify?.mfaRequired && (
-                          <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/60 font-medium">
+                          <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full bg-warning-muted text-warning-foreground border border-warning-border font-medium">
                             2FA Required
                           </span>
                         )}
@@ -553,8 +553,8 @@ function LoginForm() {
                 </div>
 
                 {identify?.accountStatus === 'suspended' && (
-                  <div className="mt-2.5 pt-2.5 border-t border-red-100 text-[11px] font-medium text-red-600 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                  <div className="mt-2.5 pt-2.5 border-t border-danger-border text-[11px] font-medium text-danger flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-danger" />
                     This account appears suspended. Sign-in may be blocked.
                   </div>
                 )}
@@ -584,13 +584,7 @@ function LoginForm() {
                 />
               </div>
 
-              <div className="flex items-center justify-between text-xs pt-1">
-                <Checkbox
-                  id="remember-me-email"
-                  defaultChecked
-                  label={<span className="text-xs text-neutral-600 font-normal">Keep me signed in</span>}
-                />
-              </div>
+              
 
               <Button
                 type="submit"
@@ -671,25 +665,9 @@ function LoginForm() {
           ) : (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className={`space-y-1.5 ${isShaking ? 'animate-shake' : ''}`}>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-xs font-medium text-neutral-700">
-                    Password
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    {passwordError && (
-                      <span className="text-xs font-semibold text-red-600 animate-fadeIn">
-                        Wrong password
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setIsForgotPasswordOpen(true)}
-                      className="text-xs text-primary hover:text-primary-hover font-medium transition-colors"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-                </div>
+                <Label htmlFor="password" className="text-xs font-medium text-neutral-700">
+                  Password
+                </Label>
                 <PasswordField
                   id="password"
                   name="password"
@@ -707,24 +685,25 @@ function LoginForm() {
                   data-testid="password-input"
                   className={`h-11 text-sm bg-white rounded-lg transition-all ${
                     passwordError
-                      ? '!border-red-500 !ring-2 !ring-red-500/20 shadow-xs shadow-red-500/10'
+                      ? '!border-danger !ring-2 !ring-danger/20 shadow-xs shadow-danger/10'
                       : 'border-neutral-200 focus:border-primary focus:ring-primary/20'
                   }`}
                 />
               </div>
 
-              <div className="flex items-center justify-between text-xs pt-1">
-                <Checkbox
-                  id="remember-me-password"
-                  defaultChecked
-                  label={<span className="text-xs text-neutral-600 font-normal">Keep me signed in</span>}
-                />
-                <Link
-                  href={ROUTES.AUTH.CHANGE_PASSWORD}
-                  className="text-xs text-neutral-700 hover:text-neutral-900 hover:underline transition-colors"
+              <div className="flex items-center justify-end">
+                <Button
+                  type="button"
+                  variant="link"
+                  onClick={() => setIsForgotPasswordOpen(true)}
+                  className={`text-xs font-medium hover:underline transition-colors ${
+                    passwordError
+                      ? '!text-danger hover:!text-danger-foreground'
+                      : '!text-neutral-600 hover:!text-danger'
+                  }`}
                 >
                   Forgot password?
-                </Link>
+                </Button>
               </div>
 
               <Button

@@ -9,7 +9,6 @@ import { MailService } from '../../common/services/mail.service.js';
 @Module({
   controllers: [
     CandidatesController,
-    CandidatePortalController,
     CandidateAssessmentsController,
   ],
   providers: [

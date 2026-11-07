@@ -8,6 +8,21 @@ import {
   Badge,
   Input,
   Textarea,
+  TextField,
+  TextAreaField,
+  SelectField,
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogContent,
+  DialogFooter,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
   EmptyState,
   Alert,
 } from '@hs/ui';
@@ -72,7 +87,7 @@ export default function PromoCodesPage() {
       <PageHeader
         title="Promotions & Discount Codes"
         description="Concurrency-safe promo codes evaluated at quote generation with atomic SELECT FOR UPDATE redemption."
-        badge={{ text: 'SP-008', variant: 'default' }}
+        badge={{ text: 'Promotions', variant: 'info' }}
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -96,122 +111,112 @@ export default function PromoCodesPage() {
       />
 
       {/* Create Promo Modal */}
-      {isCreateOpen && (
-        <div className="fixed inset-0 z-50 bg-neutral-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <Card className="max-w-md w-full p-6 space-y-4 shadow-xl">
-            <h2 className="text-sm font-semibold text-neutral-900">Create Promo Code</h2>
-            <p className="text-xs text-neutral-500">
+      <Dialog
+        open={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        size="md"
+      >
+        <form onSubmit={handleCreate}>
+          <DialogHeader>
+            <DialogTitle>Create Promo Code</DialogTitle>
+            <DialogDescription>
               Promo codes apply during commercial quote creation and are locked atomically into financial snapshots.
-            </p>
+            </DialogDescription>
+          </DialogHeader>
 
+          <DialogContent className="space-y-3">
             {formError && (
               <Alert variant="error" className="text-xs">
                 {formError}
               </Alert>
             )}
 
-            <form onSubmit={handleCreate} className="space-y-3">
-              <div>
-                <label className="text-xs font-medium text-neutral-700">Promo Code *</label>
-                <Input
-                  size="sm"
-                  placeholder="e.g. EARLYBIRD20"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  required
-                />
-              </div>
+            <TextField
+              label="Promo Code"
+              size="sm"
+              placeholder="e.g. EARLYBIRD20"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              required
+            />
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-neutral-700">Discount Type</label>
-                  <select
-                    className="w-full text-xs rounded-lg border border-neutral-300 p-2 bg-white"
-                    value={discountType}
-                    onChange={(e) => setDiscountType(e.target.value as any)}
-                  >
-                    <option value="percentage">Percentage (%)</option>
-                    <option value="fixed_amount">Fixed Amount</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-neutral-700">
-                    {discountType === 'percentage' ? 'Percentage Value *' : 'Amount Value *'}
-                  </label>
-                  <Input
-                    size="sm"
-                    type="number"
-                    step="0.01"
-                    placeholder={discountType === 'percentage' ? 'e.g. 20' : 'e.g. 5000'}
-                    value={discountValue}
-                    onChange={(e) => setDiscountValue(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
+            <div className="grid grid-cols-2 gap-3">
+              <SelectField
+                label="Discount Type"
+                value={discountType}
+                onChange={(e) => setDiscountType(e.target.value as any)}
+                options={[
+                  { value: 'percentage', label: 'Percentage (%)' },
+                  { value: 'fixed_amount', label: 'Fixed Amount' },
+                ]}
+              />
 
-              {discountType === 'fixed_amount' && (
-                <div>
-                  <label className="text-xs font-medium text-neutral-700">Currency</label>
-                  <select
-                    className="w-full text-xs rounded-lg border border-neutral-300 p-2 bg-white"
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                  >
-                    <option value="INR">INR (₹)</option>
-                    <option value="USD">USD ($)</option>
-                  </select>
-                </div>
-              )}
+              <TextField
+                label={discountType === 'percentage' ? 'Percentage Value' : 'Amount Value'}
+                size="sm"
+                type="number"
+                step="0.01"
+                placeholder={discountType === 'percentage' ? 'e.g. 20' : 'e.g. 5000'}
+                value={discountValue}
+                onChange={(e) => setDiscountValue(e.target.value)}
+                required
+              />
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-neutral-700">Max Redemptions</label>
-                  <Input
-                    size="sm"
-                    type="number"
-                    value={maxUses}
-                    onChange={(e) => setMaxUses(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-neutral-700">Expiry Date</label>
-                  <Input
-                    size="sm"
-                    type="date"
-                    value={validUntil}
-                    onChange={(e) => setValidUntil(e.target.value)}
-                  />
-                </div>
-              </div>
+            {discountType === 'fixed_amount' && (
+              <SelectField
+                label="Currency"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                options={[
+                  { value: 'INR', label: 'INR (₹)' },
+                  { value: 'USD', label: 'USD ($)' },
+                ]}
+              />
+            )}
 
-              <div>
-                <label className="text-xs font-medium text-neutral-700">Description</label>
-                <Textarea
-                  placeholder="e.g. 20% discount for early design partners..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={2}
-                />
-              </div>
+            <div className="grid grid-cols-2 gap-3">
+              <TextField
+                label="Max Redemptions"
+                size="sm"
+                type="number"
+                value={maxUses}
+                onChange={(e) => setMaxUses(e.target.value)}
+              />
 
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsCreateOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" variant="primary" size="sm" isLoading={isCreating}>
-                  Create Code
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
+              <TextField
+                label="Expiry Date"
+                size="sm"
+                type="date"
+                value={validUntil}
+                onChange={(e) => setValidUntil(e.target.value)}
+              />
+            </div>
+
+            <TextAreaField
+              label="Description"
+              placeholder="e.g. 20% discount for early design partners..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+            />
+          </DialogContent>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCreateOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" size="sm" isLoading={isCreating}>
+              Create Code
+            </Button>
+          </DialogFooter>
+        </form>
+      </Dialog>
 
       {/* Table Card */}
       <Card className="p-6">
@@ -226,25 +231,25 @@ export default function PromoCodesPage() {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-neutral-600">
-              <thead className="bg-neutral-50 text-neutral-700 uppercase font-semibold border-b border-neutral-200">
-                <tr>
-                  <th className="py-3 px-4">Code & Description</th>
-                  <th className="py-3 px-4">Discount</th>
-                  <th className="py-3 px-4">Redemptions</th>
-                  <th className="py-3 px-4">Validity</th>
-                  <th className="py-3 px-4 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="py-3 px-4">Code & Description</TableHead>
+                  <TableHead className="py-3 px-4">Discount</TableHead>
+                  <TableHead className="py-3 px-4">Redemptions</TableHead>
+                  <TableHead className="py-3 px-4">Validity</TableHead>
+                  <TableHead className="py-3 px-4 text-right">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {promoCodes.map((promo) => {
                   const isExpired = promo.validUntil && new Date(promo.validUntil).getTime() < Date.now();
                   const isExhausted = promo.maxUses && promo.currentUses >= promo.maxUses;
                   const isActive = promo.isActive && !isExpired && !isExhausted;
 
                   return (
-                    <tr key={promo.id} className="hover:bg-neutral-50/50 transition-colors">
-                      <td className="py-3 px-4">
+                    <TableRow key={promo.id} className="hover:bg-neutral-50/50 transition-colors">
+                      <TableCell className="py-3 px-4">
                         <div className="font-mono text-neutral-900 font-semibold flex items-center gap-1.5">
                           <Tag className="w-3.5 h-3.5 text-primary" />
                           <span>{promo.code}</span>
@@ -252,25 +257,25 @@ export default function PromoCodesPage() {
                         {promo.description && (
                           <div className="text-neutral-500 text-[11px]">{promo.description}</div>
                         )}
-                      </td>
-                      <td className="py-3 px-4">
+                      </TableCell>
+                      <TableCell className="py-3 px-4">
                         <Badge variant="primary" className="font-mono">
                           {promo.discountType === 'percentage'
                             ? `${promo.discountValue}% OFF`
                             : `${promo.currency || 'INR'} ${promo.discountValue} OFF`}
                         </Badge>
-                      </td>
-                      <td className="py-3 px-4 font-mono">
+                      </TableCell>
+                      <TableCell className="py-3 px-4 font-mono">
                         {promo.currentUses} / {promo.maxUses ?? '∞'}
-                      </td>
-                      <td className="py-3 px-4 text-neutral-500 text-[11px]">
+                      </TableCell>
+                      <TableCell className="py-3 px-4 text-neutral-500 text-[11px]">
                         {promo.validUntil ? (
                           <span>Until {new Date(promo.validUntil).toLocaleDateString()}</span>
                         ) : (
                           <span>No expiration</span>
                         )}
-                      </td>
-                      <td className="py-3 px-4 text-right">
+                      </TableCell>
+                      <TableCell className="py-3 px-4 text-right">
                         {isActive ? (
                           <Badge variant="success">Active</Badge>
                         ) : isExhausted ? (
@@ -278,12 +283,12 @@ export default function PromoCodesPage() {
                         ) : (
                           <Badge variant="default">Inactive</Badge>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </Card>

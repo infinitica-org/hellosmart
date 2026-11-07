@@ -94,12 +94,12 @@ export function WindowCountdown({
     >
       <div className="flex items-center justify-between mb-2.5 flex-wrap gap-2">
         <div className="flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" aria-hidden="true" />
+          <Clock className="w-3.5 h-3.5 text-info shrink-0" aria-hidden="true" />
           <span className="text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
             Assessment opens in
           </span>
         </div>
-        <span className="text-[11px] font-medium text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 border border-sky-200/80 dark:border-sky-800/80 px-2 py-0.5 rounded-full">
+        <span className="text-[11px] font-medium text-info-foreground bg-info-muted border border-info-border px-2 py-0.5 rounded-full">
           Not yet open
         </span>
       </div>

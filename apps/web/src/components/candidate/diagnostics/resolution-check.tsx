@@ -20,8 +20,8 @@ export function ResolutionCheck({ result, isRunning = false }: ResolutionCheckPr
           <div
             className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
               isPass
-                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
-                : 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'
+                ? 'bg-success-muted text-success'
+                : 'bg-warning-muted text-warning'
             }`}
           >
             <Monitor className="w-4 h-4" />
@@ -44,20 +44,20 @@ export function ResolutionCheck({ result, isRunning = false }: ResolutionCheckPr
             Checking
           </Badge>
         ) : isPass ? (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shrink-0">
+          <Badge variant="success" size="sm" className="gap-1.5 shrink-0">
             <CheckCircle2 className="w-3.5 h-3.5" />
             Pass
-          </span>
+          </Badge>
         ) : (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 shrink-0">
+          <Badge variant="warning" size="sm" className="gap-1.5 shrink-0">
             <AlertTriangle className="w-3.5 h-3.5" />
             Warning
-          </span>
+          </Badge>
         )}
       </div>
 
       {!isRunning && result.message && (
-        <p className={`mt-2 text-xs leading-relaxed ${isPass ? 'text-neutral-500' : 'text-amber-700'}`}>
+        <p className={`mt-2 text-xs leading-relaxed ${isPass ? 'text-neutral-500' : 'text-warning-foreground'}`}>
           {result.message}
         </p>
       )}

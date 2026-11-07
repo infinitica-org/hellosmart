@@ -81,7 +81,7 @@ export function DeleteCandidateDialog({
             variant="danger"
             onClick={handleConfirm}
             disabled={isDeleting}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+            className="flex items-center gap-2"
           >
             {isDeleting && <Spinner size="sm" />}
             <Trash2 className="h-4 w-4" />
@@ -106,7 +106,7 @@ export function DeleteCandidateDialog({
           </div>
         </div>
 
-        <Alert variant="warning" title="Candidate Deletion & Retention (BR-31, CO-016)">
+        <Alert variant="warning" title="Candidate Deletion & Retention">
           This action will mark the candidate record as deleted, revoke pending invitations, and terminate
           any active workspace sessions. An audit log record will be permanently retained.
         </Alert>

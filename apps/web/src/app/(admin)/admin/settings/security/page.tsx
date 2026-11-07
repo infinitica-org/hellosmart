@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Alert, Button, Card, Input } from '@hs/ui';
+import { Alert, Button, Card, TextField, Badge } from '@hs/ui';
 import {
   useGetMfaStatusQuery,
   useStartMfaSetupMutation,
@@ -115,10 +115,10 @@ export default function AdminSecuritySettingsPage(): React.JSX.Element {
           <p className="text-sm text-neutral-500">Loading status…</p>
         ) : status?.enrolled ? (
           <div className="space-y-2 text-sm text-neutral-700">
-            <p>
-              <span className="font-semibold text-emerald-700">Enabled</span> — authenticator app is
-              configured for this account.
-            </p>
+            <div className="flex items-center gap-2">
+              <Badge variant="success">Enabled</Badge>
+              <span className="text-xs text-neutral-600">Authenticator app is configured for this account.</span>
+            </div>
             <p>
               Unused backup codes remaining:{' '}
               <span className="font-mono font-semibold">{status.backupCodesRemaining}</span>
@@ -131,14 +131,14 @@ export default function AdminSecuritySettingsPage(): React.JSX.Element {
             )}
           </div>
         ) : (
-          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <Alert variant="warning" className="text-sm">
             MFA is not enabled yet. You will be prompted for a code at sign-in after setup is complete.
-          </p>
+          </Alert>
         )}
 
         {!status?.enrolled && !setupSecret && (
-          <Button type="button" onClick={startSetup} disabled={busy || loadingStatus}>
-            {busy ? 'Starting…' : 'Set up authenticator app'}
+          <Button type="button" onClick={startSetup} isLoading={busy} disabled={loadingStatus}>
+            Set up authenticator app
           </Button>
         )}
 
@@ -149,11 +149,9 @@ export default function AdminSecuritySettingsPage(): React.JSX.Element {
                 ? 'Generate backup codes so you can sign in without your authenticator app.'
                 : 'Replace all backup codes (old codes stop working immediately).'}
             </p>
-            <label htmlFor="mfa-regenerate-code" className="text-xs font-medium text-neutral-700">
-              Confirm with a 6-digit authenticator code
-            </label>
-            <Input
+            <TextField
               id="mfa-regenerate-code"
+              label="Confirm with a 6-digit authenticator code"
               value={regenerateCode}
               onChange={(e) => setRegenerateCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               inputMode="numeric"
@@ -161,8 +159,8 @@ export default function AdminSecuritySettingsPage(): React.JSX.Element {
               placeholder="000000"
               disabled={busy}
             />
-            <Button type="submit" disabled={busy || regenerateCode.length !== 6}>
-              {busy ? 'Generating…' : 'Generate new backup codes'}
+            <Button type="submit" isLoading={busy} disabled={regenerateCode.length !== 6}>
+              Generate new backup codes
             </Button>
           </form>
         )}
@@ -192,11 +190,9 @@ export default function AdminSecuritySettingsPage(): React.JSX.Element {
               </p>
             )}
             <form onSubmit={confirmSetup} className="space-y-3">
-              <label htmlFor="mfa-confirm-code" className="text-xs font-medium text-neutral-700">
-                Enter the 6-digit code from your app to confirm
-              </label>
-              <Input
+              <TextField
                 id="mfa-confirm-code"
+                label="Enter the 6-digit code from your app to confirm"
                 value={confirmCode}
                 onChange={(e) => setConfirmCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 inputMode="numeric"
@@ -204,8 +200,8 @@ export default function AdminSecuritySettingsPage(): React.JSX.Element {
                 placeholder="000000"
                 disabled={busy}
               />
-              <Button type="submit" disabled={busy || confirmCode.length !== 6}>
-                {busy ? 'Confirming…' : 'Confirm and generate backup codes'}
+              <Button type="submit" isLoading={busy} disabled={confirmCode.length !== 6}>
+                Confirm and generate backup codes
               </Button>
             </form>
           </div>

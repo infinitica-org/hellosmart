@@ -39,7 +39,7 @@ function SetPasswordRedirectContent(): React.JSX.Element {
       <div
         role="status"
         aria-label="Redirecting..."
-        className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"
+        className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"
       />
     </div>
   );
@@ -50,7 +50,7 @@ export default function SetPasswordRedirectPage(): React.JSX.Element {
     <Suspense
       fallback={
         <div className="flex justify-center items-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
       }
     >

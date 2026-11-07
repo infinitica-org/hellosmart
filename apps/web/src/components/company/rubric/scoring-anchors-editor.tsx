@@ -29,9 +29,9 @@ export function ScoringAnchorsEditor({
   };
 
   const levels: Array<{ score: 1 | 3 | 5; badgeColor: string; title: string }> = [
-    { score: 1, badgeColor: 'bg-rose-100 text-rose-800 border-rose-200', title: '1 – Inadequate' },
-    { score: 3, badgeColor: 'bg-amber-100 text-amber-800 border-amber-200', title: '3 – Competent' },
-    { score: 5, badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200', title: '5 – Exemplary' },
+    { score: 1, badgeColor: 'bg-danger-muted text-danger-foreground border-danger-border', title: '1 – Inadequate' },
+    { score: 3, badgeColor: 'bg-warning-muted text-warning-foreground border-warning-border', title: '3 – Competent' },
+    { score: 5, badgeColor: 'bg-success-muted text-success-foreground border-success-border', title: '5 – Exemplary' },
   ];
 
   return (

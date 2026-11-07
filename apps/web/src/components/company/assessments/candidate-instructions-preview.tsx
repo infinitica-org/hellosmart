@@ -21,7 +21,7 @@ export function CandidateInstructionsPreview({
     >
       <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="w-2.5 h-2.5 rounded-full bg-success animate-pulse" />
           <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-700 font-mono">
             Candidate View Live Preview
           </h4>

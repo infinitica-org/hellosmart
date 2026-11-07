@@ -25,7 +25,7 @@ export const AiUsageIndicator = forwardRef<HTMLDivElement, AiUsageIndicatorProps
         <div className="flex justify-between items-center">
           <span className="font-medium text-neutral-800 flex items-center gap-1.5">
             <Bot className="w-3.5 h-3.5 text-primary" />
-            AI Budget Allowance (BR-15)
+            AI Budget Allowance
           </span>
           <span className="font-mono text-[11px] text-neutral-500">
             {usedTokens.toLocaleString()} / {capTokens.toLocaleString()} {unit}

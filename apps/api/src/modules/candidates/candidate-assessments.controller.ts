@@ -65,6 +65,12 @@ export class CandidateAssessmentsController {
     return this.service.getAssignments(actor);
   }
 
+  @Get('assessments')
+  async getAssessmentsList(@Req() request: AuthenticatedRequest) {
+    const actor = request[REQUEST_USER_KEY];
+    return this.service.getAssignments(actor);
+  }
+
   @Get('assessments/:id')
   async getAssessment(
     @Param('id') id: string,

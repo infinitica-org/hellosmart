@@ -62,6 +62,7 @@ export interface SidebarProps {
   brandTitle?: ReactNode | undefined;
   brandLogo?: ReactNode | undefined;
   showLogo?: boolean | undefined;
+  showHelp?: boolean | undefined;
   items?: SidebarItem[] | undefined;
   /** Navigation links / items (alias for `items`) */
   navLinks?: SidebarItem[] | undefined;
@@ -223,6 +224,7 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
   ) => {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const isCandidate = Boolean(portalRole?.toLowerCase().includes('candidate'));
 
     // Close on outside click or Escape
     useEffect(() => {
@@ -281,24 +283,26 @@ export const UserProfileDropdown = forwardRef<HTMLDivElement, UserProfileDropdow
           >
             <span className="flex items-center gap-2.5">
               <UserIcon />
-              Profile &amp; Account
+              {isCandidate ? 'Profile' : 'Profile & Account'}
             </span>
             <kbd className="hidden sm:inline-flex text-[10px] text-neutral-400 font-mono bg-neutral-100 rounded px-1.5 py-0.5">⌘P</kbd>
           </button>
 
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => setOpen(false)}
-            className="flex w-full items-center justify-between gap-2 rounded-sm px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors focus:outline-none"
-          >
-            <span className="flex items-center gap-2.5">
-              <SettingsIcon />
-              Preferences
-            </span>
-            <kbd className="hidden sm:inline-flex text-[10px] text-neutral-400 font-mono bg-neutral-100 rounded px-1.5 py-0.5">⌘,</kbd>
-          </button>
-          {extraMenuItems}
+          {!isCandidate && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center justify-between gap-2 rounded-sm px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors focus:outline-none"
+            >
+              <span className="flex items-center gap-2.5">
+                <SettingsIcon />
+                Preferences
+              </span>
+              <kbd className="hidden sm:inline-flex text-[10px] text-neutral-400 font-mono bg-neutral-100 rounded px-1.5 py-0.5">⌘,</kbd>
+            </button>
+          )}
+          {!isCandidate && extraMenuItems}
         </div>
 
         {/* Divider */}
@@ -636,6 +640,7 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       brandTitle,
       brandLogo,
       showLogo = true,
+      showHelp,
       items,
       navLinks,
       groups,
@@ -1123,21 +1128,26 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
     };
 
     // ---- Footer (Help, Profile) ----
+    const shouldShowHelp =
+      showHelp !== undefined ? showHelp : !portalRole?.toLowerCase().includes('candidate');
+
     const renderFooter = () => {
       return (
         <div className="shrink-0 border-t border-neutral-200 dark:border-neutral-800 p-3 space-y-1 bg-white dark:bg-neutral-900">
           {/* Help */}
-          <button
-            type="button"
-            onClick={() => {
-              if (onHelpClick) onHelpClick();
-              else window.open('/docs', '_blank');
-            }}
-            className="group flex items-center gap-3 w-full h-10 px-3 text-sm text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 rounded-lg transition-colors cursor-pointer select-none"
-          >
-            <HelpCircleIcon className="w-5 h-5 text-neutral-500 dark:text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white shrink-0 transition-colors" />
-            <span className="truncate">Help</span>
-          </button>
+          {shouldShowHelp && (
+            <button
+              type="button"
+              onClick={() => {
+                if (onHelpClick) onHelpClick();
+                else window.open('/docs', '_blank');
+              }}
+              className="group flex items-center gap-3 w-full h-10 px-3 text-sm text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800/50 rounded-lg transition-colors cursor-pointer select-none"
+            >
+              <HelpCircleIcon className="w-5 h-5 text-neutral-500 dark:text-neutral-400 group-hover:text-neutral-900 dark:group-hover:text-white shrink-0 transition-colors" />
+              <span className="truncate">Help</span>
+            </button>
+          )}
 
           {/* Profile */}
           {userName || userEmail ? (
@@ -1169,18 +1179,20 @@ export const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
       return (
         <div className="shrink-0 p-2 border-t border-neutral-200 dark:border-neutral-800 flex flex-col items-center gap-2 w-full bg-white dark:bg-neutral-900">
-          <button
-            type="button"
-            onClick={() => {
-              if (onHelpClick) onHelpClick();
-              else window.open('/docs', '_blank');
-            }}
-            title="Help"
-            aria-label="Help"
-            className="w-10 h-10 flex items-center justify-center rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
-          >
-            <HelpCircleIcon className="w-5 h-5" />
-          </button>
+          {shouldShowHelp && (
+            <button
+              type="button"
+              onClick={() => {
+                if (onHelpClick) onHelpClick();
+                else window.open('/docs', '_blank');
+              }}
+              title="Help"
+              aria-label="Help"
+              className="w-10 h-10 flex items-center justify-center rounded-lg text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+            >
+              <HelpCircleIcon className="w-5 h-5" />
+            </button>
+          )}
           {userName || userEmail ? (
             <UserProfileDropdown
               userName={userName}

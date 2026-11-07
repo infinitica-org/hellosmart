@@ -18,6 +18,7 @@ import {
   DropdownMenuItem,
   AlertDialog,
   useToast,
+  IconButton,
   CheckCircle2,
   AlertTriangle,
   MoreHorizontal,
@@ -83,7 +84,7 @@ export function TenantTable({
 
       toast({
         title: targetStatus === 'suspended' ? 'Company Suspended' : 'Company Reinstated',
-        description: `"${org.name}" status updated to ${targetStatus} (BR-07).`,
+        description: `"${org.name}" status updated to ${targetStatus}.`,
         variant: targetStatus === 'suspended' ? 'warning' : 'success',
       });
 
@@ -135,7 +136,7 @@ export function TenantTable({
           description={
             isFiltered
               ? 'Try modifying your search keywords or resetting status filters to view more organizations.'
-              : 'Tenants must be provisioned by a Platform Admin (BR-04, no public self-signup in MMP).'
+              : 'Tenants must be provisioned by a Platform Admin (no public self-signup in MMP).'
           }
           action={
             isFiltered && onResetFilters
@@ -264,14 +265,13 @@ export function TenantTable({
                     <div className="flex items-center justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
+                          <IconButton
+                            variant="outline"
+                            size="sm"
                             aria-label={`Actions for ${org.name}`}
-                            className="h-8 w-8 rounded-md border border-neutral-200 bg-white hover:bg-neutral-50 hover:border-neutral-300 text-neutral-400 hover:text-neutral-700 shadow-2xs flex items-center justify-center transition-all cursor-pointer select-none focus:outline-none"
+                            icon={<MoreHorizontal className="w-4 h-4" />}
                             data-testid={`tenant-actions-${org.slug}`}
-                          >
-                            <MoreHorizontal className="w-4 h-4 pointer-events-none" />
-                          </button>
+                          />
                         </DropdownMenuTrigger>
 
                         <DropdownMenuContent
@@ -280,9 +280,9 @@ export function TenantTable({
                         >
                           {isSuspended ? (
                             <DropdownMenuItem
-                              icon={<CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                              icon={<CheckCircle2 className="h-4 w-4 text-success" />}
                               onClick={() => handleOpenConfirm(org, targetReinstateStatus)}
-                              className="text-xs text-emerald-700 hover:text-emerald-800 dark:text-emerald-400"
+                              className="text-xs text-success-foreground"
                               data-testid={`reinstate-btn-${org.slug}`}
                             >
                               Reinstate Company
@@ -347,7 +347,7 @@ export function TenantTable({
         }
         description={
           confirmDialog.targetStatus === 'suspended'
-            ? 'Suspending this company immediately blocks new candidate workspace launches, assessment publishing, and AI proxy routing (BR-07). Running candidate sessions will complete gracefully.'
+            ? 'Suspending this company immediately blocks new candidate workspace launches, assessment publishing, and AI proxy routing. Running candidate sessions will complete gracefully.'
             : 'Reinstating this company restores full access to the company portal, candidate workspace launches, and assigned assessment templates.'
         }
         confirmLabel={confirmDialog.targetStatus === 'suspended' ? 'Suspend Company' : 'Reinstate Company'}

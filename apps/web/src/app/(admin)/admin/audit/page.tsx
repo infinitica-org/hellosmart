@@ -19,6 +19,12 @@ import {
   Badge,
   Alert,
   EmptyState,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -97,7 +103,7 @@ export default function AdminAuditPage({ initialLogs }: AdminAuditPageProps = {}
       {/* Page Header */}
       <PageHeader
         title="Platform Audit Trail"
-        description="Immutable, append-only security and operational audit trail across all platform organizations (BR-31)."
+        description="Immutable, append-only security and operational audit trail across all platform organizations."
         badge={{ text: 'Append-Only', variant: 'default' }}
         data-testid="admin-audit-header"
       />
@@ -107,7 +113,7 @@ export default function AdminAuditPage({ initialLogs }: AdminAuditPageProps = {}
         <StatCard
           label="TOTAL AUDIT ENTRIES"
           value={logs.length > 0 ? logs.length.toLocaleString() : '0'}
-          description="Immutable recorded events (BR-31)"
+          description="Immutable recorded events"
           icon={<Database className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />}
           data-testid="stat-audit-total"
         />
@@ -198,48 +204,48 @@ export default function AdminAuditPage({ initialLogs }: AdminAuditPageProps = {}
           />
         ) : (
           <div className="overflow-x-auto rounded-lg border border-neutral-200/80">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-neutral-200 bg-neutral-50/70 text-neutral-600 font-semibold uppercase tracking-wider text-[11px]">
-                  <th className="py-3 px-4">Timestamp</th>
-                  <th className="py-3 px-4">Action</th>
-                  <th className="py-3 px-4">Entity</th>
-                  <th className="py-3 px-4">Actor</th>
-                  <th className="py-3 px-4">Client IP</th>
-                  <th className="py-3 px-4 text-right">Integrity</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="py-3 px-4">Timestamp</TableHead>
+                  <TableHead className="py-3 px-4">Action</TableHead>
+                  <TableHead className="py-3 px-4">Entity</TableHead>
+                  <TableHead className="py-3 px-4">Actor</TableHead>
+                  <TableHead className="py-3 px-4">Client IP</TableHead>
+                  <TableHead className="py-3 px-4 text-right">Integrity</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-neutral-50/60 transition-colors">
-                    <td className="py-3.5 px-4 font-mono text-neutral-600">
+                  <TableRow key={log.id} className="hover:bg-neutral-50/60 transition-colors">
+                    <TableCell className="py-3.5 px-4 font-mono text-neutral-600">
                       <div>{log.relativeTime}</div>
                       <div className="text-[10px] text-neutral-400">{log.timestamp}</div>
-                    </td>
-                    <td className="py-3.5 px-4">
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4">
                       <span className="font-mono font-medium text-neutral-900 bg-neutral-100 px-2 py-0.5 rounded border border-neutral-200/60">
                         {log.action}
                       </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-neutral-700 font-medium">
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4 text-neutral-700 font-medium">
                       {log.entity}
-                    </td>
-                    <td className="py-3.5 px-4">
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4">
                       <div className="text-neutral-900 font-medium">{log.actorEmail}</div>
                       <div className="text-[10px] text-neutral-500 font-mono">{log.actorRole}</div>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-neutral-500 text-[11px]">
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4 font-mono text-neutral-500 text-[11px]">
                       {log.ip}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4 text-right">
                       <Badge variant="success" size="sm">
                         Recorded
                       </Badge>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </Card>
@@ -249,7 +255,7 @@ export default function AdminAuditPage({ initialLogs }: AdminAuditPageProps = {}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
           <div className="space-y-1">
             <div className="font-semibold text-neutral-900">
-              BR-31 Invariant: Append-Only Cryptographic Audit Log
+              Append-Only Cryptographic Audit Log
             </div>
             <p className="text-neutral-600">
               Platform audit entries are strictly immutable. Administrative actions, tenant state changes, and authentication

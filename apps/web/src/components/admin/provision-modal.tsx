@@ -119,7 +119,7 @@ export function ProvisionModal({
 
       toast({
         title: 'Company Provisioned Successfully',
-        description: `"${formData.name}" has been created with ${formData.plan.toUpperCase()} entitlements (BR-04, BR-05).`,
+        description: `"${formData.name}" has been created with ${formData.plan.toUpperCase()} entitlements.`,
         variant: 'success',
       });
 
@@ -154,14 +154,14 @@ export function ProvisionModal({
         <DialogHeader>
           <DialogTitle>Provision New Company</DialogTitle>
           <DialogDescription>
-            Platform Admins manually provision customer tenants and configure server-side entitlements (BR-04, BR-05).
+            Platform Admins manually provision customer tenants and configure server-side entitlements.
           </DialogDescription>
         </DialogHeader>
 
         <DialogContent className="space-y-5">
           {errorMessage && (
             <div
-              className="p-3.5 rounded-xl border border-rose-800/80 bg-rose-950/40 text-rose-300 text-xs flex items-center gap-2"
+              className="p-3.5 rounded-xl border border-danger-border bg-danger-muted text-danger-foreground text-xs flex items-center gap-2"
               role="alert"
             >
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -199,7 +199,7 @@ export function ProvisionModal({
               placeholder="admin@acme.com"
               value={formData.adminEmail}
               onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
-              helperText="Account creation link sent with forced password reset (BR-24)"
+              helperText="Account creation link sent with forced password reset"
               required
               data-testid="provision-email-input"
             />

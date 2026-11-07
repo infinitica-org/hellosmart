@@ -19,7 +19,7 @@ export const ReviewDisagreementAlert = forwardRef<HTMLDivElement, ReviewDisagree
       >
         <p className="mt-1 text-neutral-700">
           The aggregation engine detected significant disagreement on{' '}
-          <strong className="text-warning-foreground">{disagreementItem}</strong> ({agentVariance}). Human inspection is strongly advised before finalizing (BR-18, BR-20).
+          <strong className="text-warning-foreground">{disagreementItem}</strong> ({agentVariance}). Human inspection is strongly advised before finalizing.
         </p>
 
         {onReview && (

@@ -204,7 +204,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonPr
     const content = (
       <>
         {isLoading ? spinner : leftIcon}
-        <span>{children}</span>
+        <span className="whitespace-nowrap inline-flex items-center gap-1.5">{children}</span>
         {!isLoading && rightIcon}
       </>
     );

@@ -97,7 +97,7 @@ export function CompanyDashboardView({
           value={loading && !metrics ? '—' : String(metrics?.invitedCandidates ?? 0)}
           description={
             metrics
-              ? `Remaining quota: ${metrics.remainingQuota} candidates (BR-06)`
+              ? `Remaining quota: ${metrics.remainingQuota} candidates`
               : 'Remaining quota: calculating...'
           }
           data-testid="metric-invited-candidates"
@@ -122,8 +122,8 @@ export function CompanyDashboardView({
           <div>
             <h2 className="text-base font-semibold text-neutral-900">Live Assessments</h2>
             <p className="text-xs text-neutral-500 font-normal mt-0.5">
-              Assigned templates are private to your organization (BR-02).
-            </p>
+              Assigned templates are private to your organization.
+             </p>
           </div>
           <Link href={ROUTES.COMPANY.ASSESSMENTS}>
             <Button variant="outline" size="sm">
@@ -221,22 +221,6 @@ export function CompanyDashboardView({
         )}
       </Card>
 
-      {/* Review Workflow Guideline */}
-      <Alert variant="info" className="text-xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
-          <div className="space-y-1">
-            <div className="font-semibold text-neutral-900">
-              AI Reviewer Evaluation Process
-            </div>
-            <p className="text-neutral-600 font-normal">
-              Submissions are scored independently by multi-dimensional agents citing direct evidence (BR-18, BR-19).
-            </p>
-          </div>
-          <div className="font-mono text-primary bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/25 font-normal shrink-0">
-            Human Final Override: Enforced
-          </div>
-        </div>
-      </Alert>
     </div>
   );
 }

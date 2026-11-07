@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { PageHeader, Button } from '@hs/ui';
+import { PageHeader, Button, Badge, Alert } from '@hs/ui';
 import { ArrowLeft, Building2, Clock, ShieldCheck, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { ResolutionCheck } from '@/components/candidate/diagnostics/resolution-check';
 import { BrowserCheck } from '@/components/candidate/diagnostics/browser-check';
@@ -84,24 +84,20 @@ export default function StandaloneDiagnosticsPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 shrink-0 text-xs font-semibold">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Active Verification</span>
-            </div>
+            <Badge variant="success" size="sm" className="gap-1.5 shrink-0">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Active Verification
+            </Badge>
           </div>
 
           {/* Window Edge Case (If scheduled for the future) */}
           {hasFutureWindow && assessment.windowStartUtc ? (
-            <div className="p-5 rounded-xl border border-amber-200 bg-amber-50/50 space-y-3">
-              <div className="flex items-center gap-2 text-amber-900 font-semibold text-sm">
-                <Lock className="w-4 h-4 text-amber-600" />
-                <span>Testing Window Not Yet Open</span>
-              </div>
-              <p className="text-xs text-amber-800 leading-relaxed">
+            <Alert variant="warning" title="Testing Window Not Yet Open">
+              <p className="text-xs text-warning-foreground leading-relaxed mb-3">
                 This assessment is scheduled for a specific testing window. You cannot start the evaluation until the window officially opens.
               </p>
               <WindowCountdown targetDateUtc={assessment.windowStartUtc} />
-            </div>
+            </Alert>
           ) : null}
 
           {/* Clean Diagnostic Checks List */}
@@ -130,10 +126,10 @@ export default function StandaloneDiagnosticsPage() {
                 <span
                   className={`w-2 h-2 rounded-full ${
                     diagnostics.overallStatus === 'ready'
-                      ? 'bg-emerald-500'
+                      ? 'bg-success'
                       : diagnostics.overallStatus === 'warning'
-                        ? 'bg-amber-500'
-                        : 'bg-red-500'
+                        ? 'bg-warning'
+                        : 'bg-danger'
                   }`}
                 />
                 <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">

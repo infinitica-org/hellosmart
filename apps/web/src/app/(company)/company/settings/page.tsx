@@ -152,14 +152,14 @@ export function CompanySettingsView({
 
       {testResult && (
         <Alert variant="success" className="animate-fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 mr-2 shrink-0" />
+          <CheckCircle2 className="w-4 h-4 text-success mr-2 shrink-0" />
           <span>{testResult}</span>
         </Alert>
       )}
 
       {codeSuccess && (
         <Alert variant="success" className="animate-fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 mr-2 shrink-0" />
+          <CheckCircle2 className="w-4 h-4 text-success mr-2 shrink-0" />
           <span>{codeSuccess}</span>
         </Alert>
       )}
@@ -170,7 +170,7 @@ export function CompanySettingsView({
             General & Retention
           </TabsTrigger>
           <TabsTrigger value="keys" icon={<Key className="w-4 h-4" />}>
-            AI Provider Keys (BR-16)
+            AI Provider Keys
           </TabsTrigger>
           <TabsTrigger value="billing" icon={<CreditCard className="w-4 h-4" />}>
             Billing & Quotas
@@ -215,14 +215,14 @@ export function CompanySettingsView({
                     className="bg-neutral-50 font-mono text-xs cursor-not-allowed"
                   />
                   <Badge variant="default" size="sm">
-                    Protected (BR-01)
+                    Protected
                   </Badge>
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-neutral-700 mb-1">
-                  White-label Branding (BR-05)
+                  White-label Branding
                 </label>
                 <div className="flex items-center justify-between p-3.5 rounded-lg border border-neutral-200 bg-neutral-50">
                   <div className="space-y-0.5">
@@ -246,7 +246,7 @@ export function CompanySettingsView({
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-base font-semibold text-neutral-900">
-                    Candidate Data Retention (BR-31, BR-32)
+                    Candidate Data Retention
                   </CardTitle>
                   <p className="text-xs text-neutral-500 mt-0.5">
                     Regulatory retention policy for candidate submissions, recordings, and transcripts.
@@ -261,11 +261,11 @@ export function CompanySettingsView({
             <CardContent className="p-0 pt-5 space-y-4 max-w-xl">
               <div className="p-3.5 rounded-lg border border-neutral-200 bg-neutral-50/70 space-y-2">
                 <div className="flex items-center gap-2 text-xs font-medium text-neutral-900">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <ShieldCheck className="w-4 h-4 text-success" />
                   <span>Automated Retention Schedule</span>
                 </div>
                 <p className="text-xs text-neutral-600 leading-relaxed">
-                  Per <strong>BR-31</strong> and <strong>BR-32</strong>, candidate session recordings, terminal logs, AI transcripts, and submitted artifacts are retained for <strong>90 days</strong> from the date of assessment completion, after which automated background jobs cryptographically purge all associated artifacts.
+                  Candidate session recordings, terminal logs, AI transcripts, and submitted artifacts are retained for <strong>90 days</strong> from the date of assessment completion, after which automated background jobs cryptographically purge all associated artifacts.
                 </p>
               </div>
 
@@ -289,12 +289,12 @@ export function CompanySettingsView({
         {/* ── 2. AI Provider Keys Tab (BR-16) ──────────────────────────────── */}
         <TabsContent value="keys" className="space-y-6">
           <Alert variant="info" className="flex items-start gap-3">
-            <Lock className="w-4 h-4 text-sky-600 mt-0.5 shrink-0" />
+            <Lock className="w-4 h-4 text-info mt-0.5 shrink-0" />
             <div className="text-xs space-y-1">
-              <p className="font-semibold text-sky-950">
-                Zero-Trust Key Isolation Architecture (BR-13, BR-16)
+              <p className="font-semibold text-info-foreground">
+                Zero-Trust Key Isolation Architecture
               </p>
-              <p className="text-sky-800 leading-relaxed">
+              <p className="text-info-foreground/90 leading-relaxed">
                 Workspaces never receive real provider API keys. All candidate interactions are routed through the managed AI proxy using short-lived session tokens. Provider keys are encrypted at rest in the secrets vault and <strong>never returned in full</strong> via client bundles or API responses.
               </p>
             </div>
@@ -398,7 +398,7 @@ export function CompanySettingsView({
                   <TableHeader>
                     <TableRow className="bg-neutral-50/80">
                       <TableHead className="text-xs font-semibold">Provider</TableHead>
-                      <TableHead className="text-xs font-semibold">Key Identifier (BR-16)</TableHead>
+                      <TableHead className="text-xs font-semibold">Key Identifier</TableHead>
                       <TableHead className="text-xs font-semibold">Status</TableHead>
                       <TableHead className="text-xs font-semibold">Last Verified</TableHead>
                       <TableHead className="text-xs font-semibold text-right">Actions</TableHead>
@@ -429,7 +429,7 @@ export function CompanySettingsView({
                         </TableCell>
                         <TableCell>
                           <Badge variant="success" size="sm" className="gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-success" />
                             Connected
                           </Badge>
                         </TableCell>
@@ -491,7 +491,7 @@ export function CompanySettingsView({
 
             <Card className="p-5 space-y-2">
               <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider block">
-                Candidate Allowance (BR-06)
+                Candidate Allowance
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-xl font-bold text-neutral-900">
@@ -522,7 +522,7 @@ export function CompanySettingsView({
           <Card className="p-6">
             <CardHeader className="p-0 pb-4 border-b border-neutral-100">
               <CardTitle className="text-base font-semibold text-neutral-900">
-                Redeem Promo / Custom Payment Code (BR-29)
+                Redeem Promo / Custom Payment Code
               </CardTitle>
               <p className="text-xs text-neutral-500 mt-0.5">
                 Apply a custom sales quote voucher or promotional discount code to your tenant account.

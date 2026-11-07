@@ -105,7 +105,7 @@ export function TemplatePreviewDrawer({
               {activeTemplate.durationMinutes} mins allocation
             </span>
             <span>&bull;</span>
-            <span>Private Organization Template (BR-02)</span>
+            <span>Private Organization Template</span>
           </div>
         )}
       </div>

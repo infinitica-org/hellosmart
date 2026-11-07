@@ -102,25 +102,25 @@ export default function CompanyAnalyticsPage({ initialSubmissions }: CompanyAnal
       label: 'Connected & Started Work',
       count: startedCount,
       pct: totalInvited > 0 ? `${Math.round((startedCount / totalInvited) * 100)}%` : '0%',
-      color: 'bg-sky-500',
+      color: 'bg-info',
     },
     {
       label: 'Submitted Workspaces',
       count: submittedCount,
       pct: totalInvited > 0 ? `${Math.round((submittedCount / totalInvited) * 100)}%` : '0%',
-      color: 'bg-indigo-500',
+      color: 'bg-primary',
     },
     {
       label: 'AI Review Complete',
       count: submittedCount,
       pct: totalInvited > 0 ? `${Math.round((submittedCount / totalInvited) * 100)}%` : '0%',
-      color: 'bg-purple-500',
+      color: 'bg-accent-violet',
     },
     {
       label: 'Finalized by Human Reviewer',
       count: finalizedCount,
       pct: totalInvited > 0 ? `${Math.round((finalizedCount / totalInvited) * 100)}%` : '0%',
-      color: 'bg-emerald-500',
+      color: 'bg-success',
     },
   ];
 
@@ -270,10 +270,10 @@ export default function CompanyAnalyticsPage({ initialSubmissions }: CompanyAnal
                   <div
                     className={`h-full rounded-full ${
                       dim.score >= 80
-                        ? 'bg-emerald-500'
+                        ? 'bg-success'
                         : dim.score >= 70
-                        ? 'bg-amber-500'
-                        : 'bg-rose-500'
+                        ? 'bg-warning'
+                        : 'bg-danger'
                     }`}
                     style={{ width: `${dim.score}%` }}
                   />
@@ -362,7 +362,7 @@ export default function CompanyAnalyticsPage({ initialSubmissions }: CompanyAnal
 
                     <TableCell className="text-xs font-bold text-neutral-900">
                       {row.humanScore ? (
-                        <span className="text-emerald-700 font-semibold">{row.humanScore} / 100</span>
+                        <span className="text-success font-semibold">{row.humanScore} / 100</span>
                       ) : (
                         <span className="text-neutral-400 font-normal italic">Pending</span>
                       )}

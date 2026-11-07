@@ -617,13 +617,23 @@ export class CandidatesService {
           [...values, limit, offset],
         );
 
+        const toIso = (d: unknown): string => {
+          if (d instanceof Date) return d.toISOString();
+          if (typeof d === 'string') return new Date(d).toISOString();
+          return new Date().toISOString();
+        };
+
         const items: CandidateDto[] = dataRes.rows.map((row) => ({
           id: row.id,
           name: row.name,
           email: row.email,
           status: row.status === 'suspended' ? 'invited' : (row.status as 'invited' | 'active' | 'deleted'),
-          countedAgainstCapAt: row.counted_against_cap_at ? row.counted_against_cap_at.toISOString() : null,
-          createdAt: row.created_at.toISOString(),
+          countedAgainstCapAt: row.counted_against_cap_at
+            ? (row.counted_against_cap_at instanceof Date
+                ? row.counted_against_cap_at.toISOString()
+                : new Date(row.counted_against_cap_at).toISOString())
+            : null,
+          createdAt: toIso(row.created_at),
         }));
 
         return {

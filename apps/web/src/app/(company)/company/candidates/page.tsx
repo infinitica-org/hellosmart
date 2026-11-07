@@ -222,14 +222,14 @@ function CompanyCandidatesContent() {
         <StatCard
           label={UI_LABELS.SECTIONS.STAT_INVITED_CANDIDATES}
           value={metrics.invited.toString()}
-          description="Pending account activation (BR-24)"
-          icon={<Mail className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
+          description="Pending account activation"
+          icon={<Mail className="h-5 w-5 text-warning" />}
         />
         <StatCard
           label={UI_LABELS.SECTIONS.STAT_ACTIVE_CANDIDATES}
           value={metrics.active.toString()}
           description="Password set & test ready"
-          icon={<Check className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+          icon={<Check className="h-5 w-5 text-success" />}
         />
       </div>
 

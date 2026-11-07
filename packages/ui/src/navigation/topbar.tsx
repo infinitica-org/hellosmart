@@ -43,6 +43,8 @@ export interface TopbarProps {
   showLogo?: boolean;
   /** Show the notification bell icon */
   showNotifications?: boolean;
+  /** Whether to show the search bar */
+  showSearch?: boolean;
   /** Show the user profile pill dropdown */
   showProfile?: boolean;
   /** Custom content for the left section (overrides breadcrumbs/title) */
@@ -313,7 +315,7 @@ function TopbarUserProfileDropdown({
       {/* Pill trigger: avatar + name + role subtitle with Active plan */}
       <DropdownMenuTrigger
         data-testid={profileTriggerTestId}
-        className="group flex items-center gap-2.5 p-1 sm:px-2 sm:py-1 rounded-xl hover:bg-neutral-100/70 dark:hover:bg-neutral-800 transition-colors cursor-pointer select-none focus:outline-none shrink-0"
+        className="group flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800/90 hover:bg-neutral-50 dark:hover:bg-neutral-700/60 shadow-xs hover:border-neutral-400 dark:hover:border-neutral-600 transition-all cursor-pointer select-none focus:outline-none shrink-0"
         aria-label="User account menu"
       >
         <div className="relative shrink-0">
@@ -362,35 +364,37 @@ function TopbarUserProfileDropdown({
         {/* Divider */}
         <div className="h-px bg-neutral-100 dark:bg-neutral-800 -mx-1 my-1" role="separator" />
 
-        {/* Navigation links matching screenshot: Account, Preferences, Billing */}
+        {/* Navigation links matching screenshot: Profile (for candidates) or Account, Preferences, Billing */}
         <div className="py-0.5 space-y-0.5">
           {renderDropdownLink({
-            label: 'Account',
+            label: isCandidate ? 'Profile' : 'Account',
             icon: <User className="w-4 h-4 shrink-0" />,
             href: resolvedAccountHref,
             onClick: onAccountClick,
             testId: 'account-menu-item',
           })}
 
-          {renderDropdownLink({
-            label: 'Preferences',
-            icon: <Settings className="w-4 h-4 shrink-0" />,
-            href: resolvedPreferencesHref,
-            onClick: onPreferencesClick,
-            testId: 'preferences-menu-item',
-          })}
+          {!isCandidate &&
+            renderDropdownLink({
+              label: 'Preferences',
+              icon: <Settings className="w-4 h-4 shrink-0" />,
+              href: resolvedPreferencesHref,
+              onClick: onPreferencesClick,
+              testId: 'preferences-menu-item',
+            })}
 
-          {shouldShowBilling && resolvedBillingHref && (
+          {!isCandidate &&
+            shouldShowBilling &&
+            resolvedBillingHref &&
             renderDropdownLink({
               label: 'Billing',
               icon: <CreditCard className="w-4 h-4 shrink-0" />,
               href: resolvedBillingHref,
               onClick: onBillingClick,
               testId: 'billing-menu-item',
-            })
-          )}
+            })}
 
-          {profileMenuItems}
+          {!isCandidate && profileMenuItems}
         </div>
 
         {/* Divider before Log out */}
@@ -600,6 +604,7 @@ export function Topbar({
   brandLogo,
   showLogo,
   showNotifications = true,
+  showSearch = true,
   showProfile = true,
   leftContent,
   title,
@@ -752,20 +757,22 @@ export function Topbar({
         {/* Right section: search input, help, notification bell, profile, actions */}
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           {/* Topbar Search Input */}
-          <div className="hidden md:flex w-56 lg:w-72">
-            <SearchInput
-              size="md"
-              rounded="md"
-              value={searchValue}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-              onClear={() => onSearchChange?.('')}
-              placeholder={searchPlaceholder || 'Search candidates, assessments, rubrics...'}
-              shortcutKey={false}
-              autoShortcut={false}
-            />
-          </div>
+          {showSearch && onSearchChange && (
+            <div className="hidden md:flex w-56 lg:w-72">
+              <SearchInput
+                size="md"
+                rounded="md"
+                value={searchValue}
+                onChange={(e) => onSearchChange?.(e.target.value)}
+                onClear={() => onSearchChange?.('')}
+                placeholder={searchPlaceholder || 'Search candidates, assessments, rubrics...'}
+                shortcutKey={false}
+                autoShortcut={false}
+              />
+            </div>
+          )}
 
-          {onSearchClick && <SearchButton onClick={onSearchClick} />}
+          {showSearch && onSearchClick && <SearchButton onClick={onSearchClick} />}
           {onHelpClick && <HelpButton onClick={onHelpClick} />}
           {showNotifications && (
             <NotificationBell count={notificationCount} notifications={notifications} onClick={onNotificationsClick} />
@@ -796,18 +803,20 @@ export function Topbar({
               className="mr-3"
             />
           )}
-          <div className="w-full max-w-sm">
-            <SearchInput
-              size="sm"
-              rounded="md"
-              value={searchValue}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-              onClear={() => onSearchChange?.('')}
-              placeholder={searchPlaceholder || 'Search candidates, assessments...'}
-              shortcutKey={effectiveShortcut}
-              autoShortcut={false}
-            />
-          </div>
+          {showSearch && (
+            <div className="w-full max-w-sm">
+              <SearchInput
+                size="sm"
+                rounded="md"
+                value={searchValue}
+                onChange={(e) => onSearchChange?.(e.target.value)}
+                onClear={() => onSearchChange?.('')}
+                placeholder={searchPlaceholder || 'Search candidates, assessments...'}
+                shortcutKey={effectiveShortcut}
+                autoShortcut={false}
+              />
+            </div>
+          )}
         </div>
 
         {/* Right section: Help, notifications, profile, actions */}

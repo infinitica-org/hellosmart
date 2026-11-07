@@ -61,7 +61,7 @@ export function ConfirmAssessmentDialog({
           <div className="flex justify-between items-center">
             <span className="text-neutral-500">Disconnect Policy:</span>
             <Badge variant={values.timing.pauseTimerOnDisconnect ? 'warning' : 'default'} size="sm">
-              {values.timing.pauseTimerOnDisconnect ? 'Timer Paused' : 'Timer Runs (BR-09)'}
+              {values.timing.pauseTimerOnDisconnect ? 'Timer Paused' : 'Timer Runs'}
             </Badge>
           </div>
         </div>

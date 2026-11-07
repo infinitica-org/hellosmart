@@ -23,10 +23,8 @@ export const WorkspaceRecoveryPanel = forwardRef<HTMLDivElement, WorkspaceRecove
           </div>
           <div>
             <div className="font-semibold text-neutral-900 flex items-center gap-2">
-              Continuous Autosave Active (BR-11)
-              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-neutral-100 text-neutral-600 border border-neutral-200">
-                RPO &le; 30s
-              </span>
+              Continuous Autosave Active 
+            
             </div>
             <div className="text-[11px] text-neutral-500 mt-0.5">
               {lastSavedAt

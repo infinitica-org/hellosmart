@@ -146,9 +146,9 @@ export function IdleWarningModal({
       aria-modal="true"
       aria-labelledby="idle-warning-title"
       aria-describedby="idle-warning-desc"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
     >
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 text-center">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-neutral-200 space-y-6 text-center">
         {/* Warning Icon */}
         <div
           className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-2xl font-bold"
@@ -158,10 +158,10 @@ export function IdleWarningModal({
         </div>
 
         <div className="space-y-2">
-          <h2 id="idle-warning-title" className="text-xl font-bold text-slate-900">
+          <h2 id="idle-warning-title" className="text-xl font-bold text-neutral-900">
             Are you still there?
           </h2>
-          <p id="idle-warning-desc" className="text-sm text-slate-600">
+          <p id="idle-warning-desc" className="text-sm text-neutral-600">
             For security, your session will time out due to inactivity in:
           </p>
           <div
@@ -171,7 +171,7 @@ export function IdleWarningModal({
             {formatTime(secondsRemaining)}
           </div>
           {extendError && (
-            <p className="text-xs text-rose-600 font-medium" role="alert">
+            <p className="text-xs text-danger font-medium" role="alert">
               {extendError}
             </p>
           )}
@@ -183,14 +183,14 @@ export function IdleWarningModal({
             type="button"
             onClick={handleStaySignedIn}
             disabled={isExtending}
-            className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-xs transition disabled:opacity-50 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
+            className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg shadow-xs transition disabled:opacity-50 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           >
             {isExtending ? 'Verifying...' : 'Stay signed in'}
           </button>
           <button
             type="button"
             onClick={handleSignOutExpired}
-            className="px-4 py-2.5 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer"
+            className="px-4 py-2.5 text-sm font-medium text-neutral-700 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition cursor-pointer"
           >
             Sign out now
           </button>

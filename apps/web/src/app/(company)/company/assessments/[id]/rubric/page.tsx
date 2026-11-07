@@ -78,7 +78,7 @@ function RubricCustomizerContent({ id }: { id: string }): React.JSX.Element {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <PageHeader
           title="Customize Assessment Rubric"
-          description="Configure scoring dimensions, adjust weights, and define red flags for independent AI reviewer agents (BR-18)."
+          description="Configure scoring dimensions, adjust weights, and define red flags for independent AI reviewer agents."
           badge={{ text: '100% Weight Invariant', variant: 'info' }}
           data-testid="rubric-page-header"
         />

@@ -167,9 +167,9 @@ export default function CandidateConsentPage() {
           {error && (
             <div
               data-testid="consent-page-error-banner"
-              className="p-3.5 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs flex items-center gap-2.5"
+              className="p-3.5 rounded-xl border border-danger-border bg-danger-muted text-danger-foreground text-xs flex items-center gap-2.5"
             >
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-danger shrink-0" />
               <div className="flex-1">
                 <span className="font-semibold">Consent Submission Failed:</span> {error}
               </div>

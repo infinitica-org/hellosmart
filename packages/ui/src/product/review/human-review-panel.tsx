@@ -40,7 +40,7 @@ export function HumanReviewPanel({
       <CardHeader className="p-0 border-0">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Human Review & Final Decision (BR-20)</CardTitle>
+            <CardTitle>Human Review & Final Decision</CardTitle>
             <p className="text-xs text-neutral-500 mt-0.5">
               AI agent scores are advisory evidence. Human review overrides are version-tracked.
             </p>

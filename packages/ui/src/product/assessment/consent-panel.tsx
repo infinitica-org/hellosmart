@@ -55,7 +55,7 @@ export function ConsentPanel({
           <div className="flex items-start gap-2.5">
             <span className="text-primary font-bold">•</span>
             <div>
-              <span className="font-semibold text-neutral-900">Session Recording (BR-12):</span>{' '}
+              <span className="font-semibold text-neutral-900">Session Recording:</span>{' '}
               All actions inside this workspace, including terminal commands, git snapshots, editor changes, and chat interactions, are captured as evaluation evidence.
             </div>
           </div>
@@ -63,7 +63,7 @@ export function ConsentPanel({
           <div className="flex items-start gap-2.5">
             <span className="text-primary font-bold">•</span>
             <div>
-              <span className="font-semibold text-neutral-900">AI Assistant Policy (BR-14):</span>{' '}
+              <span className="font-semibold text-neutral-900">AI Assistant Policy:</span>{' '}
               {aiEnabled
                 ? 'Governed AI coding assistance is enabled for this assessment via the secure HelloSmart AI proxy.'
                 : 'AI coding assistance is disabled for this assessment. Network egress to external AI services is blocked.'}
@@ -73,10 +73,10 @@ export function ConsentPanel({
           <div className="flex items-start gap-2.5">
             <span className="text-primary font-bold">•</span>
             <div>
-              <span className="font-semibold text-neutral-900">Timer & Disconnection (BR-09):</span>{' '}
+              <span className="font-semibold text-neutral-900">Timer & Disconnection:</span>{' '}
               {pauseTimerOnDisconnect
                 ? 'The timer will automatically pause if your connection is lost.'
-                : 'The countdown timer keeps running if you disconnect or close your browser. Autosave ensures no work is lost upon resuming (BR-11).'}
+                : 'The countdown timer keeps running if you disconnect or close your browser. Autosave ensures no work is lost upon resuming.'}
             </div>
           </div>
 
@@ -84,7 +84,7 @@ export function ConsentPanel({
             <div className="flex items-start gap-2.5">
               <span className="text-primary font-bold">•</span>
               <div>
-                <span className="font-semibold text-neutral-900">Full Screen Requirement (BR-10):</span>{' '}
+                <span className="font-semibold text-neutral-900">Full Screen Requirement:</span>{' '}
                 Connecting will request full-screen mode. Exiting full screen disconnects the session until resumed.
               </div>
             </div>

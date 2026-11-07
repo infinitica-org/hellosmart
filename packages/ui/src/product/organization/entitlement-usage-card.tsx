@@ -40,7 +40,7 @@ export const EntitlementUsageCard = forwardRef<HTMLDivElement, EntitlementUsageC
         <div className="flex items-center justify-between pb-3 border-b border-neutral-200">
           <div>
             <h3 className="text-sm font-semibold text-neutral-900">
-              Organization Entitlements (BR-05)
+              Organization Entitlements
             </h3>
             <p className="text-xs text-neutral-500 mt-0.5">
               Enforced server-side quotas for your organization.
@@ -62,7 +62,7 @@ export const EntitlementUsageCard = forwardRef<HTMLDivElement, EntitlementUsageC
         <div className="space-y-4 text-xs">
           <div>
             <div className="flex justify-between items-center mb-1 text-neutral-800 font-medium">
-              <span>Candidate Quota (BR-06: counts at 1st launch)</span>
+              <span>Candidate Quota (counts at 1st launch)</span>
               <span className="font-mono text-neutral-500">
                 {candidatesUsed} / {candidatesMax}
               </span>

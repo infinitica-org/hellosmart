@@ -68,11 +68,7 @@ export default function CandidateLayout({
           groups={candidateGroups}
           onLogout={auth.signOut}
           mainClassName="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6 md:p-8"
-          footer={
-            <div className="border-t border-card-border py-4 px-6 text-center text-xs text-neutral-500">
-              Continuous Autosave (RPO &le; 30s, BR-11) &bull; Controlled Workspace Policy (BR-10, BR-12)
-            </div>
-          }
+         
         >
           {children}
         </PortalShell>

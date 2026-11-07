@@ -41,37 +41,21 @@ export default function CandidateDashboardPage() {
         description="Complete practical work simulation tasks in a controlled cloud environment with real developer tools."
         badge={{ text: 'Candidate Portal', variant: 'info' }}
         data-testid="candidate-page-header"
-        actions={
-          data && data.length > 0 ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void refetch()}
-              disabled={isLoading || isRefetching}
-              className="flex items-center gap-2 text-xs border-neutral-200 hover:bg-neutral-50"
-              aria-label="Refresh assessments"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          ) : undefined
-        }
       />
 
       {/* Error State */}
       {!isLoading && error && (
         <Card
           data-testid="candidate-error-state"
-          className="p-6 sm:p-8 border-red-200 bg-red-50/50 space-y-4"
+          className="p-6 sm:p-8 border-danger-border bg-danger-muted/40 space-y-4"
         >
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-              <AlertCircle className="w-5 h-5 text-red-600" />
+            <div className="w-9 h-9 rounded-xl bg-danger-muted flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5 text-danger" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-red-900">Failed to load assessments</h3>
-              <p className="text-xs text-red-700 mt-1">
+              <h3 className="text-sm font-semibold text-danger-foreground">Failed to load assessments</h3>
+              <p className="text-xs text-danger-foreground/80 mt-1">
                 {error.message || 'Unable to connect to the assessment service. Please try again.'}
               </p>
             </div>
@@ -82,7 +66,7 @@ export default function CandidateDashboardPage() {
               variant="outline"
               size="sm"
               onClick={() => void refetch()}
-              className="border-red-300 text-red-700 hover:bg-red-100/60"
+              className="border-danger-border text-danger-foreground hover:bg-danger-muted"
             >
               <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
               Try Again

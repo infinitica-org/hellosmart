@@ -23,10 +23,10 @@ export function NetworkCheck({ result, isRunning = false, onRetry }: NetworkChec
           <div
             className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
               isPass
-                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
+                ? 'bg-success-muted text-success'
                 : isWarning
-                  ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'
-                  : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400'
+                  ? 'bg-warning-muted text-warning'
+                  : 'bg-danger-muted text-danger'
             }`}
           >
             <Wifi className="w-4 h-4" />
@@ -52,20 +52,20 @@ export function NetworkCheck({ result, isRunning = false, onRetry }: NetworkChec
               Testing
             </Badge>
           ) : isPass ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+            <Badge variant="success" size="sm" className="gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5" />
               Optimal
-            </span>
+            </Badge>
           ) : isWarning ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/80">
+            <Badge variant="warning" size="sm" className="gap-1.5">
               <AlertTriangle className="w-3.5 h-3.5" />
               High Latency
-            </span>
+            </Badge>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200/80">
+            <Badge variant="danger" size="sm" className="gap-1.5">
               <AlertCircle className="w-3.5 h-3.5" />
               Failed
-            </span>
+            </Badge>
           )}
 
           {isError && onRetry && (
@@ -75,7 +75,7 @@ export function NetworkCheck({ result, isRunning = false, onRetry }: NetworkChec
               size="sm"
               onClick={onRetry}
               disabled={isRunning}
-              className="text-xs h-7 px-2 border-red-200 text-red-700 hover:bg-red-50"
+              className="text-xs h-7 px-2 border-danger-border text-danger-foreground hover:bg-danger-muted"
             >
               <RotateCcw className="w-3 h-3 mr-1" />
               Retry
@@ -85,7 +85,7 @@ export function NetworkCheck({ result, isRunning = false, onRetry }: NetworkChec
       </div>
 
       {!isRunning && result.message && (
-        <p className={`mt-2 text-xs leading-relaxed ${isPass ? 'text-neutral-500' : isWarning ? 'text-amber-700' : 'text-red-700'}`}>
+        <p className={`mt-2 text-xs leading-relaxed ${isPass ? 'text-neutral-500' : isWarning ? 'text-warning-foreground' : 'text-danger-foreground'}`}>
           {result.message}
         </p>
       )}

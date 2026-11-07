@@ -70,14 +70,14 @@ export function EvaluationSignalsEditor({
         {signals.map((signal, idx) => (
           <span
             key={idx}
-            className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200"
+            className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-lg bg-success-muted text-success-foreground border border-success-border"
           >
             <span>{signal}</span>
             {!disabled && (
               <button
                 type="button"
                 onClick={() => handleRemove(idx)}
-                className="text-emerald-600 hover:text-emerald-950 p-0.5"
+                className="text-success hover:text-success-foreground p-0.5 cursor-pointer"
                 aria-label={`Remove signal ${signal}`}
               >
                 ✕

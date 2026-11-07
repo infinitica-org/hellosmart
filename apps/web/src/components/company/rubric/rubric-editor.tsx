@@ -177,13 +177,13 @@ export function RubricEditor({
       <div className="p-4 sm:p-5 rounded-2xl border border-neutral-200 bg-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky bottom-4 z-10">
         <div className="flex items-center gap-2">
           {balance.isBalanced ? (
-            <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <span className="text-xs font-semibold text-success flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-success" />
               Rubric is 100% balanced and ready to save.
             </span>
           ) : (
-            <span className="text-xs font-medium text-rose-700 flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+            <span className="text-xs font-medium text-danger flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-danger animate-pulse" />
               {balance.message}. Total must be 100% to save.
             </span>
           )}

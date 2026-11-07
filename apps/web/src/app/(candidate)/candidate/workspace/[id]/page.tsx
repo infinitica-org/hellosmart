@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Button } from '@hs/ui';
+import { Button, Card, CountdownTimer } from '@hs/ui';
 import { SafeMarkdown } from '@hs/ui';
 import {
   Building2,
@@ -20,7 +20,6 @@ import {
   Maximize2,
   Minimize2,
 } from 'lucide-react';
-import { ActiveTimerBar } from '@/components/candidate/active-timer-bar';
 import { DeliverablesUploader } from '@/components/candidate/deliverables-uploader';
 import { SubmissionConfirmationDialog } from '@/components/candidate/submission-confirmation-dialog';
 import { useAssessmentTiming } from '@/hooks/candidate/use-assessment-timing';
@@ -171,8 +170,8 @@ export default function CandidateWorkspacePage() {
   if (submissionReceipt) {
     return (
       <div className="max-w-2xl mx-auto py-12 px-4">
-        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-8 shadow-xs text-center space-y-6">
-          <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center mx-auto">
+        <Card className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-8 shadow-xs text-center space-y-6">
+          <div className="w-14 h-14 rounded-full bg-success-muted border border-success-border text-success flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-8 h-8" />
           </div>
 
@@ -222,7 +221,7 @@ export default function CandidateWorkspacePage() {
               Return to Candidate Dashboard
             </Button>
           </div>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -243,8 +242,8 @@ export default function CandidateWorkspacePage() {
   if (assessmentError || !assessment) {
     return (
       <div className="h-full min-h-[400px] flex flex-col items-center justify-center p-8">
-        <div className="max-w-md w-full p-6 sm:p-8 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-center space-y-4 shadow-xs">
-          <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 flex items-center justify-center mx-auto">
+        <Card className="max-w-md w-full p-6 sm:p-8 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-center space-y-4 shadow-xs">
+          <div className="w-12 h-12 rounded-full bg-danger-muted border border-danger-border text-danger flex items-center justify-center mx-auto">
             <AlertCircle className="w-6 h-6" />
           </div>
           <div className="space-y-1">
@@ -263,7 +262,7 @@ export default function CandidateWorkspacePage() {
           >
             Return to Candidate Dashboard
           </Button>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -296,7 +295,7 @@ Please complete the requirements for this assessment and submit your solution de
             <h1 className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
               {assessment.title}
             </h1>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 dark:bg-orange-950/40 text-primary border border-orange-200/80 dark:border-orange-800/80">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20">
               Take-Home Workspace
             </span>
           </div>
@@ -319,22 +318,22 @@ Please complete the requirements for this assessment and submit your solution de
             {/* Live Autosave Indicator */}
             <div className="flex items-center gap-1.5" data-testid="autosave-indicator">
               {draftEngine.status === 'saving' ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-orange-50 dark:bg-orange-950/40 text-primary border border-orange-200/80">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Saving draft...
                 </span>
               ) : draftEngine.status === 'saved' ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-success-muted text-success-foreground border border-success-border">
+                  <CheckCircle2 className="w-3 h-3 text-success" />
                   All changes saved to cloud
                 </span>
               ) : draftEngine.status === 'dirty' ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-warning-muted text-warning-foreground border border-warning-border">
+                  <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
                   Unsaved changes
                 </span>
               ) : draftEngine.status === 'error' ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-600 border border-red-200">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-danger-muted text-danger-foreground border border-danger-border">
                   <AlertCircle className="w-3 h-3" />
                   Save failed (retrying)
                 </span>
@@ -350,7 +349,7 @@ Please complete the requirements for this assessment and submit your solution de
 
         {/* Action Controls, Fullscreen Toggle & Countdown */}
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
-          <ActiveTimerBar
+          <CountdownTimer
             formattedTime={timing.formattedTime}
             isWarning={timing.isWarning}
             isExpired={timing.isExpired}
@@ -362,7 +361,7 @@ Please complete the requirements for this assessment and submit your solution de
               type="button"
               variant="outline"
               size="sm"
-              className="!rounded-xl px-3.5 py-1.5 text-xs font-semibold border-orange-300 dark:border-orange-800 bg-orange-50/70 dark:bg-orange-950/40 text-primary hover:bg-orange-100 whitespace-nowrap cursor-pointer shadow-2xs animate-pulse"
+              className="!rounded-xl px-3.5 py-1.5 text-xs font-semibold border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 whitespace-nowrap cursor-pointer shadow-2xs animate-pulse"
               onClick={fullscreen.enterFullscreen}
               data-testid="toggle-fullscreen-button"
               leftIcon={<Maximize2 className="w-3.5 h-3.5 text-primary" />}
@@ -377,7 +376,7 @@ Please complete the requirements for this assessment and submit your solution de
       {fullscreen.hasExitedFullscreen && (
         <div
           data-testid="fullscreen-exit-warning"
-          className="shrink-0 p-3 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-100 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
+          className="shrink-0 p-3 rounded-xl border border-warning-border bg-warning-muted text-warning-foreground text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
         >
           
 
@@ -386,7 +385,7 @@ Please complete the requirements for this assessment and submit your solution de
               type="button"
               variant="outline"
               size="sm"
-              className="!rounded-lg px-2.5 py-1 text-xs border-amber-300 dark:border-amber-700 bg-white dark:bg-neutral-900 text-amber-900 dark:text-amber-100 hover:bg-amber-100/50"
+              className="!rounded-lg px-2.5 py-1 text-xs border-warning-border bg-transparent text-warning-foreground hover:bg-warning-muted"
               onClick={fullscreen.dismissExitWarning}
             >
               Dismiss
@@ -440,7 +439,7 @@ Please complete the requirements for this assessment and submit your solution de
               <span
                 className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
                   completedCount === 3
-                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                    ? 'bg-success-muted text-success-foreground border border-success-border'
                     : 'bg-neutral-200/70 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300'
                 }`}
               >
@@ -451,7 +450,7 @@ Please complete the requirements for this assessment and submit your solution de
             {/* Progress Bar */}
             <div className="w-full h-1.5 bg-neutral-200/70 dark:bg-neutral-700 rounded-full overflow-hidden">
               <div
-                className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
+                className="h-full bg-success transition-all duration-300 rounded-full"
                 style={{ width: `${(completedCount / 3) * 100}%` }}
               />
             </div>
@@ -459,7 +458,7 @@ Please complete the requirements for this assessment and submit your solution de
             <ul className="text-xs space-y-2 pt-0.5">
               <li className="flex items-center gap-2">
                 {hasRepo ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                 ) : (
                   <span className="w-4 h-4 rounded-full border border-neutral-300 dark:border-neutral-600 shrink-0" />
                 )}
@@ -469,7 +468,7 @@ Please complete the requirements for this assessment and submit your solution de
               </li>
               <li className="flex items-center gap-2">
                 {hasBranch ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                 ) : (
                   <span className="w-4 h-4 rounded-full border border-neutral-300 dark:border-neutral-600 shrink-0" />
                 )}
@@ -479,7 +478,7 @@ Please complete the requirements for this assessment and submit your solution de
               </li>
               <li className="flex items-center gap-2">
                 {hasNotes ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                 ) : (
                   <span className="w-4 h-4 rounded-full border border-neutral-300 dark:border-neutral-600 shrink-0" />
                 )}
@@ -526,7 +525,7 @@ Please complete the requirements for this assessment and submit your solution de
                     htmlFor="repo-url-input"
                     className="block text-xs font-medium text-neutral-700 dark:text-neutral-300"
                   >
-                    Repository URL <span className="text-red-500">*</span>
+                    Repository URL <span className="text-danger">*</span>
                   </label>
                   <div className="relative">
                     <input
@@ -547,7 +546,7 @@ Please complete the requirements for this assessment and submit your solution de
                     htmlFor="branch-input"
                     className="block text-xs font-medium text-neutral-700 dark:text-neutral-300"
                   >
-                    Branch <span className="text-red-500">*</span>
+                    Branch <span className="text-danger">*</span>
                   </label>
                   <div className="relative">
                     <input
@@ -594,7 +593,7 @@ Please complete the requirements for this assessment and submit your solution de
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
-                    Architecture &amp; Design Notes <span className="text-red-500">*</span>
+                    Architecture &amp; Design Notes <span className="text-danger">*</span>
                   </h3>
                   <p className="text-[11px] text-neutral-500">
                     Explain your design choices, trade-offs, and security considerations
@@ -602,29 +601,33 @@ Please complete the requirements for this assessment and submit your solution de
                 </div>
 
                 {/* Edit / Preview Tabs */}
-                <div className="inline-flex p-0.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-xs shrink-0">
-                  <button
+                <div className="inline-flex p-0.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-xs shrink-0 gap-0.5">
+                  <Button
                     type="button"
+                    variant={notesTab === 'edit' ? 'outline' : 'ghost'}
+                    size="sm"
                     onClick={() => setNotesTab('edit')}
-                    className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer ${
+                    className={`h-7 px-3 text-xs !rounded-md ${
                       notesTab === 'edit'
-                        ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-xs'
-                        : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200'
+                        ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-xs border-neutral-200/80'
+                        : 'text-neutral-500 hover:text-neutral-900'
                     }`}
                   >
                     Write Markdown
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant={notesTab === 'preview' ? 'outline' : 'ghost'}
+                    size="sm"
                     onClick={() => setNotesTab('preview')}
-                    className={`px-3 py-1 rounded-md font-medium transition-all cursor-pointer ${
+                    className={`h-7 px-3 text-xs !rounded-md ${
                       notesTab === 'preview'
-                        ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-xs'
-                        : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200'
+                        ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-xs border-neutral-200/80'
+                        : 'text-neutral-500 hover:text-neutral-900'
                     }`}
                   >
                     Preview
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -640,7 +643,7 @@ Please complete the requirements for this assessment and submit your solution de
                   />
                   <div className="flex justify-between items-center text-[11px] text-neutral-400 px-1">
                     <span>Markdown supported: headings, lists, code, bold</span>
-                    <span className={hasNotes ? 'text-emerald-600 font-medium' : 'text-neutral-400'}>
+                    <span className={hasNotes ? 'text-success font-medium' : 'text-neutral-400'}>
                       {draftEngine.draft.architectureNotes.trim().length} chars (min 10)
                     </span>
                   </div>
@@ -662,7 +665,7 @@ Please complete the requirements for this assessment and submit your solution de
             <span className="text-xs text-neutral-500">
               {draftEngine.lastSavedAt
                 ? `Last saved at ${new Date(draftEngine.lastSavedAt).toLocaleTimeString()}`
-                : '30-second continuous autosave active (BR-11)'}
+                : '30-second continuous autosave active'}
             </span>
 
             <Button
