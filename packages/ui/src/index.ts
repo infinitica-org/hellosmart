@@ -56,6 +56,7 @@ export * from './feedback/skeleton';
 export * from './feedback/empty-state';
 export * from './feedback/error-state';
 export * from './feedback/toast';
+export * from './feedback/hash-chain-status-banner';
 
 // Forms
 export {

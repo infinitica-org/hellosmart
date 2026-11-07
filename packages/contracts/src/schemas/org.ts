@@ -104,3 +104,79 @@ export const CompanyMetricsDtoSchema = z.object({
 });
 export type CompanyMetricsDto = z.infer<typeof CompanyMetricsDtoSchema>;
 
+export const EntitlementFlagsSchema = z.object({
+  cloud: z.boolean().optional(),
+  chat: z.boolean().optional(),
+  local: z.boolean().optional(),
+  browser: z.boolean().optional(),
+  white_label: z.boolean().optional(),
+  custom_domain: z.boolean().optional(),
+  managed_ai_credits: z.boolean().optional(),
+  extra_agents: z.boolean().optional(),
+});
+export type EntitlementFlags = z.infer<typeof EntitlementFlagsSchema>;
+
+export const OrgEntitlementsDtoSchema = z.object({
+  orgId: z.string().uuid(),
+  maxTemplates: z.number().int().min(1).max(100),
+  maxCandidates: z.number().int().min(1).max(10000),
+  trialEndsAt: z.string().datetime().nullable(),
+  pendingInviteMultiplier: z.number().min(1).max(10),
+  flags: EntitlementFlagsSchema,
+  updatedAt: z.string().datetime(),
+});
+export type OrgEntitlementsDto = z.infer<typeof OrgEntitlementsDtoSchema>;
+
+export const UpdateOrgEntitlementsDtoSchema = z.object({
+  maxTemplates: z.coerce.number().int().min(1).max(100).optional(),
+  maxCandidates: z.coerce.number().int().min(1).max(10000).optional(),
+  trialEndsAt: z.string().datetime().nullable().optional(),
+  pendingInviteMultiplier: z.coerce.number().min(1).max(10).optional(),
+  flags: EntitlementFlagsSchema.optional(),
+  reason: z.string().max(500).optional(),
+});
+export type UpdateOrgEntitlementsDto = z.infer<typeof UpdateOrgEntitlementsDtoSchema>;
+
+export const OrgDetailDtoSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).max(120),
+  slug: z.string().min(1).max(64),
+  status: OrgStatusEnum,
+  planId: z.string().nullable().optional(),
+  logoUrl: z.string().nullable().optional(),
+  whiteLabel: z.boolean(),
+  customDomain: z.string().nullable().optional(),
+  retentionDays: z.number().int(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  adminUser: z
+    .object({
+      id: z.string().uuid(),
+      name: z.string(),
+      email: z.string().email(),
+      status: z.string().optional(),
+      lastLoginAt: z.string().datetime().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
+  primaryAdmin: z
+    .object({
+      id: z.string().uuid(),
+      name: z.string(),
+      email: z.string().email(),
+      status: z.string().optional(),
+      lastLoginAt: z.string().datetime().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
+  entitlements: OrgEntitlementsDtoSchema,
+  stats: z
+    .object({
+      candidateCount: z.number().int().nonnegative(),
+      assessmentCount: z.number().int().nonnegative().optional(),
+      activeWorkspacesCount: z.number().int().nonnegative().optional(),
+    })
+    .optional(),
+});
+export type OrgDetailDto = z.infer<typeof OrgDetailDtoSchema>;
+

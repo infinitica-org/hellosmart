@@ -20,6 +20,7 @@ import {
 } from '@hs/ui';
 import { TenantTable } from './tenant-table';
 import { ProvisionModal } from './provision-modal';
+import { TenantDetailDrawer } from './tenant-detail-drawer';
 import { Organization, AdminMetrics, OrganizationStatus } from '@/types/organization';
 import { useGetOrganizationsQuery } from '@/store/admin/adminApi';
 
@@ -43,6 +44,8 @@ export function AdminCompaniesView({
 }: AdminCompaniesViewProps) {
   const { data, isLoading, error, refetch } = useGetOrganizationsQuery();
   const [isProvisionModalOpen, setIsProvisionModalOpen] = useState(false);
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   let searchParams: any = null;
   try {
@@ -240,9 +243,24 @@ export function AdminCompaniesView({
               setStatusFilter('all');
             }}
             onOpenProvision={() => setIsProvisionModalOpen(true)}
+            onInspectOrg={(org) => {
+              setSelectedOrgId(org.id);
+              setIsDrawerOpen(true);
+            }}
           />
         )}
       </Card>
+
+      {/* Tenant Detail & Entitlements Drawer */}
+      <TenantDetailDrawer
+        orgId={selectedOrgId}
+        open={isDrawerOpen}
+        onClose={() => {
+          setIsDrawerOpen(false);
+          setSelectedOrgId(null);
+        }}
+        onRefresh={() => void refetch()}
+      />
 
       {/* Provision New Company Modal */}
       <ProvisionModal

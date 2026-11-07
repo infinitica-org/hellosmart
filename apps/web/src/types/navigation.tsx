@@ -55,6 +55,11 @@ export const adminNavigation: PortalNavigation = [
     icon: <ShieldCheck className="w-4 h-4" strokeWidth={2} />,
   },
   {
+    label: 'AI Keys & Credits',
+    href: ROUTES.ADMIN.AI_KEYS,
+    icon: <KeyRound className="w-4 h-4" strokeWidth={2} />,
+  },
+  {
     label: 'Agents',
     href: ROUTES.ADMIN.AGENTS,
     icon: <Bot className="w-4 h-4" strokeWidth={2} />,
@@ -94,6 +99,11 @@ export const adminGroups: NavigationGroup[] = [
         label: 'Audit Logs',
         href: ROUTES.ADMIN.AUDIT,
         icon: <ShieldCheck className="w-4 h-4" strokeWidth={2} />,
+      },
+      {
+        label: 'AI Keys & Credits',
+        href: ROUTES.ADMIN.AI_KEYS,
+        icon: <KeyRound className="w-4 h-4" strokeWidth={2} />,
       },
       {
         label: 'Security',

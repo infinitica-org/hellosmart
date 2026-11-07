@@ -38,6 +38,7 @@ export const ROUTES = deepFreeze({
     COMPANIES: '/admin/companies',
     AGENTS: '/admin/agents',
     AUDIT: '/admin/audit',
+    AI_KEYS: '/admin/ai-keys',
     SETTINGS: '/admin/settings',
     SECURITY: '/admin/settings/security',
     SALES: '/admin/sales',

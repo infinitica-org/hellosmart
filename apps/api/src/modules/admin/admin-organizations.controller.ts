@@ -18,6 +18,9 @@ import {
   OrgListQueryDtoSchema,
   type UpdateOrgStatusDto,
   UpdateOrgStatusDtoSchema,
+  type UpdateOrgEntitlementsDto,
+  UpdateOrgEntitlementsDtoSchema,
+  OrgDetailDtoSchema,
 } from '@hs/contracts';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -101,6 +104,49 @@ export class AdminOrganizationsController {
     );
 
     return OrgDtoSchema.parse(org);
+  }
+
+  @Get(':id')
+  async getById(@Param('id') id: string) {
+    const orgId = z.string().uuid().safeParse(id);
+    if (!orgId.success) {
+      throw problem({
+        title: 'Unprocessable Entity',
+        status: 422,
+        detail: 'Invalid organization id',
+        code: 'VALIDATION_ERROR',
+      });
+    }
+
+    const detail = await this.orgs.getOrganizationById(orgId.data);
+    return OrgDetailDtoSchema.parse(detail);
+  }
+
+  @Patch(':id/entitlements')
+  async updateEntitlements(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(UpdateOrgEntitlementsDtoSchema)) body: UpdateOrgEntitlementsDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const orgId = z.string().uuid().safeParse(id);
+    if (!orgId.success) {
+      throw problem({
+        title: 'Unprocessable Entity',
+        status: 422,
+        detail: 'Invalid organization id',
+        code: 'VALIDATION_ERROR',
+      });
+    }
+
+    const actor = request[REQUEST_USER_KEY];
+    const detail = await this.orgs.updateEntitlements(
+      orgId.data,
+      body,
+      actor,
+      requestMeta(request),
+    );
+
+    return OrgDetailDtoSchema.parse(detail);
   }
 }
 

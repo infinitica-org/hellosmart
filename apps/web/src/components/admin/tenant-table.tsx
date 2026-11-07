@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   MoreHorizontal,
 } from '@hs/ui';
+import { Sliders } from 'lucide-react';
 import { Organization, OrganizationStatus } from '@/types/organization';
 import { useUpdateOrganizationStatusMutation } from '@/store/admin/adminApi';
 
@@ -33,6 +34,7 @@ export interface TenantTableProps {
   isFiltered?: boolean;
   onResetFilters?: () => void;
   onOpenProvision?: () => void;
+  onInspectOrg?: (org: Organization) => void;
 }
 
 export function TenantTable({
@@ -43,6 +45,7 @@ export function TenantTable({
   isFiltered = false,
   onResetFilters,
   onOpenProvision,
+  onInspectOrg,
 }: TenantTableProps) {
   const { toast } = useToast();
   const [page, setPage] = useState(1);
@@ -206,13 +209,25 @@ export function TenantTable({
                 >
                   {/* Company Name, Avatar & Email */}
                   <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100 font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                    <div
+                      className="flex items-center gap-3 cursor-pointer group"
+                      onClick={() => onInspectOrg?.(org)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onInspectOrg?.(org);
+                        }
+                      }}
+                      data-testid={`tenant-name-${org.slug}`}
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100 font-semibold text-neutral-700 group-hover:bg-primary-50 group-hover:text-primary-700 dark:bg-neutral-800 dark:text-neutral-300 transition-colors">
                         {org.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="truncate font-medium text-neutral-900 dark:text-neutral-100">
+                          <span className="truncate font-medium text-neutral-900 group-hover:text-primary-600 dark:text-neutral-100 transition-colors">
                             {org.name}
                           </span>
                           <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700">
@@ -278,6 +293,14 @@ export function TenantTable({
                           align="right"
                           className="w-48 p-1 shadow-lg rounded-xl border border-neutral-200 bg-white dark:bg-neutral-900 dark:border-neutral-800"
                         >
+                          <DropdownMenuItem
+                            icon={<Sliders className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />}
+                            onClick={() => onInspectOrg?.(org)}
+                            className="text-xs"
+                            data-testid={`inspect-btn-${org.slug}`}
+                          >
+                            Inspect & Entitlements
+                          </DropdownMenuItem>
                           {isSuspended ? (
                             <DropdownMenuItem
                               icon={<CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
